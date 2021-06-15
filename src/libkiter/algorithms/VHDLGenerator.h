@@ -16,6 +16,7 @@ namespace models {
 }
 
 namespace algorithms {
+  enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   /* std::string printStatus(models::Dataflow* const dataflow); */
