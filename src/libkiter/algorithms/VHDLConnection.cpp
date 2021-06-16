@@ -9,6 +9,7 @@
 #include "VHDLConnection.h"
 
 VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
+  edge = e;
   connectionName = dataflow->getEdgeName(e);
   id = dataflow->getEdgeId(e);
   dataType = "float"; // assuming only data type is float for now
@@ -16,6 +17,10 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   dataTypeWidth = 64; // assume data type is float
   srcPort = dataflow->getEdgeInputPortName(e);
   dstPort = dataflow->getEdgeOutputPortName(e);
+}
+
+Edge VHDLConnection::getEdge() {
+  return this->edge;
 }
 
 std::string VHDLConnection::getName() {

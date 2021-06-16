@@ -8,39 +8,29 @@
 #include <models/Dataflow.h>
 #include "VHDLCircuit.h"
 
-VHDLCircuit::VHDLCircuit(models::Dataflow* const dataflow) {
-  dataflowRef = new models::Dataflow(*dataflow);
+VHDLCircuit::VHDLCircuit() {}
+
+void VHDLCircuit::addComponent(VHDLComponent newComp) {
+  this->componentMap.insert(std::make_pair(newComp.getActor(),
+                                           newComp));
 }
 
-void VHDLCircuit::addComponent(std::unique_ptr<VHDLComponent> newComp) {
-  this->componentMap.insert(std::pair(dataflowRef->getVertexById(newComp->getId()),
-                                      newComp));
+void VHDLCircuit::addConnection(VHDLConnection newConnect) {
+  this->connectionMap.insert(std::make_pair(newConnect.getEdge(),
+                                            newConnect));
 }
 
-void VHDLCircuit::addConnection(std::unique_ptr<VHDLConnection> newConnect) {
-  this->connectionMap.insert(std::pair(dataflowRef->getEdgeById(newConnect->getId()),
-                                       newConnect));
+std::string VHDLCircuit::printStatus() {
+  std::stringstream outputStream;
+
+  outputStream << "\nComponents: " << std::endl;
+  for (auto &comps : this->componentMap) {
+    outputStream << "\t" << (comps.second).printStatus() << std::endl;
+  }
+  outputStream << "\nConnections: " << std::endl;
+  for (auto &conns : this->connectionMap) {
+    outputStream << "\t" << (conns.second).printStatus() << std::endl;
+  }
+
+  return outputStream.str();
 }
-
-std::map<Vertex, std::unique_ptr<VHDLComponent>> VHDLCircuit::getComponentMap() {
-  return this->componentMap;
-}
-
-std::map<Edge, std::unique_ptr<VHDLConnection>> VHDLCircuit::getConnectionMap() {
-  return this->connectionMap;
-}
-
-// std::string VHDLCircuit::printStatus() {
-//   std::stringstream outputStream;
-
-//   outputStream << "\nComponents: " << std::endl;
-//   for (auto &comps : this->componentMap) {
-//     outputStream << "\t" << (comps.second)->printStatus() << std::endl;
-//   }
-//   outputStream << "\nConnections: " << std::endl;
-//   for (auto &conns : this->connectionMap) {
-//     outputStream << "\t" << (conns.second)->printStatus() << std::endl;
-//   }
-
-//   return outputStream.str();
-// }

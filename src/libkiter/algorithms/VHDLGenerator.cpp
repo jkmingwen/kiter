@@ -15,21 +15,21 @@
 void algorithms::generateVHDL(models::Dataflow* const dataflow,
                               parameters_list_t param_list) {
   std::set<std::string> componentSet; // store components to generate VHDL code for
-  std::vector<std::unique_ptr<VHDLComponent>> componentList;
-  std::vector<std::unique_ptr<VHDLConnection>> connectionList;
-  VHDLCircuit circuit(dataflow);
+  std::vector<VHDLComponent> componentList;
+  std::vector<VHDLConnection> connectionList;
+  VHDLCircuit circuit;
 
   {ForEachVertex(dataflow, actor) {
       std::string actorType = dataflow->getVertexType(actor);
       actorType = actorType.substr(0, actorType.find("_")); // separate function of actor from iterator
       componentSet.insert(actorType);
-      std::unique_ptr<VHDLComponent> newComp = new VHDLComponent(dataflow, actor); 
+      VHDLComponent newComp(dataflow, actor);
       componentList.push_back(newComp);
-      circuit.addComponent(newComp)
+      circuit.addComponent(newComp);
     }}
   
   {ForEachEdge(dataflow, edge) {
-      std::unique_ptr<VHDLConnection> newConn = new VHDLConnection(dataflow, edge);
+      VHDLConnection newConn(dataflow, edge);
       connectionList.push_back(newConn);
       circuit.addConnection(newConn);
     }}
@@ -45,10 +45,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   for (auto comp : connectionList) {
     std::cout << comp.printStatus() << std::endl;
   }
-  // std::cout << "VHDL Circuit: " << std::endl;
-  // for (auto it : circuit.getComponentMap()) {
-  //   std::cout << it.second.printStatus() << std::endl;
-  // }
-  //std::cout << circuit.printStatus() << std::endl;
+  std::cout << "VHDL Circuit: " << std::endl;
+  std::cout << circuit.printStatus() << std::endl;
   return;
 }

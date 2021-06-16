@@ -9,6 +9,7 @@
 #include "VHDLComponent.h"
 
 VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
+  actor = a;
   componentName = dataflow->getVertexName(a);
   id = dataflow->getVertexId(a);
   {ForInputEdges(dataflow, a, inEdge) {
@@ -19,6 +20,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }}
   std::string compType = dataflow->getVertexType(a);
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
+}
+
+Vertex VHDLComponent::getActor() {
+  return this->actor;
 }
 
 std::string VHDLComponent::getName() {

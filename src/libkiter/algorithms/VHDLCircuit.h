@@ -20,16 +20,14 @@ class VHDLConnection;
 
 class VHDLCircuit {
  public:
-  VHDLCircuit(models::Dataflow* const dataflow);
+  VHDLCircuit();
 
-  void addComponent(std::unique_ptr<VHDLComponent> newComp);
-  void addConnection(std::unique_ptr<VHDLConnection> newConnect);
-  std::map<Vertex, std::unique_ptr<VHDLComponent>> getComponentMap();
-  std::map<Edge, std::unique_ptr<VHDLConnection>> getConnectionMap();
+  void addComponent(VHDLComponent newComp);
+  void addConnection(VHDLConnection newConnect);
   std::string printStatus();
  private:
   models::Dataflow* dataflowRef;
-  std::map<Vertex, std::unique_ptr<VHDLComponent>> componentMap;
-  std::map<Edge, std::unique_ptr<VHDLConnection>> connectionMap;
+  std::map<Vertex, VHDLComponent> componentMap;
+  std::map<Edge, VHDLConnection> connectionMap;
 };
 #endif /* VHDL_CIRCUIT_H_ */

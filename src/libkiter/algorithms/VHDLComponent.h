@@ -19,6 +19,7 @@ class VHDLComponent {
   // VHDLComponent();
   VHDLComponent(models::Dataflow* const dataflow, Vertex a); // actor must be associated to a graph
 
+  Vertex getActor();
   std::string getName();
   ARRAY_INDEX getId();
   std::vector<std::string> getInputPorts();
@@ -29,6 +30,7 @@ class VHDLComponent {
   std::string printStatus();
 
  private:
+  Vertex actor;
   std::string componentName;
   ARRAY_INDEX id;
   std::vector<std::string> inputPorts;
