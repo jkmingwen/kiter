@@ -33,11 +33,5 @@ class VHDLComponent {
   std::vector<std::string> inputPorts;
   std::vector<std::string> outputPorts;
   std::string componentType;
-  /* PHASE_INDEX phaseCount; // number of phases of execution */
-  /* EXEC_COUNT repFactor; */
-  /* std::map<Edge, EXEC_COUNT> consPhaseCount; // number of consumption phases of execution */
-  /* std::map<Edge, EXEC_COUNT> prodPhaseCount; // number of production phases of execution */
-  /* std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> prodExecRate; */
-  /* std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> consExecRate; */
 };
 #endif /* VHDL_COMPONENT_H_ */
