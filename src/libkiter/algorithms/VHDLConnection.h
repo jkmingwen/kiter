@@ -29,6 +29,7 @@ class VHDLConnection {
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   std::string printStatus();
+  
  private:
   std::string connectionName;
   ARRAY_INDEX id;

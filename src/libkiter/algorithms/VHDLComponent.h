@@ -27,6 +27,7 @@ class VHDLComponent {
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   std::string printStatus();
+
  private:
   std::string componentName;
   ARRAY_INDEX id;
