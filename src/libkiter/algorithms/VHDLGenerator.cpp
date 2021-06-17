@@ -27,25 +27,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       componentList.push_back(newComp);
       circuit.addComponent(newComp);
     }}
-  
+
   {ForEachEdge(dataflow, edge) {
       VHDLConnection newConn(dataflow, edge);
       connectionList.push_back(newConn);
       circuit.addConnection(newConn);
     }}
-  std::cout << "Components to produce: " << std::endl;
-  for (auto element : componentSet) {
-    std::cout << "\t" << element << std::endl;
-  }
-  std::cout << "VHDL Component list: " << std::endl;
-  for (auto comp : componentList) {
-    std::cout << comp.printStatus() << std::endl;
-  }
-  std::cout << "VHDL Connection list: " << std::endl;
-  for (auto comp : connectionList) {
-    std::cout << comp.printStatus() << std::endl;
-  }
-  std::cout << "VHDL Circuit: " << std::endl;
+
   std::cout << circuit.printStatus() << std::endl;
+
   return;
 }

@@ -25,9 +25,12 @@ class VHDLCircuit {
   void addComponent(VHDLComponent newComp);
   void addConnection(VHDLConnection newConnect);
   std::string printStatus();
+  std::set<std::string> getOperators();
+
  private:
   models::Dataflow* dataflowRef;
   std::map<Vertex, VHDLComponent> componentMap;
   std::map<Edge, VHDLConnection> connectionMap;
+  std::set<std::string> operatorSet;
 };
 #endif /* VHDL_CIRCUIT_H_ */

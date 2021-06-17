@@ -30,7 +30,7 @@ class VHDLConnection {
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   std::string printStatus();
-  
+
  private:
   Edge edge;
   std::string connectionName;
