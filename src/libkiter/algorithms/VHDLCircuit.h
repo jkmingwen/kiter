@@ -25,12 +25,13 @@ class VHDLCircuit {
   void addComponent(VHDLComponent newComp);
   void addConnection(VHDLConnection newConnect);
   std::string printStatus();
-  std::set<std::string> getOperators();
+  std::map<std::string, int> getOperatorMap();
+  int getOperatorCount(std::string op);
 
  private:
   models::Dataflow* dataflowRef;
   std::map<Vertex, VHDLComponent> componentMap;
   std::map<Edge, VHDLConnection> connectionMap;
-  std::set<std::string> operatorSet;
+  std::map<std::string, int> operatorMap; // key: operator type, value: occurances
 };
 #endif /* VHDL_CIRCUIT_H_ */

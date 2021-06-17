@@ -13,11 +13,16 @@ VHDLCircuit::VHDLCircuit() {}
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
-  this->operatorSet.insert(newComp.getType()); // track operators used in circuit
+  this->operatorMap[newComp.getType()]++; // track operators used in circuit
 }
 
-std::set<std::string> VHDLCircuit::getOperators() {
-  return this->operatorSet;
+std::map<std::string, int> VHDLCircuit::getOperatorMap() {
+  return this->operatorMap;
+}
+
+int VHDLCircuit::getOperatorCount(std::string op) {
+  std::map<std::string, int> opMap = this->getOperatorMap();
+  return opMap[op];
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
@@ -38,8 +43,8 @@ std::string VHDLCircuit::printStatus() {
     outputStream << "\t" << (conns.second).printStatus() << std::endl;
   }
   outputStream << "Operators:" << std::endl;
-  for (auto &op : this->operatorSet) {
-    outputStream << "\t" << op << std::endl;
+  for (auto &op : this->operatorMap) {
+    outputStream << "\t" << op.first << ", " << op.second << std::endl;
   }
 
   return outputStream.str();
