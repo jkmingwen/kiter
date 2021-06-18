@@ -25,8 +25,11 @@ class VHDLCircuit {
   void addComponent(VHDLComponent newComp);
   void addConnection(VHDLConnection newConnect);
   std::string printStatus();
+  std::map<Vertex, VHDLComponent> getComponentMap();
+  std::map<Edge, VHDLConnection> getConnectionMap();
   std::map<std::string, int> getOperatorMap();
   int getOperatorCount(std::string op);
+  VHDLComponent getFirstComponentByType(std::string op);
 
  private:
   models::Dataflow* dataflowRef;

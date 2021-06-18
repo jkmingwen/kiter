@@ -16,6 +16,16 @@ void VHDLCircuit::addComponent(VHDLComponent newComp) {
   this->operatorMap[newComp.getType()]++; // track operators used in circuit
 }
 
+std::map<Vertex, VHDLComponent> VHDLCircuit::getComponentMap() {
+  std::map<Vertex, VHDLComponent> compMap(this->componentMap);
+  return compMap;
+}
+
+std::map<Edge, VHDLConnection> VHDLCircuit::getConnectionMap() {
+  std::map<Edge, VHDLConnection> connMap(this->connectionMap);
+  return connMap;
+}
+
 std::map<std::string, int> VHDLCircuit::getOperatorMap() {
   return this->operatorMap;
 }
@@ -23,6 +33,18 @@ std::map<std::string, int> VHDLCircuit::getOperatorMap() {
 int VHDLCircuit::getOperatorCount(std::string op) {
   std::map<std::string, int> opMap = this->getOperatorMap();
   return opMap[op];
+}
+
+// iterate through component map and return first instance of component matching type from argument
+VHDLComponent VHDLCircuit::getFirstComponentByType(std::string op) {
+  for (auto &comp : this->componentMap) {
+    if (comp.second.getType() == op) {
+      return comp.second;
+    }
+  }
+  // if component of matching type not found
+  std::cout << "No component of matching type found" << std::endl;
+  // TODO return null VHDL component if nothing found
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
