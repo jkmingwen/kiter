@@ -13,6 +13,11 @@
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
 
+// for signal name retrieval
+#define VALID 0
+#define READY 1
+#define DATA 2
+
 void algorithms::generateVHDL(models::Dataflow* const dataflow,
                               parameters_list_t param_list) {
   bool outputDirSpecified = false;
@@ -199,6 +204,44 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
     vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first), circuit.getName()) << std::endl;
     // TODO add buffer component
   }
+  // Define and generate signal names
+  std::vector<std::string> dataSignals;
+  std::vector<std::string> validReadySignals;
+  for (auto &connection : circuit.getConnectionMap()) {
+    std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort()));
+    std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort()));
+    dataSignals.push_back(sendSignals[DATA]);
+    dataSignals.push_back(receiveSignals[DATA]);
+    validReadySignals.push_back(sendSignals[VALID]);
+    validReadySignals.push_back(receiveSignals[VALID]);
+    validReadySignals.push_back(sendSignals[READY]);
+    validReadySignals.push_back(receiveSignals[READY]);
+  }
+  // data signals
+  vhdlOutput << "signal ";
+  std::string delim = ",";
+  int counter = 0;
+  for (auto &signal : dataSignals) {
+    counter++;
+    if (counter == dataSignals.size()) {
+      delim = "";
+    }
+    vhdlOutput << signal << delim << std::endl;
+  }
+  vhdlOutput << " : std_logic_vector(" + circuit.getName() + "_ram_width - 1 downto 0);\n"
+             << std::endl;
+  // valid and ready signals
+  vhdlOutput << "signal ";
+  delim = ",";
+  counter = 0;
+  for (auto &signal : validReadySignals) {
+    counter++;
+    if (counter == dataSignals.size()) {
+      delim = "";
+    }
+    vhdlOutput << signal << delim << std::endl;
+  }
+  vhdlOutput << " : std_logic;\n" << std::endl;
   // TODO specify behaviour
   vhdlOutput << "end;" << std::endl; // TODO check if name of entity necessary here
 
@@ -286,4 +329,23 @@ void algorithms::generateBuffer(std::string compDir,
   } else {
     std::cout << "Buffer reference file doesn't exist/not found!" << std::endl;
   }
+}
+
+std::vector<std::string> algorithms::generateSendSigNames(std::string srcPort) {
+  std::vector<std::string> sendSignals(3);
+
+  sendSignals[VALID] = "SEND_" + srcPort + "_VALID";
+  sendSignals[READY] = "SEND_" + srcPort + "_READY";
+  sendSignals[DATA] = "SEND_" + srcPort + "_DATA";
+
+  return sendSignals;
+}
+std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort) {
+  std::vector<std::string> receiveSignals(3);
+
+  receiveSignals[VALID] = "RCV_" + dstPort + "_VALID";
+  receiveSignals[READY] = "RCV_" + dstPort + "_READY";
+  receiveSignals[DATA] = "RCV_" + dstPort + "_DATA";
+
+  return receiveSignals;
 }
