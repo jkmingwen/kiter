@@ -30,11 +30,13 @@ class VHDLCircuit {
   std::map<std::string, int> getOperatorMap();
   int getOperatorCount(std::string op);
   VHDLComponent getFirstComponentByType(std::string op);
+  std::string getName();
+  void setName(std::string);
 
  private:
-  models::Dataflow* dataflowRef;
   std::map<Vertex, VHDLComponent> componentMap;
   std::map<Edge, VHDLConnection> connectionMap;
   std::map<std::string, int> operatorMap; // key: operator type, value: occurances
+  std::string graphName;
 };
 #endif /* VHDL_CIRCUIT_H_ */

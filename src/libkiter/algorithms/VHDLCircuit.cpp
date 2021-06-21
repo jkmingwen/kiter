@@ -47,6 +47,14 @@ VHDLComponent VHDLCircuit::getFirstComponentByType(std::string op) {
   // TODO return null VHDL component if nothing found
 }
 
+std::string VHDLCircuit::getName() {
+  return this->graphName;
+}
+
+void VHDLCircuit::setName(std::string newName) {
+  this->graphName = newName;
+}
+
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
   this->connectionMap.insert(std::make_pair(newConnect.getEdge(),
                                             newConnect));
