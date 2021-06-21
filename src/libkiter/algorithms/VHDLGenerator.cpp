@@ -42,21 +42,23 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       circuit.addConnection(newConn);
     }}
   std::cout << circuit.printStatus() << std::endl;
-  generateComponents(circuit, componentDir);
+  generateOperators(circuit, componentDir);
 
   return;
 }
 
-void algorithms::generateComponents(VHDLCircuit circuit, std::string compDir) {
+void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
+  // Generate VHDL files for individual components
+  // TODO generate buffer component
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
-    generateComponent(circuit.getFirstComponentByType(op.first), compDir);
+    generateOperator(circuit.getFirstComponentByType(op.first), compDir);
   }
-  // TODO generate buffer component
+
 }
 
-void algorithms::generateComponent(VHDLComponent comp, std::string compDir) {
+void algorithms::generateOperator(VHDLComponent comp, std::string compDir) {
   std::ofstream vhdlOutput;
   std::string componentName = comp.getType() + "_node"; // TODO decide on naming convention
   int numInputPorts;
@@ -79,8 +81,8 @@ void algorithms::generateComponent(VHDLComponent comp, std::string compDir) {
   // every component requires clock and reset ports
   vhdlOutput << "entity " << componentName << " is\n"
              << "port (\n"
-             << "    input_clk : in std_logic;\n"
-             << "    input_rst : in std_logic;\n"
+             << "    " << comp.getType() << "_clk : in std_logic;\n"
+             << "    " << comp.getType() << "_rst : in std_logic;\n"
              << std::endl;
   // Specify ready, valid, and data ports for each input port:
   if (numInputPorts > 1) {
