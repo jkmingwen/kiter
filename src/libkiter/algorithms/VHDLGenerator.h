@@ -26,6 +26,7 @@ namespace algorithms {
   void generateOperator(VHDLComponent comp, std::string componentDirectory);
   void generateCircuit(VHDLCircuit circuit, std::string outputDirectory);
   std::string generateComponent(VHDLComponent comp, std::string circuitName);
+  std::string generateBufferComponent(std::string circuitName);
   void generateBuffer(std::string componentDirectory, std::string bufferRefFile);
   std::vector<std::string> generateSendSigNames(std::string srcPort);
   std::vector<std::string> generateReceiveSigNames(std::string dstPort);

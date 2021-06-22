@@ -59,7 +59,6 @@ void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
   std::string bufferRefDir = "./vhdl_generation/";
   std::string bufferRefFileLoc = bufferRefDir + "axi_fifo.vhd";
   // Generate VHDL files for individual components
-  // TODO generate buffer component
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
     generateOperator(circuit.getFirstComponentByType(op.first), compDir);
@@ -202,8 +201,8 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   for (auto const &op : operatorMap) {
     vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first), circuit.getName()) << std::endl;
-    // TODO add buffer component
   }
+  vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
   // Define and generate signal names
   std::vector<std::string> dataSignals;
   std::vector<std::string> validReadySignals;
@@ -310,6 +309,33 @@ std::string algorithms::generateComponent(VHDLComponent comp, std::string circui
   return outputStream.str();
 }
 
+std::string algorithms::generateBufferComponent(std::string circuitName) {
+  std::stringstream outputStream;
+
+  // every component requires clock and reset ports
+  outputStream << "component axi_fifo is\n"
+               << "generic (\n"
+               << "    " << "ram_width : natural;\n"
+               << "    " << "ram_depth : natural\n"
+               << ");\n"
+               << "port (\n"
+               << "    " << "buffer_clk : in std_logic;\n"
+               << "    " << "buffer_rst : in std_logic;\n"
+               << std::endl;
+  outputStream << "    " << "buffer_in_ready : out std_logic;\n"
+               << "    " << "buffer_in_valid : in std_logic;\n"
+               << "    " << "buffer_in_data : in std_logic_vector("
+               << circuitName + "_ram_width - 1 downto 0);\n"
+               << std::endl;
+  outputStream << "    " << "buffer_out_ready : in std_logic;\n"
+               << "    " << "buffer_out_valid : out std_logic;\n"
+               << "    " << "buffer_out_data : out std_logic_vector("
+               << circuitName + "_ram_width - 1 downto 0)\n"
+               << std::endl;
+  outputStream << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
 // Copies buffer specification from reference file
 // NOTE would be more flexible if we didn't just copy off a file
 void algorithms::generateBuffer(std::string compDir,
@@ -317,7 +343,7 @@ void algorithms::generateBuffer(std::string compDir,
   std::ofstream vhdlOutput;
   std::ifstream bufferReference(bufferRefFile);
   std::string fileContent;
-  std::string componentName = "fifo_buffer";
+  std::string componentName = "axi_fifo";
 
   vhdlOutput.open(compDir + componentName + ".vhd");
   if (bufferReference.is_open()) {
