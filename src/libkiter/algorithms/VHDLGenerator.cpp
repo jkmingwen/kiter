@@ -94,37 +94,21 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir) {
              << "    " << comp.getType() << "_rst : in std_logic;\n"
              << std::endl;
   // Specify ready, valid, and data ports for each input port:
-  if (numInputPorts > 1) {
-    for (auto i = 0; i < numInputPorts; i++) {
-      std::string portName = "    " + comp.getType() + "_in" + std::to_string(i);
-      vhdlOutput << portName + "_ready : out std_logic;\n"
-                 << portName + "_valid : in std_logic;\n"
-                 << portName + "_data : in std_logic_vector;\n"
-                 << std::endl;
-    }
-  } else {
-    std::string portName = "    " + comp.getType() + "_in";
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    " + comp.getType() + "_in" + std::to_string(i);
     vhdlOutput << portName + "_ready : out std_logic;\n"
                << portName + "_valid : in std_logic;\n"
                << portName + "_data : in std_logic_vector;\n"
                << std::endl;
   }
   // Specify ready, valid, and data ports for each output port:
-  if (numOutputPorts > 1) {
-    for (auto i = 0; i < numOutputPorts; i++) {
-      std::string portName = "    " + comp.getType() + "_out" + std::to_string(i);
-      vhdlOutput << portName + "_ready : in std_logic;\n"
-                 << portName + "_valid : out std_logic;\n" << std::endl;
-      if (i + 1 == numOutputPorts) {
-        vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
-      }
-    }
-  } else {
-    std::string portName = "    " + comp.getType() + "_out";
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    " + comp.getType() + "_out" + std::to_string(i);
     vhdlOutput << portName + "_ready : in std_logic;\n"
-               << portName + "_valid : out std_logic;\n"
-               << portName + "_data : out std_logic_vector\n" // last line of port declaration has no terminating semicolon
-               << std::endl;
+               << portName + "_valid : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
+    }
   }
   vhdlOutput << ");\nend " << componentName << ";\n" << std::endl;
   // 3. Specify architecture (behaviour) of operator type
@@ -154,46 +138,32 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
   vhdlOutput << "entity " << circuit.getName() << " is\n"
              << "generic (\n"
              << "    " << circuit.getName() << "_ram_width : natural;\n"
-             << "    " << circuit.getName() << "_ram_depth : natural;\n"
+             << "    " << circuit.getName() << "_ram_depth : natural\n"
              << ");\n"
              << "port (\n"
              << "    " << circuit.getName() << "_clk : in std_logic;\n"
              << "    " << circuit.getName() << "_rst : in std_logic;\n"
              << std::endl;
   // Specify ready, valid, and data ports for each input port:
-  if (numInputPorts > 1) {
-    for (auto i = 0; i < numInputPorts; i++) {
-      std::string portName = "    " + circuit.getName() + "_in" + std::to_string(i);
-      vhdlOutput << portName + "_ready : out std_logic;\n"
-                 << portName + "_valid : in std_logic;\n"
-                 << portName + "_data : in std_logic_vector;\n"
-                 << std::endl;
-    }
-  } else {
-    std::string portName = "    " + circuit.getName() + "_in";
+  for (auto i = 0; i < numInputPorts; i++) {
+    // TODO define portName variable outside of loop to minimize unnecessary repetition
+    //      (also, for loop should be outside if loop)
+    std::string portName = "    " + circuit.getName() + "_in" + std::to_string(i);
     vhdlOutput << portName + "_ready : out std_logic;\n"
                << portName + "_valid : in std_logic;\n"
                << portName + "_data : in std_logic_vector;\n"
                << std::endl;
   }
   // Specify ready, valid, and data ports for each output port:
-  if (numOutputPorts > 1) {
-    for (auto i = 0; i < numOutputPorts; i++) {
-      std::string portName = "    " + circuit.getName() + "_out" + std::to_string(i);
-      vhdlOutput << portName + "_ready : in std_logic;\n"
-                 << portName + "_valid : out std_logic;\n" << std::endl;
-      if (i + 1 == numOutputPorts) {
-        vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
-      } else {
-        vhdlOutput << portName + "_data : out std_logic_vector;\n" << std::endl;
-      }
-    }
-  } else {
-    std::string portName = "    " + circuit.getName() + "_out";
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    " + circuit.getName() + "_out" + std::to_string(i);
     vhdlOutput << portName + "_ready : in std_logic;\n"
-               << portName + "_valid : out std_logic;\n"
-               << portName + "_data : out std_logic_vector\n" // last line of port declaration has no terminating semicolon
-               << std::endl;
+               << portName + "_valid : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      vhdlOutput << portName + "_data : out std_logic_vector;\n" << std::endl;
+    }
   }
   vhdlOutput << ");\nend;\n" << std::endl; // TODO check if name of entity necessary here
 
@@ -235,14 +205,15 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
   counter = 0;
   for (auto &signal : validReadySignals) {
     counter++;
-    if (counter == dataSignals.size()) {
+    if (counter == validReadySignals.size()) {
       delim = "";
     }
     vhdlOutput << signal << delim << std::endl;
   }
   vhdlOutput << " : std_logic;\n" << std::endl;
   // TODO specify behaviour
-  vhdlOutput << "end;" << std::endl; // TODO check if name of entity necessary here
+  vhdlOutput << generatePortMapping(circuit) << std::endl;
+  vhdlOutput << "end behaviour;" << std::endl; // TODO don't hardcode architecture name
 
   vhdlOutput.close();
 }
@@ -262,49 +233,34 @@ std::string algorithms::generateComponent(VHDLComponent comp, std::string circui
 
   // every component requires clock and reset ports
   outputStream << "component " << componentName << " is\n"
-             << "port (\n"
-             << "    " << comp.getType() << "_clk : in std_logic;\n"
-             << "    " << comp.getType() << "_rst : in std_logic;\n"
-             << std::endl;
+               << "port (\n"
+               << "    " << comp.getType() << "_clk : in std_logic;\n"
+               << "    " << comp.getType() << "_rst : in std_logic;\n"
+               << std::endl;
   // Specify ready, valid, and data ports for each input port:
-  if (numInputPorts > 1) {
-    for (auto i = 0; i < numInputPorts; i++) {
-      std::string portName = "    " + comp.getType() + "_in" + std::to_string(i);
-      outputStream << portName + "_ready : out std_logic;\n"
-                 << portName + "_valid : in std_logic;\n"
-                 << portName + "_data : in std_logic_vector("
-                 << circuitName + "_ram_width - 1 downto 0);\n"
-                 << std::endl;
-    }
-  } else {
-    std::string portName = "    " + comp.getType() + "_in";
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    " + comp.getType() + "_in" + std::to_string(i);
     outputStream << portName + "_ready : out std_logic;\n"
                  << portName + "_valid : in std_logic;\n"
                  << portName + "_data : in std_logic_vector("
                  << circuitName + "_ram_width - 1 downto 0);\n"
                  << std::endl;
   }
+
   // Specify ready, valid, and data ports for each output port:
-  if (numOutputPorts > 1) {
-    for (auto i = 0; i < numOutputPorts; i++) {
-      std::string portName = "    " + comp.getType() + "_out" + std::to_string(i);
-      outputStream << portName + "_ready : in std_logic;\n"
-                 << portName + "_valid : out std_logic;\n" << std::endl;
-      if (i + 1 == numOutputPorts) {
-        outputStream << portName + "_data : out std_logic_vector("
-                   << circuitName + "_ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
-      } else {
-        outputStream << portName + "_data : out std_logic_vector("
-                   << circuitName + "_ram_width - 1 downto 0);\n" << std::endl;
-      }
-    }
-  } else {
-    std::string portName = "    " + comp.getType() + "_out";
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    " + comp.getType() + "_out" + std::to_string(i);
     outputStream << portName + "_ready : in std_logic;\n"
-               << portName + "_valid : out std_logic;\n"
-               << portName + "_data : out std_logic_vector("
-               << circuitName + "_ram_width - 1 downto 0)\n" << std::endl;// last line of port declaration has no terminating semicolon
+                 << portName + "_valid : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      outputStream << portName + "_data : out std_logic_vector("
+                   << circuitName + "_ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      outputStream << portName + "_data : out std_logic_vector("
+                   << circuitName + "_ram_width - 1 downto 0);\n" << std::endl;
+    }
   }
+
   outputStream << "); end component;\n" << std::endl;
   return outputStream.str();
 }
@@ -374,4 +330,112 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
   receiveSignals[DATA] = "RCV_" + dstPort + "_DATA";
 
   return receiveSignals;
+}
+
+std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
+  std::stringstream outputStream;
+  std::string operatorSuffix = "_node";
+
+  outputStream << "begin\n" << std::endl;
+  // operator port mappings
+  std::map<std::string, int> opCount(circuit.getOperatorMap());
+  // initialise counts
+  for (auto &c : opCount) {
+    c.second = 0;
+  }
+  for (auto &op : circuit.getComponentMap()) {
+    std::string opName = op.second.getType();
+    // reset/clock mappings
+    outputStream << opName << "_" + std::to_string(opCount[opName])
+                 << " : " << opName << operatorSuffix << " PORT MAP (\n"
+                 << "    " << opName << "_clk => " << circuit.getName() << "_clk,\n"
+                 << "    " << opName << "_rst => " << circuit.getName() << "_rst,\n"
+                 << std::endl;
+    // input/output mappings
+    int inPortCount = 0;
+    int outPortCount = 0;
+    // TODO define input operator mapping outside of input port for loop
+    for (auto &inPort : op.second.getInputPorts()) {
+      std::vector<std::string> receiveSigs(3);
+      receiveSigs = generateReceiveSigNames(inPort);
+      outputStream << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_ready => " << receiveSigs[READY] << ",\n"
+                   << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_valid => " << receiveSigs[VALID] << ",\n"
+                   << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_data => " << receiveSigs[DATA] << ",\n" << std::endl;
+      inPortCount++;
+    }
+    // special case for input operators as they don't have input ports in SDF
+    if (opName == "INPUT") {
+      std::vector<std::string> receiveSigs(3);
+      receiveSigs[READY] = circuit.getName() + "_in" + std::to_string(opCount[opName]) + "_ready";
+      receiveSigs[VALID] = circuit.getName() + "_in" + std::to_string(opCount[opName]) + "_valid";
+      receiveSigs[DATA] = circuit.getName() + "_in" + std::to_string(opCount[opName]) + "_data";
+      outputStream << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_ready => " << receiveSigs[READY] << ",\n"
+                   << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_valid => " << receiveSigs[VALID] << ",\n"
+                   << "    " << opName << "_in" << std::to_string(inPortCount)
+                   << "_data => " << receiveSigs[DATA] << ",\n" << std::endl;
+      inPortCount++;
+    }
+    for (auto &outPort : op.second.getOutputPorts()) {
+      std::vector<std::string> sendSigs(3);
+      sendSigs = generateSendSigNames(outPort);
+      outputStream << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_ready => " << sendSigs[READY] << ",\n"
+                   << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_valid => " << sendSigs[VALID] << ",\n"
+                   << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_data => " << sendSigs[DATA] << std::endl; // TODO check for last entry
+      outPortCount++;
+    }
+    // special case for output operators as they don't have output ports in SDF
+    if (opName == "OUTPUT") {
+      std::vector<std::string> sendSigs(3);
+      sendSigs[READY] = circuit.getName() + "_out" + std::to_string(opCount[opName]) + "_ready"; // TODO just always insert count
+      sendSigs[VALID] = circuit.getName() + "_out" + std::to_string(opCount[opName]) + "_valid";
+      sendSigs[DATA] = circuit.getName() + "_out" + std::to_string(opCount[opName]) + "_data";
+      outputStream << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_ready => " << sendSigs[READY] << ",\n"
+                   << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_valid => " << sendSigs[VALID] << ",\n"
+                   << "    " << opName << "_out" << std::to_string(outPortCount)
+                   << "_data => " << sendSigs[DATA] << std::endl; // TODO check for last entry
+      outPortCount++;
+    }
+    outputStream << ");\n" << std::endl;
+    opCount[opName]++;
+  }
+
+  // buffer port mappings
+  int bufferCount = 0;
+  std::string bCompName = "axi_fifo";
+  std::string bName = "buffer";
+  for (auto &buffer : circuit.getConnectionMap()) {
+    std::vector<std::string> sendSigs = generateSendSigNames(buffer.second.getSrcPort());
+    std::vector<std::string> receiveSigs = generateReceiveSigNames(buffer.second.getDstPort());
+    // ram width/depth, reset, and clock mappings
+    outputStream << "fifo_" + std::to_string(bufferCount)
+                 << " : " << bCompName << " GENERIC MAP (\n"
+                 << "    " << circuit.getName() << "_ram_width,\n"
+                 << "    " << circuit.getName() << "_ram_depth)\n"
+                 << std::endl;
+    outputStream << "PORT MAP (\n"
+                 << "    " << bName << "_clk => " << circuit.getName() << "_clk,\n"
+                 << "    " << bName << "_rst => " << circuit.getName() << "_rst,\n"
+                 << std::endl;
+    // input/output mappings
+    outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
+                 << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
+                 << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
+                 << std::endl;
+    outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
+                 << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
+                 << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
+                 << std::endl;
+    bufferCount++;
+  }
+  return outputStream.str();
 }
