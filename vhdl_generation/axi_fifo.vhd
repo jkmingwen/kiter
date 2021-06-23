@@ -8,25 +8,25 @@ entity axi_fifo is
     ram_depth : natural
   );
   port (
-    clk : in std_logic;
-    rst : in std_logic;
+    buffer_clk : in std_logic;
+    buffer_rst : in std_logic;
 
     -- axi input interface
-    in_ready : out std_logic;
-    in_valid : in std_logic;
-    in_data : in std_logic_vector(ram_width - 1 downto 0);
+    buffer_in_ready : out std_logic;
+    buffer_in_valid : in std_logic;
+    buffer_in_data : in std_logic_vector(ram_width - 1 downto 0);
 
     -- axi output interface
-    out_ready : in std_logic;
-    out_valid : out std_logic;
-    out_data : out std_logic_vector(ram_width - 1 downto 0)
+    buffer_out_ready : in std_logic;
+    buffer_out_valid : out std_logic;
+    buffer_out_data : out std_logic_vector(ram_width - 1 downto 0)
   );
 end axi_fifo;
 
 architecture rtl of axi_fifo is
 
   -- the fifo is full when the ram contains ram_depth - 1 elements
-  type ram_type is array (0 to ram_depth - 1) of std_logic_vector(in_data'range);
+  type ram_type is array (0 to ram_depth - 1) of std_logic_vector(buffer_in_data'range);
   signal ram : ram_type;
 
   -- newest element at head, oldest element at tail
@@ -82,21 +82,21 @@ architecture rtl of axi_fifo is
 begin
 
   -- copy internal signals to output
-  in_ready <= in_ready_local;
-  out_valid <= out_valid_local;
+  buffer_in_ready <= in_ready_local;
+  buffer_out_valid <= out_valid_local;
 
   -- update head index on write
-  proc_head : index_proc(clk, rst, head, in_ready_local, in_valid);
+  proc_head : index_proc(buffer_clk, buffer_rst, head, in_ready_local, buffer_in_valid);
 
   -- update tail index on read
-  proc_tail : index_proc(clk, rst, tail, out_ready, out_valid_local);
+  proc_tail : index_proc(buffer_clk, buffer_rst, tail, buffer_out_ready, out_valid_local);
 
   -- write to and read from the ram
-  proc_ram : process(clk)
+  proc_ram : process(buffer_clk)
   begin
-    if rising_edge(clk) then
-      ram(head) <= in_data;
-      out_data <= ram(next_index(tail, out_ready, out_valid_local));
+    if rising_edge(buffer_clk) then
+      ram(head) <= buffer_in_data;
+      buffer_out_data <= ram(next_index(tail, buffer_out_ready, out_valid_local));
     end if;
   end process;
 
@@ -111,10 +111,10 @@ begin
   end process;
 
   -- delay the count by one clock cycles
-  proc_count_p1 : process(clk)
+  proc_count_p1 : process(buffer_clk)
   begin
-    if rising_edge(clk) then
-      if rst = '1' then
+    if rising_edge(buffer_clk) then
+      if buffer_rst = '1' then
         count_delayed <= 0;
       else
         count_delayed <= count;
@@ -133,10 +133,10 @@ begin
   end process;
 
   -- detect simultaneous read and write operations
-  proc_read_while_write_p1: process(clk)
+  proc_read_while_write_p1: process(buffer_clk)
   begin
-    if rising_edge(clk) then
-      if rst = '1' then
+    if rising_edge(buffer_clk) then
+      if buffer_rst = '1' then
         read_while_write_delayed <= '0';
 
       else
