@@ -141,8 +141,8 @@ begin
 
       else
         read_while_write_delayed <= '0';
-        if in_ready_local = '1' and in_valid = '1' and
-          out_ready = '1' and out_valid_local = '1' then
+        if in_ready_local = '1' and buffer_in_valid = '1' and
+          buffer_out_ready = '1' and out_valid_local = '1' then
           read_while_write_delayed <= '1';
         end if;
       end if;
