@@ -137,8 +137,8 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
   // every component requires clock and reset ports
   vhdlOutput << "entity " << circuit.getName() << " is\n"
              << "generic (\n"
-             << "    " << circuit.getName() << "_ram_width : natural;\n"
-             << "    " << circuit.getName() << "_ram_depth : natural\n"
+             << "    " << circuit.getName() << "_ram_width : natural := 16;\n"
+             << "    " << circuit.getName() << "_ram_depth : natural := 256\n"
              << ");\n"
              << "port (\n"
              << "    " << circuit.getName() << "_clk : in std_logic;\n"
@@ -151,7 +151,8 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
     std::string portName = "    " + circuit.getName() + "_in" + std::to_string(i);
     vhdlOutput << portName + "_ready : out std_logic;\n"
                << portName + "_valid : in std_logic;\n"
-               << portName + "_data : in std_logic_vector;\n"
+               << portName + "_data : in std_logic_vector("
+               << circuit.getName() + "_ram_width - 1 downto 0) := (others => '0');\n"
                << std::endl;
   }
   // Specify ready, valid, and data ports for each output port:
@@ -160,9 +161,13 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
     vhdlOutput << portName + "_ready : in std_logic;\n"
                << portName + "_valid : out std_logic;\n";
     if (i + 1 == numOutputPorts) {
-      vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
+      vhdlOutput << portName + "_data : out std_logic_vector("
+                 << circuit.getName() + "_ram_width - 1 downto 0) := (others => '0')\n"
+                 << std::endl; // last line of port declaration has no terminating semicolon
     } else {
-      vhdlOutput << portName + "_data : out std_logic_vector;\n" << std::endl;
+      vhdlOutput << portName + "_data : out std_logic_vector("
+                 << circuit.getName() + "_ram_width - 1 downto 0) := (others => '0');\n"
+                 << std::endl;
     }
   }
   vhdlOutput << ");\nend;\n" << std::endl; // TODO check if name of entity necessary here
