@@ -64,7 +64,7 @@ void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
     generateOperator(circuit.getFirstComponentByType(op.first), compDir);
   }
-  generateBuffer(compDir, bufferRefFileLoc);
+  // generateBuffer(compDir, bufferRefFileLoc);
   generateAXIInterfaceComponents(compDir, compRefDir);
 
 }
@@ -299,11 +299,12 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   return outputStream.str();
 }
 
-// Copies FloPoCo-AXI interface components from reference files to generated subdirectory
+// Copy FloPoCo-AXI interface component specification from reference files to generated subdirectory
 void algorithms::generateAXIInterfaceComponents(std::string compDir,
                                                 std::string referenceDir) {
   std::ofstream vhdlOutput;
-  std::string componentNames[] = {"axi_merger", "delay", "store_send"};
+  // names of reference files required to copy into project; add/remove as required
+  std::string componentNames[] = {"axi_merger", "delay", "store_send", "axi_fifo"};
 
   for (const std::string &component : componentNames) {
     vhdlOutput.open(compDir + component + ".vhd");
@@ -319,27 +320,6 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
       std::cout << "Reference file for " << component
                 << " does not exist/not found!" << std::endl; // TODO turn into assert
     }
-  }
-}
-
-// Copies buffer specification from reference file
-// NOTE would be more flexible if we didn't just copy off a file
-void algorithms::generateBuffer(std::string compDir,
-                                std::string bufferRefFile) {
-  std::ofstream vhdlOutput;
-  std::ifstream bufferReference(bufferRefFile);
-  std::string fileContent;
-  std::string componentName = "axi_fifo";
-
-  vhdlOutput.open(compDir + componentName + ".vhd");
-  if (bufferReference.is_open()) {
-    while (std::getline(bufferReference, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    bufferReference.close();
-    vhdlOutput.close();
-  } else {
-    std::cout << "Buffer reference file doesn't exist/not found!" << std::endl; // TODO turn into assert
   }
 }
 
