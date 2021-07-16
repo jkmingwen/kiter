@@ -6,7 +6,7 @@ entity axi_fifo is
   generic (
     ram_width : natural;
     ram_depth : natural
-  );
+    );
   port (
     buffer_clk : in std_logic;
     buffer_rst : in std_logic;
@@ -20,7 +20,7 @@ entity axi_fifo is
     buffer_out_ready : in std_logic;
     buffer_out_valid : out std_logic;
     buffer_out_data : out std_logic_vector(ram_width - 1 downto 0)
-  );
+    );
 end axi_fifo;
 
 architecture rtl of axi_fifo is
@@ -70,13 +70,13 @@ architecture rtl of axi_fifo is
     signal ready : in std_logic;
     signal valid : in std_logic) is
   begin
-      if rising_edge(clk) then
-        if rst = '1' then
-          index <= index_type'low;
-        else
-          index <= next_index(index, ready, valid);
-        end if;
+    if rising_edge(clk) then
+      if rst = '1' then
+        index <= index_type'low;
+      else
+        index <= next_index(index, ready, valid);
       end if;
+    end if;
   end procedure;
 
 begin
