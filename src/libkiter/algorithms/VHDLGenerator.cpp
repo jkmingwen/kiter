@@ -56,14 +56,16 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
 
 void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
-  std::string bufferRefDir = "./vhdl_generation/";
-  std::string bufferRefFileLoc = bufferRefDir + "axi_fifo.vhd";
-  // Generate VHDL files for individual components
+  std::string compRefDir = "./vhdl_generation/";
+  std::string bufferRefFileLoc = compRefDir + "axi_fifo.vhd";
+  // Generate
+  // VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
     generateOperator(circuit.getFirstComponentByType(op.first), compDir);
   }
   generateBuffer(compDir, bufferRefFileLoc);
+  generateAXIInterfaceComponents(compDir, compRefDir);
 
 }
 
@@ -297,6 +299,29 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   return outputStream.str();
 }
 
+// Copies FloPoCo-AXI interface components from reference files to generated subdirectory
+void algorithms::generateAXIInterfaceComponents(std::string compDir,
+                                                std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string componentNames[] = {"axi_merger", "delay", "store_send"};
+
+  for (const std::string &component : componentNames) {
+    vhdlOutput.open(compDir + component + ".vhd");
+    std::ifstream compReference(referenceDir + component + ".vhd");
+    std::string fileContent;
+    if (compReference.is_open()) {
+      while (std::getline(compReference, fileContent)) {
+        vhdlOutput << fileContent << std::endl;
+      }
+      compReference.close();
+      vhdlOutput.close();
+    } else {
+      std::cout << "Reference file for " << component
+                << " does not exist/not found!" << std::endl; // TODO turn into assert
+    }
+  }
+}
+
 // Copies buffer specification from reference file
 // NOTE would be more flexible if we didn't just copy off a file
 void algorithms::generateBuffer(std::string compDir,
@@ -314,7 +339,7 @@ void algorithms::generateBuffer(std::string compDir,
     bufferReference.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Buffer reference file doesn't exist/not found!" << std::endl;
+    std::cout << "Buffer reference file doesn't exist/not found!" << std::endl; // TODO turn into assert
   }
 }
 
