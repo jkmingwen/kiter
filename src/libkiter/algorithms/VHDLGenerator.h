@@ -23,6 +23,8 @@ namespace algorithms {
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(VHDLCircuit circuit, std::string componentDirectory);
+  void generateFPCOperator(VHDLComponent comp, std::string compDir,
+                           std::string referenceDir);
   void generateOperator(VHDLComponent comp, std::string componentDirectory);
   void generateCircuit(VHDLCircuit circuit, std::string outputDirectory);
   std::string generateComponent(VHDLComponent comp, std::string circuitName);

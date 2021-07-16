@@ -63,10 +63,64 @@ void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
     generateOperator(circuit.getFirstComponentByType(op.first), compDir);
+    generateFPCOperator(circuit.getFirstComponentByType(op.first), compDir,
+                        compRefDir);
   }
   // generateBuffer(compDir, bufferRefFileLoc);
   generateAXIInterfaceComponents(compDir, compRefDir);
 
+}
+
+// Generate AXI interface for each FloPoCo operator
+void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
+                                     std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string componentName = "fp_" + comp.getType();
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME", "$OP_LIFESPAN"};
+
+  if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
+    // TODO generate ports for top level component
+  } else {
+    vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
+    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
+    std::string fileContent;
+
+    std::string operatorName;
+    std::string operatorLifespan;
+    // TODO clean up using some kind of switch statement and hash table (to handle strings)
+    if (comp.getType() == "add") {
+      operatorName = "FPAdd_8_23_F400_uid2";
+      operatorLifespan = "14";
+    } else if (comp.getType() == "add") {
+      operatorName = "FPMult_8_23_8_23_8_23_uid2_F400_uid3";
+      operatorLifespan = "3";
+    } else { // TODO replace with assert statement
+      operatorName = "UNKNOWN_OPERATOR";
+      operatorLifespan = "1";
+    }
+    std::map<std::string, std::string> replacementWords;
+    replacementWords["$ENTITY_NAME"] = componentName;
+    replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
+    replacementWords["$OP_LIFESPAN"] = operatorLifespan;
+
+    if (operatorRef.is_open()) {
+      while (std::getline(operatorRef, fileContent)) {
+        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+          size_t pos = fileContent.find(word);
+          if (pos != std::string::npos) {
+            fileContent.replace(pos, word.length(),
+                                replacementWords[word]);
+          }
+        }
+        vhdlOutput << fileContent << std::endl;
+      }
+      operatorRef.close();
+      vhdlOutput.close();
+    } else {
+      std::cout << "Reference file for flopoco_axi_interface does not exist/not found!"
+                << std::endl;
+    }
+  }
 }
 
 void algorithms::generateOperator(VHDLComponent comp, std::string compDir) {
