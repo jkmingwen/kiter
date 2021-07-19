@@ -18,9 +18,9 @@ entity $ENTITY_NAME is
          op_in_valid_1 : in std_logic;
          op_in_data_1  : in std_logic_vector(ram_width-1 downto 0) := (others => '0');
 
-         op_out_ready  : in std_logic;
-         op_out_valid  : out std_logic;
-         op_out_data   : out std_logic_vector(ram_width-1 downto 0) := (others => '0') );
+         op_out_ready_0  : in std_logic;
+         op_out_valid_0  : out std_logic;
+         op_out_data_0   : out std_logic_vector(ram_width-1 downto 0) := (others => '0') );
 end $ENTITY_NAME;
 
 architecture connections of $ENTITY_NAME is
@@ -110,10 +110,10 @@ begin
     generic map ( data_bit_width => ram_width )
     port map ( clk           => clk,
                trigger_store => dly_trigger_store,
-               out_ready     => op_out_ready,
+               out_ready     => op_out_ready_0,
                in_data       => flopoco_out_result,
-               out_valid     => op_out_valid,
-               out_data      => op_out_data,
+               out_valid     => op_out_valid_0,
+               out_data      => op_out_data_0,
                can_store     => ss_can_store,
                reset         => rst );
 

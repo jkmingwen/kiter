@@ -28,7 +28,7 @@ namespace algorithms {
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
                         std::string referenceDir);
   void generateCircuit(VHDLCircuit circuit, std::string outputDirectory);
-  std::string generateComponent(VHDLComponent comp, std::string circuitName);
+  std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   void generateAXIInterfaceComponents(std::string componentDir,
                                       std::string referenceDir);
