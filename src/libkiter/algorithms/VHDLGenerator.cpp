@@ -58,22 +58,41 @@ void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   std::string compRefDir = "./vhdl_generation/";
   std::string bufferRefFileLoc = compRefDir + "axi_fifo.vhd";
-  // Generate
-  // VHDL files for individual components
+  // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
-    generateOperator(circuit.getFirstComponentByType(op.first), compDir);
-    generateFPCOperator(circuit.getFirstComponentByType(op.first), compDir,
-                        compRefDir);
+    generateOperator(circuit.getFirstComponentByType(op.first), compDir,
+                     compRefDir);
   }
   // generateBuffer(compDir, bufferRefFileLoc);
   generateAXIInterfaceComponents(compDir, compRefDir);
 
 }
 
-// Generate AXI interface for each FloPoCo operator
+// Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                                      std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string operatorRefDir = referenceDir + "/operators/";
+  std::string operatorFileName = "fp_" + comp.getType() + "_flopoco"; // TODO decide on naming convention (might be better to just name reference files the same as component types)
+  vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
+  std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
+  std::string fileContent;
+  if (operatorRef.is_open()) {
+    while (std::getline(operatorRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    operatorRef.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << comp.getType()
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
+}
+
+// Generate AXI interface for each FloPoCo operator
+void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
+                                  std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string componentName = "fp_" + comp.getType();
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME", "$OP_LIFESPAN"};
@@ -81,10 +100,10 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
   if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
     // TODO generate ports for top level component
   } else {
+    generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
     vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
     std::string fileContent;
-
     std::string operatorName;
     std::string operatorLifespan;
     // TODO clean up using some kind of switch statement and hash table (to handle strings)
@@ -121,59 +140,6 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                 << std::endl;
     }
   }
-}
-
-void algorithms::generateOperator(VHDLComponent comp, std::string compDir) {
-  std::ofstream vhdlOutput;
-  std::string componentName = comp.getType() + "_node"; // TODO decide on naming convention
-  int numInputPorts;
-  int numOutputPorts;
-
-  if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") { // assume that input and output actors always have same number of ports
-    numInputPorts = 1;
-    numOutputPorts = 1;
-  } else {
-    numInputPorts = comp.getInputPorts().size();
-    numOutputPorts = comp.getOutputPorts().size();
-  }
-  vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
-  // 1. Define libraries used
-  vhdlOutput << "library ieee;\n"
-             << "use ieee.std_logic_1164.all;\n"
-             << "use ieee.numeric_std.all;\n" << std::endl;
-  // 2. Port declarations
-  // TODO create map of port names for behaviour specification in step 3
-  // every component requires clock and reset ports
-  vhdlOutput << "entity " << componentName << " is\n"
-             << "port (\n"
-             << "    " << comp.getType() << "_clk : in std_logic;\n"
-             << "    " << comp.getType() << "_rst : in std_logic;\n"
-             << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    std::string portName = "    " + comp.getType() + "_in" + std::to_string(i);
-    vhdlOutput << portName + "_ready : out std_logic;\n"
-               << portName + "_valid : in std_logic;\n"
-               << portName + "_data : in std_logic_vector;\n"
-               << std::endl;
-  }
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    " + comp.getType() + "_out" + std::to_string(i);
-    vhdlOutput << portName + "_ready : in std_logic;\n"
-               << portName + "_valid : out std_logic;\n";
-    if (i + 1 == numOutputPorts) {
-      vhdlOutput << portName + "_data : out std_logic_vector\n" << std::endl; // last line of port declaration has no terminating semicolon
-    }
-  }
-  vhdlOutput << ");\nend " << componentName << ";\n" << std::endl;
-  // 3. Specify architecture (behaviour) of operator type
-  vhdlOutput << "architecture behaviour of " << componentName << " is\n"
-             << "    begin\n" << std::endl;
-  // TODO specify behaviour
-  vhdlOutput << "end architecture;" << std::endl;
-
-  vhdlOutput.close();
 }
 
 void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {

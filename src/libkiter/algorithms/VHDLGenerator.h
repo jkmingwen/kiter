@@ -25,7 +25,8 @@ namespace algorithms {
   void generateOperators(VHDLCircuit circuit, std::string componentDirectory);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
-  void generateOperator(VHDLComponent comp, std::string componentDirectory);
+  void generateOperator(VHDLComponent comp, std::string componentDirectory,
+                        std::string referenceDir);
   void generateCircuit(VHDLCircuit circuit, std::string outputDirectory);
   std::string generateComponent(VHDLComponent comp, std::string circuitName);
   std::string generateBufferComponent(std::string circuitName);
