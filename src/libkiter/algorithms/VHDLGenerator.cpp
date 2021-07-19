@@ -91,7 +91,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
     if (comp.getType() == "add") {
       operatorName = "FPAdd_8_23_F400_uid2";
       operatorLifespan = "14";
-    } else if (comp.getType() == "add") {
+    } else if (comp.getType() == "prod") {
       operatorName = "FPMult_8_23_8_23_8_23_uid2_F400_uid3";
       operatorLifespan = "3";
     } else { // TODO replace with assert statement
@@ -102,7 +102,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
     replacementWords["$ENTITY_NAME"] = componentName;
     replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
     replacementWords["$OP_LIFESPAN"] = operatorLifespan;
-
+    // replace keywords with parameters corresponding to operator used
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
         for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
