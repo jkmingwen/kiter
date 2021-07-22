@@ -27,8 +27,7 @@ void VHDLCircuit::addOutputPort(std::string portName,
 }
 
 std::map<Vertex, VHDLComponent> VHDLCircuit::getComponentMap() {
-  std::map<Vertex, VHDLComponent> compMap(this->componentMap);
-  return compMap;
+  return this->componentMap;
 }
 
 std::map<Edge, VHDLConnection> VHDLCircuit::getConnectionMap() {
@@ -69,6 +68,15 @@ std::string VHDLCircuit::getName() {
   return this->graphName;
 }
 
+int VHDLCircuit::getOperatorLifespan(std::string opName) {
+  if (this->operatorLifespans.count(opName)) {
+    return this->operatorLifespans[opName];
+  } else {
+    // NOTE default to 0 if lifespan not specified
+    return 0;
+  }
+}
+
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
 }
@@ -94,13 +102,10 @@ std::string VHDLCircuit::printStatus() {
   for (auto &op : this->operatorMap) {
     outputStream << "\t" << op.first << ", " << op.second << std::endl;
   }
-  outputStream << "Top-level input port names:" << std::endl;
-  for (auto &port : this->inputPorts) {
-    outputStream << "\t" << port.first << std::endl;
-  }
-  outputStream << "Top-level output port names:" << std::endl;
-  for (auto &port : this->outputPorts) {
-    outputStream << "\t" << port.first << std::endl;
+  outputStream << "Operator lifespans:" << std::endl;
+  for (auto &op : this->operatorMap) {
+    outputStream << "\t" << op.first << ": "
+                 << this->getOperatorLifespan(op.first) << std::endl;
   }
   outputStream << "Top-level input port names:" << std::endl;
   for (auto &port : this->getInputPorts()) {

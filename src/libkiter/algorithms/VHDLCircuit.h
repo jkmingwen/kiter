@@ -35,6 +35,7 @@ class VHDLCircuit {
   int getOperatorCount(std::string op);
   VHDLComponent getFirstComponentByType(std::string op);
   std::string getName();
+  int getOperatorLifespan(std::string opName);
   void setName(std::string);
 
  private:
@@ -45,5 +46,6 @@ class VHDLCircuit {
   // ports of top-level input and output signals
   std::map<std::string, std::vector<std::string>> inputPorts;
   std::map<std::string, std::vector<std::string>> outputPorts;
+  std::map<std::string, int> operatorLifespans = {{"add", 14}, {"prod", 3}};
 };
 #endif /* VHDL_CIRCUIT_H_ */

@@ -14,7 +14,7 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   id = dataflow->getEdgeId(e);
   dataType = "float"; // assuming only data type is float for now
   bufferSize = 1; // can't have infinite buffer
-  dataTypeWidth = 64; // assume data type is float
+  dataTypeWidth = 34; // assume data type is float (using FloPoCo float representation)
   srcPort = dataflow->getEdgeInputPortName(e);
   dstPort = dataflow->getEdgeOutputPortName(e);
 }

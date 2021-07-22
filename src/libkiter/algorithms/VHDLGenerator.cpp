@@ -47,14 +47,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  std::cout << circuit.printStatus() << std::endl;
   generateOperators(circuit, componentDir);
   generateCircuit(circuit, dirName);
-
+  std::cout << circuit.printStatus() << std::endl;
   return;
 }
 
-void algorithms::generateOperators(VHDLCircuit circuit, std::string compDir) {
+void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   std::string compRefDir = "./vhdl_generation/";
   std::string bufferRefFileLoc = compRefDir + "axi_fifo.vhd";
@@ -94,7 +93,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string componentName = "fp_" + comp.getType();
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME", "$OP_LIFESPAN"};
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME"};
 
   if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
     // TODO generate ports for top level component
@@ -104,22 +103,17 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
     std::string fileContent;
     std::string operatorName;
-    std::string operatorLifespan;
     // TODO clean up using some kind of switch statement and hash table (to handle strings)
     if (comp.getType() == "add") {
       operatorName = "FPAdd_8_23_F400_uid2";
-      operatorLifespan = "14";
     } else if (comp.getType() == "prod") {
       operatorName = "FPMult_8_23_8_23_8_23_uid2_F400_uid3";
-      operatorLifespan = "3";
     } else { // TODO replace with assert statement
       operatorName = "UNKNOWN_OPERATOR";
-      operatorLifespan = "1";
     }
     std::map<std::string, std::string> replacementWords;
     replacementWords["$ENTITY_NAME"] = componentName;
     replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
-    replacementWords["$OP_LIFESPAN"] = operatorLifespan;
     // replace keywords with parameters corresponding to operator used
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
@@ -141,7 +135,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   }
 }
 
-void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
+void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
   std::ofstream vhdlOutput;
   std::string graphName = circuit.getName() + "_circuit"; // TODO decide on naming convention
   int numInputPorts = circuit.getOperatorCount("INPUT");
@@ -154,13 +148,19 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
              << "use ieee.std_logic_1164.all;\n"
              << "use ieee.numeric_std.all;\n" << std::endl;
   // 2. Port declarations
-  // TODO create map of port names for behaviour specification in step 3
-  // every component requires clock and reset ports
   vhdlOutput << "entity " << circuit.getName() << " is\n"
              << "generic (\n" // TODO add lifespans of different operators
              << "    " << "ram_width : natural := 16;\n"
-             << "    " << "ram_depth : natural := 256\n"
-             << ");\n"
+             << "    " << "ram_depth : natural := 256";
+  for (auto &op : operatorMap) {
+    if (op.first == "INPUT" || op.first == "OUTPUT") {
+      // do nothing
+    } else {
+      vhdlOutput << ";\n" << "    " << op.first << "_lifespan : integer := "
+                 << circuit.getOperatorLifespan(op.first);
+    }
+  }
+  vhdlOutput << ");\n"
              << "port (\n"
              << "    " << "clk : in std_logic;\n"
              << "    " << "rst : in std_logic;\n"
@@ -264,7 +264,7 @@ void algorithms::generateCircuit(VHDLCircuit circuit, std::string outputDir) {
     }
     vhdlOutput << signal << delim << std::endl;
   }
-  vhdlOutput << " : std_logic_vector(" + circuit.getName() + "_ram_width - 1 downto 0);\n"
+  vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
              << std::endl;
   // valid and ready signals
   vhdlOutput << "signal ";
@@ -299,6 +299,11 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
 
   // every component requires clock and reset ports
   outputStream << "component " << componentName << " is\n"
+               << "generic (\n"
+               << "    " << "ram_width : natural;\n"
+               << "    " << "ram_depth : natural;\n"
+               << "    " << "operator_lifespan : integer\n"
+               << ");\n"
                << "port (\n"
                << "    " << "clk : in std_logic;\n"
                << "    " << "rst : in std_logic;\n"
@@ -347,12 +352,12 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   outputStream << "    " << "buffer_in_ready : out std_logic;\n"
                << "    " << "buffer_in_valid : in std_logic;\n"
                << "    " << "buffer_in_data : in std_logic_vector("
-               << circuitName + "_ram_width - 1 downto 0);\n"
+               << "ram_width - 1 downto 0);\n"
                << std::endl;
   outputStream << "    " << "buffer_out_ready : in std_logic;\n"
                << "    " << "buffer_out_valid : out std_logic;\n"
                << "    " << "buffer_out_data : out std_logic_vector("
-               << circuitName + "_ram_width - 1 downto 0)\n"
+               << "ram_width - 1 downto 0)\n"
                << std::endl;
   outputStream << "); end component;\n" << std::endl;
   return outputStream.str();
@@ -413,7 +418,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
 
 std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
   std::stringstream outputStream;
-  std::string operatorSuffix = "_node";
+  std::string operatorPrefix = "fp_";
 
   outputStream << "begin\n" << std::endl;
   // operator port mappings
@@ -427,7 +432,12 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
       std::string opName = op.second.getType();
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
-                   << " : " << opName << operatorSuffix << " PORT MAP (\n"
+                   << " : " << operatorPrefix << opName << "\n"
+                   << "generic map (\n"
+                   << "    " << "ram_width => ram_width,\n"
+                   << "    " << "ram_depth => ram_depth,\n"
+                   << "    " << "operator_lifespan => " << opName << "_lifespan\n)\n"
+                   << "port map (\n"
                    << "    " << "clk => " << "clk,\n"
                    << "    " << "rst => " << "rst,\n"
                    << std::endl;
@@ -476,13 +486,14 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
       std::vector<std::string> receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
       // ram width/depth, reset, and clock mappings
       outputStream << "fifo_" + std::to_string(bufferCount)
-                   << " : " << bCompName << " GENERIC MAP (\n"
-                   << "    " << circuit.getName() << "_ram_width,\n"
-                   << "    " << circuit.getName() << "_ram_depth)\n"
+                   << " : " << bCompName << "\n"
+                   <<"generic map (\n"
+                   << "    " << "ram_width,\n"
+                   << "    " << "ram_depth\n)\n"
                    << std::endl;
-      outputStream << "PORT MAP (\n"
-                   << "    " << bName << "_clk => " << circuit.getName() << "_clk,\n"
-                   << "    " << bName << "_rst => " << circuit.getName() << "_rst,\n"
+      outputStream << "port map (\n"
+                   << "    " << bName << "_clk => " << "clk,\n"
+                   << "    " << bName << "_rst => " << "rst,\n"
                    << std::endl;
       // input/output mappings
       outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"

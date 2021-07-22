@@ -22,12 +22,12 @@ namespace algorithms {
   enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
-  void generateOperators(VHDLCircuit circuit, std::string componentDirectory);
+  void generateOperators(VHDLCircuit &circuit, std::string componentDirectory);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
                         std::string referenceDir);
-  void generateCircuit(VHDLCircuit circuit, std::string outputDirectory);
+  void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory);
   std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   void generateAXIInterfaceComponents(std::string componentDir,
