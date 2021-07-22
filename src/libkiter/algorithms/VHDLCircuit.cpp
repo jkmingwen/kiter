@@ -16,6 +16,16 @@ void VHDLCircuit::addComponent(VHDLComponent newComp) {
   this->operatorMap[newComp.getType()]++; // track operators used in circuit
 }
 
+void VHDLCircuit::addInputPort(std::string portName,
+                               std::vector<std::string> signalNames) {
+  this->inputPorts.insert(std::make_pair(portName, signalNames));
+}
+
+void VHDLCircuit::addOutputPort(std::string portName,
+                                std::vector<std::string> signalNames) {
+  this->outputPorts.insert(std::make_pair(portName, signalNames));
+}
+
 std::map<Vertex, VHDLComponent> VHDLCircuit::getComponentMap() {
   std::map<Vertex, VHDLComponent> compMap(this->componentMap);
   return compMap;
@@ -28,6 +38,14 @@ std::map<Edge, VHDLConnection> VHDLCircuit::getConnectionMap() {
 
 std::map<std::string, int> VHDLCircuit::getOperatorMap() {
   return this->operatorMap;
+}
+
+std::map<std::string, std::vector<std::string>> VHDLCircuit::getInputPorts() {
+  return this->inputPorts;
+}
+
+std::map<std::string, std::vector<std::string>> VHDLCircuit::getOutputPorts() {
+  return this->outputPorts;
 }
 
 int VHDLCircuit::getOperatorCount(std::string op) {
@@ -75,6 +93,22 @@ std::string VHDLCircuit::printStatus() {
   outputStream << "Operators:" << std::endl;
   for (auto &op : this->operatorMap) {
     outputStream << "\t" << op.first << ", " << op.second << std::endl;
+  }
+  outputStream << "Top-level input port names:" << std::endl;
+  for (auto &port : this->inputPorts) {
+    outputStream << "\t" << port.first << std::endl;
+  }
+  outputStream << "Top-level output port names:" << std::endl;
+  for (auto &port : this->outputPorts) {
+    outputStream << "\t" << port.first << std::endl;
+  }
+  outputStream << "Top-level input port names:" << std::endl;
+  for (auto &port : this->getInputPorts()) {
+    outputStream << "\t" << port.first << std::endl;
+  }
+  outputStream << "Top-level output port names:" << std::endl;
+  for (auto &port : this->getOutputPorts()) {
+    outputStream << "\t" << port.first << std::endl;
   }
 
   return outputStream.str();
