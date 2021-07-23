@@ -94,7 +94,7 @@ begin
                out_data_0 => axm_out_data0,
                out_data_1 => axm_out_data1 );
 
-  fp_add_flopoco : $FLOPOCO_OP_NAME port map ( clk => clk,
+  $COMPONENT_NAME : $FLOPOCO_OP_NAME port map ( clk => clk,
                                                  X => axm_out_data0,
                                                  Y => axm_out_data1,
                                                  R => flopoco_out_result );

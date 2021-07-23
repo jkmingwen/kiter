@@ -92,14 +92,15 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
 void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   std::string referenceDir) {
   std::ofstream vhdlOutput;
-  std::string componentName = "fp_" + comp.getType();
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME"};
+  std::string entityName = "fp_" + comp.getType();
+  std::string componentName = entityName + "_flopoco";
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME", "$COMPONENT_NAME"};
 
   if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
     // TODO generate ports for top level component
   } else {
     generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
-    vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
+    vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
     std::string fileContent;
     std::string operatorName;
@@ -112,8 +113,9 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
       operatorName = "UNKNOWN_OPERATOR";
     }
     std::map<std::string, std::string> replacementWords;
-    replacementWords["$ENTITY_NAME"] = componentName;
+    replacementWords["$ENTITY_NAME"] = entityName;
     replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
+    replacementWords["$COMPONENT_NAME"] = componentName;
     // replace keywords with parameters corresponding to operator used
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
