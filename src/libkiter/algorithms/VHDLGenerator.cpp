@@ -31,8 +31,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   // check for specified directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
     outputDirSpecified = true;
-    dirName = param_list["OUTPUT_DIR"];
+    dirName = param_list["OUTPUT_DIR"] + "/";
+    std::cout << "Generating VHDL code in " << dirName << std::endl;
     componentDir = dirName + "/components/";
+  } else {
+    std::cout << "Use '-p OUTPUT_DIR=dirName' to set output directory"
+              << std::endl;
   }
   if (!boost::filesystem::is_directory(dirName)) {
     boost::filesystem::create_directory(dirName);
@@ -42,6 +46,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   // check if FIFO buffers should be generated
   if (param_list.find("BUFFERLESS") != param_list.end()) {
     bufferless = true;
+  } else {
+    std::cout << "Use '-p BUFFERLESS=t' to generate VHDL without FIFO buffers"
+              << std::endl;
   }
 
   // populate circuit object with components and connections based on dataflow
@@ -63,7 +70,6 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
                                    bool isBufferless) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   std::string compRefDir = "./vhdl_generation/";
-  std::string bufferRefFileLoc = compRefDir + "axi_fifo.vhd";
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
@@ -428,7 +434,7 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
   std::vector<std::string> componentNames = {"axi_merger", "delay", "store_send"};
-  if (isBufferless) {
+  if (!isBufferless) {
     componentNames.push_back("axi_fifo");
   }
 
