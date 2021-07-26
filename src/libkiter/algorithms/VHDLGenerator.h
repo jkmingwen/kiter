@@ -22,21 +22,24 @@ namespace algorithms {
   enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
-  void generateOperators(VHDLCircuit &circuit, std::string componentDirectory);
+  void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
+                         bool isBufferless);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
   void generateOperator(VHDLComponent comp, int opLifespand,
                         std::string componentDirectory, std::string referenceDir);
-  void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory);
+  void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
+                       bool isBufferless);
   std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   void generateAXIInterfaceComponents(std::string componentDir,
-                                      std::string referenceDir);
+                                      std::string referenceDir,
+                                      bool isBufferless);
   std::vector<std::string> generateSendSigNames(std::string srcPort,
                                                 VHDLCircuit circuit);
   std::vector<std::string> generateReceiveSigNames(std::string dstPort,
                                                    VHDLCircuit circuit);
-  std::string generatePortMapping(VHDLCircuit circuit);
+  std::string generatePortMapping(VHDLCircuit circuit, bool isBufferless);
 }
 
 ADD_TRANSFORMATION(GenerateVHDL,

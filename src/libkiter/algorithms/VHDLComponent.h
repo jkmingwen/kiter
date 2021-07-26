@@ -24,6 +24,8 @@ class VHDLComponent {
   ARRAY_INDEX getId();
   std::vector<std::string> getInputPorts();
   std::vector<std::string> getOutputPorts();
+  std::vector<std::string> getInputEdges();
+  std::vector<std::string> getOutputEdges();
   std::string getType();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
@@ -36,5 +38,7 @@ class VHDLComponent {
   std::vector<std::string> inputPorts;
   std::vector<std::string> outputPorts;
   std::string componentType;
+  std::vector<std::string> inputEdges;
+  std::vector<std::string> outputEdges;
 };
 #endif /* VHDL_COMPONENT_H_ */

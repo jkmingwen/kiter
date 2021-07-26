@@ -21,6 +21,7 @@
 void algorithms::generateVHDL(models::Dataflow* const dataflow,
                               parameters_list_t param_list) {
   bool outputDirSpecified = false;
+  bool bufferless = false;
   std::string dirName = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
   std::string componentDir = dirName + "/components/";
   std::ofstream outputFile;
@@ -38,6 +39,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   }
   boost::filesystem::create_directory(componentDir);
 
+  // check if FIFO buffers should be generated
+  if (param_list.find("BUFFERLESS") != param_list.end()) {
+    bufferless = true;
+  }
+
   // populate circuit object with components and connections based on dataflow
   {ForEachVertex(dataflow, actor) {
       VHDLComponent newComp(dataflow, actor);
@@ -47,13 +53,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  generateOperators(circuit, componentDir);
-  generateCircuit(circuit, dirName);
+  generateOperators(circuit, componentDir, bufferless);
+  generateCircuit(circuit, dirName, bufferless);
   std::cout << circuit.printStatus() << std::endl;
   return;
 }
 
-void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir) {
+void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
+                                   bool isBufferless) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   std::string compRefDir = "./vhdl_generation/";
   std::string bufferRefFileLoc = compRefDir + "axi_fifo.vhd";
@@ -64,7 +71,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir) {
                      circuit.getOperatorLifespan(op.first),
                      compDir, compRefDir);
   }
-  generateAXIInterfaceComponents(compDir, compRefDir);
+  generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
 
 }
 
@@ -140,7 +147,8 @@ void algorithms::generateOperator(VHDLComponent comp, int opLifespan,
   }
 }
 
-void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
+void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
+                                 bool isBufferless) {
   std::ofstream vhdlOutput;
   std::string graphName = circuit.getName() + "_circuit"; // TODO decide on naming convention
   int numInputPorts = circuit.getOperatorCount("INPUT");
@@ -197,38 +205,78 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
                  << std::endl;
     }
   }
-  vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+  if (!isBufferless) {
+    vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+  }
+
   // Track top-level input and output signals
-  std::vector<std::string> inPortNames;
-  std::vector<std::string> outPortNames;
-  for (auto &op : circuit.getComponentMap()) {
-    if (op.second.getType() == "INPUT") {
-      for (auto &i : op.second.getOutputPorts()) {
-        inPortNames.push_back(i);
+  std::vector<std::string> inSignalNames;
+  std::vector<std::string> outSignalNames;
+  if (isBufferless) { // no FIFO buffers between components
+    for (auto &op : circuit.getComponentMap()) {
+      if (op.second.getType() == "INPUT") {
+        for (auto &i : op.second.getOutputEdges()) {
+          inSignalNames.push_back(i);
+        }
+      } else if (op.second.getType() == "OUTPUT") {
+        for (auto &i : op.second.getInputEdges()) {
+          outSignalNames.push_back(i);
+        }
       }
-    } else if (op.second.getType() == "OUTPUT") {
-      for (auto &i : op.second.getInputPorts()) {
-        outPortNames.push_back(i);
+    }
+  } else { // use port names to generate signals to/from FIFO buffers
+    for (auto &op : circuit.getComponentMap()) {
+      if (op.second.getType() == "INPUT") {
+        for (auto &i : op.second.getOutputPorts()) {
+          inSignalNames.push_back(i);
+        }
+      } else if (op.second.getType() == "OUTPUT") {
+        for (auto &i : op.second.getInputPorts()) {
+          outSignalNames.push_back(i);
+        }
       }
     }
   }
+
   // Define and generate signal names
   int inCount = 0;
   int outCount = 0;
+  bool isTopInput;
+  bool isTopOutput;
   for (auto &connection : circuit.getConnectionMap()) {
-    if (std::find(inPortNames.begin(), inPortNames.end(), connection.second.getSrcPort()) != inPortNames.end()) {
+    if (isBufferless) {
+      isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
+                             connection.second.getName()) != inSignalNames.end();
+      isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
+                              connection.second.getName()) != outSignalNames.end();
+    } else {
+      isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
+                             connection.second.getSrcPort()) != inSignalNames.end();
+      isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
+                              connection.second.getDstPort()) != outSignalNames.end();
+    }
+
+    if (isTopInput) {
       std::vector<std::string> signalNames(3);
       signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inCount);
       signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
       signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
-      circuit.addInputPort(connection.second.getDstPort(), signalNames);
+      if (isBufferless) {
+        circuit.addInputPort(connection.second.getName(), signalNames);
+      } else {
+        circuit.addInputPort(connection.second.getDstPort(), signalNames);
+      }
       inCount++;
-    } else if (std::find(outPortNames.begin(), outPortNames.end(), connection.second.getDstPort()) != outPortNames.end()) {
+    } else if (isTopOutput) {
       std::vector<std::string> signalNames(3);
       signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outCount);
       signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
       signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
-      circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+      if (isBufferless) {
+        circuit.addOutputPort(connection.second.getName(), signalNames);
+      } else {
+        circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+      }
       outCount++;
     }
   }
@@ -236,17 +284,32 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
   std::vector<std::string> dataSignals;
   std::vector<std::string> validReadySignals;
   for (auto &connection : circuit.getConnectionMap()) {
+    bool isNotTopInOut; // check if connection belongs to top level input/output
+    if (isBufferless) {
+      isNotTopInOut = !(circuit.getInputPorts().count(connection.second.getName()) ||
+                        circuit.getOutputPorts().count(connection.second.getName()));
+    } else {
+      isNotTopInOut = !(circuit.getInputPorts().count(connection.second.getDstPort()) ||
+                        circuit.getOutputPorts().count(connection.second.getSrcPort()));
+    }
     // only generate signal names for non-input/output ports
-    if (!(circuit.getInputPorts().count(connection.second.getDstPort()) ||
-          circuit.getOutputPorts().count(connection.second.getSrcPort()))) {
-      std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
-      std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
-      dataSignals.push_back(sendSignals[DATA]);
-      dataSignals.push_back(receiveSignals[DATA]);
-      validReadySignals.push_back(sendSignals[VALID]);
-      validReadySignals.push_back(receiveSignals[VALID]);
-      validReadySignals.push_back(sendSignals[READY]);
-      validReadySignals.push_back(receiveSignals[READY]);
+    if (isNotTopInOut) {
+      if (isBufferless) {
+        std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
+        dataSignals.push_back(signalNames[DATA]);
+        validReadySignals.push_back(signalNames[VALID]);
+        validReadySignals.push_back(signalNames[READY]);
+      } else {
+        // separate send/receive signals required due to buffers between components
+        std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
+        std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
+        dataSignals.push_back(sendSignals[DATA]);
+        dataSignals.push_back(receiveSignals[DATA]);
+        validReadySignals.push_back(sendSignals[VALID]);
+        validReadySignals.push_back(receiveSignals[VALID]);
+        validReadySignals.push_back(sendSignals[READY]);
+        validReadySignals.push_back(receiveSignals[READY]);
+      }
     }
   }
   // data signals
@@ -274,7 +337,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
     vhdlOutput << signal << delim << std::endl;
   }
   vhdlOutput << " : std_logic;\n" << std::endl;
-  vhdlOutput << generatePortMapping(circuit) << std::endl;
+  vhdlOutput << generatePortMapping(circuit, isBufferless) << std::endl;
   vhdlOutput << "end behaviour;" << std::endl; // TODO don't hardcode architecture name
 
   vhdlOutput.close();
@@ -360,12 +423,16 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
 
 // Copy FloPoCo-AXI interface component specification from reference files to generated subdirectory
 void algorithms::generateAXIInterfaceComponents(std::string compDir,
-                                                std::string referenceDir) {
+                                                std::string referenceDir,
+                                                bool isBufferless) {
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
-  std::string componentNames[] = {"axi_merger", "delay", "store_send", "axi_fifo"};
+  std::vector<std::string> componentNames = {"axi_merger", "delay", "store_send"};
+  if (isBufferless) {
+    componentNames.push_back("axi_fifo");
+  }
 
-  for (const std::string &component : componentNames) {
+  for (const auto &component : componentNames) {
     vhdlOutput.open(compDir + component + ".vhd");
     std::ifstream compReference(referenceDir + component + ".vhd");
     std::string fileContent;
@@ -411,7 +478,8 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
   return receiveSignals;
 }
 
-std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
+std::string algorithms::generatePortMapping(VHDLCircuit circuit,
+                                            bool isBufferless) {
   std::stringstream outputStream;
   std::string operatorPrefix = "fp_";
 
@@ -439,7 +507,16 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
       int inPortCount = 0;
       int outPortCount = 0;
       // TODO define input operator mapping outside of input port for loop
-      for (auto &inPort : op.second.getInputPorts()) {
+      std::vector<std::string> inputSignals;
+      std::vector<std::string> outputSignals;
+      if (isBufferless) {
+        inputSignals = op.second.getInputEdges();
+        outputSignals = op.second.getOutputEdges();
+      } else {
+        inputSignals = op.second.getInputPorts();
+        outputSignals = op.second.getOutputPorts();
+      }
+      for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
         receiveSigs = generateReceiveSigNames(inPort, circuit);
         outputStream << "    " << "op_in_ready_" << std::to_string(inPortCount)
@@ -451,7 +528,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
         inPortCount++;
       }
 
-      for (auto &outPort : op.second.getOutputPorts()) {
+      for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
         sendSigs = generateSendSigNames(outPort, circuit);
         outputStream << "    " << "op_out_ready_" << std::to_string(outPortCount)
@@ -469,37 +546,40 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
   }
 
   // buffer port mappings
-  int bufferCount = 0;
-  std::string bCompName = "axi_fifo";
-  std::string bName = "buffer";
-  for (auto &buffer : circuit.getConnectionMap()) {
-     // only generate buffer between non-input/output components
-    if (!(circuit.getInputPorts().count(buffer.second.getDstPort()) ||
-          circuit.getOutputPorts().count(buffer.second.getSrcPort()))) {
-      std::vector<std::string> sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-      std::vector<std::string> receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
-      // ram width/depth, reset, and clock mappings
-      outputStream << "fifo_" + std::to_string(bufferCount)
-                   << " : " << bCompName << "\n"
-                   <<"generic map (\n"
-                   << "    " << "ram_width,\n"
-                   << "    " << "ram_depth\n)\n"
-                   << std::endl;
-      outputStream << "port map (\n"
-                   << "    " << bName << "_clk => " << "clk,\n"
-                   << "    " << bName << "_rst => " << "rst,\n"
-                   << std::endl;
-      // input/output mappings
-      outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
-                   << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
-                   << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
-                   << std::endl;
-      outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
-                   << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
-                   << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
-                   << std::endl;
-      bufferCount++;
+  if (!isBufferless) {
+    int bufferCount = 0;
+    std::string bCompName = "axi_fifo";
+    std::string bName = "buffer";
+    for (auto &buffer : circuit.getConnectionMap()) {
+      // only generate buffer between non-input/output components
+      if (!(circuit.getInputPorts().count(buffer.second.getDstPort()) ||
+            circuit.getOutputPorts().count(buffer.second.getSrcPort()))) {
+        std::vector<std::string> sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
+        std::vector<std::string> receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+        // ram width/depth, reset, and clock mappings
+        outputStream << "fifo_" + std::to_string(bufferCount)
+                     << " : " << bCompName << "\n"
+                     <<"generic map (\n"
+                     << "    " << "ram_width,\n"
+                     << "    " << "ram_depth\n)\n"
+                     << std::endl;
+        outputStream << "port map (\n"
+                     << "    " << bName << "_clk => " << "clk,\n"
+                     << "    " << bName << "_rst => " << "rst,\n"
+                     << std::endl;
+        // input/output mappings
+        outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
+                     << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
+                     << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
+                     << std::endl;
+        outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
+                     << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
+                     << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
+                     << std::endl;
+        bufferCount++;
+      }
     }
   }
+
   return outputStream.str();
 }

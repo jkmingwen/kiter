@@ -14,9 +14,11 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   id = dataflow->getVertexId(a);
   {ForInputEdges(dataflow, a, inEdge) {
       inputPorts.push_back(dataflow->getEdgeOutputPortName(inEdge));
+      inputEdges.push_back(dataflow->getEdgeName(inEdge));
     }}
   {ForOutputEdges(dataflow, a, outEdge) {
       outputPorts.push_back(dataflow->getEdgeInputPortName(outEdge));
+      outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
   std::string compType = dataflow->getVertexType(a);
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
@@ -40,6 +42,14 @@ std::vector<std::string> VHDLComponent::getInputPorts() {
 
 std::vector<std::string> VHDLComponent::getOutputPorts() {
   return this->outputPorts;
+}
+
+std::vector<std::string> VHDLComponent::getInputEdges() {
+  return this->inputEdges;
+}
+
+std::vector<std::string> VHDLComponent::getOutputEdges() {
+  return this->outputEdges;
 }
 
 std::string VHDLComponent::getType() {
@@ -66,6 +76,14 @@ std::string VHDLComponent::printStatus() {
   }
   outputStream << "\tOutput ports: " << std::endl;
   for (auto portName : this->getOutputPorts()) {
+    outputStream << "\t\t" << portName << std::endl;
+  }
+  outputStream << "\tInput edges: " << std::endl;
+  for (auto portName : this->getInputEdges()) {
+    outputStream << "\t\t" << portName << std::endl;
+  }
+  outputStream << "\tOutput edges: " << std::endl;
+  for (auto portName : this->getOutputEdges()) {
     outputStream << "\t\t" << portName << std::endl;
   }
 
