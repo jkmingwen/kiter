@@ -5,8 +5,7 @@ use ieee.numeric_std.all;
 -- top-level entity declaration
 entity $ENTITY_NAME is
   generic ( ram_width : natural := 34;
-            ram_depth : natural := 10;
-            operator_lifespan : integer );
+            ram_depth : natural := 10 );
   port ( clk : in std_logic;
          rst : in std_logic;
 
@@ -24,6 +23,7 @@ entity $ENTITY_NAME is
 end $ENTITY_NAME;
 
 architecture connections of $ENTITY_NAME is
+  constant operator_lifespan : integer := $OP_LIFESPAN;
   -- lower-level component declaration;
   component axi_merger is
     generic (bit_width : integer);

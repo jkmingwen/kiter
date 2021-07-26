@@ -60,8 +60,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir) {
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
-    generateOperator(circuit.getFirstComponentByType(op.first), compDir,
-                     compRefDir);
+    generateOperator(circuit.getFirstComponentByType(op.first),
+                     circuit.getOperatorLifespan(op.first),
+                     compDir, compRefDir);
   }
   generateAXIInterfaceComponents(compDir, compRefDir);
 
@@ -89,12 +90,13 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
 }
 
 // Generate AXI interface for each FloPoCo operator
-void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
-                                  std::string referenceDir) {
+void algorithms::generateOperator(VHDLComponent comp, int opLifespan,
+                                  std::string compDir, std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string entityName = "fp_" + comp.getType();
   std::string componentName = entityName + "_flopoco";
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME", "$COMPONENT_NAME"};
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
+                                  "$COMPONENT_NAME", "$OP_LIFESPAN"};
 
   if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
     // TODO generate ports for top level component
@@ -104,7 +106,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
     std::string fileContent;
     std::string operatorName;
-    // TODO clean up using some kind of switch statement and hash table (to handle strings)
+    // TODO set/get operatorName and operatorLifespan as fields in component class
     if (comp.getType() == "add") {
       operatorName = "FPAdd_8_23_F400_uid2";
     } else if (comp.getType() == "prod") {
@@ -116,6 +118,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     replacementWords["$ENTITY_NAME"] = entityName;
     replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
     replacementWords["$COMPONENT_NAME"] = componentName;
+    replacementWords["$OP_LIFESPAN"] = std::to_string(opLifespan);
     // replace keywords with parameters corresponding to operator used
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
@@ -152,17 +155,8 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir) {
   // 2. Port declarations
   vhdlOutput << "entity " << circuit.getName() << " is\n"
              << "generic (\n" // TODO add lifespans of different operators
-             << "    " << "ram_width : natural := 16;\n"
-             << "    " << "ram_depth : natural := 256";
-  for (auto &op : operatorMap) {
-    if (op.first == "INPUT" || op.first == "OUTPUT") {
-      // do nothing
-    } else {
-      vhdlOutput << ";\n" << "    " << op.first << "_lifespan : integer := "
-                 << circuit.getOperatorLifespan(op.first);
-    }
-  }
-  vhdlOutput << ");\n"
+             << "    " << "ram_width : natural := 34;\n"
+             << "    " << "ram_depth : natural := 2);\n" // buffer size
              << "port (\n"
              << "    " << "clk : in std_logic;\n"
              << "    " << "rst : in std_logic;\n"
@@ -303,8 +297,7 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   outputStream << "component " << componentName << " is\n"
                << "generic (\n"
                << "    " << "ram_width : natural;\n"
-               << "    " << "ram_depth : natural;\n"
-               << "    " << "operator_lifespan : integer\n"
+               << "    " << "ram_depth : natural\n"
                << ");\n"
                << "port (\n"
                << "    " << "clk : in std_logic;\n"
@@ -437,8 +430,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit) {
                    << " : " << operatorPrefix << opName << "\n"
                    << "generic map (\n"
                    << "    " << "ram_width => ram_width,\n"
-                   << "    " << "ram_depth => ram_depth,\n"
-                   << "    " << "operator_lifespan => " << opName << "_lifespan\n)\n"
+                   << "    " << "ram_depth => ram_depth\n)\n"
                    << "port map (\n"
                    << "    " << "clk => " << "clk,\n"
                    << "    " << "rst => " << "rst,\n"
