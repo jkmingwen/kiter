@@ -389,9 +389,9 @@ std::vector<std::string> algorithms::generateSendSigNames(std::string srcPort,
   if (circuit.getOutputPorts().count(srcPort)) {
     sendSignals = circuit.getOutputPorts()[srcPort];
   } else {
-    sendSignals[VALID] = "SEND_" + srcPort + "_VALID";
-    sendSignals[READY] = "SEND_" + srcPort + "_READY";
-    sendSignals[DATA] = "SEND_" + srcPort + "_DATA";
+    sendSignals[VALID] = srcPort + "_VALID";
+    sendSignals[READY] = srcPort + "_READY";
+    sendSignals[DATA] = srcPort + "_DATA";
   }
   return sendSignals;
 }
@@ -403,9 +403,9 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
   if (circuit.getInputPorts().count(dstPort)) {
     receiveSignals = circuit.getInputPorts()[dstPort];
   } else {
-    receiveSignals[VALID] = "RCV_" + dstPort + "_VALID";
-    receiveSignals[READY] = "RCV_" + dstPort + "_READY";
-    receiveSignals[DATA] = "RCV_" + dstPort + "_DATA";
+    receiveSignals[VALID] = dstPort + "_VALID";
+    receiveSignals[READY] = dstPort + "_READY";
+    receiveSignals[DATA] = dstPort + "_DATA";
   }
 
   return receiveSignals;
