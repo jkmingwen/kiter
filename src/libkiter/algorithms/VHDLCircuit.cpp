@@ -100,13 +100,16 @@ std::string VHDLCircuit::printStatus() {
   }
   outputStream << "Operators:" << std::endl;
   for (auto &op : this->operatorMap) {
-    outputStream << "\t" << op.first << ", " << op.second << std::endl;
+    outputStream << "\t" << op.first << ", " << op.second << "\n";
   }
-  outputStream << "Operator lifespans:" << std::endl;
+  outputStream << std::endl;
+  outputStream << "Operator counts | lifespans:" << std::endl;
   for (auto &op : this->operatorMap) {
     outputStream << "\t" << op.first << ": "
-                 << this->getOperatorLifespan(op.first) << std::endl;
+                 << this->getOperatorCount(op.first) << " | "
+                 << this->getOperatorLifespan(op.first) << "\n";
   }
+  outputStream << std::endl;
   outputStream << "Top-level input port names:" << std::endl;
   for (auto &port : this->getInputPorts()) {
     outputStream << "\t" << port.first << std::endl;
