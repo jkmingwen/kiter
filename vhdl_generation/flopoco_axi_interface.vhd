@@ -4,25 +4,25 @@ use ieee.numeric_std.all;
 
 -- top-level entity declaration
 entity $ENTITY_NAME is
-  generic ( ram_width : natural := 34 );
   port ( clk : in std_logic;
          rst : in std_logic;
 
          op_in_ready_0 : out std_logic;
          op_in_valid_0 : in std_logic;
-         op_in_data_0  : in std_logic_vector(ram_width-1 downto 0) := (others => '0');
+         op_in_data_0  : in std_logic_vector(33 downto 0) := (others => '0');
 
          op_in_ready_1 : out std_logic;
          op_in_valid_1 : in std_logic;
-         op_in_data_1  : in std_logic_vector(ram_width-1 downto 0) := (others => '0');
+         op_in_data_1  : in std_logic_vector(33 downto 0) := (others => '0');
 
          op_out_ready_0  : in std_logic;
          op_out_valid_0  : out std_logic;
-         op_out_data_0   : out std_logic_vector(ram_width-1 downto 0) := (others => '0') );
+         op_out_data_0   : out std_logic_vector(33 downto 0) := (others => '0') );
 end $ENTITY_NAME;
 
 architecture connections of $ENTITY_NAME is
   constant operator_lifespan : integer := $OP_LIFESPAN;
+  constant bit_width : integer := 34;
   -- lower-level component declaration;
   component axi_merger is
     generic (bit_width : integer);
@@ -74,12 +74,12 @@ architecture connections of $ENTITY_NAME is
   signal dly_in_ready, dly_in_valid, dly_trigger_store,
     ss_can_store : std_logic;
   signal axm_out_data0, axm_out_data1,
-    flopoco_out_result : std_logic_vector (ram_width-1 downto 0);
+    flopoco_out_result : std_logic_vector (bit_width-1 downto 0);
 
 begin
 
   axm: axi_merger
-    generic map ( bit_width => ram_width )
+    generic map ( bit_width => bit_width )
     port map ( clk        => clk,
                reset      => rst,
                in_ready_0 => op_in_ready_0,
@@ -106,7 +106,7 @@ begin
                         trigger_store => dly_trigger_store );
 
   ss: store_send
-    generic map ( data_bit_width => ram_width )
+    generic map ( data_bit_width => bit_width )
     port map ( clk           => clk,
                trigger_store => dly_trigger_store,
                out_ready     => op_out_ready_0,
