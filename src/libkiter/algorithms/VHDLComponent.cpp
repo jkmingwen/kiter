@@ -23,6 +23,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   std::string compType = dataflow->getVertexType(a);
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
   lifespan = 0;
+  FPCName = "default";
 }
 
 Vertex VHDLComponent::getActor() {
@@ -61,6 +62,10 @@ std::string VHDLComponent::getType() {
   return this->componentType;
 }
 
+std::string VHDLComponent::getFPCName() {
+  return this->FPCName;
+}
+
 void VHDLComponent::setName(std::string newName) {
   this->componentName = newName;
 }
@@ -71,6 +76,10 @@ void VHDLComponent::setId(ARRAY_INDEX newId) {
 
 void VHDLComponent::setLifespan(int lifespan) {
   this->lifespan = lifespan;
+}
+
+void VHDLComponent::setFPCName(std::string newName) {
+  this->FPCName = newName;
 }
 
 std::string VHDLComponent::printStatus() {

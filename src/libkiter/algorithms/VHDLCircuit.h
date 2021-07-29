@@ -35,7 +35,8 @@ class VHDLCircuit {
   int getOperatorCount(std::string op);
   VHDLComponent getFirstComponentByType(std::string op);
   std::string getName();
-  int getOperatorLifespan(std::string opName);
+  int getOperatorLifespan(std::string opType);
+  std::string getOperatorFPCName(std::string opType);
   void setName(std::string);
 
  private:
@@ -46,6 +47,12 @@ class VHDLCircuit {
   // ports of top-level input and output signals
   std::map<std::string, std::vector<std::string>> inputPorts;
   std::map<std::string, std::vector<std::string>> outputPorts;
+  /* Each component has a specific lifespan and name that needs to be defined in
+     the generated AXI interface --- we track them using a predefined map where
+     the keys are the "types" of the operators, which are taken from the actor
+     types in the SDF file generated from the Faust application */
   std::map<std::string, int> operatorLifespans = {{"add", 14}, {"prod", 3}};
+  std::map<std::string, std::string> FPCNames = {{"add", "FPAdd_8_23_F400_uid2"},
+                                                 {"prod", "FPMult_8_23_8_23_8_23_uid2_F400_uid3"}};
 };
 #endif /* VHDL_CIRCUIT_H_ */

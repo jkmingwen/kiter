@@ -117,21 +117,11 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
     std::string fileContent;
-    std::string operatorName;
-    // TODO set/get operatorName and operatorLifespan as fields in component class
-    if (comp.getType() == "add") {
-      operatorName = "FPAdd_8_23_F400_uid2";
-    } else if (comp.getType() == "prod") {
-      operatorName = "FPMult_8_23_8_23_8_23_uid2_F400_uid3";
-    } else { // TODO replace with assert statement
-      operatorName = "UNKNOWN_OPERATOR";
-    }
-    std::map<std::string, std::string> replacementWords;
-    replacementWords["$ENTITY_NAME"] = entityName;
-    replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
-    replacementWords["$COMPONENT_NAME"] = componentName;
-    replacementWords["$OP_LIFESPAN"] = std::to_string(comp.getLifespan());
-    // replace keywords with parameters corresponding to operator used
+    std::string operatorName = comp.getFPCName();
+    std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
+                                                           {"$FLOPOCO_OP_NAME", operatorName},
+                                                           {"$COMPONENT_NAME", componentName},
+                                                           {"$OP_LIFESPAN", std::to_string(comp.getLifespan())}};
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
         for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line

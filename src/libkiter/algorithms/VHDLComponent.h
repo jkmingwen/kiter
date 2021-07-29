@@ -28,9 +28,11 @@ class VHDLComponent {
   std::vector<std::string> getOutputEdges();
   std::string getType();
   int getLifespan();
+  std::string getFPCName();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   void setLifespan(int lifespan);
+  void setFPCName(std::string newName);
   std::string printStatus();
 
  private:
@@ -43,5 +45,6 @@ class VHDLComponent {
   std::vector<std::string> inputEdges;
   std::vector<std::string> outputEdges;
   int lifespan;
+  std::string FPCName; // for use in instantiating FPC-AXI interface
 };
 #endif /* VHDL_COMPONENT_H_ */

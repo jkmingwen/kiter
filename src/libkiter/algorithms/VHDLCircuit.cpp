@@ -12,6 +12,7 @@ VHDLCircuit::VHDLCircuit() {}
 
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
   newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
+  newComp.setFPCName(this->getOperatorFPCName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
   this->operatorMap[newComp.getType()]++; // track operators used in circuit
@@ -69,12 +70,20 @@ std::string VHDLCircuit::getName() {
   return this->graphName;
 }
 
-int VHDLCircuit::getOperatorLifespan(std::string opName) {
-  if (this->operatorLifespans.count(opName)) {
-    return this->operatorLifespans[opName];
+int VHDLCircuit::getOperatorLifespan(std::string opType) {
+  if (this->operatorLifespans.count(opType)) {
+    return this->operatorLifespans[opType];
   } else {
     // NOTE default to 0 if lifespan not specified
     return 0;
+  }
+}
+
+std::string VHDLCircuit::getOperatorFPCName(std::string opType) {
+  if (this->FPCNames.count(opType)) {
+    return this->FPCNames[opType];
+  } else {
+    return "UNKNOWN_OPERATOR";
   }
 }
 
