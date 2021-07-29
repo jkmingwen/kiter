@@ -4,8 +4,7 @@ use ieee.numeric_std.all;
 
 -- top-level entity declaration
 entity $ENTITY_NAME is
-  generic ( ram_width : natural := 34;
-            ram_depth : natural := 10 );
+  generic ( ram_width : natural := 34 );
   port ( clk : in std_logic;
          rst : in std_logic;
 

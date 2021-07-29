@@ -365,8 +365,7 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // every component requires clock and reset ports
   outputStream << "component " << componentName << " is\n"
                << "generic (\n"
-               << "    " << "ram_width : natural;\n"
-               << "    " << "ram_depth : natural\n"
+               << "    " << "ram_width : natural\n"
                << ");\n"
                << "port (\n"
                << "    " << "clk : in std_logic;\n"
@@ -503,8 +502,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       outputStream << opName << "_" + std::to_string(opCount[opName])
                    << " : " << operatorPrefix << opName << "\n"
                    << "generic map (\n"
-                   << "    " << "ram_width => ram_width,\n"
-                   << "    " << "ram_depth => ram_depth\n)\n"
+                   << "    " << "ram_width => ram_width\n)\n"
                    << "port map (\n"
                    << "    " << "clk => " << "clk,\n"
                    << "    " << "rst => " << "rst,\n"
