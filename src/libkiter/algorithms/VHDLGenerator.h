@@ -26,8 +26,8 @@ namespace algorithms {
                          bool isBufferless);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
-  void generateOperator(VHDLComponent comp, int opLifespand,
-                        std::string componentDirectory, std::string referenceDir);
+  void generateOperator(VHDLComponent comp, std::string componentDirectory,
+                        std::string referenceDir);
   void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
                        bool isBufferless);
   std::string generateComponent(VHDLComponent comp);

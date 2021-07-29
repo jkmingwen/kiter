@@ -74,7 +74,6 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
     generateOperator(circuit.getFirstComponentByType(op.first),
-                     circuit.getOperatorLifespan(op.first),
                      compDir, compRefDir);
   }
   generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
@@ -103,8 +102,8 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
 }
 
 // Generate AXI interface for each FloPoCo operator
-void algorithms::generateOperator(VHDLComponent comp, int opLifespan,
-                                  std::string compDir, std::string referenceDir) {
+void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
+                                  std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string entityName = "fp_" + comp.getType();
   std::string componentName = entityName + "_flopoco";
@@ -131,7 +130,7 @@ void algorithms::generateOperator(VHDLComponent comp, int opLifespan,
     replacementWords["$ENTITY_NAME"] = entityName;
     replacementWords["$FLOPOCO_OP_NAME"] = operatorName;
     replacementWords["$COMPONENT_NAME"] = componentName;
-    replacementWords["$OP_LIFESPAN"] = std::to_string(opLifespan);
+    replacementWords["$OP_LIFESPAN"] = std::to_string(comp.getLifespan());
     // replace keywords with parameters corresponding to operator used
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {

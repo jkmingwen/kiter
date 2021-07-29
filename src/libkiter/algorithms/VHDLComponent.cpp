@@ -22,6 +22,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }}
   std::string compType = dataflow->getVertexType(a);
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
+  lifespan = 0;
 }
 
 Vertex VHDLComponent::getActor() {
@@ -34,6 +35,10 @@ std::string VHDLComponent::getName() {
 
 ARRAY_INDEX VHDLComponent::getId() {
   return this->id;
+}
+
+int VHDLComponent::getLifespan() {
+  return this->lifespan;
 }
 
 std::vector<std::string> VHDLComponent::getInputPorts() {
@@ -62,6 +67,10 @@ void VHDLComponent::setName(std::string newName) {
 
 void VHDLComponent::setId(ARRAY_INDEX newId) {
   this->id = newId;
+}
+
+void VHDLComponent::setLifespan(int lifespan) {
+  this->lifespan = lifespan;
 }
 
 std::string VHDLComponent::printStatus() {

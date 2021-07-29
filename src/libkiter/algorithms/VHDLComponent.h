@@ -27,8 +27,10 @@ class VHDLComponent {
   std::vector<std::string> getInputEdges();
   std::vector<std::string> getOutputEdges();
   std::string getType();
+  int getLifespan();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
+  void setLifespan(int lifespan);
   std::string printStatus();
 
  private:
@@ -40,5 +42,6 @@ class VHDLComponent {
   std::string componentType;
   std::vector<std::string> inputEdges;
   std::vector<std::string> outputEdges;
+  int lifespan;
 };
 #endif /* VHDL_COMPONENT_H_ */

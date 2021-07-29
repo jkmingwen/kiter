@@ -11,6 +11,7 @@
 VHDLCircuit::VHDLCircuit() {}
 
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
+  newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
   this->operatorMap[newComp.getType()]++; // track operators used in circuit
