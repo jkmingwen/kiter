@@ -24,6 +24,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
   lifespan = 0;
   FPCName = "default";
+  if (isNumber(componentType)) {
+    isConstVal = true;
+    value = atof(componentType.c_str());
+  } else {
+    isConstVal = false;
+    value = 0;
+  }
 }
 
 Vertex VHDLComponent::getActor() {
@@ -82,6 +89,17 @@ void VHDLComponent::setFPCName(std::string newName) {
   this->FPCName = newName;
 }
 
+// checks if string is a number by checking if we can successfully convert it to a float
+bool isNumber(std::string componentType) {
+  char* strEnd;
+  double numericValue = strtod(componentType.c_str(), &strEnd);
+  if (*strEnd) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 std::string VHDLComponent::printStatus() {
   std::stringstream outputStream;
 
@@ -103,6 +121,12 @@ std::string VHDLComponent::printStatus() {
   outputStream << "\tOutput edges: " << std::endl;
   for (auto portName : this->getOutputEdges()) {
     outputStream << "\t\t" << portName << std::endl;
+  }
+  outputStream << "\tIs constant?";
+  if (this->isConstVal) {
+    outputStream << " Y, value of " << this->value << std::endl;
+  } else {
+    outputStream << " N" << std::endl;
   }
 
   return outputStream.str();
