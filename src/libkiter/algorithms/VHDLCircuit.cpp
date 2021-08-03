@@ -108,16 +108,11 @@ std::string VHDLCircuit::printStatus() {
   for (auto &conns : this->connectionMap) {
     outputStream << "\t" << (conns.second).printStatus() << std::endl;
   }
-  outputStream << "Operators:" << std::endl;
+  outputStream << "Operator, count (and lifespan):" << std::endl;
   for (auto &op : this->operatorMap) {
-    outputStream << "\t" << op.first << ", " << op.second << "\n";
-  }
-  outputStream << std::endl;
-  outputStream << "Operator counts | lifespans:" << std::endl;
-  for (auto &op : this->operatorMap) {
-    outputStream << "\t" << op.first << ": "
-                 << this->getOperatorCount(op.first) << " | "
-                 << this->getOperatorLifespan(op.first) << "\n";
+    outputStream << "\t" << op.first << ", "
+                 << op.second << " (" << this->getOperatorLifespan(op.first)
+                 << ")\n";
   }
   outputStream << std::endl;
   outputStream << "Top-level input port names:" << std::endl;
