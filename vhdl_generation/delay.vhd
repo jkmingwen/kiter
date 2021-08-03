@@ -29,25 +29,27 @@ begin
   dec_counter: process (clk, reset)  -- check values on falling edge
   begin
     -- Start the counter
-    if  falling_edge(clk) AND (local_counter = 0) AND (is_trigger_store = '0')AND (is_ready = '1')AND (in_valid = '1') then
-      local_counter <= operator_lifespan;
-      is_trigger_store <= '0';
-      is_ready <= '0';
-    -- Dec the counter and set is_trigger_store
-    elsif falling_edge(clk) AND (local_counter > 0) then
-      local_counter <= local_counter - 1;
-      if local_counter = 1 then
-        is_trigger_store <= '1';
+    if  falling_edge(clk) then
+      if (local_counter = 0) AND (is_trigger_store = '0') AND (is_ready = '1') AND (in_valid = '1') then
+          local_counter <= operator_lifespan;
+          is_trigger_store <= '0';
+          is_ready <= '0';
+      -- Dec the counter and set is_trigger_store
+      elsif (local_counter > 0) then
+          local_counter <= local_counter - 1;
+          if local_counter = 1 then
+            is_trigger_store <= '1';
+          else
+            is_trigger_store <= '0';
+          end if;
+          is_ready <= '0';
       else
-        is_trigger_store <= '0';
-      end if;
-      is_ready <= '0';
-    elsif falling_edge(clk)  then
-      is_trigger_store <= '0';
-      if (local_counter = 0) AND (is_trigger_store = '0') AND (can_store = '1') then
-        is_ready <= '1';
-      else
-        is_ready <= '0';
+          is_trigger_store <= '0';
+          if (local_counter = 0) AND (is_trigger_store = '0') AND (can_store = '1') then
+            is_ready <= '1';
+          else
+            is_ready <= '0';
+          end if;
       end if;
     end if;
 
@@ -62,6 +64,7 @@ begin
       trigger_store <= is_trigger_store;
       count <= local_counter;
     end if;
+
   end process dec_counter;
 
 end Behavioral;
