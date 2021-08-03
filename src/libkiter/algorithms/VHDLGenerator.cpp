@@ -343,14 +343,10 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   std::string componentName = "fp_" + comp.getType(); // TODO decide on naming convention
   int numInputPorts;
   int numOutputPorts;
-  if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") { // assume that input and output actors always have same number of ports
-    numInputPorts = 1;
-    numOutputPorts = 1;
-  } else {
-    numInputPorts = comp.getInputPorts().size();
-    numOutputPorts = comp.getOutputPorts().size();
-  }
-
+  // TODO assert that component is not an INPUT/OUTPUT
+  numInputPorts = comp.getInputPorts().size();
+  numOutputPorts = comp.getOutputPorts().size();
+  // TODO check for constant value components
   // every component requires clock and reset ports
   outputStream << "component " << componentName << " is\n"
                << "port (\n"
