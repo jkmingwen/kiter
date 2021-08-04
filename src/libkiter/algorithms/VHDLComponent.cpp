@@ -24,12 +24,18 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
   lifespan = 0;
   FPCName = "default";
-  if (isNumber(componentType)) {
-    isConstVal = true;
-    value = atof(componentType.c_str());
-  } else {
+  // check if component type is a float
+  char* pEnd;
+  float numericValue = strtof(componentType.c_str(), &pEnd);
+  // pEnd will be a character if there are any characters in componentType (therefore not a float)
+  // and numericValue will be 0 if strtof fails to convert string to float; check for both in case
+  // we have a componentType of "0"
+  if (*pEnd && numericValue == 0) {
     isConstVal = false;
     value = 0;
+  } else {
+    isConstVal = true;
+    value = numericValue;
   }
 }
 
@@ -87,17 +93,6 @@ void VHDLComponent::setLifespan(int lifespan) {
 
 void VHDLComponent::setFPCName(std::string newName) {
   this->FPCName = newName;
-}
-
-// checks if string is a number by checking if we can successfully convert it to a float
-bool isNumber(std::string componentType) {
-  char* strEnd;
-  double numericValue = strtod(componentType.c_str(), &strEnd);
-  if (*strEnd) {
-    return false;
-  } else {
-    return true;
-  }
 }
 
 std::string VHDLComponent::printStatus() {

@@ -14,8 +14,6 @@ namespace models {
   class Dataflow;
 }
 
-bool isNumber(std::string componentType);
-
 class VHDLComponent {
  public:
   // VHDLComponent();
@@ -49,6 +47,6 @@ class VHDLComponent {
   int lifespan;
   std::string FPCName; // for use in instantiating FPC-AXI interface
   bool isConstVal;
-  double value;
+  float value;
 };
 #endif /* VHDL_COMPONENT_H_ */
