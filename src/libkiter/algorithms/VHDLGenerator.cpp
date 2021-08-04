@@ -80,6 +80,25 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
 
 }
 
+void algorithms::generateConstOperator(std::string compDir,
+                                       std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string operatorFileName = "const_value";
+  vhdlOutput.open(compDir + operatorFileName + ".vhd");
+  std::ifstream compReference(referenceDir + operatorFileName + ".vhd");
+  std::string fileContent;
+  if (compReference.is_open()) {
+    while (std::getline(compReference, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    compReference.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << operatorFileName
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
+}
+
 // Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                                      std::string referenceDir) {
@@ -110,34 +129,36 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN"};
 
-  if (comp.getType() == "INPUT" || comp.getType() == "OUTPUT") {
-    // TODO generate ports for top level component
-  } else {
-    generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
-    vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
-    std::string fileContent;
-    std::string operatorName = comp.getFPCName();
-    std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
-                                                           {"$FLOPOCO_OP_NAME", operatorName},
-                                                           {"$COMPONENT_NAME", componentName},
-                                                           {"$OP_LIFESPAN", std::to_string(comp.getLifespan())}};
-    if (operatorRef.is_open()) {
-      while (std::getline(operatorRef, fileContent)) {
-        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-          size_t pos = fileContent.find(word);
-          if (pos != std::string::npos) {
-            fileContent.replace(pos, word.length(),
-                                replacementWords[word]);
+  if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+    if (comp.getType() == "const_val") {
+      generateConstOperator(compDir, referenceDir);
+    } else { // FP operators
+      generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
+      vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
+      std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
+      std::string fileContent;
+      std::string operatorName = comp.getFPCName();
+      std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
+                                                             {"$FLOPOCO_OP_NAME", operatorName},
+                                                             {"$COMPONENT_NAME", componentName},
+                                                             {"$OP_LIFESPAN", std::to_string(comp.getLifespan())}};
+      if (operatorRef.is_open()) {
+        while (std::getline(operatorRef, fileContent)) {
+          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+            size_t pos = fileContent.find(word);
+            if (pos != std::string::npos) {
+              fileContent.replace(pos, word.length(),
+                                  replacementWords[word]);
+            }
           }
+          vhdlOutput << fileContent << std::endl;
         }
-        vhdlOutput << fileContent << std::endl;
+        operatorRef.close();
+        vhdlOutput.close();
+      } else {
+        std::cout << "Reference file for flopoco_axi_interface does not exist/not found!"
+                  << std::endl;
       }
-      operatorRef.close();
-      vhdlOutput.close();
-    } else {
-      std::cout << "Reference file for flopoco_axi_interface does not exist/not found!"
-                << std::endl;
     }
   }
 }
@@ -340,7 +361,12 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
 
 std::string algorithms::generateComponent(VHDLComponent comp) {
   std::stringstream outputStream;
-  std::string componentName = "fp_" + comp.getType(); // TODO decide on naming convention
+  std::string componentName;
+  if (comp.getType() == "const_val") {
+    componentName = comp.getType();
+  } else { // FP operator
+    componentName = "fp_" + comp.getType(); // TODO decide on naming convention
+  }
   int numInputPorts;
   int numOutputPorts;
   // TODO assert that component is not an INPUT/OUTPUT
@@ -480,10 +506,19 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
   for (auto &op : circuit.getComponentMap()) {
     if (op.second.getType() != "INPUT" && op.second.getType() != "OUTPUT") {
       std::string opName = op.second.getType();
+      if (op.second.getType() == "const_val") {
+        operatorPrefix = "";
+      }
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
-                   << " : " << operatorPrefix << opName << "\n"
-                   << "port map (\n"
+                   << " : " << operatorPrefix << opName << "\n" << std::endl;
+      if (op.second.getType() == "const_val") {
+        outputStream << "generic map (\n"
+                     << "    " << "value => " << "\""
+                     << op.second.getBinaryValue() << "\"" << "\n)\n"
+                     << std::endl;
+      }
+      outputStream << "port map (\n"
                    << "    " << "clk => " << "clk,\n"
                    << "    " << "rst => " << "rst,\n"
                    << std::endl;

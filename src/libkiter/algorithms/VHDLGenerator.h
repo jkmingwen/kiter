@@ -24,6 +24,7 @@ namespace algorithms {
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
                          bool isBufferless);
+  void generateConstOperator(std::string compDir, std::string referenceDir);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,

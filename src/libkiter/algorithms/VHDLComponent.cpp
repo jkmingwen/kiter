@@ -27,7 +27,6 @@ std::string floatToBinary(float f)
     }
     p--;
   }
-  outputStream << std::endl;
 
   return outputStream.str();
 }
@@ -59,6 +58,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     value = 0;
   } else {
     isConstVal = true;
+    componentType = "const_val";
     value = numericValue;
     std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
     binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
@@ -105,6 +105,10 @@ std::string VHDLComponent::getFPCName() {
   return this->FPCName;
 }
 
+std::string VHDLComponent::getBinaryValue() {
+  return this->binaryValue;
+}
+
 void VHDLComponent::setName(std::string newName) {
   this->componentName = newName;
 }
@@ -145,8 +149,9 @@ std::string VHDLComponent::printStatus() {
   }
   outputStream << "\tIs constant?";
   if (this->isConstVal) {
-    outputStream << " Y, value of " << this->value
-                 << ", " << this->binaryValue << std::endl;
+    outputStream << " Y\n"
+                 <<"\t\tValue: " << this->value << "\n"
+                 << "\t\tBinary rep: " << this->binaryValue << std::endl;
   } else {
     outputStream << " N" << std::endl;
   }

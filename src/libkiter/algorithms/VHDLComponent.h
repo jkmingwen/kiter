@@ -31,6 +31,7 @@ class VHDLComponent {
   std::vector<std::string> getOutputEdges();
   std::string getType();
   int getLifespan();
+  std::string getBinaryValue();
   std::string getFPCName();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
@@ -49,7 +50,7 @@ class VHDLComponent {
   std::vector<std::string> outputEdges;
   int lifespan;
   std::string FPCName; // for use in instantiating FPC-AXI interface
-  bool isConstVal;
+  bool isConstVal; // true if component generates a constant value (const_val.vhd)
   float value;
   std::string binaryValue; // binary representation of 'value'
 };
