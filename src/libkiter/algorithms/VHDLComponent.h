@@ -7,12 +7,15 @@
 #ifndef VHDL_COMPONENT_H_
 #define VHDL_COMPONENT_H_
 
+#include <bitset>
 #include <models/Dataflow.h>
 #include <string>
 
 namespace models {
   class Dataflow;
 }
+
+std::string floatToBinary(float f); // for binary representation of constant value components
 
 class VHDLComponent {
  public:
@@ -48,5 +51,6 @@ class VHDLComponent {
   std::string FPCName; // for use in instantiating FPC-AXI interface
   bool isConstVal;
   float value;
+  std::string binaryValue; // binary representation of 'value'
 };
 #endif /* VHDL_COMPONENT_H_ */

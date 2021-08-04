@@ -8,6 +8,30 @@
 #include <models/Dataflow.h>
 #include "VHDLComponent.h"
 
+// returns binary representation of float
+// adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
+std::string floatToBinary(float f)
+{
+  std::stringstream outputStream;
+  size_t size = sizeof(f);
+  unsigned char * p = (unsigned char *) &f;
+  p += size-1;
+  while (size--)
+  {
+    int n;
+    for (n=0; n<8; n++)
+    {
+      char bit = ('0' + (*p & 128 ? 1 : 0));
+      outputStream << bit;
+      *p <<= 1;
+    }
+    p--;
+  }
+  outputStream << std::endl;
+
+  return outputStream.str();
+}
+
 VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   actor = a;
   componentName = dataflow->getVertexName(a);
@@ -36,6 +60,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   } else {
     isConstVal = true;
     value = numericValue;
+    std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
+    binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
   }
 }
 
@@ -119,7 +145,8 @@ std::string VHDLComponent::printStatus() {
   }
   outputStream << "\tIs constant?";
   if (this->isConstVal) {
-    outputStream << " Y, value of " << this->value << std::endl;
+    outputStream << " Y, value of " << this->value
+                 << ", " << this->binaryValue << std::endl;
   } else {
     outputStream << " N" << std::endl;
   }
