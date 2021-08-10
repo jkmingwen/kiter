@@ -494,7 +494,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
 std::string algorithms::generatePortMapping(VHDLCircuit circuit,
                                             bool isBufferless) {
   std::stringstream outputStream;
-  std::string operatorPrefix = "fp_";
+  std::string operatorPrefix;
 
   outputStream << "begin\n" << std::endl;
   // operator port mappings
@@ -508,6 +508,11 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       std::string opName = op.second.getType();
       if (op.second.getType() == "const_val") {
         operatorPrefix = "";
+      } else if (op.second.getType() == "Proj") {
+        opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
+        operatorPrefix = "";
+      } else {
+        operatorPrefix = "fp_";
       }
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
