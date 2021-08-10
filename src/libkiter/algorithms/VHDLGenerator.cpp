@@ -130,7 +130,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   "$COMPONENT_NAME", "$OP_LIFESPAN"};
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-    if (comp.getType() == "const_val") {
+    if (comp.getType() == "const_value") {
       generateConstOperator(compDir, referenceDir);
     } else { // FP operators
       generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
@@ -362,7 +362,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
 std::string algorithms::generateComponent(VHDLComponent comp) {
   std::stringstream outputStream;
   std::string componentName;
-  if (comp.getType() == "const_val") {
+  if (comp.getType() == "const_value") {
     componentName = comp.getType();
   } else { // FP operator
     componentName = "fp_" + comp.getType(); // TODO decide on naming convention
@@ -506,7 +506,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
   for (auto &op : circuit.getComponentMap()) {
     if (op.second.getType() != "INPUT" && op.second.getType() != "OUTPUT") {
       std::string opName = op.second.getType();
-      if (op.second.getType() == "const_val") {
+      if (op.second.getType() == "const_value") {
         operatorPrefix = "";
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
@@ -517,7 +517,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
                    << " : " << operatorPrefix << opName << "\n" << std::endl;
-      if (op.second.getType() == "const_val") {
+      if (op.second.getType() == "const_value") {
         outputStream << "generic map (\n"
                      << "    " << "value => " << "\""
                      << op.second.getBinaryValue() << "\"" << "\n)\n"

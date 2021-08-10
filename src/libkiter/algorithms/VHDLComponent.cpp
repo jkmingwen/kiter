@@ -58,7 +58,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     value = 0;
   } else {
     isConstVal = true;
-    componentType = "const_val";
+    componentType = "const_value";
     value = numericValue;
     std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
     binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
