@@ -372,10 +372,14 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // TODO assert that component is not an INPUT/OUTPUT
   numInputPorts = comp.getInputPorts().size();
   numOutputPorts = comp.getOutputPorts().size();
-  // TODO check for constant value components
   // every component requires clock and reset ports
-  outputStream << "component " << componentName << " is\n"
-               << "port (\n"
+  outputStream << "component " << componentName << " is" << std::endl;
+  if (comp.getType() == "const_value") {
+    outputStream << "generic (\n"
+                 << "    " << "value : std_logic_vector(ram_width - 1 downto 0)\n"
+                 << ");" << std::endl;
+  }
+  outputStream << "port (\n"
                << "    " << "clk : in std_logic;\n"
                << "    " << "rst : in std_logic;\n"
                << std::endl;
