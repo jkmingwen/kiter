@@ -546,17 +546,24 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
                      << " => " << receiveSigs[DATA] << ",\n" << std::endl;
         inPortCount++;
       }
-
+      std::string lineEnder = ",";
+      size_t numOutPorts = outputSignals.size();
+      size_t iteration = 1;
       for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
         sendSigs = generateSendSigNames(outPort, circuit);
+        if (iteration == numOutPorts) {
+          lineEnder = "";  // last port mapping terminates without a comma
+        }
         outputStream << "    " << "op_out_ready_" << std::to_string(outPortCount)
                      << " => " << sendSigs[READY] << ",\n"
                      << "    " << "op_out_valid_" << std::to_string(outPortCount)
                      << " => " << sendSigs[VALID] << ",\n"
                      << "    " << "op_out_data_" << std::to_string(outPortCount)
-                     << " => " << sendSigs[DATA] << std::endl; // TODO check for last entry
+                     << " => " << sendSigs[DATA] << lineEnder
+                     << std::endl;
         outPortCount++;
+        iteration++;
       }
 
       outputStream << ");\n" << std::endl;
