@@ -386,6 +386,9 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each input port:
   for (auto i = 0; i < numInputPorts; i++) {
     std::string portName = "    op_in";
+    if (comp.getType() == "const_value") {
+      portName = "    in";
+    }
     outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
                  << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
                  << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
@@ -396,6 +399,9 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each output port:
   for (auto i = 0; i < numOutputPorts; i++) {
     std::string portName = "    op_out";
+    if (comp.getType() == "const_value") {
+      portName = "    out";
+    }
     outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
                  << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
     if (i + 1 == numOutputPorts) {
@@ -546,12 +552,16 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       }
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
+        std::string sigPrefix = "op_";
+        if (op.second.getType() == "const_value" || op.second.getType() == "Proj") {
+          sigPrefix = "";
+        }
         receiveSigs = generateReceiveSigNames(inPort, circuit);
-        outputStream << "    " << "op_in_ready_" << std::to_string(inPortCount)
+        outputStream << "    " << sigPrefix << "in_ready_" << std::to_string(inPortCount)
                      << " => " << receiveSigs[READY] << ",\n"
-                     << "    " << "op_in_valid_" << std::to_string(inPortCount)
+                     << "    " << sigPrefix << "in_valid_" << std::to_string(inPortCount)
                      << " => " << receiveSigs[VALID] << ",\n"
-                     << "    " << "op_in_data_" << std::to_string(inPortCount)
+                     << "    " << sigPrefix << "in_data_" << std::to_string(inPortCount)
                      << " => " << receiveSigs[DATA] << ",\n" << std::endl;
         inPortCount++;
       }
@@ -560,15 +570,19 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       size_t iteration = 1;
       for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
+        std::string sigPrefix = "op_";
+        if (op.second.getType() == "const_value" || op.second.getType() == "Proj") {
+          sigPrefix = "";
+        }
         sendSigs = generateSendSigNames(outPort, circuit);
         if (iteration == numOutPorts) {
           lineEnder = "";  // last port mapping terminates without a comma
         }
-        outputStream << "    " << "op_out_ready_" << std::to_string(outPortCount)
+        outputStream << "    " << sigPrefix << "out_ready_" << std::to_string(outPortCount)
                      << " => " << sendSigs[READY] << ",\n"
-                     << "    " << "op_out_valid_" << std::to_string(outPortCount)
+                     << "    " << sigPrefix << "out_valid_" << std::to_string(outPortCount)
                      << " => " << sendSigs[VALID] << ",\n"
-                     << "    " << "op_out_data_" << std::to_string(outPortCount)
+                     << "    " << sigPrefix << "out_data_" << std::to_string(outPortCount)
                      << " => " << sendSigs[DATA] << lineEnder
                      << std::endl;
         outPortCount++;
