@@ -87,6 +87,19 @@ std::string VHDLCircuit::getOperatorFPCName(std::string opType) {
   }
 }
 
+// return output counts for each occurance of the given operator
+std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
+  std::map<int, int> outputCounts; // number of outputs, and their occurances
+  // std::vector<int> outputCounts;
+  for (auto &comp : this->componentMap) {
+    if (comp.second.getType() == opType) {
+      outputCounts[(comp.second.getOutputPorts()).size()]++;
+    }
+  }
+  // assert(outputCounts.size() == this->getOperatorCount(opType));
+  return outputCounts;
+}
+
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
 }
@@ -113,6 +126,13 @@ std::string VHDLCircuit::printStatus() {
     outputStream << "\t" << op.first << ", "
                  << op.second << " (" << this->getOperatorLifespan(op.first)
                  << ")\n";
+    if (op.first == "Proj") {
+      outputStream << "\t\tOutput counts, occurances:" << std::endl;
+      std::map<int, int> outputCounts = this->getNumOutputs(op.first);
+      for (auto &out : outputCounts) {
+        outputStream << "\t\t  " << out.first << ", " << out.second << std::endl;
+      }
+    }
   }
   outputStream << std::endl;
   outputStream << "Top-level input port names:" << std::endl;

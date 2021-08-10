@@ -37,6 +37,7 @@ class VHDLCircuit {
   std::string getName();
   int getOperatorLifespan(std::string opType);
   std::string getOperatorFPCName(std::string opType);
+  std::map<int, int> getNumOutputs(std::string opType);
   void setName(std::string);
 
  private:

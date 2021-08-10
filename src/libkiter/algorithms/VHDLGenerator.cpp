@@ -73,8 +73,16 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
-    generateOperator(circuit.getFirstComponentByType(op.first),
-                     compDir, compRefDir);
+    // special case for Proj operators (need to account for different number of outputs)
+    if (op.first == "Proj") {
+      std::map<int, int> outputCounts;
+      outputCounts = circuit.getNumOutputs(op.first);
+      generateSplitterOperators(compDir, compRefDir, outputCounts);
+    } else {
+      generateOperator(circuit.getFirstComponentByType(op.first),
+                       compDir, compRefDir);
+    }
+
   }
   generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
 
@@ -97,6 +105,30 @@ void algorithms::generateConstOperator(std::string compDir,
     std::cout << "Reference file for " << operatorFileName
               << " does not exist/not found!" << std::endl; // TODO turn into assert
   }
+}
+
+// Generate AXI splitter components for the appropriate number of outputs Proj components in the circuit
+void algorithms::generateSplitterOperators(std::string compDir, std::string referenceDir,
+                                           std::map<int, int> outputCounts) {
+  std::ofstream vhdlOutput;
+  std::string operatorFileName = "axi_splitter";
+  for (auto &i : outputCounts) {
+    std::string refFileName = operatorFileName + "_" + std::to_string(i.first) + ".vhd";
+    std::ifstream compReference(referenceDir + refFileName);
+    std::string fileContent;
+    vhdlOutput.open(compDir + refFileName);
+    if (compReference.is_open()) {
+      while (std::getline(compReference, fileContent)) {
+        vhdlOutput << fileContent << std::endl;
+      }
+      compReference.close();
+      vhdlOutput.close();
+    } else {
+      std::cout << "Reference file for " << refFileName
+                << " does not exist/not found!" << std::endl; // TODO turn into assert
+    }
+  }
+
 }
 
 // Copy FloPoCo operator from reference file to project
@@ -217,8 +249,15 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   for (auto const &op : operatorMap) {
     if (op.first != "INPUT" && op.first != "OUTPUT") {
-      vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                 << std::endl;
+      if (op.first == "Proj") {
+        std::map<int, int> outputCounts;
+        outputCounts = circuit.getNumOutputs(op.first);
+        vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+      } else {
+        vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
+                   << std::endl;
+      }
+
     }
   }
   if (!isBufferless) {
@@ -441,6 +480,53 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
                << "ram_width - 1 downto 0)\n"
                << std::endl;
   outputStream << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
+// generate one AXI splitter component for every number of output present
+// TODO find a way to generalise splitter component and generation
+std::string algorithms::generateSplitterComponents(std::map<int, int> outputCounts) {
+  std::stringstream outputStream;
+  std::string componentName;
+  for (auto &i : outputCounts) {
+    componentName = "axi_splitter_" + std::to_string(i.first);
+    int numInputPorts = 1; // NOTE hardcoded here that AXI splitter components all have 1 input
+    int numOutputPorts = i.first;
+    // every component requires clock and reset ports
+    outputStream << "component " << componentName << " is\n"
+                 << "generic (\n"
+                 << "    " << "bit_width : natural := ram_width\n"
+                 << ");\n"
+                 << "port (\n"
+                 << "    " << "clk : in std_logic;\n"
+                 << "    " << "rst : in std_logic;\n"
+                 << std::endl;
+    // Specify ready, valid, and data ports for each input port:
+    for (auto i = 0; i < numInputPorts; i++) {
+      std::string portName = "    in";
+      outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                   << "ram_width - 1 downto 0);\n"
+                   << std::endl;
+    }
+
+    // Specify ready, valid, and data ports for each output port:
+    for (auto i = 0; i < numOutputPorts; i++) {
+      std::string portName = "    out";
+      outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+      if (i + 1 == numOutputPorts) {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+      } else {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0);\n" << std::endl;
+      }
+    }
+
+    outputStream << "); end component;\n" << std::endl;
+  }
   return outputStream.str();
 }
 
