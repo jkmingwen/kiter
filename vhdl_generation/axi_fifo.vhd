@@ -1,12 +1,20 @@
+-- I did some research and found this tutorial looking very simular to Uros buffer
+--  https://vhdlwhiz.com/axi-fifo/
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+
+
+
 entity axi_fifo is
   generic (
     ram_width : natural;
-    ram_depth : natural
+    ram_depth : natural;
+    ram_init  : natural := 0
     );
+
   port (
     buffer_clk : in std_logic;
     buffer_rst : in std_logic;
@@ -23,147 +31,70 @@ entity axi_fifo is
     );
 end axi_fifo;
 
-architecture rtl of axi_fifo is
+architecture simulation of axi_fifo is
 
-  -- the fifo is full when the ram contains ram_depth - 1 elements
-  type ram_type is array (0 to ram_depth - 1) of std_logic_vector(buffer_in_data'range);
-  signal ram : ram_type;
-
-  -- newest element at head, oldest element at tail
-  subtype index_type is natural range ram_type'range;
-  signal head : index_type;
-  signal tail : index_type;
-  signal count : index_type;
-  signal head_delayed : index_type;
-  signal tail_delayed : index_type;
-  signal count_delayed : index_type;
-
-  -- internal versions of entity signals with mode "out"
-  signal in_ready_local : std_logic;
-  signal out_valid_local : std_logic;
-
-  -- true the clock cycle after a simultaneous read and write
-  signal read_while_write_delayed : std_logic;
-
-  -- increment or wrap the index if this transaction is valid
-  function next_index(
-    index : index_type;
-    ready : std_logic;
-    valid : std_logic) return index_type is
-  begin
-    if ready = '1' and valid = '1' then
-      if index = index_type'high then
-        return index_type'low;
-      else
-        return index + 1;
-      end if;
-    end if;
-
-    return index;
-  end function;
-
-  -- logic for handling the head and tail signals
-  procedure index_proc(
-    signal clk : in std_logic;
-    signal rst : in std_logic;
-    signal index : inout index_type;
-    signal ready : in std_logic;
-    signal valid : in std_logic) is
-  begin
-    if rising_edge(clk) then
-      if rst = '1' then
-        index <= index_type'low;
-      else
-        index <= next_index(index, ready, valid);
-      end if;
-    end if;
-  end procedure;
 
 begin
 
-  -- copy internal signals to output
-  buffer_in_ready <= in_ready_local;
-  buffer_out_valid <= out_valid_local;
+  assert (ram_depth >= 0) report "Buffer size must be positive or zero" severity error;
+  assert (ram_init >= 0) report "Initial marking must be positive or zero" severity error;
+  assert (ram_depth >= ram_init) report "Initial marking of buffer overflow" severity error;
 
-  -- update head index on write
-  proc_head : index_proc(buffer_clk, buffer_rst, head, in_ready_local, buffer_in_valid);
+  gen_fifo_zero: if (ram_depth = 0) generate
 
-  -- update tail index on read
-  proc_tail : index_proc(buffer_clk, buffer_rst, tail, buffer_out_ready, out_valid_local);
+    -- instance
+    DUT : entity work.axi_fifo_zero
+      generic map ( ram_width => ram_width
+                    )
+      port map ( buffer_clk        => buffer_clk,
+                 buffer_rst      => buffer_rst,
+                 buffer_in_ready => buffer_in_ready,
+                 buffer_in_valid => buffer_in_valid,
+                 buffer_in_data  => buffer_in_data,
+                 buffer_out_ready  => buffer_out_ready,
+                 buffer_out_valid  => buffer_out_valid,
+                 buffer_out_data => buffer_out_data);
 
-  -- write to and read from the ram
-  proc_ram : process(buffer_clk)
-  begin
-    if rising_edge(buffer_clk) then
-      ram(head) <= buffer_in_data;
-      buffer_out_data <= ram(next_index(tail, buffer_out_ready, out_valid_local));
-    end if;
-  end process;
+  end generate gen_fifo_zero;
 
-  -- find the number of elements in the ram
-  proc_count : process(head, tail)
-  begin
-    if head < tail then
-      count <= head - tail + ram_depth;
-    else
-      count <= head - tail;
-    end if;
-  end process;
 
-  -- delay the count by one clock cycles
-  proc_count_p1 : process(buffer_clk)
-  begin
-    if rising_edge(buffer_clk) then
-      if buffer_rst = '1' then
-        count_delayed <= 0;
-      else
-        count_delayed <= count;
-      end if;
-    end if;
-  end process;
+  gen_fifo_one: if (ram_depth = 1) generate
 
-  -- set in_ready when the ram isn't full
-  proc_in_ready : process(count)
-  begin
-    if count < ram_depth - 1 then
-      in_ready_local <= '1';
-    else
-      in_ready_local <= '0';
-    end if;
-  end process;
+    -- instance
+    DUT : entity work.axi_fifo_one
+      generic map ( ram_width => ram_width ,
+                    ram_init => ram_init
+                    )
+      port map ( buffer_clk        => buffer_clk,
+                 buffer_rst      => buffer_rst,
+                 buffer_in_ready => buffer_in_ready,
+                 buffer_in_valid => buffer_in_valid,
+                 buffer_in_data  => buffer_in_data,
+                 buffer_out_ready  => buffer_out_ready,
+                 buffer_out_valid  => buffer_out_valid,
+                 buffer_out_data => buffer_out_data);
 
-  -- detect simultaneous read and write operations
-  proc_read_while_write_p1: process(buffer_clk)
-  begin
-    if rising_edge(buffer_clk) then
-      if buffer_rst = '1' then
-        read_while_write_delayed <= '0';
+  end generate gen_fifo_one;
 
-      else
-        read_while_write_delayed <= '0';
-        if in_ready_local = '1' and buffer_in_valid = '1' and
-          buffer_out_ready = '1' and out_valid_local = '1' then
-          read_while_write_delayed <= '1';
-        end if;
-      end if;
-    end if;
-  end process;
 
-  -- set out_valid when the ram outputs valid data
-  proc_out_valid : process(count, count_delayed, read_while_write_delayed)
-  begin
-    out_valid_local <= '1';
+  gen_fifo_n: if (ram_depth > 1) generate
 
-    -- if the ram is empty or was empty in the prev cycle
-    if count = 0 or count_delayed = 0 then
-      out_valid_local <= '0';
-    end if;
+    -- instance
+    DUT : entity work.axi_fifo_n
+      generic map ( ram_width => ram_width ,
+                    ram_depth => ram_depth ,
+                    ram_init => ram_init
+                    )
+      port map ( buffer_clk        => buffer_clk,
+                 buffer_rst      => buffer_rst,
+                 buffer_in_ready => buffer_in_ready,
+                 buffer_in_valid => buffer_in_valid,
+                 buffer_in_data  => buffer_in_data,
+                 buffer_out_ready  => buffer_out_ready,
+                 buffer_out_valid  => buffer_out_valid,
+                 buffer_out_data => buffer_out_data);
 
-    -- if simultaneous read and write when almost empty
-    if count = 1 and read_while_write_delayed = '1' then
-      out_valid_local <= '0';
-    end if;
+  end generate gen_fifo_n;
 
-  end process;
 
 end architecture;
