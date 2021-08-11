@@ -53,7 +53,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   // pEnd will be a character if there are any characters in componentType (therefore not a float)
   // and numericValue will be 0 if strtof fails to convert string to float; check for both in case
   // we have a componentType of "0"
-  if (*pEnd && numericValue == 0) {
+if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) { // NOTE treat UI components as const_val for now
+    isConstVal = true;
+    numericValue = strtof((compType.substr(compType.find("_") + 1)).c_str(), &pEnd); // UI components have "type_defaultvalue" type naming convention; set value to default
+    value = numericValue;
+    std::string fpcFloatPrefix = (numericValue ? "01" : "00");
+    binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
+  } else if (*pEnd && numericValue == 0) {
     isConstVal = false;
     value = 0;
   } else {
