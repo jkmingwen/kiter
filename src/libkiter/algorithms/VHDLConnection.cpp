@@ -13,7 +13,8 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   connectionName = dataflow->getEdgeName(e);
   id = dataflow->getEdgeId(e);
   dataType = "float"; // assuming only data type is float for now
-  bufferSize = 1; // can't have infinite buffer
+  bufferSize = 256; // TODO replace with buffer size from XML
+  initialTokenCount = dataflow->getPreload(e);
   dataTypeWidth = 34; // assume data type is float (using FloPoCo float representation)
   srcPort = dataflow->getEdgeInputPortName(e);
   dstPort = dataflow->getEdgeOutputPortName(e);
@@ -47,6 +48,10 @@ TOKEN_UNIT VHDLConnection::getBufferSize() {
   return this->bufferSize;
 }
 
+TOKEN_UNIT VHDLConnection::getInitialTokenCount() {
+  return this->initialTokenCount;
+}
+
 int VHDLConnection::getTypeWidth() {
   return this->dataTypeWidth;
 }
@@ -57,6 +62,15 @@ void VHDLConnection::setName(std::string newName) {
 
 void VHDLConnection::setId(ARRAY_INDEX newId) {
   this->id = newId;
+}
+
+void VHDLConnection::setBufferSize(TOKEN_UNIT size) {
+  this->bufferSize = size;
+}
+
+void VHDLConnection::setInitialTokenCount(TOKEN_UNIT count) {
+  assert(count <= this->bufferSize);
+  this->initialTokenCount = count;
 }
 
 std::string VHDLConnection::printStatus() {

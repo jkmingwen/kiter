@@ -26,9 +26,12 @@ class VHDLConnection {
   std::string getDstPort();
   std::string getType();
   TOKEN_UNIT getBufferSize();
+  TOKEN_UNIT getInitialTokenCount();
   int getTypeWidth();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
+  void setBufferSize(TOKEN_UNIT size);
+  void setInitialTokenCount(TOKEN_UNIT count);
   std::string printStatus();
 
  private:
@@ -37,6 +40,7 @@ class VHDLConnection {
   ARRAY_INDEX id;
   std::string dataType;
   TOKEN_UNIT bufferSize;
+  TOKEN_UNIT initialTokenCount;
   int dataTypeWidth;
   std::string srcPort;
   std::string dstPort;

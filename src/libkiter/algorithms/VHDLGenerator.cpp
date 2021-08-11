@@ -463,7 +463,8 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   outputStream << "component axi_fifo is\n"
                << "generic (\n"
                << "    " << "ram_width : natural;\n"
-               << "    " << "ram_depth : natural\n"
+               << "    " << "ram_depth : natural;\n"
+               << "    " << "ram_init : natural\n"
                << ");\n"
                << "port (\n"
                << "    " << "buffer_clk : in std_logic;\n"
@@ -539,6 +540,9 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   std::vector<std::string> componentNames = {"axi_merger", "delay", "store_send"};
   if (!isBufferless) {
     componentNames.push_back("axi_fifo");
+    componentNames.push_back("axi_fifo_n");
+    componentNames.push_back("axi_fifo_one");
+    componentNames.push_back("axi_fifo_zero");
   }
 
   for (const auto &component : componentNames) {
@@ -695,8 +699,9 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
         outputStream << "fifo_" + std::to_string(bufferCount)
                      << " : " << bCompName << "\n"
                      <<"generic map (\n"
-                     << "    " << "ram_width,\n"
-                     << "    " << "ram_depth\n)\n"
+                     << "    " << "ram_width => ram_width,\n"
+                     << "    " << "ram_depth => " << buffer.second.getBufferSize() << ",\n"
+                     << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
                      << std::endl;
         outputStream << "port map (\n"
                      << "    " << bName << "_clk => " << "clk,\n"
