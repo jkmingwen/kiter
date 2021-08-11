@@ -53,9 +53,10 @@ class VHDLCircuit {
      the keys are the "types" of the operators, which are taken from the actor
      types in the SDF file generated from the Faust application */
   std::map<std::string, int> operatorLifespans = {{"add", 14}, {"prod", 3},
-                                                  {"div", 29}};
+                                                  {"div", 29}, {"sqrt", 22}};
   std::map<std::string, std::string> FPCNames = {{"add", "FPAdd_8_23_F400_uid2"},
                                                  {"prod", "FPMult_8_23_8_23_8_23_uid2_F400_uid3"},
-                                                 {"div", "FPDiv_8_23_F400_uid2"}};
+                                                 {"div", "FPDiv_8_23_F400_uid2"},
+                                                 {"sqrt", "FPSqrt_8_23"}};
 };
 #endif /* VHDL_CIRCUIT_H_ */
