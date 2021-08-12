@@ -22,7 +22,7 @@ std::string add_block ( std::string name , TIME_UNIT start, TIME_UNIT duration, 
 std::string printers::PeriodicScheduling2DOT    (models::Dataflow* const  dataflow,  models::Scheduling& sched ,   TIME_UNIT last_execution_end_at, bool ,  double xscale , double yscale ) {
 
   std::ostringstream returnStream;
-  scheduling_t periodic_scheduling = sched.getTaskSchedule();
+  scheduling_t scheduling = sched.getTaskSchedule();
   static double label_node_width  =   0.5;
   static double label_node_height = yscale *  0.10;
 
@@ -46,9 +46,9 @@ std::string printers::PeriodicScheduling2DOT    (models::Dataflow* const  datafl
       //VERBOSE_ASSERT(dataflow->getPhasesQuantity(t) == 1, "Support only SDF");
   	  auto Ni = dataflow->getNi(t);
 
-  	  auto period = periodic_scheduling[tid].first;
+  	  auto period = scheduling[tid].periodic_starts.first;
   	  auto duration = dataflow->getVertexTotalDuration(t);
-  	  auto starts = periodic_scheduling[tid].second;
+  	  auto starts = scheduling[tid].periodic_starts.second;
 
         for (EXEC_COUNT iter = 0 ; iter < (Ni/(EXEC_COUNT)starts.size()) ; iter++) {
       	  for (auto  start : starts) {
@@ -63,8 +63,8 @@ std::string printers::PeriodicScheduling2DOT    (models::Dataflow* const  datafl
       auto tid = dataflow->getVertexId(t); 
       //VERBOSE_ASSERT(dataflow->getPhasesQuantity(t) == 1, "Support only SDF");
 
-	  auto period = periodic_scheduling[tid].first;
-	  auto starts = periodic_scheduling[tid].second;
+	  auto period = scheduling[tid].periodic_starts.first;
+	  auto starts = scheduling[tid].periodic_starts.second;
 
 	  double current_task_y_pos = yscale * -(fontsize + 1) * idx ;
 
@@ -831,4 +831,65 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 	dataflow->reset_computation();
 }
 
+std::string printers::Scheduling2Tikz    (const models::Scheduling& scheduling) {
+
+
+	  std::ostringstream returnStream;
+
+	  auto task_count     = scheduling.getDataflow()->getVerticesCount();
+	  auto scale          = 3.0;
+	  auto execution_time = 30;
+	  auto ticks          = 2.0;
+
+	  std::vector<std::string> task_colors = {"red", "blue", "green"};
+
+	  returnStream << "\\begin{scheduling}{" << task_count << "}{" << execution_time << "}{" << scale << "}{" << ticks << "}" << std::endl;
+
+
+	  auto task_index = 0;
+	  for (auto item : scheduling.getTaskSchedule()) {
+		  task_index++;
+		  std::string init_execution_format = "bottom color=" +  task_colors[(task_index - 1) % task_colors.size()] +  "!60,  top color= white";
+		  std::string periodic_fexecution_format = "bottom color="+  task_colors[(task_index - 1) % task_colors.size()] +  "!40,  top color= white";
+		  std::string periodic_sexecution_format = "bottom color="+  task_colors[(task_index - 1) % task_colors.size()] +  "!20,  top color= white";
+		  auto taskId = item.first;
+		  auto df = scheduling.getDataflow();
+		  auto t = df->getVertexById(taskId);
+		  std::string task_name = df->getVertexName(t);
+		  auto phi = df->getPhasesQuantity(t);
+		  returnStream << "% Task " << taskId << std::endl;
+
+		  auto istarts = item.second.initial_starts;
+		  auto pstarts = item.second.periodic_starts;
+
+		  auto exec_index = 0;
+
+		  for (auto cstart : istarts) {
+			  exec_index++;
+			  auto cphi = (exec_index - 1) % phi + 1;
+			  auto cdur = df->getVertexDuration(t, cphi);
+			  returnStream << "% Init Start " << cstart << std::endl;
+			  returnStream << "\\addexecution[" << init_execution_format  << "]{" <<  task_index << "}{$" << task_name << "_{" << cphi << "}$}{" << cdur << "}{" << cstart << "}" << std::endl;
+
+		  }
+		  auto period = pstarts.first;
+		  for (auto cstart : pstarts.second) {
+			  exec_index++;
+			  auto cphi = (exec_index - 1) % phi + 1;
+			  auto cdur = df->getVertexDuration(t, cphi);
+			  returnStream << "% Periodic Start " << cstart  << " with period " << period << std::endl;
+			  returnStream << "\\addperiodictask[" << periodic_sexecution_format  << "]{" <<  task_index << "}{$" << task_name << "_{" << cphi << "}$}{" << cdur << "}{" << cstart << "}{" << period << "}{" << 0 << "}" << std::endl;
+			  returnStream << "\\addexecution[" << periodic_fexecution_format  << "]{" <<  task_index << "}{$" << task_name << "_{" << cphi << "}$}{" << cdur << "}{" << cstart << "}" << std::endl;
+
+
+		  }
+	  }
+
+
+
+
+	  returnStream << "\\end{scheduling}" << std::endl;
+	  return returnStream.str();
+
+}
 

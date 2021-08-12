@@ -42,6 +42,7 @@
 
  	VERBOSE_ASSERT(dataflow->has_repetition_vector(), "Repetition vector failed.");
 
+ 	VERBOSE_INFO ("Start 1 periodic Scheduling");
 
     // STEP 1 - generate initial vector
     periodicity_vector_t kvector;
@@ -51,6 +52,9 @@
     }}
 
  	models::EventGraph* eg =  generateKPeriodicEventGraph(dataflow,&kvector);
+
+ 	VERBOSE_INFO("EventGraph Latex\n" << eg->printTikz());
+
  	std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res = eg->MinCycleRatio();
 
  	TIME_UNIT res = howard_res.first ;
@@ -76,13 +80,13 @@
 
  	{ForEachEvent(eg,e) {
  	        models::SchedulingEvent se = eg->getEvent(e);
- 	        EXEC_COUNT ti = se.getTaskId();
+ 	        ARRAY_INDEX ti = se.getTaskId();
  	        TIME_UNIT start = eg->getStartingTime(e);
  	        Vertex v = dataflow->getVertexById(ti);
  	        TIME_UNIT period = kvector[v] *  dataflow->getPhasesQuantity(v) * omega / dataflow->getNi(v);
 
- 	       scheduling_result[(ARRAY_INDEX)ti].first = period;
- 	      scheduling_result[(ARRAY_INDEX)ti].second.push_back(start);
+ 	        scheduling_result[ti].periodic_starts.first = period;
+ 	        scheduling_result[ti].periodic_starts.second.push_back(start);
 
  	        //sheduling_result[v].first = period;
  	        //sheduling_result[v].second.push_back(start);
