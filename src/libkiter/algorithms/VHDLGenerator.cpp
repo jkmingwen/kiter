@@ -73,11 +73,13 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
-    // special case for Proj operators (need to account for different number of outputs)
+    // track number of outputs for cases where operator can have different number of outputs
+    std::map<int, int> outputCounts;
+    outputCounts = circuit.getNumOutputs(op.first);
     if (op.first == "Proj") {
-      std::map<int, int> outputCounts;
-      outputCounts = circuit.getNumOutputs(op.first);
       generateSplitterOperators(compDir, compRefDir, outputCounts);
+    } else if (op.first == "const_value") {
+      generateConstOperator(compDir, compRefDir, outputCounts);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir);
@@ -89,25 +91,61 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
 }
 
 void algorithms::generateConstOperator(std::string compDir,
-                                       std::string referenceDir) {
+                                       std::string referenceDir,
+                                       std::map<int, int> outputCounts) {
   std::ofstream vhdlOutput;
   std::string operatorFileName = "const_value";
-  vhdlOutput.open(compDir + operatorFileName + ".vhd");
-  std::ifstream compReference(referenceDir + operatorFileName + ".vhd");
-  std::string fileContent;
-  if (compReference.is_open()) {
-    while (std::getline(compReference, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
+  std::string wordsToReplace[] = {"$N_OUTPUTS", "$PORT_LIST", "$PORT_CONNECTIONS"};
+  // generate separate const_value components for given number of outputs required
+  for (auto &i : outputCounts) {
+    vhdlOutput.open(compDir + operatorFileName + "_" + std::to_string(i.first)
+                    + ".vhd");
+    std::stringstream portListStream;
+    std::stringstream portConnStream;
+    std::string portList;
+    std::string portConn;
+    std::string portListEnd = ";\n";
+    // generate port names and behaviour
+    for (int p = 0; p < i.first; p++) {
+      if (p + 1 == i.first) {
+        portListEnd = "";
+      }
+      portListStream << "out_ready_" << p << " : in std_logic;\n";
+      portListStream << "out_valid_" << p << " : out std_logic;\n";
+      portListStream << "out_data_" << p
+                     << " : out std_logic_vector (33 downto 0) := (others => '0')"
+                     << portListEnd << std::endl;
+      portConnStream << "out_valid_" << p << " <= '1';\n";
+      portConnStream << "out_data_" << p << " <= value;\n" << std::endl;
     }
-    compReference.close();
-    vhdlOutput.close();
-  } else {
-    std::cout << "Reference file for " << operatorFileName
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+    portList = portListStream.str();
+    portConn = portConnStream.str();
+    std::map<std::string, std::string> replacementWords = {{"$N_OUTPUTS", std::to_string(i.first)},
+                                                           {"$PORT_LIST", portList},
+                                                           {"$PORT_CONNECTIONS", portConn}};
+    std::ifstream compReference(referenceDir + operatorFileName + "_n_outputs.vhd");
+    std::string fileContent;
+    if (compReference.is_open()) {
+      while (std::getline(compReference, fileContent)) {
+        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+          size_t pos = fileContent.find(word);
+          if (pos != std::string::npos) {
+            fileContent.replace(pos, word.length(),
+                                replacementWords[word]);
+          }
+        }
+        vhdlOutput << fileContent << std::endl;
+      }
+      compReference.close();
+      vhdlOutput.close();
+    } else {
+      std::cout << "Reference file for " << operatorFileName
+                << " does not exist/not found!" << std::endl; // TODO turn into assert
+    }
   }
 }
 
-// Generate AXI splitter components for the appropriate number of outputs Proj components in the circuit
+// Generate AXI splitter components for the Proj components in the circuit (defined by number of outputs)
 void algorithms::generateSplitterOperators(std::string compDir, std::string referenceDir,
                                            std::map<int, int> outputCounts) {
   std::ofstream vhdlOutput;
@@ -136,7 +174,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                                      std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
-  std::string operatorFileName = "fp_" + comp.getType() + "_flopoco"; // TODO decide on naming convention (might be better to just name reference files the same as component types)
+  std::string operatorFileName = "fp_" + comp.getType() + "_flopoco"; // TODO decide on naming convention
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
   std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
   std::string fileContent;
@@ -163,7 +201,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
     if (comp.getType() == "const_value") {
-      generateConstOperator(compDir, referenceDir);
+      // generateConstOperator(compDir, referenceDir);
     } else { // FP operators
       generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
       vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
@@ -249,10 +287,13 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   for (auto const &op : operatorMap) {
     if (op.first != "INPUT" && op.first != "OUTPUT") {
+      std::map<int, int> outputCounts;
+      outputCounts = circuit.getNumOutputs(op.first);
       if (op.first == "Proj") {
-        std::map<int, int> outputCounts;
-        outputCounts = circuit.getNumOutputs(op.first);
         vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+      } else if (op.first == "const_value" ||
+                 circuit.getFirstComponentByType(op.first).isConst()) {
+        vhdlOutput << generateConstComponents(outputCounts) << std::endl;
       } else {
         vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
                    << std::endl;
@@ -484,7 +525,43 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   return outputStream.str();
 }
 
-// generate one AXI splitter component for every number of output present
+// generate one AXI splitter component for each corresponding Proj component (defined by number of outputs)
+// TODO find a way to generalise splitter component and generation
+std::string algorithms::generateConstComponents(std::map<int, int> outputCounts) {
+  std::stringstream outputStream;
+  std::string componentName;
+  for (auto &i : outputCounts) {
+    componentName = "const_value_" + std::to_string(i.first);
+    int numOutputPorts = i.first;
+    // every component requires clock and reset ports
+    outputStream << "component " << componentName << " is\n"
+                 << "generic (\n"
+                 << "    " << "bit_width : natural := ram_width\n"
+                 << ");\n"
+                 << "port (\n"
+                 << "    " << "clk : in std_logic;\n"
+                 << "    " << "rst : in std_logic;\n"
+                 << std::endl;
+    // Specify ready, valid, and data ports for each output port:
+    for (auto i = 0; i < numOutputPorts; i++) {
+      std::string portName = "    out";
+      outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+      if (i + 1 == numOutputPorts) {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+      } else {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0);\n" << std::endl;
+      }
+    }
+
+    outputStream << "); end component;\n" << std::endl;
+  }
+  return outputStream.str();
+}
+
+// generate one AXI splitter component for each corresponding Proj component (defined by number of outputs)
 // TODO find a way to generalise splitter component and generation
 std::string algorithms::generateSplitterComponents(std::map<int, int> outputCounts) {
   std::stringstream outputStream;
@@ -594,7 +671,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
 std::string algorithms::generatePortMapping(VHDLCircuit circuit,
                                             bool isBufferless) {
   std::stringstream outputStream;
-  std::string operatorPrefix;
+  std::string componentName;
 
   outputStream << "begin\n" << std::endl;
   // operator port mappings
@@ -606,18 +683,19 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
   for (auto &op : circuit.getComponentMap()) {
     if (op.second.getType() != "INPUT" && op.second.getType() != "OUTPUT") {
       std::string opName = op.second.getType();
-      if (op.second.getType() == "const_value") {
-        operatorPrefix = "";
+      if (op.second.isConst()) {
+        opName = op.second.getType() + "_" + std::to_string((op.second).getOutputPorts().size());
+        componentName = "const_value_" + std::to_string((op.second).getOutputPorts().size());
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
-        operatorPrefix = "";
+        componentName = opName;
       } else {
-        operatorPrefix = "fp_";
+        componentName = "fp_" + opName;
       }
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
-                   << " : " << operatorPrefix << opName << "\n" << std::endl;
-      if (op.second.getType() == "const_value") {
+                   << " : " << componentName << "\n" << std::endl;
+      if (op.second.isConst()) {
         outputStream << "generic map (\n"
                      << "    " << "value => " << "\""
                      << op.second.getBinaryValue() << "\"" << "\n)\n"
@@ -643,7 +721,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.getType() == "const_value" || op.second.getType() == "Proj") {
+        if (op.second.isConst() || op.second.getType() == "Proj") {
           sigPrefix = "";
         }
         receiveSigs = generateReceiveSigNames(inPort, circuit);
@@ -661,7 +739,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.getType() == "const_value" || op.second.getType() == "Proj") {
+        if (op.second.isConst() || op.second.getType() == "Proj") {
           sigPrefix = "";
         }
         sendSigs = generateSendSigNames(outPort, circuit);

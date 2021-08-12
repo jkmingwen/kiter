@@ -24,7 +24,8 @@ namespace algorithms {
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
                          bool isBufferless);
-  void generateConstOperator(std::string compDir, std::string referenceDir);
+  void generateConstOperator(std::string compDir, std::string referenceDir,
+                             std::map<int, int> outputCounts);
   void generateSplitterOperators(std::string compDir, std::string referenceDir,
                                  std::map<int, int> outputCounts);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
@@ -35,6 +36,7 @@ namespace algorithms {
                        bool isBufferless);
   std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
+  std::string generateConstComponents(std::map<int, int> outputCounts);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);
   void generateAXIInterfaceComponents(std::string componentDir,
                                       std::string referenceDir,

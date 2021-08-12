@@ -126,7 +126,7 @@ std::string VHDLCircuit::printStatus() {
     outputStream << "\t" << op.first << ", "
                  << op.second << " (" << this->getOperatorLifespan(op.first)
                  << ")\n";
-    if (op.first == "Proj") {
+    if (op.first == "Proj" || op.first == "const_value") {
       outputStream << "\t\tOutput counts, occurances:" << std::endl;
       std::map<int, int> outputCounts = this->getNumOutputs(op.first);
       for (auto &out : outputCounts) {

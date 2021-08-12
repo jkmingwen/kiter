@@ -111,6 +111,10 @@ std::string VHDLComponent::getFPCName() {
   return this->FPCName;
 }
 
+bool VHDLComponent::isConst() {
+  return this->isConstVal;
+}
+
 std::string VHDLComponent::getBinaryValue() {
   return this->binaryValue;
 }
