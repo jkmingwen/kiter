@@ -24,7 +24,7 @@ architecture connections of $ENTITY_NAME is
   constant operator_lifespan : integer := $OP_LIFESPAN;
   constant bit_width : integer := 34;
   -- lower-level component declaration;
-  component axi_merger is
+  component axi_merger$NEGATE is
     generic (bit_width : integer);
     port ( clk        : in std_logic;
            reset      : in std_logic;
