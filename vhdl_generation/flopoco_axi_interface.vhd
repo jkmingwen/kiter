@@ -78,7 +78,7 @@ architecture connections of $ENTITY_NAME is
 
 begin
 
-  axm: axi_merger
+  axm: axi_merger$NEGATE
     generic map ( bit_width => bit_width )
     port map ( clk        => clk,
                reset      => rst,
