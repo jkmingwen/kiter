@@ -100,6 +100,26 @@ std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
   return outputCounts;
 }
 
+// return name of the channel between two actors
+std::string VHDLCircuit::getConnectionNameFromComponents(std::string srcActorName,
+                                                         std::string dstActorName) {
+  std::vector<std::string> srcOutputEdges;
+  std::vector<std::string> dstInputEdges;
+  for (auto& comp : this->componentMap) {
+    if (comp.second.getName() == srcActorName) {
+      srcOutputEdges = comp.second.getOutputEdges();
+    } else if (comp.second.getName() == dstActorName) {
+      dstInputEdges = comp.second.getInputEdges();
+    }
+  }
+  std::vector<std::string> connName;
+  std::set_intersection(srcOutputEdges.begin(), srcOutputEdges.end(),
+                        dstInputEdges.begin(), dstInputEdges.end(),
+                        connName.begin());
+  assert(connName.size() == 1); // there can only be a single edge between two channels
+  return connName[0];
+}
+
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
 }

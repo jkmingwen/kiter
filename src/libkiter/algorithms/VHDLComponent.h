@@ -54,6 +54,7 @@ class VHDLComponent {
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
   float value;
   std::string binaryValue; // binary representation of 'value'
+  std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
                                       "vslider"}; // NOTE temporary workaround to handle UI components
 };

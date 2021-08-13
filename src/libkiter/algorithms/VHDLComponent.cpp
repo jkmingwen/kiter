@@ -43,6 +43,20 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       outputPorts.push_back(dataflow->getEdgeInputPortName(outEdge));
       outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
+  // identify order of arguments for binary operators
+  // adapted from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+  std::string argFromName = dataflow->getVertexName(a);
+  size_t pos = argFromName.find("_");
+  argFromName.erase(0, pos + 1); // first ID before '_' is name of actor
+  std::string argName;
+  while ((pos = argFromName.find("_")) != std::string::npos) {
+    argName = argFromName.substr(0, pos);
+    argOrder.push_back(argName);
+    argFromName.erase(0, pos + 1);
+    if (argFromName.find("_") == std::string::npos) { // last element from split string
+      argOrder.push_back(argFromName);
+    }
+  }
   std::string compType = dataflow->getVertexType(a);
   componentType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
   lifespan = 0;
@@ -141,6 +155,14 @@ std::string VHDLComponent::printStatus() {
   outputStream << "\nActor " << this->getName() << " (ID: " << this->getId()
                << ")" << std::endl;
   outputStream << "\tType: " << this->getType() << std::endl;
+  if (argOrder.size()) {
+    outputStream << "\tArgument actors:" << std::endl;
+    int order = 1;
+    for (auto& i : argOrder) {
+      outputStream << "\t\t" << order << ". " << i << std::endl;
+      order++;
+    }
+  }
   outputStream << "\tInput ports: " << std::endl;
   for (auto portName : this->getInputPorts()) {
     outputStream << "\t\t" << portName << std::endl;
