@@ -146,13 +146,13 @@ std::string VHDLCircuit::printStatus() {
     outputStream << "\t" << op.first << ", "
                  << op.second << " (" << this->getOperatorLifespan(op.first)
                  << ")\n";
-    if (op.first == "Proj" || op.first == "const_value") {
+    // if (op.first == "Proj" || op.first == "const_value") {
       outputStream << "\t\tOutput counts, occurances:" << std::endl;
       std::map<int, int> outputCounts = this->getNumOutputs(op.first);
       for (auto &out : outputCounts) {
         outputStream << "\t\t  " << out.first << ", " << out.second << std::endl;
       }
-    }
+    // }
   }
   outputStream << std::endl;
   outputStream << "Top-level input port names:" << std::endl;
@@ -165,4 +165,18 @@ std::string VHDLCircuit::printStatus() {
   }
 
   return outputStream.str();
+}
+
+// return list of actor names who have more than their expected number of outputs
+// this is for use in generating a bash script to distribute these outputs into Proj operators
+std::vector<std::string> VHDLCircuit::getMultiOutActors() {
+  std::vector<std::string> actorNames;
+  for (auto &comp : this->componentMap) {
+    if ((comp.second).getType() != "Proj" && !(comp.second).isConst()) {
+      if ((comp.second).getOutputEdges().size() > 1) { // if operator has more than one output
+        actorNames.push_back((comp.second).getName());
+      }
+    }
+  }
+  return actorNames;
 }

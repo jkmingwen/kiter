@@ -63,6 +63,16 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   generateOperators(circuit, componentDir, bufferless);
   generateCircuit(circuit, dirName, bufferless);
   std::cout << circuit.printStatus() << std::endl;
+  if (circuit.getMultiOutActors().size()) {
+    std::cout << "Actors with abnormal number of outputs detected:\n"
+              << "\t1. Edit and run generated bash script "
+              << "(merge_outs_" << dataflow->getGraphName() << ".sh)\n"
+              << "\t2. Re-run VHDL generation on the resulting SDF (" << dataflow->getGraphName()
+              << "_merged.xml)" << std::endl;
+    generateMergingScript(circuit.getMultiOutActors(), dataflow->getGraphName(),
+                          dirName, "./vhdl_generation/");
+  }
+  std::cout << "VHDL files generated in: " << dirName << std::endl;
   return;
 }
 
@@ -812,4 +822,40 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
   }
 
   return outputStream.str();
+}
+
+// generate a bash script to distribute the outputs of certain actors using additional Proj operators
+void algorithms::generateMergingScript(std::vector<std::string> actorNames, std::string graphName,
+                                          std::string dirName, std::string referenceDir) {
+  std::ofstream bashOutput;
+  std::string scriptName = "merge_outs";
+  std::stringstream nameList;
+  std::string wordsToReplace[] = {"#OUTPUT_DIR", "#GRAPH_NAME",
+                                  "#MERGED_NAME", "#ACTOR_NAMES"};
+  for (auto& name : actorNames) {
+    nameList << name << " ";
+  }
+  std::map<std::string, std::string> replacementWords = {{"#OUTPUT_DIR", "\"" + dirName + "\""},
+                                                         {"#GRAPH_NAME", "\"" + graphName + ".dsp-sig.xml" + "\""},
+                                                         {"#MERGED_NAME", "\"" + graphName + "_merged.xml" + "\""},
+                                                         {"#ACTOR_NAMES", nameList.str()}};
+  std::ifstream scriptRef(referenceDir + scriptName + ".sh");
+  std::string scriptContent;
+  bashOutput.open(dirName + scriptName + "_" + graphName + ".sh");
+  if (scriptRef.is_open()) {
+    while (std::getline(scriptRef, scriptContent)) {
+      for (const std::string &word : wordsToReplace) {
+        size_t pos = scriptContent.find(word);
+        if (pos != std::string::npos) {
+          scriptContent.replace(pos, word.length(),
+                                replacementWords[word]);
+        }
+      }
+      bashOutput << scriptContent << std::endl;
+    }
+    bashOutput.close();
+  } else {
+      std::cout << "Reference file for " << scriptName
+                << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
 }
