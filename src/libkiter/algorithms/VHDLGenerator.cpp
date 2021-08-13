@@ -536,7 +536,7 @@ std::string algorithms::generateConstComponents(std::map<int, int> outputCounts)
     // every component requires clock and reset ports
     outputStream << "component " << componentName << " is\n"
                  << "generic (\n"
-                 << "    " << "bit_width : natural := ram_width\n"
+                 << "    " << "value : std_logic_vector(ram_width - 1 downto 0)\n"
                  << ");\n"
                  << "port (\n"
                  << "    " << "clk : in std_logic;\n"
