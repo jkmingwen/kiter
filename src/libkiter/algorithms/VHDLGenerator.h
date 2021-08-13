@@ -26,6 +26,8 @@ namespace algorithms {
                          bool isBufferless);
   void generateConstOperator(std::string compDir, std::string referenceDir,
                              std::map<int, int> outputCounts);
+  void generateConversionOperators(VHDLComponent comp, std::string compDir,
+                                   std::string referenceDir);
   void generateSplitterOperators(std::string compDir, std::string referenceDir,
                                  std::map<int, int> outputCounts);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,

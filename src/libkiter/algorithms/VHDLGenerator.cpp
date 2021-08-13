@@ -90,6 +90,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
       generateSplitterOperators(compDir, compRefDir, outputCounts);
     } else if (op.first == "const_value") {
       generateConstOperator(compDir, compRefDir, outputCounts);
+    } else if (op.first == "float" || op.first == "int") {
+      generateConversionOperators(circuit.getFirstComponentByType(op.first),
+                                  compDir, compRefDir);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir);
@@ -152,6 +155,26 @@ void algorithms::generateConstOperator(std::string compDir,
       std::cout << "Reference file for " << operatorFileName
                 << " does not exist/not found!" << std::endl; // TODO turn into assert
     }
+  }
+}
+
+// Generate type conversion operators
+void algorithms::generateConversionOperators(VHDLComponent comp, std::string compDir,
+                                             std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string entityName = "to_" + comp.getType();
+  vhdlOutput.open(compDir + entityName + ".vhd");
+  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+  std::string fileContent;
+  if (operatorRef.is_open()) {
+    while (std::getline(operatorRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    operatorRef.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << comp.getType()
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
   }
 }
 
@@ -465,6 +488,8 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   std::string componentName;
   if (comp.getType() == "const_value") {
     componentName = comp.getType();
+  } else if (comp.getType() == "float" || comp.getType() == "int") {
+    componentName = "to_" + comp.getType();
   } else { // FP operator
     componentName = "fp_" + comp.getType(); // TODO decide on naming convention
   }
@@ -487,7 +512,8 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each input port:
   for (auto i = 0; i < numInputPorts; i++) {
     std::string portName = "    op_in";
-    if (comp.getType() == "const_value") {
+    if (comp.getType() == "const_value" || comp.getType() == "float" ||
+        comp.getType() == "int") {
       portName = "    in";
     }
     outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
@@ -500,7 +526,8 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each output port:
   for (auto i = 0; i < numOutputPorts; i++) {
     std::string portName = "    op_out";
-    if (comp.getType() == "const_value") {
+    if (comp.getType() == "const_value" || comp.getType() == "float" ||
+        comp.getType() == "int") {
       portName = "    out";
     }
     outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
@@ -711,6 +738,8 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
+      } else if (op.second.getType() == "float" || op.second.getType() == "int") {
+        componentName = "to_" + opName;
       } else {
         componentName = "fp_" + opName;
       }
@@ -743,7 +772,8 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj") {
+        if (op.second.isConst() || op.second.getType() == "Proj" ||
+            op.second.getType() == "float" || op.second.getType() == "int") {
           sigPrefix = "";
         }
         receiveSigs = generateReceiveSigNames(inPort, circuit);
@@ -761,7 +791,8 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj") {
+        if (op.second.isConst() || op.second.getType() == "Proj" ||
+            op.second.getType() == "float" || op.second.getType() == "int") {
           sigPrefix = "";
         }
         sendSigs = generateSendSigNames(outPort, circuit);
