@@ -292,6 +292,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
 
   // 3. Specify architecture (behaviour) of operator type
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
+  std::map<int, int> constOutputs;
   for (auto const &op : operatorMap) {
     if (op.first != "INPUT" && op.first != "OUTPUT") {
       std::map<int, int> outputCounts;
@@ -300,13 +301,16 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
         vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
       } else if (op.first == "const_value" ||
                  circuit.getFirstComponentByType(op.first).isConst()) {
-        vhdlOutput << generateConstComponents(outputCounts) << std::endl;
+        constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
       } else {
         vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
                    << std::endl;
       }
 
     }
+  }
+  if (constOutputs.size()) {
+    vhdlOutput << generateConstComponents(constOutputs) << std::endl;
   }
   if (!isBufferless) {
     vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
