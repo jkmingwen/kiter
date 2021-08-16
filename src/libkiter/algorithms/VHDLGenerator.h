@@ -47,7 +47,8 @@ namespace algorithms {
                                                 VHDLCircuit circuit);
   std::vector<std::string> generateReceiveSigNames(std::string dstPort,
                                                    VHDLCircuit circuit);
-  std::string generatePortMapping(VHDLCircuit circuit, bool isBufferless);
+  std::string generatePortMapping(VHDLCircuit circuit, bool isBufferless,
+                                  bool noOperators);
   void generateMergingScript(std::vector<std::string> actorNames, std::string graphName,
                              std::string dirName, std::string referenceDir);
 }

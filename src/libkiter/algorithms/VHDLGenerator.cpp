@@ -280,6 +280,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   int numInputPorts = circuit.getOperatorCount("INPUT");
   int numOutputPorts = circuit.getOperatorCount("OUTPUT");
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
+  bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") && operatorMap.count("OUTPUT"); // edge case where Faust program has no operators (only inputs/outputs)
 
   vhdlOutput.open(outputDir + graphName + ".vhd"); // instantiate VHDL file
   // 1. Define libraries used
@@ -324,31 +325,33 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
 
   // 3. Specify architecture (behaviour) of operator type
+  // component declaration
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
-  std::map<int, int> constOutputs;
-  for (auto const &op : operatorMap) {
-    if (op.first != "INPUT" && op.first != "OUTPUT") {
-      std::map<int, int> outputCounts;
-      outputCounts = circuit.getNumOutputs(op.first);
-      if (op.first == "Proj") {
-        vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
-      } else if (op.first == "const_value" ||
-                 circuit.getFirstComponentByType(op.first).isConst()) {
-        constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
-      } else {
-        vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                   << std::endl;
-      }
+  if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
+    std::map<int, int> constOutputs;
+    for (auto const &op : operatorMap) {
+      if (op.first != "INPUT" && op.first != "OUTPUT") {
+        std::map<int, int> outputCounts;
+        outputCounts = circuit.getNumOutputs(op.first);
+        if (op.first == "Proj") {
+          vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+        } else if (op.first == "const_value" ||
+                   circuit.getFirstComponentByType(op.first).isConst()) {
+          constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+        } else {
+          vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
+                     << std::endl;
+        }
 
+      }
     }
-  }
-  if (constOutputs.size()) {
-    vhdlOutput << generateConstComponents(constOutputs) << std::endl;
+    if (constOutputs.size()) {
+      vhdlOutput << generateConstComponents(constOutputs) << std::endl;
+    }
   }
   if (!isBufferless) {
     vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
   }
-
   // Track top-level input and output signals
   std::vector<std::string> inSignalNames;
   std::vector<std::string> outSignalNames;
@@ -401,21 +404,34 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inCount);
       signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
       signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
-      if (isBufferless) {
+      if (isBufferless && !noOperators) {
         circuit.addInputPort(connection.second.getName(), signalNames);
+      } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
+        circuit.addInputPort(connection.second.getSrcPort(), signalNames);
       } else {
-        circuit.addInputPort(connection.second.getDstPort(), signalNames);
+        if (!noOperators) {
+          circuit.addInputPort(connection.second.getDstPort(), signalNames);
+        } else { // if there are only inputs/outputs, then the top-level input port is the output port of the INPUT operators
+          circuit.addInputPort(connection.second.getSrcPort(), signalNames);
+        }
       }
       inCount++;
-    } else if (isTopOutput) {
+    }
+    if (isTopOutput) {
       std::vector<std::string> signalNames(3);
       signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outCount);
       signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
       signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
-      if (isBufferless) {
+      if (isBufferless && !noOperators) {
         circuit.addOutputPort(connection.second.getName(), signalNames);
+      } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
+        circuit.addOutputPort(connection.second.getDstPort(), signalNames);
       } else {
-        circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+        if (!noOperators) {
+          circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+        } else { // if there are only inputs/outputs, then the top-level input port is the input port of the OUTPUT operators
+          circuit.addOutputPort(connection.second.getDstPort(), signalNames);
+        }
       }
       outCount++;
     }
@@ -433,7 +449,26 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
                         circuit.getOutputPorts().count(connection.second.getSrcPort()));
     }
     // only generate signal names for non-input/output ports
-    if (isNotTopInOut) {
+    if (!noOperators) {
+      if (isNotTopInOut) {
+        if (isBufferless) {
+          std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
+          dataSignals.push_back(signalNames[DATA]);
+          validReadySignals.push_back(signalNames[VALID]);
+          validReadySignals.push_back(signalNames[READY]);
+        } else {
+          // separate send/receive signals required due to buffers between components
+          std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
+          std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
+          dataSignals.push_back(sendSignals[DATA]);
+          dataSignals.push_back(receiveSignals[DATA]);
+          validReadySignals.push_back(sendSignals[VALID]);
+          validReadySignals.push_back(receiveSignals[VALID]);
+          validReadySignals.push_back(sendSignals[READY]);
+          validReadySignals.push_back(receiveSignals[READY]);
+        }
+      }
+    } else {
       if (isBufferless) {
         std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
         dataSignals.push_back(signalNames[DATA]);
@@ -453,34 +488,39 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
     }
   }
   // data signals
-  vhdlOutput << "signal ";
-  std::string delim = ",";
-  int counter = 0;
-  for (auto &signal : dataSignals) {
-    counter++;
-    if (counter == dataSignals.size()) {
-      delim = "";
+  if (!noOperators) { // no need to use internal signals if no operators
+    vhdlOutput << "signal ";
+    std::string delim = ",";
+    int counter = 0;
+    for (auto &signal : dataSignals) {
+      counter++;
+      if (counter == dataSignals.size()) {
+        delim = "";
+      }
+      vhdlOutput << signal << delim << std::endl;
     }
-    vhdlOutput << signal << delim << std::endl;
-  }
-  vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
-             << std::endl;
-  // valid and ready signals
-  vhdlOutput << "signal ";
-  delim = ",";
-  counter = 0;
-  for (auto &signal : validReadySignals) {
-    counter++;
-    if (counter == validReadySignals.size()) {
-      delim = "";
+    vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
+               << std::endl;
+    // valid and ready signals
+    vhdlOutput << "signal ";
+    delim = ",";
+    counter = 0;
+    for (auto &signal : validReadySignals) {
+      counter++;
+      if (counter == validReadySignals.size()) {
+        delim = "";
+      }
+      vhdlOutput << signal << delim << std::endl;
     }
-    vhdlOutput << signal << delim << std::endl;
-  }
-  vhdlOutput << " : std_logic;\n" << std::endl;
-  vhdlOutput << generatePortMapping(circuit, isBufferless) << std::endl;
-  vhdlOutput << "end behaviour;" << std::endl; // TODO don't hardcode architecture name
+    vhdlOutput << " : std_logic;\n" << std::endl;
+    vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
+    vhdlOutput << "end behaviour;" << std::endl;
 
-  vhdlOutput.close();
+    vhdlOutput.close();
+  } else {
+    vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
+    vhdlOutput << "end behaviour;" << std::endl;
+  }
 }
 
 std::string algorithms::generateComponent(VHDLComponent comp) {
@@ -717,14 +757,14 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
   return receiveSignals;
 }
 
+// Generate port mapping for each operator in the circuit
 std::string algorithms::generatePortMapping(VHDLCircuit circuit,
-                                            bool isBufferless) {
+                                            bool isBufferless, bool noOperators) {
   std::stringstream outputStream;
   std::string componentName;
+  std::map<std::string, int> opCount(circuit.getOperatorMap());
 
   outputStream << "begin\n" << std::endl;
-  // operator port mappings
-  std::map<std::string, int> opCount(circuit.getOperatorMap());
   // initialise counts
   for (auto &c : opCount) {
     c.second = 0;
@@ -824,8 +864,15 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       // only generate buffer between non-input/output components
       if (!(circuit.getInputPorts().count(buffer.second.getDstPort()) ||
             circuit.getOutputPorts().count(buffer.second.getSrcPort()))) {
-        std::vector<std::string> sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-        std::vector<std::string> receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+        std::vector<std::string> sendSigs;
+        std::vector<std::string> receiveSigs;
+        if (!noOperators) {
+          sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
+          receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+        } else { // NOTE workaround to deal with case where only inputs/outputs in Faust program
+          sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
+          receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
+        }
         // ram width/depth, reset, and clock mappings
         outputStream << "fifo_" + std::to_string(bufferCount)
                      << " : " << bCompName << "\n"
@@ -849,6 +896,17 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
                      << std::endl;
         bufferCount++;
       }
+    }
+  } else {
+    if (noOperators) { // just need to pass through data if no operators
+      std::vector<std::string> sendSigs;
+      std::vector<std::string> receiveSigs;
+      for (auto &buffer : circuit.getConnectionMap()) {
+        sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
+        receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
+      }
+      outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
+      outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
     }
   }
 
