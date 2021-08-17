@@ -1,7 +1,7 @@
 #!/bin/bash
-KITER_DIR="/home/jaime/Documents/research/dataflow/kiter-jaime/" #"/path/to/kiter"
+KITER_DIR="/home/jaime/VivadoProjects/dadop/kiter/" # /path/to/kiter
 KITER="${KITER_DIR}/Release/bin/kiter"
-GRAPH_DIR="/home/jaime/Documents/research/hdl/faust_demo_programs/freeverb/"#"/path/to/generated/vhdl_code"
+GRAPH_DIR="/home/jaime/Documents/research/hdl/faust_demo_programs/graph_name/" # /path/to/generated/vhdl_code
 GRAPH_NAME=#GRAPH_NAME
 RES_NAME=#MERGED_NAME
 
