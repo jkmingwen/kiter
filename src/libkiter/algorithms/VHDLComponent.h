@@ -33,6 +33,7 @@ class VHDLComponent {
   int getLifespan();
   std::string getBinaryValue();
   std::string getFPCName();
+  std::vector<std::string> getArgOrder();
   bool isConst();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);

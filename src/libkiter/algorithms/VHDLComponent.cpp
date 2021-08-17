@@ -127,6 +127,10 @@ std::string VHDLComponent::getFPCName() {
   return this->FPCName;
 }
 
+std::vector<std::string> VHDLComponent::getArgOrder() {
+  return this->argOrder;
+}
+
 bool VHDLComponent::isConst() {
   return this->isConstVal;
 }

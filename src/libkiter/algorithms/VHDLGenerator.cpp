@@ -799,7 +799,6 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       // input/output mappings
       int inPortCount = 0;
       int outPortCount = 0;
-      // TODO define input operator mapping outside of input port for loop
       std::vector<std::string> inputSignals;
       std::vector<std::string> outputSignals;
       if (isBufferless) {
@@ -808,6 +807,21 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else {
         inputSignals = op.second.getInputPorts();
         outputSignals = op.second.getOutputPorts();
+      }
+      if (op.second.getArgOrder().size()) { // match input signals to argument ordering given by name
+        assert(op.second.getArgOrder().size() == inputSignals.size());
+        inputSignals.clear();
+        for (auto i = 0; i < op.second.getArgOrder().size(); i++) {
+          std::string srcActorName = circuit.getComponentFullName(op.second.getArgOrder()[i]);
+          std::string dstActorName = op.second.getName();
+          if (isBufferless) {
+            inputSignals.push_back(circuit.getConnectionNameFromComponents(srcActorName,
+                                                                           dstActorName));
+          } else {
+            inputSignals.push_back(circuit.getDstPortBetweenComponents(srcActorName,
+                                                                       dstActorName));
+          }
+        }
       }
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);

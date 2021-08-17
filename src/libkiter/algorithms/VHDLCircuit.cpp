@@ -100,11 +100,12 @@ std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
   return outputCounts;
 }
 
-// return name of the channel between two actors
+// return name of the channel between two components
 std::string VHDLCircuit::getConnectionNameFromComponents(std::string srcActorName,
                                                          std::string dstActorName) {
   std::vector<std::string> srcOutputEdges;
   std::vector<std::string> dstInputEdges;
+
   for (auto& comp : this->componentMap) {
     if (comp.second.getName() == srcActorName) {
       srcOutputEdges = comp.second.getOutputEdges();
@@ -112,12 +113,44 @@ std::string VHDLCircuit::getConnectionNameFromComponents(std::string srcActorNam
       dstInputEdges = comp.second.getInputEdges();
     }
   }
-  std::vector<std::string> connName;
-  std::set_intersection(srcOutputEdges.begin(), srcOutputEdges.end(),
-                        dstInputEdges.begin(), dstInputEdges.end(),
-                        connName.begin());
-  assert(connName.size() == 1); // there can only be a single edge between two channels
+  std::vector<std::string>::iterator it;
+  std::vector<std::string> connName(std::max(srcOutputEdges.size(), dstInputEdges.size()));
+  it = std::set_intersection(srcOutputEdges.begin(), srcOutputEdges.end(),
+                             dstInputEdges.begin(), dstInputEdges.end(),
+                             connName.begin());
+  connName.resize(it - connName.begin());
+  assert(connName.size() == 1); // there can only be a single edge between two components
   return connName[0];
+}
+
+// return destination port of connection between two components
+std::string VHDLCircuit::getDstPortBetweenComponents(std::string srcActorName,
+                                                     std::string dstActorName) {
+  std::string connName = this->getConnectionNameFromComponents(srcActorName,
+                                                               dstActorName);
+  for (auto& conn : this->connectionMap) {
+    if (conn.second.getName() == connName) {
+      return conn.second.getDstPort();
+    }
+  }
+}
+
+// Looks for the component that starts with the given substring
+// and returns its full name
+// (helper function for 'getConnectionNameFromComponents').
+// Naming convention of 'actor_arg1_arg2' for binary operators
+// means that arg1 and arg2 would only contain the 'actor' part
+// of the naming convention.
+std::string VHDLCircuit::getComponentFullName(std::string partialName) {
+  std::vector<std::string> matchingNames;
+  for (auto& comp : this->componentMap) {
+    std::size_t found = comp.second.getName().find(partialName);
+    if (found == 0) {
+      matchingNames.push_back(comp.second.getName());
+    }
+  }
+  assert(matchingNames.size() == 1);
+  return matchingNames.front();
 }
 
 void VHDLCircuit::setName(std::string newName) {
