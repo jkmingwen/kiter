@@ -23,7 +23,7 @@ namespace algorithms {
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
-                         bool isBufferless);
+                         std::string refDirectory, bool isBufferless);
   void generateConstOperator(std::string compDir, std::string referenceDir,
                              std::map<int, int> outputCounts);
   void generateConversionOperators(VHDLComponent comp, std::string compDir,

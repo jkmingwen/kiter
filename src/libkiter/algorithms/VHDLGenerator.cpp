@@ -24,6 +24,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   bool bufferless = false;
   std::string dirName = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
   std::string componentDir = dirName + "/components/";
+  std::string referenceDir = "./kiter/vhdl_generation/";
   std::ofstream outputFile;
   VHDLCircuit circuit;
   circuit.setName(dataflow->getGraphName());
@@ -51,6 +52,18 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
               << std::endl;
   }
 
+  // define location of VHDL generation reference files
+  if (param_list.find("REFERENCE_DIR") != param_list.end()) {
+    referenceDir = param_list["REFERENCE_DIR"] + "/";
+    std::cout << "Looking in " << referenceDir
+              << " for VHDL generation reference files" << std::endl;
+  } else {
+    std::cout << "Looking in " << referenceDir
+              << " for VHDL generation reference files by default" << std::endl;
+    std::cout << "\tUse -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory"
+              << std::endl;
+  }
+
   // populate circuit object with components and connections based on dataflow
   {ForEachVertex(dataflow, actor) {
       VHDLComponent newComp(dataflow, actor);
@@ -60,7 +73,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  generateOperators(circuit, componentDir, bufferless);
+  generateOperators(circuit, componentDir, referenceDir, bufferless);
   generateCircuit(circuit, dirName, bufferless);
   std::cout << circuit.printStatus() << std::endl;
   if (circuit.getMultiOutActors().size()) {
@@ -70,16 +83,15 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
               << "\t2. Re-run VHDL generation on the resulting SDF (" << dataflow->getGraphName()
               << "_merged.xml)" << std::endl;
     generateMergingScript(circuit.getMultiOutActors(), dataflow->getGraphName(),
-                          dirName, "./vhdl_generation/");
+                          dirName, referenceDir);
   }
   std::cout << "VHDL files generated in: " << dirName << std::endl;
   return;
 }
 
 void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
-                                   bool isBufferless) {
+                                   std::string compRefDir, bool isBufferless) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
-  std::string compRefDir = "./vhdl_generation/";
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     std::cout << "Generate VHDL component file for " << op.first << std::endl;
