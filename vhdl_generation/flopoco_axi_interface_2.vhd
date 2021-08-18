@@ -24,7 +24,7 @@ architecture connections of $ENTITY_NAME is
   constant operator_lifespan : integer := $OP_LIFESPAN;
   constant bit_width : integer := 34;
   -- lower-level component declaration;
-  component axi_merger$NEGATE is
+  component axi_merger$AXM_TYPE is
     generic (bit_width : integer);
     port ( clk        : in std_logic;
            reset      : in std_logic;
@@ -78,7 +78,7 @@ architecture connections of $ENTITY_NAME is
 
 begin
 
-  axm: axi_merger$NEGATE
+  axm: axi_merger$AXM_TYPE
     generic map ( bit_width => bit_width )
     port map ( clk        => clk,
                reset      => rst,

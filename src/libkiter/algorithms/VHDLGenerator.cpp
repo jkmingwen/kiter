@@ -247,24 +247,28 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   std::string componentName = entityName + "_flopoco";
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$NEGATE"};
+                                  "$AXM_TYPE"};
+  std::string opInputCount = std::to_string(comp.getInputPorts().size());
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
     generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface.vhd");
+    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
+                              + "_" + opInputCount + ".vhd");
     std::string fileContent;
     std::string operatorName = comp.getFPCName();
-    std::string negate = "";
+    std::string axmType = "";
     if (comp.getType() == "diff") {
-      negate = "_negate";
+      axmType = "_negate";
+    } else if (comp.getInputPorts().size() == 1) {
+      axmType = "_one";
     }
     std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                            {"$FLOPOCO_OP_NAME", operatorName},
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", std::to_string(comp.getLifespan())},
-                                                           {"$NEGATE", negate}};
+                                                           {"$AXM_TYPE", axmType}};
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
         for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
@@ -715,7 +719,8 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
   std::vector<std::string> componentNames = {"axi_merger", "delay",
-                                             "store_send", "axi_merger_negate"};
+                                             "store_send", "axi_merger_negate",
+                                             "axi_merger_one"};
   if (!isBufferless) {
     componentNames.push_back("axi_fifo");
     componentNames.push_back("axi_fifo_n");
