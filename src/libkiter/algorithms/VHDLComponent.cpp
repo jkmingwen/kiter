@@ -85,6 +85,13 @@ if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) { // NOTE treat U
     std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
     binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
   }
+// check and track input/output data types
+ for (auto port : inputPorts) {
+   inputTypes[port.substr(port.find_last_of("_") + 1)]++;
+ }
+ for (auto port : outputPorts) {
+   outputTypes[port.substr(port.find_last_of("_") + 1)]++;
+ }
 }
 
 Vertex VHDLComponent::getActor() {
@@ -129,6 +136,14 @@ std::string VHDLComponent::getFPCName() {
 
 std::vector<std::string> VHDLComponent::getArgOrder() {
   return this->argOrder;
+}
+
+std::map<std::string, int> VHDLComponent::getInputTypes() {
+  return this->inputTypes;
+}
+
+std::map<std::string, int> VHDLComponent::getOutputTypes() {
+  return this->outputTypes;
 }
 
 bool VHDLComponent::isConst() {
@@ -184,6 +199,14 @@ std::string VHDLComponent::printStatus() {
   outputStream << "\tOutput edges: " << std::endl;
   for (auto portName : this->getOutputEdges()) {
     outputStream << "\t\t" << portName << std::endl;
+  }
+  outputStream << "\tInput types: " << std::endl;
+  for (auto inType : this->inputTypes) {
+    outputStream << "\t\t" << inType.first << ", " << inType.second << std::endl;
+  }
+  outputStream << "\tOutput types: " << std::endl;
+  for (auto outType : this->outputTypes) {
+    outputStream << "\t\t" << outType.first << ", " << outType.second << std::endl;
   }
   outputStream << "\tIs constant?";
   if (this->isConstVal) {

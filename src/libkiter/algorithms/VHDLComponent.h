@@ -34,6 +34,8 @@ class VHDLComponent {
   std::string getBinaryValue();
   std::string getFPCName();
   std::vector<std::string> getArgOrder();
+  std::map<std::string, int> getInputTypes();
+  std::map<std::string, int> getOutputTypes();
   bool isConst();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
@@ -58,5 +60,7 @@ class VHDLComponent {
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
                                       "vslider"}; // NOTE temporary workaround to handle UI components
+  std::map<std::string, int> inputTypes;
+  std::map<std::string, int> outputTypes;
 };
 #endif /* VHDL_COMPONENT_H_ */
