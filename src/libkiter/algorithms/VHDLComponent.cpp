@@ -63,6 +63,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       }
     }
   }
+  // check and track input/output data types
+  for (auto port : inputPorts) {
+    inputTypes[port.substr(port.find_last_of("_") + 1)]++;
+  }
+  for (auto port : outputPorts) {
+    outputTypes[port.substr(port.find_last_of("_") + 1)]++;
+  }
   // check if component type is a float
   char* pEnd;
   float numericValue = strtof(componentType.c_str(), &pEnd);
@@ -72,26 +79,31 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
 if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) { // NOTE treat UI components as const_val for now
     isConstVal = true;
     numericValue = strtof((compType.substr(compType.find("_") + 1)).c_str(), &pEnd); // UI components have "type_defaultvalue" type naming convention; set value to default
-    value = numericValue;
+    fpValue = numericValue;
     std::string fpcFloatPrefix = (numericValue ? "01" : "00");
     binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
   } else if (*pEnd && numericValue == 0) {
     isConstVal = false;
-    value = 0;
-  } else {
+    fpValue = 0;
+ } else { // is constant value
+    if (outputTypes.size() == 1) {
+      constDataType = outputTypes.begin()->first;
+    }
+    else {
+      constDataType = "undefined"; // TODO replace with assert
+    }
+    if (constDataType == "real") { // const is of type float
+      fpValue = numericValue;
+      std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
+      binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
+    } else if (constDataType == "int") {
+      std::string::size_type sz;
+      intValue = std::stoi(componentType, &sz);
+      binaryValue = "00" + std::bitset<32>(intValue).to_string(); // NOTE assuming unsigned binary representation here
+    } // TODO add else for edge cases
     isConstVal = true;
     componentType = "const_value";
-    value = numericValue;
-    std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
-    binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
   }
-// check and track input/output data types
- for (auto port : inputPorts) {
-   inputTypes[port.substr(port.find_last_of("_") + 1)]++;
- }
- for (auto port : outputPorts) {
-   outputTypes[port.substr(port.find_last_of("_") + 1)]++;
- }
 }
 
 Vertex VHDLComponent::getActor() {
@@ -210,9 +222,13 @@ std::string VHDLComponent::printStatus() {
   }
   outputStream << "\tIs constant?";
   if (this->isConstVal) {
-    outputStream << " Y\n"
-                 <<"\t\tValue: " << this->value << "\n"
-                 << "\t\tBinary rep: " << this->binaryValue << std::endl;
+    outputStream << " Y" << std::endl;
+    if (this->constDataType == "real") {
+      outputStream <<"\t\tValue: " << this->fpValue << std::endl;
+    } else if (this->constDataType == "int") {
+      outputStream <<"\t\tValue: " << this->intValue << std::endl;
+    } // TODO add else for edge cases
+    outputStream << "\t\tBinary rep: " << this->binaryValue << std::endl;
   } else {
     outputStream << " N" << std::endl;
   }
