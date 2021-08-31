@@ -219,10 +219,10 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                                      std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
-  std::string operatorFileName = "fp_" + comp.getType() + "_flopoco"; // TODO decide on naming convention
-  // workaround for fp_diff hack
-  if (comp.getType() == "diff") {
-    operatorFileName = "fp_add_flopoco"; // we use an add operator and negate the second argument
+  std::string operatorFileName = comp.getType() + "_flopoco";
+  // workaround for diff hack
+  if (comp.getType() == "fp_diff" || comp.getType() == "int_diff") { // TODO separate operator type from name with data type
+    operatorFileName = comp.getDataType() + "_" + "add_flopoco"; // we use an add operator and negate the second argument
   }
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
   std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
@@ -243,7 +243,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
 void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   std::string referenceDir) {
   std::ofstream vhdlOutput;
-  std::string entityName = "fp_" + comp.getType();
+  std::string entityName = comp.getType();
   std::string componentName = entityName + "_flopoco";
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN",
@@ -253,13 +253,14 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
     generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
+    std::cout << "Generating VHDL file for " << entityName << std::endl;
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
                               + "_" + opInputCount + ".vhd");
     std::string fileContent;
     std::string operatorName = comp.getFPCName();
     std::string axmType = "";
-    if (comp.getType() == "diff") {
+    if (comp.getType() == "fp_diff" || comp.getType() == "int_diff") {
       axmType = "_negate";
     } else if (comp.getInputPorts().size() == 1) {
       axmType = "_one";
@@ -305,7 +306,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
              << "use ieee.numeric_std.all;\n" << std::endl;
   // 2. Port declarations
   vhdlOutput << "entity " << circuit.getName() << " is\n"
-             << "generic (\n" // TODO add lifespans of different operators
+             << "generic (\n"
              << "    " << "ram_width : natural := 34;\n"
              << "    " << "ram_depth : natural := 2);\n" // buffer size
              << "port (\n"
@@ -546,8 +547,8 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
     componentName = comp.getType();
   } else if (comp.getType() == "float" || comp.getType() == "int") {
     componentName = "to_" + comp.getType();
-  } else { // FP operator
-    componentName = "fp_" + comp.getType(); // TODO decide on naming convention
+  } else {
+    componentName = comp.getType();
   }
   int numInputPorts;
   int numOutputPorts;
@@ -798,7 +799,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else if (op.second.getType() == "float" || op.second.getType() == "int") {
         componentName = "to_" + opName;
       } else {
-        componentName = "fp_" + opName;
+        componentName = opName;
       }
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])

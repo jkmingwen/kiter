@@ -36,6 +36,7 @@ class VHDLComponent {
   std::vector<std::string> getArgOrder();
   std::map<std::string, int> getInputTypes();
   std::map<std::string, int> getOutputTypes();
+  std::string getDataType();
   bool isConst();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
@@ -55,13 +56,15 @@ class VHDLComponent {
   int lifespan;
   std::string FPCName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
-  std::string constDataType;
+  std::string dataType; // TODO add operator type ("fp/int")
   float fpValue;
   int intValue;
   std::string binaryValue; // binary representation of 'value'
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
                                       "vslider"}; // NOTE temporary workaround to handle UI components
+  std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
+                                              "prod", "sqrt"};
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
 };
