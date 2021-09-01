@@ -102,7 +102,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
       generateSplitterOperators(compDir, compRefDir, outputCounts);
     } else if (op.first == "const_value") {
       generateConstOperator(compDir, compRefDir, outputCounts);
-    } else if (op.first == "float" || op.first == "int") {
+    } else if (op.first == "int2float" || op.first == "float2int") {
       generateConversionOperators(circuit.getFirstComponentByType(op.first),
                                   compDir, compRefDir);
     } else {
@@ -174,15 +174,30 @@ void algorithms::generateConstOperator(std::string compDir,
 void algorithms::generateConversionOperators(VHDLComponent comp, std::string compDir,
                                              std::string referenceDir) {
   std::ofstream vhdlOutput;
-  std::string entityName = "to_" + comp.getType();
+  std::string entityName = comp.getType();
+  std::string axiInterfaceName = "axi_" + entityName;
   vhdlOutput.open(compDir + entityName + ".vhd");
   std::ifstream operatorRef(referenceDir + entityName + ".vhd");
   std::string fileContent;
+  // generate conversion operator
   if (operatorRef.is_open()) {
     while (std::getline(operatorRef, fileContent)) {
       vhdlOutput << fileContent << std::endl;
     }
     operatorRef.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << comp.getType()
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
+  // generate AXI interface for conversion operator
+  vhdlOutput.open(compDir + axiInterfaceName + ".vhd");
+  std::ifstream interfaceRef(referenceDir + axiInterfaceName + ".vhd");
+  if (interfaceRef.is_open()) {
+    while (std::getline(interfaceRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    interfaceRef.close();
     vhdlOutput.close();
   } else {
     std::cout << "Reference file for " << comp.getType()
@@ -253,7 +268,6 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
     generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
-    std::cout << "Generating VHDL file for " << entityName << std::endl;
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
                               + "_" + opInputCount + ".vhd");
@@ -545,8 +559,8 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   std::string componentName;
   if (comp.getType() == "const_value") {
     componentName = comp.getType();
-  } else if (comp.getType() == "float" || comp.getType() == "int") {
-    componentName = "to_" + comp.getType();
+  } else if (comp.getType() == "int2float" || comp.getType() == "float2int") {
+    componentName = "axi_" + comp.getType();
   } else {
     componentName = comp.getType();
   }
@@ -569,8 +583,7 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each input port:
   for (auto i = 0; i < numInputPorts; i++) {
     std::string portName = "    op_in";
-    if (comp.getType() == "const_value" || comp.getType() == "float" ||
-        comp.getType() == "int") {
+    if (comp.getType() == "const_value") {
       portName = "    in";
     }
     outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
@@ -583,8 +596,7 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   // Specify ready, valid, and data ports for each output port:
   for (auto i = 0; i < numOutputPorts; i++) {
     std::string portName = "    op_out";
-    if (comp.getType() == "const_value" || comp.getType() == "float" ||
-        comp.getType() == "int") {
+    if (comp.getType() == "const_value") {
       portName = "    out";
     }
     outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
@@ -796,8 +808,8 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
-      } else if (op.second.getType() == "float" || op.second.getType() == "int") {
-        componentName = "to_" + opName;
+      } else if (op.second.getType() == "int2float" || op.second.getType() == "float2int") {
+        componentName = "axi_" + opName;
       } else {
         componentName = opName;
       }
@@ -844,8 +856,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj" ||
-            op.second.getType() == "float" || op.second.getType() == "int") {
+        if (op.second.isConst() || op.second.getType() == "Proj") {
           sigPrefix = "";
         }
         receiveSigs = generateReceiveSigNames(inPort, circuit);
@@ -863,8 +874,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &outPort : outputSignals) {
         std::vector<std::string> sendSigs(3);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj" ||
-            op.second.getType() == "float" || op.second.getType() == "int") {
+        if (op.second.isConst() || op.second.getType() == "Proj") {
           sigPrefix = "";
         }
         sendSigs = generateSendSigNames(outPort, circuit);

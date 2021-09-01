@@ -97,7 +97,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }
     std::string compTypePrefix = dataType + "_";
     componentType = compTypePrefix + baseCompType;
-  } else if (*pEnd && numericValue == 0) {
+  } else if (baseCompType == "float") { // conversion operator
+    isConstVal = false;
+    componentType = "int2float";
+  } else if (baseCompType == "int") { // conversion operator
+    isConstVal = false;
+    componentType = "float2int";
+  } else if (*pEnd && numericValue == 0) { // not a numeric value
     isConstVal = false;
     fpValue = 0;
     componentType = baseCompType;
