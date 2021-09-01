@@ -23,7 +23,7 @@ entity IntAdder_34_F400_uid2 is
     port (clk : in std_logic;
           X : in  std_logic_vector(33 downto 0);
           Y : in  std_logic_vector(33 downto 0);
-          Cin : in  std_logic;
+          Cin : in  std_logic := '0';
           R : out  std_logic_vector(33 downto 0)   );
 end entity;
 
