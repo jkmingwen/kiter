@@ -59,21 +59,25 @@ BEGIN
 
   DATA_OUT <= sign_bit & exponent & mantissa;
 
-  sign_bit <= DATA_IN(31);
-  sign_bit_integer <= 1 when sign_bit = '1' else 0;
+  -- sign_bit <= DATA_IN(31);
+  -- sign_bit_integer <= 1 when sign_bit = '1' else 0;
+  sign_bit <= '0'; -- always positive because converting unsigned int
+  sign_bit_integer <= 1 when DATA_IN(31) = '1' else 0;
 
   mantissa <= mantissa_ext(22 downto 0);
 
   exponent <= partial_exponent when mantissa_ext(23) = '0' else
                 std_logic_vector(unsigned(partial_exponent)+1);
 
-  complement <= (others => DATA_IN(31));
+  -- complement <= (others => DATA_IN(31));
+  complement <= (others => '0');
 
-  data_in_after_sign <= std_logic_vector(unsigned(DATA_IN xor complement)+sign_bit_integer);
+  data_in_after_sign <= std_logic_vector(unsigned(DATA_IN xor complement));
 
   conv_p : process(data_in_after_sign)
     variable exp_int : integer;
     variable shifted_value : std_logic_vector(61 downto 0);
+    variable temp_shifted : std_logic_vector(61 downto 0);
   begin
     exp_int := 31;
       while exp_int >= 0 and data_in_after_sign(exp_int) = '0' loop
