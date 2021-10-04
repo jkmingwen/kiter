@@ -20,7 +20,7 @@ State::State()
 State::State(models::Dataflow* const dataflow,
              std::map<ARRAY_INDEX, Actor> actorMap) {
   {ForEachEdge(dataflow, e) {
-      currentTokens[e] = dataflow->getPreload(e);
+      currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
     }}
   {ForEachTask(dataflow, t) {
       actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
@@ -28,6 +28,8 @@ State::State(models::Dataflow* const dataflow,
     }}
   timeElapsed = 0;
 }
+
+// TODO make state constructor for that uses a State object instead
 
 // returns current phase of actor
 PHASE_INDEX State::getPhase(Vertex a) const {
@@ -92,7 +94,7 @@ void State::updateState(models::Dataflow* const dataflow,
       setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
     }}
   {ForEachEdge(dataflow, e) {
-      setTokens(e, dataflow->getPreload(e));
+      setTokens(e, this->getTokens(e));
     }}
 }
 

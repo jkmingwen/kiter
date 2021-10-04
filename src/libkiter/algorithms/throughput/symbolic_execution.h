@@ -10,6 +10,7 @@
 
 #include <algorithms/schedulings.h>
 #include <commons/KiterRegistry.h>
+#include "state.h"
 
 namespace models {
   class Dataflow;
@@ -24,11 +25,11 @@ namespace algorithms {
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
                                               std::map<int, std::vector<ARRAY_INDEX>> sccMap);
-  std::string printStatus(models::Dataflow* const dataflow);
+  std::string printStatus(models::Dataflow* const dataflow, State &s);
 
 }
 
 ADD_TRANSFORMATION(SymbExec,
-		transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
+                   transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
 
 #endif /* SYMBOLIC_EXECUTION_H_ */

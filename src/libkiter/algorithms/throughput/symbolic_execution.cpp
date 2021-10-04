@@ -117,7 +117,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");
-  VERBOSE_INFO(printStatus(dataflow));
+  VERBOSE_INFO(printStatus(dataflow, prevState));
   {ForEachTask(dataflow, t) {
       VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       // track actor with lowest repetition factor (determines when states are stored)
@@ -163,7 +163,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
     {ForEachTask(dataflow, t) {
         VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       }}
-    VERBOSE_INFO(printStatus(dataflow));
+    VERBOSE_INFO(printStatus(dataflow, currState));
     // start actor firing
     {ForEachTask(dataflow, t) {
         while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
@@ -177,7 +177,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
     {ForEachTask(dataflow, t) {
         VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       }}
-    VERBOSE_INFO(printStatus(dataflow));
+    VERBOSE_INFO(printStatus(dataflow, currState));
     // advance time and check for deadlocks
     timeStep = currState.advanceTime();
     if (timeStep == LONG_MAX) { // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
@@ -211,7 +211,7 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
 }
 
 // prints current status of dataflow graph
-std::string algorithms::printStatus(models::Dataflow* const dataflow) {
+std::string algorithms::printStatus(models::Dataflow* const dataflow, State &s) {
   std::stringstream outputStream;
 
   outputStream << "\nToken counts:" << std::endl;
@@ -220,7 +220,7 @@ std::string algorithms::printStatus(models::Dataflow* const dataflow) {
                    << dataflow->getVertexName(dataflow->getEdgeSource(e))
                    << "->"
                    << dataflow->getVertexName(dataflow->getEdgeTarget(e))
-                   << "): " << dataflow->getPreload(e) << std::endl;
+                   << "): " << s.getTokens(e) << std::endl;
     }}
 
   return outputStream.str();
@@ -246,10 +246,10 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
     ++actors_left;
     actors_check[dataflow->getVertexId(t)] = -1;
   }}
-  
+
   TIME_UNIT curr_step = 0;
   std::map<ARRAY_INDEX, std::vector<std::vector<TIME_UNIT>>> starts; //{task idx : [[state 0 starts], [state 1 ...]]}
-  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]}, 
+  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
 
   // initialise actors
   std::map<ARRAY_INDEX, Actor> actorMap;
@@ -262,7 +262,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");
-  VERBOSE_INFO(printStatus(dataflow));
+  VERBOSE_INFO(printStatus(dataflow, prevState));
   {ForEachTask(dataflow, t) {
       VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       // track actor with lowest repetition factor (determines when states are stored)
@@ -288,12 +288,12 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
             if (minRepActorExecCount == minRepFactor) {
               VERBOSE_INFO("Adding the following state to list of visited states:");
               VERBOSE_INFO(currState.print(dataflow));
-              
+
               if (!end_check){
                 if (!visitedStates.addState(currState)) {
                   VERBOSE_INFO("ending execution and computing throughput");
                   // compute throughput using recurrent state
-                  
+
                   thr = visitedStates.computeThroughput();
                   periodic_state_idx = visitedStates.computeIdx(currState); //idx for repeated state
                   end_check = true;
@@ -318,7 +318,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
     {ForEachTask(dataflow, t) {
         VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       }}
-    VERBOSE_INFO(printStatus(dataflow));
+    VERBOSE_INFO(printStatus(dataflow, currState));
     // start actor firing
     {ForEachTask(dataflow, t) {
         while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
@@ -333,7 +333,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
             }
             if (actors_left == 0){
               {ForEachTask(dataflow, task){ //Creates schedule after additional actor is fired after end of period
-                static_task_schedule_t initials; 
+                static_task_schedule_t initials;
                 periodic_task_schedule_t periodics;
                 for(std::size_t i = 0; i < starts[dataflow->getVertexId(task)].size(); ++i){
                   if (i < periodic_state_idx){ //initials
@@ -342,7 +342,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
                     periodics.second.insert(periodics.second.end(),starts[dataflow->getVertexId(task)][i].begin(),starts[dataflow->getVertexId(task)][i].end());
                   }
                 }
-                periodics.first = actors_check[dataflow->getVertexId(task)] - periodics.second[0]; 
+                periodics.first = actors_check[dataflow->getVertexId(task)] - periodics.second[0];
                 task_schedule_t sched_struct = {initials,periodics};
                 schedule.set(dataflow->getVertexId(task), sched_struct);
                 std::cout << dataflow->getVertexName(task) << ": initial starts=" << commons::toString(initials) << ", periodic starts=" << commons::toString(periodics) << std::endl;
@@ -367,7 +367,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
     {ForEachTask(dataflow, t) {
         VERBOSE_INFO(actorMap[dataflow->getVertexId(t)].printStatus(dataflow));
       }}
-    VERBOSE_INFO(printStatus(dataflow));
+    VERBOSE_INFO(printStatus(dataflow, currState));
     // advance time and check for deadlocks
     timeStep = currState.advanceTime();
     curr_step+= timeStep;
@@ -385,7 +385,7 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
   std::vector<models::Dataflow*> sccDataflows;
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
-  
+
   scheduling_t scheduling_result;
   int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
 
@@ -436,7 +436,7 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
         }
       }
     }
-    
+
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
     std::cout << res.asASCII(linesize);
