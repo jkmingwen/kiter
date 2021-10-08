@@ -31,7 +31,7 @@ void abstractDepGraph::addCausalDep(ARRAY_INDEX v1, ARRAY_INDEX v2) {
 std::string abstractDepGraph::printStatus() {
   std::stringstream outputStream;
 
-  outputStream << "\nPrinting status of abstract dep graph:" << std::endl;
+  outputStream << "Printing status of abstract dep graph:" << std::endl;
   for (auto const& v1 : this->abstractDependencyGraph) {
     for (auto const& v2 : v1.second) {
       if (v2.second) {

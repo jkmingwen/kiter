@@ -49,12 +49,12 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
     for (auto g : sccDataflows) {
       if (g->getEdgesCount() > 0) {
         std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo;
-        std::cout << "Compute throughput with following channel sizes:" << std::endl;
+        VERBOSE_DSE("Compute throughput with following channel sizes:" << std::endl);
         std::map<Edge, TOKEN_UNIT> bufferSizes;
         {ForEachEdge(g, e) {
             bufferSizes[e] = minChannelSizes[e].second;
-            std::cout << "\tChannel " << g->getEdgeId(e) << ": "
-                      << bufferSizes[e] << std::endl;
+            VERBOSE_DSE("\tChannel " << g->getEdgeId(e) << ": "
+                        << bufferSizes[e] << std::endl);
           }}
         TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, bufferSizes);
         VERBOSE_INFO("component throughput: " << componentThroughput);
@@ -99,11 +99,11 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   std::map<Edge, TOKEN_UNIT> bufferSizes;
-  std::cout << "Compute throughput with following channel sizes:" << std::endl;
+  VERBOSE_DSE("Compute throughput with following channel sizes:" << std::endl);
   {ForEachEdge(dataflow, e) {
       bufferSizes[e] = minChannelSizes[e].second;
-      std::cout << "\tChannel " << dataflow->getEdgeId(e) << ": "
-                << bufferSizes[e] << std::endl;
+      VERBOSE_DSE("\tChannel " << dataflow->getEdgeId(e) << ": "
+                  << bufferSizes[e] << std::endl);
     }}
   minThroughput = computeComponentThroughput(dataflow, actorInfo, bufferSizes);
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
@@ -235,44 +235,33 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
 void algorithms::computeDeadlockCausalDeps(models::Dataflow* const dataflow,
                                            State &s,
                                            std::map<ARRAY_INDEX, Actor> actorMap) {
-  std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> abstractDependencyGraph;
-  std::map<ARRAY_INDEX, bool> initialMapping;
-  abstractDepGraph aDepGraph(dataflow);
-  // initialise abstract dependency graph
-  {ForEachVertex(dataflow, v) {
-      ARRAY_INDEX vId = dataflow->getVertexId(v);
-      initialMapping[vId] = false;
-    }}
-  {ForEachVertex(dataflow, v) {
-      ARRAY_INDEX vId = dataflow->getVertexId(v);
-      abstractDependencyGraph[vId] = initialMapping;
-    }}
+  abstractDepGraph aDepGraph(dataflow); // initialise abstrach dependency graph
   // populate abstract dependency graph
   {ForEachEdge(dataflow, e) {
       Vertex source = dataflow->getEdgeSource(e);
       Vertex target = dataflow->getEdgeTarget(e);
       ARRAY_INDEX sourceId = dataflow->getVertexId(source);
       ARRAY_INDEX targetId = dataflow->getVertexId(target);
-      std::cout << "\t\tChannel " << dataflow->getEdgeId(e) << " ("
-                << sourceId << "->" << targetId
-                << "):" << std::endl;
-      std::cout << "\t\t " << s.getTokens(e) << " tokens available, "
-                << actorMap[targetId].getExecRate(e) << " required" << std::endl;
-      std::cout << "\t\t " << s.getBufferSize(e) - s.getTokens(e) << " spaces available, "
-                << actorMap[sourceId].getExecRate(e) << " required" << std::endl;
+      VERBOSE_DSE("\t\tChannel " << dataflow->getEdgeId(e) << " ("
+                  << sourceId << "->" << targetId
+                  << "):" << std::endl);
+      VERBOSE_DSE("\t\t " << s.getTokens(e) << " tokens available, "
+                  << actorMap[targetId].getExecRate(e) << " required" << std::endl);
+      VERBOSE_DSE("\t\t " << s.getBufferSize(e) - s.getTokens(e) << " spaces available, "
+                  << actorMap[sourceId].getExecRate(e) << " required" << std::endl);
       if (s.getTokens(e) < actorMap[targetId].getExecRate(e)) {
-        std::cout << "\t\t\tCausal dep between " << targetId << " and " << sourceId << std::endl;
-        abstractDependencyGraph[targetId][sourceId] = true;
+        VERBOSE_DSE("\t\t\tCausal dep between " << targetId << " and "
+                    << sourceId << std::endl);
         aDepGraph.addCausalDep(targetId, sourceId);
       }
 
       if ((s.getBufferSize(e) - s.getTokens(e)) < actorMap[sourceId].getExecRate(e)) {
-        std::cout << "\t\t\tCausal dep between " << sourceId << " and " << targetId << std::endl;
-        abstractDependencyGraph[sourceId][targetId] = true;
+        VERBOSE_DSE("\t\t\tCausal dep between " << sourceId << " and "
+                    << targetId << std::endl);
         aDepGraph.addCausalDep(sourceId, targetId);
       }
     }}
-  std::cout << aDepGraph.printStatus() << std::endl;
+  VERBOSE_DSE(aDepGraph.printStatus() << std::endl);
 }
 
 // prints current status of dataflow graph
