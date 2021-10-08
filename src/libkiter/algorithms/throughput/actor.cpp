@@ -127,6 +127,13 @@ bool Actor::isReadyForExec(State s) {
       isExecutable = false;
     }
   }
+  if (s.hasBoundedBuffers()) {
+    for (auto const &e : this->prodPhaseCount) {
+      if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
+        isExecutable = false;
+      }
+    }
+  }
   return isExecutable;
 }
 

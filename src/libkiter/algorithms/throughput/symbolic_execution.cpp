@@ -19,6 +19,8 @@
 #include "actor.h"
 #include "state.h"
 #include "../scc.h"
+#include "../dse/buffer_sizing.h"
+#include "../dse/abstract_dep_graph.h"
 
 void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
                                          parameters_list_t param_list) {
@@ -27,6 +29,9 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
   std::vector<models::Dataflow*> sccDataflows;
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
+  std::map<Edge, TOKEN_UNIT> minStepSizes;
+  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
+  initSearchParameters(dataflow, minStepSizes, minChannelSizes);
 
   // generate SCCs if any
   sccMap = computeSCCKosaraju(dataflow);
@@ -44,7 +49,14 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
     for (auto g : sccDataflows) {
       if (g->getEdgesCount() > 0) {
         std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo;
-        TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo);
+        std::cout << "Compute throughput with following channel sizes:" << std::endl;
+        std::map<Edge, TOKEN_UNIT> bufferSizes;
+        {ForEachEdge(g, e) {
+            bufferSizes[e] = minChannelSizes[e].second;
+            std::cout << "\tChannel " << g->getEdgeId(e) << ": "
+                      << bufferSizes[e] << std::endl;
+          }}
+        TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, bufferSizes);
         VERBOSE_INFO("component throughput: " << componentThroughput);
         VERBOSE_INFO("actor ID, repFactor: " << actorInfo.first << ", "
                      << actorInfo.second);
@@ -86,7 +98,14 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
-  minThroughput = computeComponentThroughput(dataflow, actorInfo);
+  std::map<Edge, TOKEN_UNIT> bufferSizes;
+  std::cout << "Compute throughput with following channel sizes:" << std::endl;
+  {ForEachEdge(dataflow, e) {
+      bufferSizes[e] = minChannelSizes[e].second;
+      std::cout << "\tChannel " << dataflow->getEdgeId(e) << ": "
+                << bufferSizes[e] << std::endl;
+    }}
+  minThroughput = computeComponentThroughput(dataflow, actorInfo, bufferSizes);
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
   return;
 }
@@ -97,7 +116,8 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
    find the ID of one of the actors in the SCC component, and subsequently use that to get its
    repetition factor */
 TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflow,
-                                                 std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo) {
+                                                 std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
+                                                 std::map<Edge, TOKEN_UNIT> &bufferSizes) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   StateList visitedStates;
@@ -112,8 +132,8 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
     }}
-  State prevState(dataflow, actorMap);
-  State currState(dataflow, actorMap);
+  State prevState(dataflow, actorMap, bufferSizes);
+  State currState(dataflow, actorMap, bufferSizes);
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");
@@ -182,6 +202,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
     timeStep = currState.advanceTime();
     if (timeStep == LONG_MAX) { // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
       VERBOSE_INFO("Deadlock found!");
+      computeDeadlockCausalDeps(dataflow, currState, actorMap);
       return 0;
     }
   }
