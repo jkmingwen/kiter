@@ -231,6 +231,50 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
   return sccDataflows;
 }
 
+// compute and return an abstract dependency graph given a deadlocked state
+void algorithms::computeDeadlockCausalDeps(models::Dataflow* const dataflow,
+                                           State &s,
+                                           std::map<ARRAY_INDEX, Actor> actorMap) {
+  std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> abstractDependencyGraph;
+  std::map<ARRAY_INDEX, bool> initialMapping;
+  abstractDepGraph aDepGraph(dataflow);
+  // initialise abstract dependency graph
+  {ForEachVertex(dataflow, v) {
+      ARRAY_INDEX vId = dataflow->getVertexId(v);
+      initialMapping[vId] = false;
+    }}
+  {ForEachVertex(dataflow, v) {
+      ARRAY_INDEX vId = dataflow->getVertexId(v);
+      abstractDependencyGraph[vId] = initialMapping;
+    }}
+  // populate abstract dependency graph
+  {ForEachEdge(dataflow, e) {
+      Vertex source = dataflow->getEdgeSource(e);
+      Vertex target = dataflow->getEdgeTarget(e);
+      ARRAY_INDEX sourceId = dataflow->getVertexId(source);
+      ARRAY_INDEX targetId = dataflow->getVertexId(target);
+      std::cout << "\t\tChannel " << dataflow->getEdgeId(e) << " ("
+                << sourceId << "->" << targetId
+                << "):" << std::endl;
+      std::cout << "\t\t " << s.getTokens(e) << " tokens available, "
+                << actorMap[targetId].getExecRate(e) << " required" << std::endl;
+      std::cout << "\t\t " << s.getBufferSize(e) - s.getTokens(e) << " spaces available, "
+                << actorMap[sourceId].getExecRate(e) << " required" << std::endl;
+      if (s.getTokens(e) < actorMap[targetId].getExecRate(e)) {
+        std::cout << "\t\t\tCausal dep between " << targetId << " and " << sourceId << std::endl;
+        abstractDependencyGraph[targetId][sourceId] = true;
+        aDepGraph.addCausalDep(targetId, sourceId);
+      }
+
+      if ((s.getBufferSize(e) - s.getTokens(e)) < actorMap[sourceId].getExecRate(e)) {
+        std::cout << "\t\t\tCausal dep between " << sourceId << " and " << targetId << std::endl;
+        abstractDependencyGraph[sourceId][targetId] = true;
+        aDepGraph.addCausalDep(sourceId, targetId);
+      }
+    }}
+  std::cout << aDepGraph.printStatus() << std::endl;
+}
+
 // prints current status of dataflow graph
 std::string algorithms::printStatus(models::Dataflow* const dataflow, State &s) {
   std::stringstream outputStream;
