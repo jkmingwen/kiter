@@ -235,7 +235,7 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
 void algorithms::computeDeadlockCausalDeps(models::Dataflow* const dataflow,
                                            State &s,
                                            std::map<ARRAY_INDEX, Actor> actorMap) {
-  abstractDepGraph aDepGraph(dataflow); // initialise abstrach dependency graph
+  abstractDepGraph absDepGraph(dataflow); // initialise abstrach dependency graph
   // populate abstract dependency graph
   {ForEachEdge(dataflow, e) {
       Vertex source = dataflow->getEdgeSource(e);
@@ -252,16 +252,18 @@ void algorithms::computeDeadlockCausalDeps(models::Dataflow* const dataflow,
       if (s.getTokens(e) < actorMap[targetId].getExecRate(e)) {
         VERBOSE_DSE("\t\t\tCausal dep between " << targetId << " and "
                     << sourceId << std::endl);
-        aDepGraph.addCausalDep(targetId, sourceId);
+        absDepGraph.addCausalDep(targetId, sourceId);
       }
 
       if ((s.getBufferSize(e) - s.getTokens(e)) < actorMap[sourceId].getExecRate(e)) {
         VERBOSE_DSE("\t\t\tCausal dep between " << sourceId << " and "
                     << targetId << std::endl);
-        aDepGraph.addCausalDep(sourceId, targetId);
+        absDepGraph.addCausalDep(sourceId, targetId);
       }
     }}
-  VERBOSE_DSE(aDepGraph.printStatus() << std::endl);
+  VERBOSE_DSE(absDepGraph.printStatus() << std::endl);
+  std::set<Edge> storageDeps = absDepGraph.computeStorageDependencies(dataflow);
+
 }
 
 // prints current status of dataflow graph
