@@ -129,7 +129,8 @@ bool Actor::isReadyForExec(State s) {
   }
   if (s.hasBoundedBuffers()) {
     for (auto const &e : this->prodPhaseCount) {
-      if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
+      // if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
+      if (s.getBufferSpace(e.first) < this->getExecRate(e.first)) {
         isExecutable = false;
       }
     }
@@ -182,6 +183,11 @@ void Actor::execStart(models::Dataflow* const dataflow, State &s) {
   {ForInputEdges(dataflow, this->actor, e) {
       s.setTokens(e, s.getTokens(e) - this->getExecRate(e));
     }}
+  if (s.hasBoundedBuffers()) { // for bounded buffers, need to 'reserve' space for tokens about to be produced
+    {ForOutputEdges(dataflow, this->actor, e) {
+        s.setBufferSpace(e, s.getBufferSpace(e) - this->getExecRate(e));
+      }}
+  }
   std::pair<TIME_UNIT, PHASE_INDEX> newExec(dataflow->getVertexDuration(this->actor,
                                                                         this->getPhase()),
                                             this->getPhase());
@@ -223,6 +229,11 @@ void Actor::execEnd(models::Dataflow* const dataflow, State &s) {
                 << this->getExecRate(e, currentPhase) << " tokens");
       s.setTokens(e, s.getTokens(e) + this->getExecRate(e, currentPhase));
     }}
+  if (s.hasBoundedBuffers()) { // free up spaces after tokens that have been consumed
+    {ForInputEdges(dataflow, this->actor, e) {
+        s.setBufferSpace(e, s.getBufferSpace(e) + this->getExecRate(e));
+      }}
+  }
   s.removeFrontExec(this->actor);
   this->isExecuting = false;
 }

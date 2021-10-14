@@ -32,13 +32,14 @@ State::State(models::Dataflow* const dataflow,
   isBounded = false; // if no buffer sizes specified, assume unbounded buffers
 }
 
-// construct state using current graph and actor map information
+// construct state with bounded buffers using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
              std::map<ARRAY_INDEX, Actor> actorMap,
              std::map<Edge, TOKEN_UNIT> &bufferSizes) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
       bufferCapacities[e] = bufferSizes[e];
+      bufferSpaces[e] = bufferSizes[e] - dataflow->getPreload(e);
     }}
   {ForEachTask(dataflow, t) {
       actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
@@ -63,6 +64,11 @@ TOKEN_UNIT State::getTokens(Edge e) const {
 // returns maximum token capacity of edge
 TOKEN_UNIT State::getBufferSize(Edge e) const {
   return bufferCapacities.at(e);
+}
+
+// returns amount of token spaces left in edge
+TOKEN_UNIT State::getBufferSpace(Edge e) const {
+  return bufferSpaces.at(e);
 }
 
 // returns list of amount of time left for executions for actor
@@ -91,7 +97,12 @@ void State::setPhase(Vertex a, PHASE_INDEX newPhase) {
 }
 
 void State::setTokens(Edge e, TOKEN_UNIT newTokens) {
+  // buffer sizes vs token counts are checked in Actor 'isReadyForExec' function
   this->currentTokens[e] = newTokens;
+}
+
+void State::setBufferSpace(Edge e, TOKEN_UNIT newSpace) {
+  this->bufferSpaces[e] = newSpace;
 }
 
 void State::addExecution(Vertex a, std::pair<TIME_UNIT, PHASE_INDEX> newExec) {

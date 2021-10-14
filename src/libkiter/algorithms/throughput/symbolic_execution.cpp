@@ -154,6 +154,9 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
   while (true) {
     {ForEachEdge(dataflow, e) {
         prevState.setTokens(e, currState.getTokens(e));
+        if (currState.hasBoundedBuffers()) {
+          prevState.setBufferSpace(e, currState.getBufferSpace(e));
+        }
       }}
     // end actor firing
     {ForEachTask(dataflow, t) {
@@ -335,6 +338,9 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   while (true) {
     {ForEachEdge(dataflow, e) {
         prevState.setTokens(e, currState.getTokens(e));
+        if (currState.hasBoundedBuffers()) {
+          prevState.setBufferSpace(e, currState.getBufferSpace(e));
+        }
       }}
     // end actor firing
     {ForEachTask(dataflow, t) {

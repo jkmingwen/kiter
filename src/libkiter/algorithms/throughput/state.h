@@ -28,12 +28,14 @@ class State {
   PHASE_INDEX getPhase(Vertex a) const; // returns current phase of actor
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
   TOKEN_UNIT getBufferSize(Edge e) const; // returns maximum token capacity of edge
+  TOKEN_UNIT getBufferSpace(Edge e) const; // returns amount of space left in buffer
   std::list<std::pair<TIME_UNIT, PHASE_INDEX>> getRemExecTime(Vertex a) const; // returns amount of time left for execution
   std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>> getExecQueue();
   void removeFrontExec(Vertex a);
   TIME_UNIT getTimeElapsed() const; // returns total elapsed time in state
   void setPhase(Vertex a, PHASE_INDEX newPhase);
   void setTokens(Edge e, TOKEN_UNIT newTokens);
+  void setBufferSpace(Edge e, TOKEN_UNIT newSpace);
   void addExecution(Vertex a, std::pair<TIME_UNIT, PHASE_INDEX> newExec);
   void advanceRemExecTime(Vertex a, TIME_UNIT timeStep);
   void setTimeElapsed(TIME_UNIT time);
@@ -52,6 +54,7 @@ class State {
   std::map<Vertex, PHASE_INDEX> actorPhases; // track the current phases of each actor
   std::map<Edge, TOKEN_UNIT> currentTokens; // track number of tokens in each channel
   std::map<Edge, TOKEN_UNIT> bufferCapacities; // track maximum token capacity for each channel
+  std::map<Edge, TOKEN_UNIT> bufferSpaces; // track how many more tokens can be stored for each channel
   std::vector<Vertex> actors; // store actors in state
   TIME_UNIT timeElapsed; // track time elapsed given state
   bool isBounded; // whether the graph is modelled with bounded buffers --- needs to be used when computing storage dependencies for throughput-buffersizing tradeoff analysis
