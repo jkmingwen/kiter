@@ -7,6 +7,7 @@
 #ifndef ACTOR_H_
 #define ACTOR_H_
 
+#include "../dse/abstract_dep_graph.h"
 #include "state.h"
 #include <models/Dataflow.h>
 
@@ -14,6 +15,7 @@ namespace models {
   class Dataflow;
 }
 
+class abstractDepGraph;
 class State;
 
 class Actor {
@@ -38,6 +40,8 @@ class Actor {
   void execStartWithMod(models::Dataflow* const dataflow, State &s, std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step);
   void execEnd(models::Dataflow* const dataflow, State &s);
   void execEndWithMod(models::Dataflow* const dataflow, State &s, std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step);
+  void computeCausalDeps(models::Dataflow* const dataflow, State &prevState,
+                         abstractDepGraph &absDepGraph);
   std::string printStatus(models::Dataflow* const dataflow);
  private:
   Vertex actor;

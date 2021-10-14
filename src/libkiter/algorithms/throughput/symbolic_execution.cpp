@@ -170,6 +170,9 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
                 VERBOSE_INFO("ending execution and computing throughput");
                 // compute throughput using recurrent state
                 TIME_UNIT thr = visitedStates.computeThroughput();
+                // TODO function to find storage dependencies for periodic phase
+                computePeriodicStorageDeps(dataflow, currState, prevState, actorMap,
+                                           minRepActorId, minRepFactor, minRepActorExecCount);
                 return thr;
               }
               currState.setTimeElapsed(0);
@@ -205,7 +208,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
     timeStep = currState.advanceTime();
     if (timeStep == LONG_MAX) { // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
       VERBOSE_INFO("Deadlock found!");
-      computeDeadlockCausalDeps(dataflow, currState, actorMap);
+      computeDeadlockStorageDeps(dataflow, currState, actorMap);
       return 0;
     }
   }
@@ -234,11 +237,88 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
   return sccDataflows;
 }
 
+void algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
+                                            State &currState,
+                                            State &prevState,
+                                            std::map<ARRAY_INDEX, Actor> actorMap,
+                                            ARRAY_INDEX minRepActorId,
+                                            EXEC_COUNT minRepFactor,
+                                            TOKEN_UNIT minRepActorExecCount) {
+  abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
+  State recurrentState = currState;
+  TIME_UNIT timeStep;
+  VERBOSE_DSE("Current state:" << std::endl);
+  VERBOSE_DSE(currState.print(dataflow));
+  VERBOSE_DSE("Recurrent state:" << std::endl);
+  VERBOSE_DSE(recurrentState.print(dataflow));
+
+  currState.setTimeElapsed(0);
+  minRepActorExecCount = -1;
+
+  // end actor firings
+  {ForEachTask(dataflow, t) {
+      while (actorMap[dataflow->getVertexId(t)].isReadyToEndExec(currState)) {
+        if (actorMap[dataflow->getVertexId(t)].getId() == minRepActorId) {
+          minRepActorExecCount++;
+          if (minRepActorExecCount == minRepFactor) {
+            currState.setTimeElapsed(0);
+            minRepActorExecCount = 0;
+          }
+        }
+        actorMap[dataflow->getVertexId(t)].execEnd(dataflow, currState);
+        currState.updateState(dataflow, actorMap);
+      }
+    }}
+
+  // start actor firings
+  while (true) {
+    {ForEachTask(dataflow, t) {
+        while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
+          // TODO call function to compute causal dependencies here
+          VERBOSE_DSE("Actor " << dataflow->getVertexId(t)
+                      << " ready to fire; looking for causal dependencies" << std::endl);
+          actorMap[dataflow->getVertexId(t)].computeCausalDeps(dataflow, prevState, absDepGraph);
+          actorMap[dataflow->getVertexId(t)].execStart(dataflow, currState);
+          currState.updateState(dataflow, actorMap);
+        }
+      }}
+    timeStep = currState.advanceTime(); // TODO try without assigning to timeStep (cause we don't use it)
+    {ForEachEdge(dataflow, e) {
+        prevState.setTokens(e, currState.getTokens(e));
+        if (currState.hasBoundedBuffers()) {
+          prevState.setBufferSpace(e, currState.getBufferSpace(e));
+        }
+      }}
+    // end actor firing
+    {ForEachTask(dataflow, t) {
+        while (actorMap[dataflow->getVertexId(t)].isReadyToEndExec(currState)) {
+          if (actorMap[dataflow->getVertexId(t)].getId() == minRepActorId) {
+            minRepActorExecCount++;
+            if (minRepActorExecCount == minRepFactor) {
+              VERBOSE_INFO("Adding the following state to list of visited states:");
+              VERBOSE_INFO(currState.print(dataflow));
+              if (currState == recurrentState) {
+                VERBOSE_INFO("ending execution and computing throughput");
+                // TODO call function to find storage dependencies
+                std::set<Edge> storageDeps = absDepGraph.computeStorageDependencies(dataflow);
+                return;
+              }
+              currState.setTimeElapsed(0);
+              minRepActorExecCount = 0;
+            }
+          }
+          actorMap[dataflow->getVertexId(t)].execEnd(dataflow, currState);
+          currState.updateState(dataflow, actorMap); // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
+        }
+      }}
+  }
+}
+
 // compute and return an abstract dependency graph given a deadlocked state
-void algorithms::computeDeadlockCausalDeps(models::Dataflow* const dataflow,
+void algorithms::computeDeadlockStorageDeps(models::Dataflow* const dataflow,
                                            State &s,
                                            std::map<ARRAY_INDEX, Actor> actorMap) {
-  abstractDepGraph absDepGraph(dataflow); // initialise abstrach dependency graph
+  abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
   // populate abstract dependency graph
   {ForEachEdge(dataflow, e) {
       Vertex source = dataflow->getEdgeSource(e);

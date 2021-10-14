@@ -257,7 +257,40 @@ std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step) {
   this->isExecuting = false;
 }
 
-
+void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState,
+                              abstractDepGraph &absDepGraph) {
+  for (auto const &e : this->consPhaseCount) {
+    Vertex source = dataflow->getEdgeSource(e.first);
+    Vertex target = dataflow->getEdgeTarget(e.first);
+    ARRAY_INDEX sourceId = dataflow->getVertexId(source);
+    ARRAY_INDEX targetId = dataflow->getVertexId(target);
+    VERBOSE_DSE("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DSE("\t\t " << prevState.getTokens(e.first) << " tokens available previously, "
+                << this->getExecRate(e.first) << " required" << std::endl);
+    if (prevState.getTokens(e.first) < this->getExecRate(e.first)) {
+      VERBOSE_DSE("\t\t\tCausal dep between " << targetId << " and "
+                  << sourceId << std::endl);
+      absDepGraph.addCausalDep(targetId, sourceId);
+    }
+  }
+  for (auto const &e : this->prodPhaseCount) {
+    Vertex source = dataflow->getEdgeSource(e.first);
+    Vertex target = dataflow->getEdgeTarget(e.first);
+    ARRAY_INDEX sourceId = dataflow->getVertexId(source);
+    ARRAY_INDEX targetId = dataflow->getVertexId(target);
+    VERBOSE_DSE("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DSE("\t\t " << prevState.getBufferSpace(e.first)
+                << " spaces available previously, " << this->getExecRate(e.first)
+                << " required" << std::endl);
+    if (prevState.getBufferSpace(e.first) < this->getExecRate(e.first)) {
+      VERBOSE_DSE("\t\t\tCausal dep between " << sourceId << " and "
+                  << targetId << std::endl);
+      absDepGraph.addCausalDep(sourceId, targetId);
+    }
+  }
+}
 
 std::string Actor::printStatus(models::Dataflow* const dataflow) {
   std::stringstream outputStream;

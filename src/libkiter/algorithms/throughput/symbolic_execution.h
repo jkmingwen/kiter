@@ -26,12 +26,23 @@ namespace algorithms {
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
                                               std::map<int, std::vector<ARRAY_INDEX>> sccMap);
-  // std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> computeDeadlockCausalDeps(models::Dataflow* const dataflow,
+  // std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> computeDeadlockStorageDeps(models::Dataflow* const dataflow,
   //                                                                              State &s,
   //                                                                              std::map<ARRAY_INDEX, Actor> actorMap);
-  void computeDeadlockCausalDeps(models::Dataflow* const dataflow,
-                                 State &s,
+  void computePeriodicStorageDeps(models::Dataflow* const dataflow,
+                                  State &currState,
+                                  State &prevState,
+                                  std::map<ARRAY_INDEX, Actor> actorMap,
+                                  ARRAY_INDEX minRepActorId,
+                                  EXEC_COUNT minRepFactor,
+                                  TOKEN_UNIT minRepActorExecCount);
+  void computePeriodicCausalDeps(models::Dataflow* const dataflow,
+                                 State &currState,
+                                 State &prevState,
                                  std::map<ARRAY_INDEX, Actor> actorMap);
+  void computeDeadlockStorageDeps(models::Dataflow* const dataflow,
+                                  State &s,
+                                  std::map<ARRAY_INDEX, Actor> actorMap);
   std::string printStatus(models::Dataflow* const dataflow, State &s);
 
 }
