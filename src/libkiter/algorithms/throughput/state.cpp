@@ -49,6 +49,22 @@ State::State(models::Dataflow* const dataflow,
   isBounded = true;
 }
 
+State::State(models::Dataflow* const dataflow,
+             std::map<ARRAY_INDEX, Actor> actorMap,
+             StorageDistribution storDist) {
+  {ForEachEdge(dataflow, e) {
+      currentTokens[e] = storDist.getInitialTokens(e);
+      bufferCapacities[e] = storDist.getChannelQuantity(e);
+      bufferSpaces[e] = storDist.getChannelQuantity(e) - storDist.getInitialTokens(e);
+    }}
+  {ForEachTask(dataflow, t) {
+      actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
+      actors.push_back(t);
+    }}
+  timeElapsed = 0;
+  isBounded = true;
+}
+
 // TODO make state constructor for that uses a State object instead
 
 // returns current phase of actor

@@ -10,6 +10,7 @@
 
 #include "actor.h"
 #include <models/Dataflow.h>
+#include "../dse/buffer_sizing.h"
 
 namespace models {
   class Dataflow;
@@ -25,6 +26,9 @@ class State {
   State(models::Dataflow* const dataflow,
         std::map<ARRAY_INDEX, Actor> actorMap,
         std::map<Edge, TOKEN_UNIT> &bufferSizes);
+  State(models::Dataflow* const dataflow,
+        std::map<ARRAY_INDEX, Actor> actorMap,
+        StorageDistribution storDist);
   PHASE_INDEX getPhase(Vertex a) const; // returns current phase of actor
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
   TOKEN_UNIT getBufferSize(Edge e) const; // returns maximum token capacity of edge
