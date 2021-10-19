@@ -121,19 +121,31 @@ EXEC_COUNT Actor::getNumExecutions() {
 bool Actor::isReadyForExec(State s) {
   // Execution conditions (for given phase):
   // (1) enough room in output channel, (2) enough tokens in input channel, (3) not currently executing
+  VERBOSE_DEBUG("Is Actor " << this->getId() << " ready to execute?" << std::endl);
   bool isExecutable = true;
   for (auto const &e : this->consPhaseCount) {
+    VERBOSE_DEBUG("\tTokens in channel (current/required): "
+                  << s.getTokens(e.first) << "/" << this->getExecRate(e.first)
+                  << std::endl);
     if (s.getTokens(e.first) < this->getExecRate(e.first) || this->isExecuting) {
       isExecutable = false;
     }
   }
   if (s.hasBoundedBuffers()) {
     for (auto const &e : this->prodPhaseCount) {
+      VERBOSE_DEBUG("\tSpace in channel (current/required): "
+                    << s.getBufferSpace(e.first) << "/" << this->getExecRate(e.first)
+                    << std::endl);
       // if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
       if (s.getBufferSpace(e.first) < this->getExecRate(e.first)) {
         isExecutable = false;
       }
     }
+  }
+  if (isExecutable) {
+    VERBOSE_DEBUG("Actor " << this->getId() << " is ready to execute" << std::endl);
+  } else {
+    VERBOSE_DEBUG("Actor " << this->getId() << " is not ready to execute" << std::endl);
   }
   return isExecutable;
 }
@@ -185,6 +197,9 @@ void Actor::execStart(models::Dataflow* const dataflow, State &s) {
     }}
   if (s.hasBoundedBuffers()) { // for bounded buffers, need to 'reserve' space for tokens about to be produced
     {ForOutputEdges(dataflow, this->actor, e) {
+        VERBOSE_DEBUG("Consuming space in Channel " << dataflow->getEdgeId(e)
+                      << ": " << s.getBufferSpace(e) << "-" << this->getExecRate(e)
+                      << "=" << s.getBufferSpace(e) - this->getExecRate(e));
         s.setBufferSpace(e, s.getBufferSpace(e) - this->getExecRate(e));
       }}
   }
@@ -231,7 +246,10 @@ void Actor::execEnd(models::Dataflow* const dataflow, State &s) {
     }}
   if (s.hasBoundedBuffers()) { // free up spaces after tokens that have been consumed
     {ForInputEdges(dataflow, this->actor, e) {
-        s.setBufferSpace(e, s.getBufferSpace(e) + this->getExecRate(e));
+        VERBOSE_DEBUG("Producing space in Channel " << dataflow->getEdgeId(e)
+                      << ": " << s.getBufferSpace(e) << "+" << this->getExecRate(e, currentPhase)
+                      << "=" << s.getBufferSpace(e) + this->getExecRate(e, currentPhase));
+        s.setBufferSpace(e, s.getBufferSpace(e) + this->getExecRate(e, currentPhase));
       }}
   }
   s.removeFrontExec(this->actor);
@@ -264,13 +282,14 @@ void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState
     Vertex target = dataflow->getEdgeTarget(e.first);
     ARRAY_INDEX sourceId = dataflow->getVertexId(source);
     ARRAY_INDEX targetId = dataflow->getVertexId(target);
-    VERBOSE_DSE("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
-                << sourceId << "->" << targetId << "):" << std::endl);
-    VERBOSE_DSE("\t\t " << prevState.getTokens(e.first) << " tokens available previously, "
-                << this->getExecRate(e.first) << " required" << std::endl);
+    VERBOSE_DEBUG("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                  << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DEBUG("\t\t " << prevState.getTokens(e.first) << " tokens available previously, "
+                  << this->getExecRate(e.first) << " required (p "
+                  << this->getPhase(e.first) << ")" << std::endl);
     if (prevState.getTokens(e.first) < this->getExecRate(e.first)) {
-      VERBOSE_DSE("\t\t\tCausal dep between " << targetId << " and "
-                  << sourceId << std::endl);
+      VERBOSE_DEBUG("\t\t\tCausal dep between " << targetId << " and "
+                    << sourceId << std::endl);
       absDepGraph.addCausalDep(targetId, sourceId);
     }
   }
@@ -279,14 +298,14 @@ void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState
     Vertex target = dataflow->getEdgeTarget(e.first);
     ARRAY_INDEX sourceId = dataflow->getVertexId(source);
     ARRAY_INDEX targetId = dataflow->getVertexId(target);
-    VERBOSE_DSE("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
-                << sourceId << "->" << targetId << "):" << std::endl);
-    VERBOSE_DSE("\t\t " << prevState.getBufferSpace(e.first)
-                << " spaces available previously, " << this->getExecRate(e.first)
-                << " required" << std::endl);
+    VERBOSE_DEBUG("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                  << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DEBUG("\t\t " << prevState.getBufferSpace(e.first)
+                  << " spaces available previously, " << this->getExecRate(e.first)
+                  << " required (p " << this->getPhase(e.first) << ")" << std::endl);
     if (prevState.getBufferSpace(e.first) < this->getExecRate(e.first)) {
-      VERBOSE_DSE("\t\t\tCausal dep between " << sourceId << " and "
-                  << targetId << std::endl);
+      VERBOSE_DEBUG("\t\t\tCausal dep between " << sourceId << " and "
+                    << targetId << std::endl);
       absDepGraph.addCausalDep(sourceId, targetId);
     }
   }
