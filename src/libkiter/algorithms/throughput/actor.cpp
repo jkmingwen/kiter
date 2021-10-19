@@ -236,9 +236,10 @@ std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step) {
 
 // End actor's execution, producing tokens into output channels
 void Actor::execEnd(models::Dataflow* const dataflow, State &s) {
-  PHASE_INDEX currentPhase;
+  // NOTE it is important that the tokens/spaces produced correspond to the phase
+  // of the execution in the execution queue in order to correctly end execution
+  PHASE_INDEX currentPhase = s.getRemExecTime(this->actor).front().second;; // phase of actor's execution in queue, rather than phase actor is currently in
   {ForOutputEdges(dataflow, this->actor, e) {
-      currentPhase = s.getRemExecTime(this->actor).front().second;
       VERBOSE_INFO("ending execution for phase "
                 << currentPhase << ", producing "
                 << this->getExecRate(e, currentPhase) << " tokens");
