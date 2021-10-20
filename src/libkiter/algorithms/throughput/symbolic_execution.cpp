@@ -32,10 +32,10 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   std::map<Edge, TOKEN_UNIT> minStepSizes;
   std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
   initSearchParameters(dataflow, minStepSizes, minChannelSizes);
-  // StorageDistribution initDist(dataflow->getEdgesCount(),
-  //                              0,
-  //                              minChannelSizes,
-  //                              findMinimumDistributionSz(minChannelSizes));
+  StorageDistribution initDist(dataflow->getEdgesCount(),
+                               0,
+                               minChannelSizes,
+                               findMinimumDistributionSz(minChannelSizes));
 
   // generate SCCs if any
   sccMap = computeSCCKosaraju(dataflow);
@@ -60,8 +60,8 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
             VERBOSE_DSE("\tChannel " << g->getEdgeId(e) << ": "
                         << bufferSizes[e] << std::endl);
           }}
-        // TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, initDist);
-        TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, bufferSizes);
+        TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, initDist);
+        // TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, bufferSizes);
         VERBOSE_INFO("component throughput: " << componentThroughput);
         VERBOSE_INFO("actor ID, repFactor: " << actorInfo.first << ", "
                      << actorInfo.second);
@@ -116,8 +116,8 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
       VERBOSE_DSE("\tChannel " << dataflow->getEdgeId(e) << ": "
                   << bufferSizes[e] << std::endl);
     }}
-  // minThroughput = computeComponentThroughput(dataflow, actorInfo, initDist);
-  minThroughput = computeComponentThroughput(dataflow, actorInfo, bufferSizes);
+  minThroughput = computeComponentThroughput(dataflow, actorInfo, initDist);
+  // minThroughput = computeComponentThroughput(dataflow, actorInfo, bufferSizes);
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
   return;
 }
@@ -129,7 +129,7 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
    repetition factor */
 TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflow,
                                                  std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
-                                                 std::map<Edge, TOKEN_UNIT> &bufferSizes) {
+                                                 StorageDistribution &storDist) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   StateList visitedStates;
@@ -144,8 +144,8 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
     }}
-  State prevState(dataflow, actorMap, bufferSizes);
-  State currState(dataflow, actorMap, bufferSizes);
+  State prevState(dataflow, actorMap, storDist);
+  State currState(dataflow, actorMap, storDist);
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");

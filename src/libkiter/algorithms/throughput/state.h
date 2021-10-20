@@ -28,7 +28,7 @@ class State {
         std::map<Edge, TOKEN_UNIT> &bufferSizes);
   State(models::Dataflow* const dataflow,
         std::map<ARRAY_INDEX, Actor> actorMap,
-        StorageDistribution storDist);
+        StorageDistribution &storDist);
   PHASE_INDEX getPhase(Vertex a) const; // returns current phase of actor
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
   TOKEN_UNIT getBufferSize(Edge e) const; // returns maximum token capacity of edge

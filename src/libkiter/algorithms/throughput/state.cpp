@@ -51,11 +51,11 @@ State::State(models::Dataflow* const dataflow,
 
 State::State(models::Dataflow* const dataflow,
              std::map<ARRAY_INDEX, Actor> actorMap,
-             StorageDistribution storDist) {
+             StorageDistribution &storDist) {
   {ForEachEdge(dataflow, e) {
-      currentTokens[e] = storDist.getInitialTokens(e);
+      currentTokens[e] = dataflow->getPreload(e); // TODO look into why getInitialTokens not working
       bufferCapacities[e] = storDist.getChannelQuantity(e);
-      bufferSpaces[e] = storDist.getChannelQuantity(e) - storDist.getInitialTokens(e);
+      bufferSpaces[e] = storDist.getChannelQuantity(e) - dataflow->getPreload(e);
     }}
   {ForEachTask(dataflow, t) {
       actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();

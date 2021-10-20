@@ -21,7 +21,7 @@ namespace algorithms {
                                parameters_list_t);
   TIME_UNIT computeComponentThroughput(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
-                                       std::map<Edge, TOKEN_UNIT> &bufferSizes);
+                                       StorageDistribution &storDist);
   std::pair<TIME_UNIT, scheduling_t> computeComponentThroughputSchedule(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
