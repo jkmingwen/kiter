@@ -19,30 +19,23 @@ namespace models {
 namespace algorithms {
   void compute_asap_throughput(models::Dataflow* const dataflow,
                                parameters_list_t);
-  TIME_UNIT computeComponentThroughput(models::Dataflow* const dataflow,
-                                       std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
-                                       StorageDistribution &storDist);
+  kperiodic_result_t computeComponentThroughput(models::Dataflow* const dataflow,
+                                                std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
+                                                StorageDistribution &storDist);
   std::pair<TIME_UNIT, scheduling_t> computeComponentThroughputSchedule(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
                                               std::map<int, std::vector<ARRAY_INDEX>> sccMap);
-  // std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> computeDeadlockStorageDeps(models::Dataflow* const dataflow,
-  //                                                                              State &s,
-  //                                                                              std::map<ARRAY_INDEX, Actor> actorMap);
-  void computePeriodicStorageDeps(models::Dataflow* const dataflow,
-                                  State &currState,
-                                  State &prevState,
-                                  std::map<ARRAY_INDEX, Actor> actorMap,
-                                  ARRAY_INDEX minRepActorId,
-                                  EXEC_COUNT minRepFactor,
-                                  TOKEN_UNIT minRepActorExecCount);
-  void computePeriodicCausalDeps(models::Dataflow* const dataflow,
-                                 State &currState,
-                                 State &prevState,
-                                 std::map<ARRAY_INDEX, Actor> actorMap);
-  void computeDeadlockStorageDeps(models::Dataflow* const dataflow,
-                                  State &s,
-                                  std::map<ARRAY_INDEX, Actor> actorMap);
+  std::set<Edge> computePeriodicStorageDeps(models::Dataflow* const dataflow,
+                                            State &currState,
+                                            State &prevState,
+                                            std::map<ARRAY_INDEX, Actor> actorMap,
+                                            ARRAY_INDEX minRepActorId,
+                                            EXEC_COUNT minRepFactor,
+                                            TOKEN_UNIT minRepActorExecCount);
+  std::set<Edge> computeDeadlockStorageDeps(models::Dataflow* const dataflow,
+                                            State &s,
+                                            std::map<ARRAY_INDEX, Actor> actorMap);
   std::string printStatus(models::Dataflow* const dataflow, State &s);
 
 }

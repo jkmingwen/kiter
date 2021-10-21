@@ -26,6 +26,7 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
                                          parameters_list_t param_list) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
+  kperiodic_result_t result;
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
   std::vector<models::Dataflow*> sccDataflows;
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
@@ -60,7 +61,11 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
             VERBOSE_DSE("\tChannel " << g->getEdgeId(e) << ": "
                         << bufferSizes[e] << std::endl);
           }}
-        TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, initDist);
+        kperiodic_result_t componentResult = computeComponentThroughput(g, actorInfo, initDist);
+        for (auto const e : componentResult.critical_edges) { // insert critical edges to preserve previous storage deps found
+          result.critical_edges.insert(e);
+        }
+        TIME_UNIT componentThroughput = componentResult.throughput;
         // TIME_UNIT componentThroughput = computeComponentThroughput(g, actorInfo, bufferSizes);
         VERBOSE_INFO("component throughput: " << componentThroughput);
         VERBOSE_INFO("actor ID, repFactor: " << actorInfo.first << ", "
@@ -79,7 +84,7 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
         EXEC_COUNT standaloneRepFactor;
         {ForEachVertex(g, v) { // FIXME this probably won't be necessary once the getFirstVertex() bug is fixed
             standaloneId = g->getVertexId(v);
-            standaloneRepFactor = g-> getPhasesQuantity(v);
+            standaloneRepFactor = g->getPhasesQuantity(v);
           }}
         EXEC_COUNT repFactor = dataflow->getNi(dataflow->getVertexById(standaloneId));
         /* repetition factor for standalone component will be equal to its phase count
@@ -98,25 +103,37 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
         VERBOSE_INFO("scaled throughput: " << scaledThroughput);
       }
     }
-    std::cout << "Throughput of graph: " << minThroughput << std::endl;
+    result.throughput = minThroughput;
+    std::cout << "Throughput of graph: " << result.throughput << std::endl;
+    // verbose print storage dependencies found
+    VERBOSE_DSE("Storage dependency found in the following channels:" << std::endl);
+    for (auto const e : result.critical_edges) {
+      VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
+    }
     return;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   std::map<Edge, TOKEN_UNIT> bufferSizes;
-  VERBOSE_DSE("Compute throughput with following channel sizes:" << std::endl);
-  {ForEachEdge(dataflow, e) {
-      bufferSizes[e] = minChannelSizes[e].second;
-      if (dataflow->getEdgeId(e) == 1)
-        bufferSizes[e] = 10;
-      else if (dataflow->getEdgeId(e) == 2)
-        bufferSizes[e] = 9;
-      else
-        bufferSizes[e] = 4;
-      VERBOSE_DSE("\tChannel " << dataflow->getEdgeId(e) << ": "
-                  << bufferSizes[e] << std::endl);
-    }}
-  minThroughput = computeComponentThroughput(dataflow, actorInfo, initDist);
+  // VERBOSE_DSE("Compute throughput with following channel sizes:" << std::endl);
+  // {ForEachEdge(dataflow, e) {
+  //     bufferSizes[e] = minChannelSizes[e].second;
+  //     if (dataflow->getEdgeId(e) == 1)
+  //       bufferSizes[e] = 10;
+  //     else if (dataflow->getEdgeId(e) == 2)
+  //       bufferSizes[e] = 9;
+  //     else
+  //       bufferSizes[e] = 4;
+  //     VERBOSE_DSE("\tChannel " << dataflow->getEdgeId(e) << ": "
+  //                 << bufferSizes[e] << std::endl);
+  //   }}
+  result = computeComponentThroughput(dataflow, actorInfo, initDist); // no need to separately insert storage deps as only computed once
+  minThroughput = result.throughput;
+  // verbose print storage dependencies found
+  VERBOSE_DSE("Storage dependency found in the following channels:" << std::endl);
+  for (auto const e : result.critical_edges) {
+    VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
+  }
   // minThroughput = computeComponentThroughput(dataflow, actorInfo, bufferSizes);
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
   return;
@@ -127,7 +144,7 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
    as expected. Ideally, we would call 'getFirstVertex' in 'compute_asap_throughput' in order to
    find the ID of one of the actors in the SCC component, and subsequently use that to get its
    repetition factor */
-TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflow,
+kperiodic_result_t algorithms::computeComponentThroughput(models::Dataflow* const dataflow,
                                                  std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
                                                  StorageDistribution &storDist) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
@@ -137,6 +154,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
   ARRAY_INDEX minRepActorId;
   TOKEN_UNIT minRepActorExecCount = 0;
   TIME_UNIT timeStep;
+  kperiodic_result_t result;
 
   // initialise actors
   std::map<ARRAY_INDEX, Actor> actorMap;
@@ -180,12 +198,12 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
               VERBOSE_INFO(currState.print(dataflow));
               if (!visitedStates.addState(currState)) {
                 VERBOSE_INFO("ending execution and computing throughput");
-                // compute throughput using recurrent state
+                // compute throughput and storage deps using recurrent state
                 TIME_UNIT thr = visitedStates.computeThroughput();
-                // TODO function to find storage dependencies for periodic phase
-                computePeriodicStorageDeps(dataflow, currState, prevState, actorMap,
-                                           minRepActorId, minRepFactor, minRepActorExecCount);
-                return thr;
+                result.throughput = thr;
+                result.critical_edges = computePeriodicStorageDeps(dataflow, currState, prevState, actorMap,
+                                                                   minRepActorId, minRepFactor, minRepActorExecCount);
+                return result;
               }
               currState.setTimeElapsed(0);
               minRepActorExecCount = 0;
@@ -221,8 +239,10 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
     if (timeStep == LONG_MAX) { // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
       VERBOSE_INFO("Deadlock found!");
       VERBOSE_DSE("Graph deadlocked; looking for causal dependencies" << std::endl);
-      computeDeadlockStorageDeps(dataflow, currState, actorMap);
-      return 0;
+      result.throughput = 0; // no throughput if deadlocked
+      result.critical_edges = computeDeadlockStorageDeps(dataflow, currState, actorMap);
+
+      return result;
     }
   }
 }
@@ -250,13 +270,13 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
   return sccDataflows;
 }
 
-void algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
-                                            State &currState,
-                                            State &prevState,
-                                            std::map<ARRAY_INDEX, Actor> actorMap,
-                                            ARRAY_INDEX minRepActorId,
-                                            EXEC_COUNT minRepFactor,
-                                            TOKEN_UNIT minRepActorExecCount) {
+std::set<Edge> algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
+                                                      State &currState,
+                                                      State &prevState,
+                                                      std::map<ARRAY_INDEX, Actor> actorMap,
+                                                      ARRAY_INDEX minRepActorId,
+                                                      EXEC_COUNT minRepFactor,
+                                                      TOKEN_UNIT minRepActorExecCount) {
   abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
   State recurrentState = currState;
   TIME_UNIT timeStep;
@@ -309,9 +329,9 @@ void algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
               VERBOSE_INFO(currState.print(dataflow));
               if (currState == recurrentState) {
                 VERBOSE_INFO("ending execution and computing throughput");
-                // TODO call function to find storage dependencies
                 std::set<Edge> storageDeps = absDepGraph.computeStorageDependencies(dataflow);
-                return;
+
+                return storageDeps;
               }
               currState.setTimeElapsed(0);
               minRepActorExecCount = 0;
@@ -324,10 +344,10 @@ void algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
   }
 }
 
-// compute and return an abstract dependency graph given a deadlocked state
-void algorithms::computeDeadlockStorageDeps(models::Dataflow* const dataflow,
-                                           State &s,
-                                           std::map<ARRAY_INDEX, Actor> actorMap) {
+// compute and return set of edges with storage dependencies given a deadlocked state
+std::set<Edge> algorithms::computeDeadlockStorageDeps(models::Dataflow* const dataflow,
+                                                      State &s,
+                                                      std::map<ARRAY_INDEX, Actor> actorMap) {
   VERBOSE_DSE(s.print(dataflow));
   abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
   // populate abstract dependency graph
@@ -359,7 +379,7 @@ void algorithms::computeDeadlockStorageDeps(models::Dataflow* const dataflow,
     }}
   VERBOSE_DSE(absDepGraph.printStatus() << std::endl);
   std::set<Edge> storageDeps = absDepGraph.computeStorageDependencies(dataflow);
-
+  return storageDeps;
 }
 
 // prints current status of dataflow graph

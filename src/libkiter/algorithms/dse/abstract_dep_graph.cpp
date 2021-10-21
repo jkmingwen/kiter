@@ -52,11 +52,6 @@ std::set<Edge> abstractDepGraph::computeStorageDependencies(models::Dataflow* co
       storageDepSet.insert(e.first);
     }
   }
-  // verbose print storage dependencies found
-  VERBOSE_DSE("Storage dependency found in the following channels:" << std::endl);
-  for (auto const e : storageDepSet) {
-    VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
-  }
 
   return storageDepSet;
 }
