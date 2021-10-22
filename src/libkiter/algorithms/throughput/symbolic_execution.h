@@ -18,10 +18,14 @@ namespace models {
 
 namespace algorithms {
   void compute_asap_throughput(models::Dataflow* const dataflow,
-                               parameters_list_t);
-  kperiodic_result_t computeComponentThroughput(models::Dataflow* const dataflow,
-                                                std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
-                                                StorageDistribution &storDist);
+                               parameters_list_t param_list);
+  kperiodic_result_t compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
+                                                        parameters_list_t param_list);
+  TIME_UNIT computeComponentThroughput(models::Dataflow* const dataflow,
+                                       std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo);
+  kperiodic_result_t computeComponentThroughputCycles(models::Dataflow* const dataflow,
+                                                      std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
+                                                      StorageDistribution &storDist);
   std::pair<TIME_UNIT, scheduling_t> computeComponentThroughputSchedule(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
