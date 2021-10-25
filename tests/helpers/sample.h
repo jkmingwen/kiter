@@ -177,6 +177,8 @@ models::Dataflow* generateSampleMultSCC () {
     new_graph->setEdgeName(new_edge,"channel_4");
   }
 
+  return new_graph;
+
 }
 
 #endif /* TESTS_HELPERS_SAMPLE_H_ */
