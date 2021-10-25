@@ -129,7 +129,7 @@ kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Datafl
     for (auto g : sccDataflows) {
       if (g->getEdgesCount() > 0) {
         std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo;
-        kperiodic_result_t componentResult = computeComponentThroughputCycles(g, actorInfo, initDist);
+        kperiodic_result_t componentResult = computeComponentThroughputCycles(g, actorInfo, storDist);
         for (auto const e : componentResult.critical_edges) { // insert critical edges to preserve previous storage deps found
           result.critical_edges.insert(e);
         }
@@ -182,7 +182,7 @@ kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Datafl
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   std::map<Edge, TOKEN_UNIT> bufferSizes;
-  result = computeComponentThroughputCycles(dataflow, actorInfo, initDist); // no need to separately insert storage deps as only computed once
+  result = computeComponentThroughputCycles(dataflow, actorInfo, storDist); // no need to separately insert storage deps as only computed once
   minThroughput = result.throughput;
   // verbose print storage dependencies found
   VERBOSE_DSE("Storage dependency found in the following channels:" << std::endl);
