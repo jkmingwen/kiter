@@ -22,8 +22,8 @@
 #include "../dse/buffer_sizing.h"
 #include "../dse/abstract_dep_graph.h"
 
-void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
-                                         parameters_list_t param_list) {
+TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
+                                              parameters_list_t param_list) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
@@ -84,32 +84,34 @@ void algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
       }
     }
     std::cout << "Throughput of graph: " << minThroughput << std::endl;
-    return;
+
+    return minThroughput;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   minThroughput = computeComponentThroughput(dataflow, actorInfo);
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
 
-  return;
+  return minThroughput;
 }
 
 // TODO add storage distribution as argument
 kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
-                                                                  parameters_list_t param_list) {
+                                                                  parameters_list_t param_list,
+                                                                  StorageDistribution &storDist) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   kperiodic_result_t result;
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
   std::vector<models::Dataflow*> sccDataflows;
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
-  std::map<Edge, TOKEN_UNIT> minStepSizes;
-  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
-  initSearchParameters(dataflow, minStepSizes, minChannelSizes); // TODO remove this when integrating into DSE
-  StorageDistribution initDist(dataflow->getEdgesCount(),
-                               0,
-                               minChannelSizes,
-                               findMinimumDistributionSz(minChannelSizes));
+  // std::map<Edge, TOKEN_UNIT> minStepSizes;
+  // std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
+  // initSearchParameters(dataflow, minStepSizes, minChannelSizes); // TODO remove this when integrating into DSE
+  // StorageDistribution initDist(dataflow->getEdgesCount(),
+  //                              0,
+  //                              minChannelSizes,
+  //                              findMinimumDistributionSz(minChannelSizes));
 
   // generate SCCs if any
   sccMap = computeSCCKosaraju(dataflow);

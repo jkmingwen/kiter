@@ -17,10 +17,12 @@ namespace models {
 }
 
 namespace algorithms {
-  void compute_asap_throughput(models::Dataflow* const dataflow,
-                               parameters_list_t param_list);
+  // TODO add proxy/wrapper function to call compute ASAP and print out throughput
+  TIME_UNIT compute_asap_throughput(models::Dataflow* const dataflow,
+                                    parameters_list_t param_list);
   kperiodic_result_t compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
-                                                        parameters_list_t param_list);
+                                                        parameters_list_t param_list,
+                                                        StorageDistribution &storDist);
   TIME_UNIT computeComponentThroughput(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo);
   kperiodic_result_t computeComponentThroughputCycles(models::Dataflow* const dataflow,
@@ -44,7 +46,7 @@ namespace algorithms {
 
 }
 
-ADD_TRANSFORMATION(SymbExec,
-                   transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
+// ADD_TRANSFORMATION(SymbExec,
+//                    transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
 
 #endif /* SYMBOLIC_EXECUTION_H_ */
