@@ -95,93 +95,16 @@ TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   return minThroughput;
 }
 
-// TODO add storage distribution as argument
 kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
                                                                   parameters_list_t param_list,
                                                                   StorageDistribution &storDist) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   kperiodic_result_t result;
-  std::map<int, std::vector<ARRAY_INDEX>> sccMap;
-  std::vector<models::Dataflow*> sccDataflows;
-  TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
-  // std::map<Edge, TOKEN_UNIT> minStepSizes;
-  // std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
-  // initSearchParameters(dataflow, minStepSizes, minChannelSizes); // TODO remove this when integrating into DSE
-  // StorageDistribution initDist(dataflow->getEdgesCount(),
-  //                              0,
-  //                              minChannelSizes,
-  //                              findMinimumDistributionSz(minChannelSizes));
+  TIME_UNIT minThroughput = LONG_MAX;
 
-  // generate SCCs if any
-  sccMap = computeSCCKosaraju(dataflow);
-  if (sccMap.size() > 1) { // if the original graph isn't one SCC, need to break into SCC subgraphs
-    sccDataflows = generateSCCs(dataflow, sccMap);
-    VERBOSE_INFO("Strongly connected components:");
-    for (auto g : sccDataflows) {
-      VERBOSE_INFO("Actors in SCC:");
-      {ForEachVertex(g, actor) {
-          VERBOSE_INFO(g->getVertexName(actor) << "(id:"
-                       << g->getVertexId(actor)<< ") ");
-        }}
-      VERBOSE_INFO("\n");
-    }
-    for (auto g : sccDataflows) {
-      if (g->getEdgesCount() > 0) {
-        std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo;
-        kperiodic_result_t componentResult = computeComponentThroughputCycles(g, actorInfo, storDist);
-        for (auto const e : componentResult.critical_edges) { // insert critical edges to preserve previous storage deps found
-          result.critical_edges.insert(e);
-        }
-        TIME_UNIT componentThroughput = componentResult.throughput;
-        VERBOSE_INFO("component throughput: " << componentThroughput);
-        VERBOSE_INFO("actor ID, repFactor: " << actorInfo.first << ", "
-                     << actorInfo.second);
-        TIME_UNIT scaledThroughput = (componentThroughput * actorInfo.second) /
-          dataflow->getNi(dataflow->getVertexById(actorInfo.first));
-        VERBOSE_INFO("scaled throughput: " << scaledThroughput);
-        if (scaledThroughput < minThroughput) {
-          minThroughput = scaledThroughput;
-        }
-      } else if (g->getVerticesCount() == 1 && g->getEdgesCount() == 0) {
-        /* NOTE this is a workaround from ignoring reentrancy edges --- if this
-           condition is met, we assume that we have a single actor with
-           re-entrancy, which should therefore have a throughput of 1 */
-        ARRAY_INDEX standaloneId;
-        EXEC_COUNT standaloneRepFactor;
-        {ForEachVertex(g, v) { // FIXME this probably won't be necessary once the getFirstVertex() bug is fixed
-            standaloneId = g->getVertexId(v);
-            standaloneRepFactor = g->getPhasesQuantity(v);
-          }}
-        EXEC_COUNT repFactor = dataflow->getNi(dataflow->getVertexById(standaloneId));
-        /* repetition factor for standalone component will be equal to its phase count
-           this makes sense because, while it's producing and consuming 1 token in its
-           re-entrant edge, it will need to execute its number of phases to arrive
-           back at the same state */
-        TIME_UNIT componentThroughput = (TIME_UNIT) (1 * standaloneRepFactor) /
-          dataflow->getVertexTotalDuration(dataflow->getVertexById(standaloneId));
-        TIME_UNIT scaledThroughput = (TIME_UNIT) componentThroughput / repFactor;
-        if (scaledThroughput < minThroughput) {
-          minThroughput = scaledThroughput;
-        }
-        VERBOSE_INFO("component throughput: " << componentThroughput);
-        VERBOSE_INFO("standalone actor repetition factor: " << standaloneRepFactor);
-        VERBOSE_INFO("actor ID, repFactor: " << standaloneId << ", " << repFactor);
-        VERBOSE_INFO("scaled throughput: " << scaledThroughput);
-      }
-    }
-    result.throughput = minThroughput;
-    std::cout << "Throughput of graph: " << result.throughput << std::endl;
-    // verbose print storage dependencies found
-    VERBOSE_DSE("Storage dependency found in the following channels:" << std::endl);
-    for (auto const e : result.critical_edges) {
-      VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
-    }
-    return result;
-  }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
-  std::map<Edge, TOKEN_UNIT> bufferSizes;
   result = computeComponentThroughputCycles(dataflow, actorInfo, storDist); // no need to separately insert storage deps as only computed once
   minThroughput = result.throughput;
   // verbose print storage dependencies found
@@ -190,6 +113,7 @@ kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Datafl
     VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
   }
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
+
   return result;
 }
 
