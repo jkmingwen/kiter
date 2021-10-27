@@ -17,7 +17,8 @@ namespace models {
 }
 
 namespace algorithms {
-  // TODO add proxy/wrapper function to call compute ASAP and print out throughput
+  void compute_asap_throughput_wrapper(models::Dataflow* const dataflow,
+                                       parameters_list_t param_list);
   TIME_UNIT compute_asap_throughput(models::Dataflow* const dataflow,
                                     parameters_list_t param_list);
   kperiodic_result_t compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
@@ -46,7 +47,7 @@ namespace algorithms {
 
 }
 
-// ADD_TRANSFORMATION(SymbExec,
-//                    transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
+ADD_TRANSFORMATION(SymbExec,
+                   transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput_wrapper}));
 
 #endif /* SYMBOLIC_EXECUTION_H_ */

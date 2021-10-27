@@ -22,6 +22,15 @@
 #include "../dse/buffer_sizing.h"
 #include "../dse/abstract_dep_graph.h"
 
+void algorithms::compute_asap_throughput_wrapper(models::Dataflow* const dataflow,
+                                                 parameters_list_t param_list) {
+  TIME_UNIT thr = compute_asap_throughput(dataflow, param_list);
+  std::cout << "Symbolic Execution Throughput is " << std::setprecision( 9 )
+            << thr << std::endl;
+
+  return;
+}
+
 TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
                                               parameters_list_t param_list) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
@@ -83,14 +92,12 @@ TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
         VERBOSE_INFO("scaled throughput: " << scaledThroughput);
       }
     }
-    std::cout << "Throughput of graph: " << minThroughput << std::endl;
 
     return minThroughput;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   minThroughput = computeComponentThroughput(dataflow, actorInfo);
-  std::cout << "Throughput of graph: " << minThroughput << std::endl;
 
   return minThroughput;
 }
