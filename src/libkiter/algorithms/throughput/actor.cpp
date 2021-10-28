@@ -137,7 +137,7 @@ bool Actor::isReadyForExec(State s) {
                     << s.getBufferSpace(e.first) << "/" << this->getExecRate(e.first)
                     << std::endl);
       // if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
-      if (s.getBufferSpace(e.first) < this->getExecRate(e.first)) {
+      if (s.getBufferSpace(e.first) < this->getExecRate(e.first) || this->isExecuting) {
         isExecutable = false;
       }
     }
