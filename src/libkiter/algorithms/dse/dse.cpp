@@ -32,7 +32,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   bool isMonoOpt = false;
   bool isBaseMonoOpt = false;
   bool thrTargetSpecified = false;
-  bool isSymbExec = false;
+  bool modelBoundedBuffers = true;
   std::string dirName = "./data/"; // default
 
   // parse parameters for KDSE
@@ -58,7 +58,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     VERBOSE_WARNING("No target throughput specified (target throughput will be set to max throughput by default) --- specify target throughput with '-p THR=n' flag");
   }
   if (parameters.find("SYMB_EXEC") != parameters.end()) {
-    isSymbExec = true;
+    modelBoundedBuffers = false;
   }
 
 
@@ -87,7 +87,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   // create new graph with modelled bounded channel quantities
   models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
   // add feedback channels in new graph to model bounded channel quantities
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     {ForEachEdge(dataflow, c) {
         auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
                                                 dataflow_prime->getEdgeSource(c));
@@ -108,7 +108,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   TOKEN_UNIT minDistributionSize;
 
   VERBOSE_DSE("INITIALISING SEARCH PARAMETERS:" << std::endl);
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     initSearchParameters(dataflow_prime,
                          minStepSizes,
                          minChannelSizes);
@@ -127,7 +127,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
      where the first element in the pair of minChannelSizes is the
      initial tokens in the channel while the second element is the
      capacity of the channel (in tokens). */
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     {ForEachEdge(dataflow_prime, c) {
         if (dataflow_prime->getEdgeId(c) <= dataflow->getEdgesCount()) {
           minChannelSizes[c].second = 0; // original edges must have capacity 0
@@ -140,7 +140,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
   // initialise and store initial storage distribution state
   ARRAY_INDEX edgeCount = 0;
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     edgeCount = dataflow_prime->getEdgesCount();
   } else {
     edgeCount = dataflow->getEdgesCount();
@@ -151,7 +151,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
                                minDistributionSize);
 
   // initialise modelled graph with lower bound distribution
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     {ForEachEdge(dataflow_prime, c) {
         if (dataflow_prime->getEdgeId(c) <= dataflow->getEdgesCount()) { // original channel IDs
           dataflow_prime->setPreload(c, initDist.getInitialTokens(c));
@@ -172,7 +172,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   // calculate max throughput and current throughput with lower bound distribution
   // kperiodic_result_t result_max;
   TIME_UNIT maxThr;
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     kperiodic_result_t result_max = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
     maxThr = result_max.throughput;
   } else {
@@ -195,7 +195,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   }
 
   kperiodic_result_t result;
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     result = compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters);
   } else {
     result = compute_asap_throughput_and_cycles(dataflow, parameters, initDist);
@@ -237,7 +237,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   //   cumulativeTime += execTime;
   //   std::cout << "B_M_OPT: time taken: " << cumulativeTime.count() << std::endl;
   // }
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     methodName = "_kiter";
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
@@ -257,7 +257,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   // initialise data logging file
   std::ofstream dseLog;
   if (writeLogFiles) {
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       dseLog.open(logDirName + dataflow_prime->getGraphName() + "_dselog" + methodName + ".csv");
     } else {
       dseLog.open(logDirName + dataflow->getGraphName() + "_dselog" + methodName + ".csv");
@@ -282,7 +282,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     // Update graph with storage distribution just removed from checklist
     VERBOSE_DSE(std::endl);
     VERBOSE_DSE("Exploring new storage distribution: " << std::endl);
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       dataflow_prime->reset_computation(); // make graph writeable to alter channel size
       {ForEachEdge(dataflow_prime, c) {
           if (dataflow_prime->getEdgeId(c) > dataflow->getEdgesCount()) { // only modelled buffer preloads change
@@ -299,7 +299,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
     // Compute throughput and storage deps
     auto startTime = std::chrono::steady_clock::now();
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       result = compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters);
     } else {
       result = compute_asap_throughput_and_cycles(dataflow, parameters, checkDist);
@@ -315,10 +315,10 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     } else {
       checkDist.setThroughput(result.throughput);
     }
-    if (!isSymbExec) {
-      VERBOSE_DSE(checkDist.printInfo(dataflow_prime, isSymbExec));
+    if (modelBoundedBuffers) {
+      VERBOSE_DSE(checkDist.printInfo(dataflow_prime, modelBoundedBuffers));
     } else {
-      VERBOSE_DSE(checkDist.printInfo(dataflow, isSymbExec));
+      VERBOSE_DSE(checkDist.printInfo(dataflow, modelBoundedBuffers));
     }
 
 
@@ -326,14 +326,14 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     if (writeLogFiles) {
       dseLog << checkDist.getDistributionSize() << ","
              << checkDist.getThroughput() << ",";
-      if (!isSymbExec) {
-        dseLog << checkDist.print_quantities_csv(dataflow_prime, isSymbExec) << ","
-               << checkDist.print_dependency_mask(dataflow_prime, result, isSymbExec) << ","
+      if (modelBoundedBuffers) {
+        dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << ","
+               << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
                << execTime.count() << ","
                << cumulativeTime.count() << std::endl;
       } else {
-        dseLog << checkDist.print_quantities_csv(dataflow, isSymbExec) << ","
-               << checkDist.print_dependency_mask(dataflow, result, isSymbExec) << ","
+        dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << ","
+               << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
                << execTime.count() << ","
                << cumulativeTime.count() << std::endl;
       }
@@ -341,12 +341,12 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     } else {
       std::cout << checkDist.getDistributionSize() << ","
                 << checkDist.getThroughput() << ",";
-      if (!isSymbExec) {
-        std::cout << checkDist.print_quantities_csv(dataflow_prime, isSymbExec) << ","
+      if (modelBoundedBuffers) {
+        std::cout << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << ","
                   << execTime.count() << ","
                   << cumulativeTime.count() << std::endl;
       } else {
-        std::cout << checkDist.print_quantities_csv(dataflow, isSymbExec) << ","
+        std::cout << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << ","
                   << execTime.count() << ","
                   << cumulativeTime.count() << std::endl;
       }
@@ -364,7 +364,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
          it != (result.critical_edges).end(); it++) {
       StorageDistribution newDist(checkDist);
       // only increase channel quantity on "modelled" channels
-      if (!isSymbExec) {
+      if (modelBoundedBuffers) {
         if (dataflow_prime->getEdgeId(*it) > dataflow->getEdgesCount()) {
           VERBOSE_DSE("\tFound storage dependency in channel "
                       << dataflow_prime->getEdgeName(*it) << std::endl);
@@ -404,7 +404,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   // The minimum storage distribution for a throughput of 0 is (0, 0,..., 0)
   if (minStorageDist.getNextDistribution().getThroughput() == 0) {
     StorageDistribution zeroDist(minStorageDist.getNextDistribution());
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       {ForEachEdge(dataflow_prime, c) {
           zeroDist.setChannelQuantity(c, 0);
         }}
@@ -420,10 +420,10 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   VERBOSE_DSE("\n");
   VERBOSE_DSE("DSE RESULTS [START] (target throughput: " << thrTarget
               << "):" << std::endl);
-  if (!isSymbExec) {
-    VERBOSE_DSE("\n" << minStorageDist.printDistributions(dataflow_prime, isSymbExec));
+  if (modelBoundedBuffers) {
+    VERBOSE_DSE("\n" << minStorageDist.printDistributions(dataflow_prime, modelBoundedBuffers));
   } else {
-    VERBOSE_DSE("\n" << minStorageDist.printDistributions(dataflow, isSymbExec));
+    VERBOSE_DSE("\n" << minStorageDist.printDistributions(dataflow, modelBoundedBuffers));
   }
   VERBOSE_DSE("DSE RESULTS [END]" << std::endl);
   VERBOSE_DSE("Done with search!" << std::endl);
@@ -434,7 +434,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   if (writeLogFiles) { // TODO account for SymbExec case
     dseLog.close();
     std::string graphName;
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       graphName = dataflow_prime->getGraphName();
     } else {
       graphName = dataflow->getGraphName();
@@ -442,14 +442,14 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     std::cout << "\nDSE log has been written to: "
               << logDirName + graphName + "_dselog" + methodName + ".csv"
               << std::endl;
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       minStorageDist.writeCSV(ppDirName + graphName +
                               "_pp" + methodName + ".csv", dataflow_prime,
-                              isSymbExec);
+                              modelBoundedBuffers);
     } else {
       minStorageDist.writeCSV(ppDirName + graphName +
                               "_pp" + methodName + ".csv", dataflow,
-                              isSymbExec);
+                              modelBoundedBuffers);
     }
 
     std::cout << "\nPareto points have been written to: "
@@ -457,7 +457,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
               << std::endl;
 
 #ifdef WRITE_GRAPHS
-    if (!isSymbExec) {
+    if (modelBoundedBuffers) {
       minStorageDist.printGraphs(dataflow_prime,
                                  dirName + dotfileDirName);
     } else {

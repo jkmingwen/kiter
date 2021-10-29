@@ -130,12 +130,12 @@ void StorageDistribution::updateDistributionSize() {
 
 // Prints member data of StorageDistribution for debugging
 std::string StorageDistribution::printInfo(models::Dataflow* const dataflow,
-                                           bool isSymbExec) {
+                                           bool modelBoundedBuffers) {
   std::string sdInfo;
   ARRAY_INDEX ch_count = 0;
   ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
 
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
   } else {
     ch_limit = this->edge_count;
@@ -173,13 +173,13 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow,
 }
 
 std::string StorageDistribution::print_quantities_csv(models::Dataflow* const dataflow,
-                                                      bool isSymbExec) {
+                                                      bool modelBoundedBuffers) {
   std::string output("\"");
   std::string delim("");
   ARRAY_INDEX ch_count = 0;
   ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
 
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
   }
   {ForEachEdge(dataflow, c) {
@@ -198,13 +198,13 @@ std::string StorageDistribution::print_quantities_csv(models::Dataflow* const da
 // associated with critical cycle
 std::string StorageDistribution::print_dependency_mask(models::Dataflow* const dataflow,
                                                        kperiodic_result_t const result,
-                                                       bool isSymbExec) {
+                                                       bool modelBoundedBuffers) {
   std::string output("\"");
   std::string delim("");
   ARRAY_INDEX ch_count = 0;
   ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
 
-  if (!isSymbExec) {
+  if (modelBoundedBuffers) {
     ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
   }
   {ForEachEdge(dataflow, c) {
@@ -768,24 +768,24 @@ void StorageDistributionSet::updateFeasibleSet(StorageDistribution newDist) {
 // Print info of all storage distributions of a given distribution size in set
 std::string StorageDistributionSet::printDistributions(TOKEN_UNIT dist_sz,
                                                        models::Dataflow* const dataflow,
-                                                       bool isSymbExec) {
+                                                       bool modelBoundedBuffers) {
   assert(set.find(dist_sz) != set.end());
 
   std::string dInfo;
   dInfo += "Printing storage distributions of distribution size: "
     + std::to_string(dist_sz) + "\n";
   for (auto &i : set[dist_sz]) {
-    dInfo += i.printInfo(dataflow, isSymbExec);
+    dInfo += i.printInfo(dataflow, modelBoundedBuffers);
   }
   return dInfo;
 }
 
 // Print info of all storage distributions in set
 std::string StorageDistributionSet::printDistributions(models::Dataflow* const dataflow,
-                                                       bool isSymbExec) {
+                                                       bool modelBoundedBuffers) {
   std::string allInfo;
   for (auto &it : this->set) {
-    allInfo += printDistributions(it.first, dataflow, isSymbExec);
+    allInfo += printDistributions(it.first, dataflow, modelBoundedBuffers);
   }
   return allInfo;
 }
@@ -795,14 +795,14 @@ std::string StorageDistributionSet::printDistributions(models::Dataflow* const d
    format (e.g. "example_filename.csv") */
 void StorageDistributionSet::writeCSV(std::string filename,
                                       models::Dataflow* const dataflow,
-                                      bool isSymbExec) {
+                                      bool modelBoundedBuffers) {
   std::ofstream outputFile;
   outputFile.open(filename);
   outputFile << "storage distribution size,throughput,channel quantities" << std::endl; // initialise headers
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
       outputFile << it.first << "," << sd.getThroughput() << ","
-                 << sd.print_quantities_csv(dataflow, isSymbExec) << std::endl;
+                 << sd.print_quantities_csv(dataflow, modelBoundedBuffers) << std::endl;
     }
   }
   outputFile.close();
