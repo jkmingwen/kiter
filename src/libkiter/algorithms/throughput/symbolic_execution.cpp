@@ -147,6 +147,11 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
                              distSz);
   kperiodic_result_t result = compute_asap_throughput_and_cycles(dataflow, param_list, testSD);
   TIME_UNIT thr = result.throughput;
+  std::cout << "Storage dependencies found in:" << std::endl;
+  for (auto const e : result.critical_edges) {
+    std::cout << "\tChannel " << dataflow->getEdgeId(e) << " (name: "
+              << dataflow->getEdgeName(e) << ")" << std::endl;
+  }
   std::cout << "Symbolic Execution Throughput is " << std::setprecision( 9 )
             << thr << std::endl;
   return;
