@@ -21,6 +21,8 @@ namespace algorithms {
                                        parameters_list_t param_list);
   TIME_UNIT compute_asap_throughput(models::Dataflow* const dataflow,
                                     parameters_list_t param_list);
+  void compute_asap_throughput_and_cycles_debug(models::Dataflow* const dataflow,
+                                                parameters_list_t param_list);
   kperiodic_result_t compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
                                                         parameters_list_t param_list,
                                                         StorageDistribution &storDist);
@@ -49,5 +51,7 @@ namespace algorithms {
 
 ADD_TRANSFORMATION(SymbExec,
                    transformation_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput_wrapper}));
+ADD_TRANSFORMATION(SymbExecDebug,
+                   transformation_t({ "SymbExecDebug" , "Test SymbExec with preset storage distribution.", algorithms::compute_asap_throughput_and_cycles_debug}));
 
 #endif /* SYMBOLIC_EXECUTION_H_ */

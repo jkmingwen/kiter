@@ -102,6 +102,56 @@ TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   return minThroughput;
 }
 
+void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* const dataflow,
+                                                          parameters_list_t param_list) {
+  std::string testDistribution;
+  std::map<ARRAY_INDEX, TOKEN_UNIT> specifiedCaps;
+  if (param_list.find("SD") != param_list.end()) {
+    testDistribution = param_list["SD"];
+    std::stringstream parsedInput(testDistribution);
+    std::string channelQuantity;
+    ARRAY_INDEX edgeId = 1; // NOTE assuming 1 indexed
+    while (std::getline(parsedInput, channelQuantity, ',')) {
+      try { // store channel capacities indexed by edge id
+        TOKEN_UNIT tokenCap = std::stol(channelQuantity, nullptr);
+        specifiedCaps[edgeId] = tokenCap;
+        edgeId++;
+      }
+      catch (const std::invalid_argument &ia) {
+        VERBOSE_ERROR("Invalid argument for channel quantity (expecting long int): "
+                      << ia.what() << std::endl);
+        return;
+      }
+
+    }
+    if (specifiedCaps.size() != dataflow->getEdgesCount()) {
+      VERBOSE_ERROR("Mismatch in number of channel quantities specified --- expecting "
+                    << dataflow->getEdgesCount() << ", " << "got "
+                    << specifiedCaps.size() << std::endl);
+      return;
+    }
+  } else {
+    VERBOSE_WARNING("No test storage distribution specified --- specify storage distribution using '-p SD=c1,c2,c3,...' where 'cN' refers to the maximum token capacity of the channel");
+    return;
+  }
+  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> channelQuants;
+  TOKEN_UNIT distSz = 0;
+  {ForEachEdge(dataflow, e) {
+      channelQuants[e].first = dataflow->getPreload(e); // assume initial tokesn specified by dataflow graph
+      channelQuants[e].second = specifiedCaps[dataflow->getEdgeId(e)];
+      distSz += specifiedCaps[dataflow->getEdgeId(e)];
+    }}
+  StorageDistribution testSD(dataflow->getEdgesCount(),
+                             0,
+                             channelQuants,
+                             distSz);
+  kperiodic_result_t result = compute_asap_throughput_and_cycles(dataflow, param_list, testSD);
+  TIME_UNIT thr = result.throughput;
+  std::cout << "Symbolic Execution Throughput is " << std::setprecision( 9 )
+            << thr << std::endl;
+  return;
+}
+
 kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
                                                                   parameters_list_t param_list,
                                                                   StorageDistribution &storDist) {
@@ -225,7 +275,6 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
   }
 }
 
-// TODO make storage distribution optional for unbounded throughput computation
 kperiodic_result_t algorithms::computeComponentThroughputCycles(models::Dataflow* const dataflow,
                                                                 std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
                                                                 StorageDistribution &storDist) {
