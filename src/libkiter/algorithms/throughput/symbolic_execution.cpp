@@ -119,7 +119,7 @@ kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Datafl
   for (auto const e : result.critical_edges) {
     VERBOSE_DSE("\t" << dataflow->getEdgeId(e) << std::endl);
   }
-  std::cout << "Throughput of graph: " << minThroughput << std::endl;
+  VERBOSE_DSE("Throughput of graph: " << minThroughput << std::endl);
 
   return result;
 }

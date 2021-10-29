@@ -128,7 +128,7 @@ StorageDistributionSet algorithms::base_monotonic_optimised_Kperiodic_throughput
     } else {
       newDist.setThroughput(result.throughput);
     }
-    VERBOSE_DSE(newDist.printInfo(dataflow));
+    // VERBOSE_DSE(newDist.printInfo(dataflow)); TODO fix later
     thrCurrent = newDist.getThroughput();
   }
   feasibleSet.addStorageDistribution(newDist);
@@ -158,7 +158,7 @@ StorageDistributionSet algorithms::base_monotonic_optimised_Kperiodic_throughput
     } else {
       checkDist.setThroughput(result.throughput);
     }
-    VERBOSE_DSE(checkDist.printInfo(dataflow));
+    // VERBOSE_DSE(checkDist.printInfo(dataflow)); TODO fix later
     thrCurrent = checkDist.getThroughput();
     isSat = thrCurrent >= thrTarget;
     if (!isSat) {
