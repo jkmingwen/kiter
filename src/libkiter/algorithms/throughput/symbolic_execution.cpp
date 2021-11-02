@@ -145,6 +145,22 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
                              0,
                              channelQuants,
                              distSz);
+  VERBOSE_DSE("Graph name:" << dataflow->getGraphName() << std::endl);
+  VERBOSE_DSE("Actor info:" << std::endl);
+  {ForEachVertex(dataflow, v) {
+      VERBOSE_DSE("\tActor " << dataflow->getVertexName(v)
+                  << " (ID: " << dataflow->getVertexId(v) << ")" << std::endl);
+    }}
+  VERBOSE_DSE("Channel info:" << std::endl);
+  {ForEachEdge(dataflow, e) {
+      Vertex src = dataflow->getEdgeSource(e);
+      Vertex dst = dataflow->getEdgeTarget(e);
+      std::string srcName = dataflow->getVertexName(src);
+      std::string dstName = dataflow->getVertexName(dst);
+      VERBOSE_DSE("\tChannel " << dataflow->getEdgeName(e)
+                  << " (ID: " << dataflow->getEdgeId(e) << ")"
+                  << " (" << srcName << "->" << dstName << ")" << std::endl);
+    }}
   kperiodic_result_t result = compute_asap_throughput_and_cycles(dataflow, param_list, testSD);
   TIME_UNIT thr = result.throughput;
   std::cout << "Storage dependencies found in:" << std::endl;
@@ -465,6 +481,7 @@ std::set<Edge> algorithms::computePeriodicStorageDeps(models::Dataflow* const da
               VERBOSE_INFO(currState.print(dataflow));
               if (currState == recurrentState) {
                 VERBOSE_INFO("ending execution and computing throughput");
+                VERBOSE_DSE(absDepGraph.printStatus() << std::endl);
                 std::set<Edge> storageDeps = absDepGraph.computeStorageDependencies(dataflow);
 
                 return storageDeps;
