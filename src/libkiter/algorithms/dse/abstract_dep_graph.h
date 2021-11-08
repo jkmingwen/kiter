@@ -23,6 +23,16 @@ class abstractDepGraph {
                      std::map<ARRAY_INDEX, bool> &visited,
                      std::map<ARRAY_INDEX, ARRAY_INDEX> &adjActors,
                      std::map<Edge, bool> &storageDeps);
+  std::set<Edge> computeStorageDependenciesSCC(models::Dataflow* const dataflow);
+  void findStorageDepsFromSCC(models::Dataflow* const dataflow,
+                              std::map<int, std::vector<ARRAY_INDEX>> &sccMap,
+                              std::map<Edge, bool> &storageDeps);
+  void computeDFSStack(ARRAY_INDEX startId,
+                       std::map<ARRAY_INDEX, bool> &visitedActors,
+                       std::stack<ARRAY_INDEX> &dfsOrder);
+  void dfsTranspose(ARRAY_INDEX startId,
+                    std::map<ARRAY_INDEX, bool> &visitedActors,
+                    std::vector<ARRAY_INDEX> &sccActors);
   std::string printStatus();
  private:
   std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> abstractDependencyGraph;

@@ -56,6 +56,117 @@ std::set<Edge> abstractDepGraph::computeStorageDependencies(models::Dataflow* co
   return storageDepSet;
 }
 
+// identify storage dependencies in abstract causal dependency graph by identifying SCCs
+std::set<Edge> abstractDepGraph::computeStorageDependenciesSCC(models::Dataflow* const dataflow) {
+  std::map<ARRAY_INDEX, bool> visited;
+  std::stack<ARRAY_INDEX> dfsOrder;
+  std::vector<ARRAY_INDEX> sccActors;
+  std::map<int, std::vector<ARRAY_INDEX>> sccMap; // track edge IDs split by SCC
+  std::map<Edge, bool> storageDeps;
+  std::set<Edge> storageDepSet;
+  int sccCount = 1;
+
+  {ForEachVertex(dataflow, v) {
+      visited[dataflow->getVertexId(v)] = false;
+    }}
+  {ForEachEdge(dataflow, e) {
+      storageDeps[e] = false;
+    }}
+  for (auto const& it : visited) {
+    if (!visited[it.first]) {
+      // populate visited actors by computing the DFS stack
+      computeDFSStack(it.first, visited, dfsOrder);
+    }
+  }
+
+  // reset visited actor list
+  for (auto const& it : visited) {
+    visited[it.first] = false;
+  }
+  // perform transposed version of dfs according to order stack
+  while (!dfsOrder.empty()) {
+    ARRAY_INDEX firstId = dfsOrder.top();
+    dfsOrder.pop();
+    if (!visited[firstId]) { // only perform DFS on actors in stack that haven't been visited
+      dfsTranspose(firstId, visited, sccActors);
+      // add to SCC map and reset for next component
+      sccMap[sccCount] = sccActors;
+      sccCount++;
+      sccActors.clear();
+    }
+  }
+
+  VERBOSE_DEBUG("Number of SCCs in abstract dependency graph: " << sccMap.size() << std::endl);
+  for (auto const& actorList : sccMap) {
+    VERBOSE_DEBUG("\tSCC ID: " << actorList.first << std::endl);
+    for (auto const& actorId : actorList.second) {
+      VERBOSE_DEBUG("\t\t" << actorId << std::endl);
+    }
+  }
+
+  findStorageDepsFromSCC(dataflow, sccMap, storageDeps);
+  for (auto const& e : storageDeps) {
+    if (e.second) {
+      storageDepSet.insert(e.first);
+    }
+  }
+
+  return storageDepSet;
+}
+
+void abstractDepGraph::findStorageDepsFromSCC(models::Dataflow* const dataflow,
+                                              std::map<int, std::vector<ARRAY_INDEX>> &sccMap,
+                                              std::map<Edge, bool> &storageDeps) {
+  {ForEachEdge(dataflow, e) {
+      ARRAY_INDEX srcId = dataflow->getVertexId(dataflow->getEdgeSource(e));
+      ARRAY_INDEX dstId = dataflow->getVertexId(dataflow->getEdgeTarget(e));
+      if (this->abstractDependencyGraph[srcId][dstId]) {
+        for (auto const& component : sccMap) {
+          // check if both actors are part of the same SCC in abstract dep graph
+          bool srcActorInSCC = std::find(component.second.begin(),
+                                         component.second.end(), srcId) != component.second.end();
+          bool dstActorInSCC = std::find(component.second.begin(),
+                                         component.second.end(), dstId) != component.second.end();
+          if (srcActorInSCC && dstActorInSCC) {
+            storageDeps[e] = true;
+          }
+        }
+      }
+    }}
+}
+
+void abstractDepGraph::computeDFSStack(ARRAY_INDEX startId,
+                                       std::map<ARRAY_INDEX, bool> &visited,
+                                       std::stack<ARRAY_INDEX> &dfsOrder) {
+  if (visited[startId]) {
+    return;
+  }
+  visited[startId] = true;
+  // iterate through outgoing edges (absDepGraph[startId][adjId]) and add to stack
+  for (auto const& adjId : this->abstractDependencyGraph[startId]) {
+    if (this->abstractDependencyGraph[startId][adjId.first]) { // edge exists from startId->adjId in absDepGraph
+      computeDFSStack(adjId.first, visited, dfsOrder);
+    }
+  }
+  dfsOrder.push(startId);
+}
+
+void abstractDepGraph::dfsTranspose(ARRAY_INDEX startId,
+                                    std::map<ARRAY_INDEX, bool> &visited,
+                                    std::vector<ARRAY_INDEX> &sccActors) {
+  if (visited[startId]) {
+    return;
+  }
+  visited[startId] = true;
+  sccActors.push_back(startId);
+  // iterate through incoming edges (absDepGraph[adjId][startId]) and add to stack
+  for (auto const& adjId : this->abstractDependencyGraph) {
+    if (this->abstractDependencyGraph[adjId.first][startId]) {
+      dfsTranspose(adjId.first, visited, sccActors);
+    }
+  }
+}
+
 // Compute cycles within the abstract dependency graph
 void abstractDepGraph::computeCycles(models::Dataflow* const dataflow,
                                      ARRAY_INDEX startActor,

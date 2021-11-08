@@ -30,7 +30,8 @@ namespace algorithms {
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo);
   kperiodic_result_t computeComponentThroughputCycles(models::Dataflow* const dataflow,
                                                       std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo,
-                                                      StorageDistribution &storDist);
+                                                      StorageDistribution &storDist,
+                                                      bool useCorrectedStorDepDetection);
   std::pair<TIME_UNIT, scheduling_t> computeComponentThroughputSchedule(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule);
   std::vector<models::Dataflow*> generateSCCs(models::Dataflow* const dataflow,
@@ -41,10 +42,12 @@ namespace algorithms {
                                             std::map<ARRAY_INDEX, Actor> actorMap,
                                             ARRAY_INDEX minRepActorId,
                                             EXEC_COUNT minRepFactor,
-                                            TOKEN_UNIT minRepActorExecCount);
+                                            TOKEN_UNIT minRepActorExecCount,
+                                            bool useCorrectedStorDepDetection);
   std::set<Edge> computeDeadlockStorageDeps(models::Dataflow* const dataflow,
                                             State &s,
-                                            std::map<ARRAY_INDEX, Actor> actorMap);
+                                            std::map<ARRAY_INDEX, Actor> actorMap,
+                                            bool useCorrectedStorDepDetection);
   std::string printStatus(models::Dataflow* const dataflow, State &s);
 
 }

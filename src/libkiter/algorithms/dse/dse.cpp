@@ -57,7 +57,8 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   } else {
     VERBOSE_WARNING("No target throughput specified (target throughput will be set to max throughput by default) --- specify target throughput with '-p THR=n' flag");
   }
-  if (parameters.find("SYMB_EXEC") != parameters.end()) {
+  if (parameters.find("SYMB_EXEC_ORIGINAL") != parameters.end() ||
+      parameters.find("SYMB_EXEC_CORRECTED") != parameters.end()) {
     modelBoundedBuffers = false;
   }
 
@@ -237,7 +238,28 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   //   cumulativeTime += execTime;
   //   std::cout << "B_M_OPT: time taken: " << cumulativeTime.count() << std::endl;
   // }
-  if (modelBoundedBuffers) {
+  if (isBaseMonoOpt) {
+    methodName = "_base_m_opt";
+    auto startTime = std::chrono::steady_clock::now();
+    if (modelBoundedBuffers) {
+      checklist = algorithms::base_monotonic_optimised_symbexec_throughput_dse(dataflow_prime,
+                                                                               initDist,
+                                                                               thrTarget,
+                                                                               computation_counter,
+                                                                               parameters);
+    } else {
+      checklist = algorithms::base_monotonic_optimised_symbexec_throughput_dse(dataflow,
+                                                                               initDist,
+                                                                               thrTarget,
+                                                                               computation_counter,
+                                                                               parameters);
+    }
+    auto endTime = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
+    cumulativeTime += execTime;
+    std::cout << "B_M_OPT: time taken: " << cumulativeTime.count() << std::endl;
+  }
+  else if (modelBoundedBuffers) {
     methodName = "_kiter";
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
