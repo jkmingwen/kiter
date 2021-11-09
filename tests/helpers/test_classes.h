@@ -39,14 +39,17 @@ class WITH_SAMPLE {
 
 	models::Dataflow * pipeline_sample ;
 	models::Dataflow * cycle_sample ;
+	models::Dataflow * mult_scc_sample ;
 	WITH_SAMPLE () {
 		pipeline_sample = generateSamplePipeline () ;
 		cycle_sample = generateSampleCycle () ;
+                mult_scc_sample = generateSampleMultSCC();
     	BOOST_TEST_MESSAGE( "WITH_SAMPLE Setup Done" );
 	}
 	~WITH_SAMPLE () {
 		delete pipeline_sample;
 		delete cycle_sample;
+                delete mult_scc_sample;
     	BOOST_TEST_MESSAGE( "WITH_SAMPLE Teardown Done" );
 	}
 };

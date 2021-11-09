@@ -13,7 +13,7 @@
 #include <algorithms/throughput/kperiodic.h>
 
 namespace models {
-	class Dataflow;
+        class Dataflow;
 }
 
 namespace algorithms {
@@ -24,15 +24,21 @@ namespace algorithms {
                              bool &foundPoint,
                              bool isSat,
                              TOKEN_UNIT &mult,
-                             StorageDistribution &kMinPoint);
+                             StorageDistribution &kMinPoint,
+                             bool modelBoundedBuffers);
   StorageDistributionSet base_monotonic_optimised_Kperiodic_throughput_dse(models::Dataflow* const dataflow,
                                                                            StorageDistribution initDist,
                                                                            TIME_UNIT targetThr,
                                                                            long int &computation_counter,
                                                                            parameters_list_t params);
-        
+  StorageDistributionSet base_monotonic_optimised_symbexec_throughput_dse(models::Dataflow* const dataflow,
+                                                                          StorageDistribution initDist,
+                                                                          TIME_UNIT targetThr,
+                                                                          long int &computation_counter,
+                                                                          parameters_list_t params);
+
 }
 
 // ADD_TRANSFORMATION(MonotonicOptimisation,
-// 		transformation_t({"MonotonicOptimisation", "Use monotonic optimisation to reduce search space of buffer sizing and throughput exploration, using K-periodic scheduling method", algorithms::monotonic_optimised_Kperiodic_throughput_dse}));
+//              transformation_t({"MonotonicOptimisation", "Use monotonic optimisation to reduce search space of buffer sizing and throughput exploration, using K-periodic scheduling method", algorithms::monotonic_optimised_Kperiodic_throughput_dse}));
 #endif /* SRC_LIBKITER_ALGORITHMS_DSE_BASE_MONOTONIC_OPTIMISATION_H_ */

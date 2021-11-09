@@ -13,23 +13,59 @@ State::State()
   :executingActors(),
    actorPhases(),
    currentTokens(),
+   bufferCapacities(),
    actors(),
-   timeElapsed{0} {}
+   timeElapsed{0},
+   isBounded{false} {}
 
 // construct state using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap, std::set<ARRAY_INDEX> new_edges) {
+             std::map<ARRAY_INDEX, Actor> actorMap) {
   {ForEachEdge(dataflow, e) {
-    // if (new_edges.find(dataflow->getEdgeId(e)) == new_edges.end()){
-    currentTokens[e] = dataflow->getPreload(e);
-    // }
-  }}
+      currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
+    }}
   {ForEachTask(dataflow, t) {
       actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
       actors.push_back(t);
     }}
   timeElapsed = 0;
+  isBounded = false; // if no buffer sizes specified, assume unbounded buffers
 }
+
+// construct state with bounded buffers using current graph and actor map information
+State::State(models::Dataflow* const dataflow,
+             std::map<ARRAY_INDEX, Actor> actorMap,
+             std::map<Edge, TOKEN_UNIT> &bufferSizes) {
+  {ForEachEdge(dataflow, e) {
+      currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
+      bufferCapacities[e] = bufferSizes[e];
+      bufferSpaces[e] = bufferSizes[e] - dataflow->getPreload(e);
+    }}
+  {ForEachTask(dataflow, t) {
+      actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
+      actors.push_back(t);
+    }}
+  timeElapsed = 0;
+  isBounded = true;
+}
+
+State::State(models::Dataflow* const dataflow,
+             std::map<ARRAY_INDEX, Actor> actorMap,
+             StorageDistribution &storDist) {
+  {ForEachEdge(dataflow, e) {
+      currentTokens[e] = dataflow->getPreload(e); // TODO look into why getInitialTokens not working
+      bufferCapacities[e] = storDist.getChannelQuantity(e);
+      bufferSpaces[e] = storDist.getChannelQuantity(e) - dataflow->getPreload(e);
+    }}
+  {ForEachTask(dataflow, t) {
+      actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
+      actors.push_back(t);
+    }}
+  timeElapsed = 0;
+  isBounded = true;
+}
+
+// TODO make state constructor for that uses a State object instead
 
 // returns current phase of actor
 PHASE_INDEX State::getPhase(Vertex a) const {
@@ -39,6 +75,16 @@ PHASE_INDEX State::getPhase(Vertex a) const {
 // returns current tokens in edge
 TOKEN_UNIT State::getTokens(Edge e) const {
   return currentTokens.at(e);
+}
+
+// returns maximum token capacity of edge
+TOKEN_UNIT State::getBufferSize(Edge e) const {
+  return bufferCapacities.at(e);
+}
+
+// returns amount of token spaces left in edge
+TOKEN_UNIT State::getBufferSpace(Edge e) const {
+  return bufferSpaces.at(e);
 }
 
 // returns list of amount of time left for executions for actor
@@ -67,7 +113,12 @@ void State::setPhase(Vertex a, PHASE_INDEX newPhase) {
 }
 
 void State::setTokens(Edge e, TOKEN_UNIT newTokens) {
+  // buffer sizes vs token counts are checked in Actor 'isReadyForExec' function
   this->currentTokens[e] = newTokens;
+}
+
+void State::setBufferSpace(Edge e, TOKEN_UNIT newSpace) {
+  this->bufferSpaces[e] = newSpace;
 }
 
 void State::addExecution(Vertex a, std::pair<TIME_UNIT, PHASE_INDEX> newExec) {
@@ -89,15 +140,13 @@ void State::setTimeElapsed(TIME_UNIT time) {
 
 // update phase count for each actor and token counts per channel
 void State::updateState(models::Dataflow* const dataflow,
-                        std::map<ARRAY_INDEX, Actor> actorMap, std::set<ARRAY_INDEX> new_edges) {
+                        std::map<ARRAY_INDEX, Actor> actorMap) {
   {ForEachTask(dataflow, t) {
-    setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
-  }}
+      setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
+    }}
   {ForEachEdge(dataflow, e) {
-    // if (new_edges.find(dataflow->getEdgeId(e)) == new_edges.end()){
-    setTokens(e, dataflow->getPreload(e));
-    // }
-  }}
+      setTokens(e, this->getTokens(e));
+    }}
 }
 
 TIME_UNIT State::advanceTime() {
@@ -132,20 +181,24 @@ TIME_UNIT State::advanceTimeWithMod() {
     }
   }
   // check for cases where time shouldn't advance/deadlock
-  if (timeElapsed == 0) { 
-    return 0; 
+  if (timeElapsed == 0) {
+    return timeElapsed; // there exists actors that need to end execution
   }
   if (timeElapsed == LONG_MAX) {
-    this->timeElapsed += 1;
-    return 1; // potentially no actors fired due to tdma slot mismatching the current time slot (counter to prevent non-termination?)
+    return 0; // simply have faith that the periodic code did not break amen
   }
   // advance time for all actors
   for (auto &it : this->executingActors) {
     this->advanceRemExecTime(it.first, timeElapsed);
   }
   this->timeElapsed += timeElapsed;
+  VERBOSE_INFO("Time advanced by: " << timeElapsed);
+  VERBOSE_INFO("Total time elapsed: " << this->getTimeElapsed());
   return timeElapsed;
+}
 
+bool State::hasBoundedBuffers() {
+  return this->isBounded;
 }
 
 bool State::operator==(const State& s) const {
