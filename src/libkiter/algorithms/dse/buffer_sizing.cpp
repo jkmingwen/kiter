@@ -943,7 +943,8 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
                            StorageDistributionSet &kneeSet,
                            StorageDistribution newSD,
                            kperiodic_result_t deps,
-                           std::map<Edge, TOKEN_UNIT> &bufferLb) {
+                           std::map<Edge, TOKEN_UNIT> &bufferLb,
+                           bool modelBoundedBuffers) {
   if ((deps.critical_edges).empty()) {
     std::cerr << "ERROR: throughput requirement unreachable (no critical edges found)" << std::endl;
   }
@@ -951,20 +952,43 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
   std::vector<Edge> edges = checkSD.getEdges();
   std::set<Edge> dependencies = deps.critical_edges;
   int nDeps = 0;
-  for (auto edge : edges) {
-    if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) {
+  if (modelBoundedBuffers) {
+    for (auto edge : edges) {
+      if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) {
+        if (dependencies.find(edge) != dependencies.end()) {
+          nDeps++;
+        }
+      }
+    }
+    // std::cout << "Number of dependencies: " << nDeps << std::endl;
+    if (nDeps == (ARRAY_INDEX) (edges.size() / 2)) {
+      // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
+    } else {
+      // std::cout << "Updating lower bounds..." << std::endl;
+      for (auto edge : edges) {
+        if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) { // only consider edges modelling bounded buffers
+          if (dependencies.find(edge) != dependencies.end()) { // for edges with storage dependencies
+            if (bufferLb[edge] < checkSD.getChannelQuantity(edge)) { // never decrease bounds
+              // std::cout << "Increasing Lb of " << dataflow->getEdgeName(edge)
+              //           << " to " << checkSD.getChannelQuantity(edge) << std::endl;
+              bufferLb[edge] = checkSD.getChannelQuantity(edge);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    for (auto edge : edges) {
       if (dependencies.find(edge) != dependencies.end()) {
         nDeps++;
       }
     }
-  }
-  // std::cout << "Number of dependencies: " << nDeps << std::endl;
-  if (nDeps == (ARRAY_INDEX) (edges.size() / 2)) {
-    // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
-  } else {
-    // std::cout << "Updating lower bounds..." << std::endl;
-    for (auto edge : edges) {
-      if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) { // only consider edges modelling bounded buffers
+    // std::cout << "Number of dependencies: " << nDeps << std::endl;
+    if (nDeps == (ARRAY_INDEX) edges.size()) {
+      // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
+    } else {
+      // std::cout << "Updating lower bounds..." << std::endl;
+      for (auto edge : edges) {
         if (dependencies.find(edge) != dependencies.end()) { // for edges with storage dependencies
           if (bufferLb[edge] < checkSD.getChannelQuantity(edge)) { // never decrease bounds
             // std::cout << "Increasing Lb of " << dataflow->getEdgeName(edge)
@@ -975,6 +999,7 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
       }
     }
   }
+
 
   // std::cout << "SD sent to updateInfeasible is dist sz: " << checkSD.getDistributionSize() << std::endl;
   infeasibleSet.updateInfeasibleSet(checkSD, bufferLb);
@@ -1087,19 +1112,29 @@ void StorageDistributionSet::add(StorageDistribution sd,
 void StorageDistributionSet::addCut(models::Dataflow *dataflow,
                                     StorageDistribution sd,
                                     kperiodic_result_t result,
-                                    StorageDistributionSet &kneePoints) {
+                                    StorageDistributionSet &kneePoints,
+                                    bool modelBoundedBuffers) {
   // TODO need to check if there aren't any critical edges --- throw error if so
   if (!(result.critical_edges).empty()) {
     bool isCut = false;
     StorageDistribution tempDist(sd);
-    {ForEachEdge(dataflow, e) {
-        if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+    if (modelBoundedBuffers) {
+      {ForEachEdge(dataflow, e) {
+          if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+            if ((result.critical_edges).find(e) == (result.critical_edges).end()) {
+              tempDist.setChannelQuantity(e, INT_MAX);
+              isCut = true;
+            }
+          }
+        }}
+    } else {
+      {ForEachEdge(dataflow, e) {
           if ((result.critical_edges).find(e) == (result.critical_edges).end()) {
             tempDist.setChannelQuantity(e, INT_MAX);
             isCut = true;
           }
-        }
-      }}
+        }}
+    }
     if (isCut) {
       this->add(tempDist, kneePoints);
     }
@@ -1129,14 +1164,22 @@ void addToExtensions(StorageDistributionSet &extensions,
 StorageDistribution createPoint(models::Dataflow *dataflow,
                                 StorageDistribution sd,
                                 StorageDistribution hp,
-                                TOKEN_UNIT m) {
+                                TOKEN_UNIT m,
+                                bool modelBoundedBuffers) {
   StorageDistribution newDist(sd);
-  {ForEachEdge(dataflow, e) {
-      if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+  if (modelBoundedBuffers) {
+    {ForEachEdge(dataflow, e) {
+        if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+          newDist.setChannelQuantity(e, sd.getChannelQuantity(e) +
+                                     (hp.getChannelQuantity(e) * m));
+        }
+      }}
+  } else {
+    {ForEachEdge(dataflow, e) {
         newDist.setChannelQuantity(e, sd.getChannelQuantity(e) +
                                    (hp.getChannelQuantity(e) * m));
-      }
-    }}
+      }}
+  }
   return newDist;
 }
 

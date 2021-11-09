@@ -108,6 +108,10 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
   // initialise mapping of lower bounds of buffer sizes (to account for storage dependencies)
   std::map<Edge, TOKEN_UNIT> bufferLowerBounds;
   // std::map<Edge, TOKEN_UNIT> bufferInc;
+  bool modelBoundedBuffers = true;
+  if (parameters.find("SYMB_EXEC") != parameters.end()) {
+    modelBoundedBuffers = false;
+  }
   for (auto &e : initDist.getEdges()) {
     // bufferLowerBounds[e] = 0;
     initDist.setChannelQuantity(e, initDist.getChannelQuantity(e) - 1);
@@ -119,7 +123,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
   thrCurrent = newDist.getThroughput();
   while (thrCurrent < thrTarget) {
     // VERBOSE_DSE("SD sending to handleInfeasible:\n" << newDist.printInfo(dataflow) << std::endl); TODO fix
-    handleInfeasiblePoint(dataflow, infeasibleSet, feasibleSet, kneeSet, newDist, result, bufferLowerBounds);
+    handleInfeasiblePoint(dataflow, infeasibleSet, feasibleSet, kneeSet, newDist, result, bufferLowerBounds, modelBoundedBuffers);
     // VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions(dataflow) TODO fix
                 // << std::endl);
     // VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions(dataflow)
@@ -210,7 +214,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
     // std::cout << "thrCurrent, thrTarget: " << thrCurrent << ", " << thrTarget << std::endl;
     if (thrCurrent < thrTarget) {
       handleInfeasiblePoint(dataflow, infeasibleSet, feasibleSet, kneeSet,
-                            checkDist, result, bufferLowerBounds);
+                            checkDist, result, bufferLowerBounds, modelBoundedBuffers);
     } else {
       feasibleSet.updateFeasibleSet(checkDist);
     }
