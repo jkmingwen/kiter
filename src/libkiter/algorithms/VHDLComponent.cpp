@@ -87,7 +87,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   } else if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), baseCompType)) {
     isConstVal = false;
     if (inputTypes.size() == 1) {
-      if (inputTypes.begin()->first == "real") {
+      if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
         dataType = "fp"; // TODO remove this workaround during refactoring
       } else if (inputTypes.begin()->first == "int") {
         dataType = inputTypes.begin()->first;
@@ -114,7 +114,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     else {
       dataType = "undefined"; // TODO replace with assert
     }
-    if (dataType == "real") { // const is of type float
+    if (dataType == "real" || dataType == "vect") { // const is of type float, NOTE still coupling vect with floats for now
       fpValue = numericValue;
       std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
       binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
@@ -250,7 +250,7 @@ std::string VHDLComponent::printStatus() {
   outputStream << "\tIs constant?";
   if (this->isConstVal) {
     outputStream << " Y" << std::endl;
-    if (this->dataType == "real") {
+    if (this->dataType == "real" || this->dataType == "vect") {
       outputStream <<"\t\tValue: " << this->fpValue << std::endl;
     } else if (this->dataType == "int") {
       outputStream <<"\t\tValue: " << this->intValue << std::endl;
