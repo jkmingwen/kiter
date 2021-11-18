@@ -264,10 +264,18 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
   }
-  else {
-    methodName = "_symbexec";
+  else if (parameters.find("SYMB_EXEC_ORIGINAL") != parameters.end()) {
+    methodName = "_symbexec_original";
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
+  }
+  else if (parameters.find("SYMB_EXEC_CORRECTED") != parameters.end()) {
+    methodName = "_symbexec_corrected";
+    checklist = StorageDistributionSet(initDist.getDistributionSize(),
+                                       initDist);
+  }
+  else {
+    VERBOSE_WARNING("No DSE supported method specified; ending search.");
   }
 
 
