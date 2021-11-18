@@ -38,7 +38,7 @@ void algorithms::compute_csdf_dse_speriodic   (models::Dataflow* const  dataflow
 
    	  std::ofstream dseLog;
    	  if (writeLogFiles) {
-   		  dseLog.open(logDirName + dataflow->getGraphName() + "_dselog_speriodic.csv");
+   		  dseLog.open(logDirName + "/dse_logs/" + dataflow->getGraphName() + "_dselog_speriodic.csv");
    		  dseout = &dseLog;
    	  }
 
@@ -75,7 +75,7 @@ void algorithms::compute_csdf_dse_periodic   (models::Dataflow* const  dataflow,
 
 	  std::ofstream dseLog;
 	  if (writeLogFiles) {
-		  dseLog.open(logDirName + dataflow->getGraphName() + "_dselog_periodic.csv");
+		  dseLog.open(logDirName + "/dse_logs/" + dataflow->getGraphName() + "_dselog_periodic.csv");
 		  dseout = &dseLog;
 	  }
 
