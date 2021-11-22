@@ -292,7 +292,8 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     } else {
       dseLog.open(logDirName + dataflow->getGraphName() + "_dselog" + methodName + ".csv");
     }
-    dseLog << "storage distribution size,throughput,channel quantities,dependency mask,computation duration,cumulative duration"
+    // dseLog << "storage distribution size,throughput,channel quantities,dependency mask,computation duration,cumulative duration"
+    dseLog << "storage distribution size,throughput,channel quantities,computation duration,cumulative duration"
            << std::endl; // initialise headers
   } else {
     std::cout << "storage distribution size,throughput,channel quantities,computation duration,cumulative duration"
@@ -358,12 +359,12 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
              << checkDist.getThroughput() << ",";
       if (modelBoundedBuffers) {
         dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << ","
-               << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
+               // << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
                << execTime.count() << ","
                << cumulativeTime.count() << std::endl;
       } else {
         dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << ","
-               << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
+               // << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
                << execTime.count() << ","
                << cumulativeTime.count() << std::endl;
       }
