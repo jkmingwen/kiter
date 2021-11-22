@@ -789,6 +789,9 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
 
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
+
+
+
     std::cout << res.asASCII(linesize);
     std::cout << res.asText();
 
