@@ -116,7 +116,7 @@ void algorithms::compute_csdf_dse_from_function   (models::Dataflow* const  data
 
     std::chrono::duration<double, std::milli> cumulativeTime; // store timings
 
-    dseLog << "storage distribution size,throughput,channel quantities,computation duration,cumulative duration"
+    dseLog << "storage distribution size;throughput;channel quantities;computation duration;cumulative duration"
               << std::endl; // initialise headers
 
 
@@ -148,12 +148,12 @@ void algorithms::compute_csdf_dse_from_function   (models::Dataflow* const  data
     	    auto endTime = std::chrono::steady_clock::now();
     	    std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
     	    cumulativeTime += execTime;
-
-    	    dseLog << space[freq_left] << ","
-        				<< freq_left << ","
-    					<<"" << ","
-    					<< execTime.count() << ","
-    					<< cumulativeTime.count() << std::endl;
+            std::string colDelim = ";";
+    	    dseLog << space[freq_left] << colDelim
+                   << freq_left << colDelim
+                   <<"" << colDelim
+                   << execTime.count() << colDelim
+                   << cumulativeTime.count() << std::endl;
 
     	}
     	if (not space.count(freq_right)){
@@ -166,11 +166,12 @@ void algorithms::compute_csdf_dse_from_function   (models::Dataflow* const  data
     	    cumulativeTime += execTime;
 
     	    if (space[freq_right] > 0) {
-    	    	dseLog << space[freq_right] << ","
-            				<< freq_right << ","
-        					<<"" << ","
-        					<< execTime.count() << ","
-        					<< cumulativeTime.count() << std::endl;
+              std::string colDelim = ";";
+    	    	dseLog << space[freq_right] << colDelim
+                       << freq_right << colDelim
+                       <<"" << colDelim
+                       << execTime.count() << colDelim
+                       << cumulativeTime.count() << std::endl;
     	    }
     	}
     	TOKEN_UNIT size_left = space[freq_left];
