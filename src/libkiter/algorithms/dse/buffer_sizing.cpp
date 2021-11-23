@@ -113,7 +113,7 @@ bool StorageDistribution::operator!=(const StorageDistribution& distribution) co
   return false;
 }
 
-/* 
+/*
  * Checks if distribution size has changed and updates it accordingly
  * Called whenever channel quantity has been altered with setChannelQuantity
  */
@@ -129,13 +129,21 @@ void StorageDistribution::updateDistributionSize() {
 }
 
 // Prints member data of StorageDistribution for debugging
-std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
+std::string StorageDistribution::printInfo(models::Dataflow* const dataflow,
+                                           bool modelBoundedBuffers) {
   std::string sdInfo;
   ARRAY_INDEX ch_count = 0;
+  ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
+
+  if (modelBoundedBuffers) {
+    ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
+  } else {
+    ch_limit = this->edge_count;
+  }
 
   sdInfo += "\tCurrent StorageDistribution info:\n";
   sdInfo += "\tNumber of edges: " + std::to_string(this->edge_count) + "\n";
-  sdInfo += "\tChannel quantities:\n";  
+  sdInfo += "\tChannel quantities:\n";
   // for (auto it = this->channel_quantities.begin();
   //      it != this->channel_quantities.end(); it++) {
   //   if (!ch_count) {
@@ -149,39 +157,36 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
   // }
   {ForEachEdge(dataflow, c) {
       if (!ch_count) {
-	sdInfo += "\t";
+        sdInfo += "\t";
       }
       sdInfo += std::to_string(this->getChannelQuantity(c)) + " ";
       ch_count++;
-      if (ch_count == (this->edge_count / 2)) {
-	sdInfo += "\n\t";
+      if (ch_count == ch_limit) {
+        sdInfo += "\n\t";
       }
     }}
   sdInfo += "\n"; // double line return to mark end of channel quantities
   sdInfo += "\tDistribution size: " + std::to_string(this->getDistributionSize()) + "\n";
   sdInfo += "\tThroughput: " + timeToString(this->getThroughput()) + "\n";
-  
+
   return sdInfo;
 }
 
-std::string StorageDistribution::print_quantities_csv(models::Dataflow* const dataflow) {
+std::string StorageDistribution::print_quantities_csv(models::Dataflow* const dataflow,
+                                                      bool modelBoundedBuffers) {
   std::string output("\"");
   std::string delim("");
   ARRAY_INDEX ch_count = 0;
-  // for (auto &it : this->channel_quantities) {
-  //   if (ch_count >= (this->edge_count / 2)) {
-  //     output += delim;
-  //     output += std::to_string(it.second.second);
-  //     delim = ",";
-  //   }
-  //   ch_count++;
-  // }
-  // output += "\"";
+  ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
+
+  if (modelBoundedBuffers) {
+    ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
+  }
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (this->edge_count / 2)) {
-	output += delim;
-	output += std::to_string(this->getChannelQuantity(c));
-	delim = ",";
+      if (ch_count >= ch_limit) {
+        output += delim;
+        output += std::to_string(this->getChannelQuantity(c));
+        delim = ",";
       }
       ch_count++;
     }}
@@ -192,20 +197,25 @@ std::string StorageDistribution::print_quantities_csv(models::Dataflow* const da
 // prints mask of critical channels identified in storage distribution where 1 = channel
 // associated with critical cycle
 std::string StorageDistribution::print_dependency_mask(models::Dataflow* const dataflow,
-                                                       kperiodic_result_t const result) {
+                                                       kperiodic_result_t const result,
+                                                       bool modelBoundedBuffers) {
   std::string output("\"");
   std::string delim("");
   ARRAY_INDEX ch_count = 0;
+  ARRAY_INDEX ch_limit = 0; // depends on whether dataflow graph has modelled bounded edges
 
+  if (modelBoundedBuffers) {
+    ch_limit = this->edge_count / 2; // second half of channels are used to model bounded buffers
+  }
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (this->edge_count / 2)) {
-	output += delim;
+      if (ch_count >= ch_limit) {
+        output += delim;
         if (result.critical_edges.find(c) != result.critical_edges.end()) {
           output += "1";
         } else {
           output += "0";
         }
-	delim = ",";
+        delim = ",";
       }
       ch_count++;
     }}
@@ -281,7 +291,7 @@ void StorageDistributionSet::removeStorageDistribution(StorageDistribution dist_
   this->set[dist_to_rm.getDistributionSize()].erase(std::remove(this->set[dist_to_rm.getDistributionSize()].begin(),
                                                                 this->set[dist_to_rm.getDistributionSize()].end(),
                                                                 dist_to_rm), this->set[dist_to_rm.getDistributionSize()].end());
-  
+
   // remove distribution size from set if there aren't any storage distributions left
   if (this->set[dist_to_rm.getDistributionSize()].empty()) {
     removeDistributionSize(dist_to_rm.getDistributionSize());
@@ -313,10 +323,10 @@ std::map<TOKEN_UNIT, std::vector<StorageDistribution>> StorageDistributionSet::g
 }
 
 /* Removes the new storage distribution from the storage distribution set if:
-   - there already is a storage distribution with equal distribution size with 
+   - there already is a storage distribution with equal distribution size with
    throughput >= to new storage distribution's throughput
    OR
-   - the new storage distribution has throughput that is <= throughput of storage 
+   - the new storage distribution has throughput that is <= throughput of storage
    distributions with a smaller distribution size
 */
 void StorageDistributionSet::minimizeStorageDistributions(StorageDistribution newDist) {
@@ -326,12 +336,12 @@ void StorageDistributionSet::minimizeStorageDistributions(StorageDistribution ne
   TIME_UNIT newThr = newDist.getThroughput();
   // make copy of minimal distribution set
   std::map<TOKEN_UNIT, std::vector<StorageDistribution>> reference_set(this->set);
-  
+
   // remove non-minimal storage distributions
   /* NOTE: we don't need to update the p_max values here as the conditions ensure
      that we always store the max throughput with the minimum distribution size
      i.e. the only way we would have a falsely high p_max is if we add a storage
-     distribution with an absurdly high distribution size and thus get max 
+     distribution with an absurdly high distribution size and thus get max
      throughput --- that is, we will only need to consider updating p_max outside
      of the addStorageDistribution function if we don't increment by minStepSizes */
   for (auto &distribution_sz : reference_set) {
@@ -359,8 +369,8 @@ void StorageDistributionSet::minimizeStorageDistributions(StorageDistribution ne
   }
 }
 
-/* Check if storage distributions of a given distribution size exist in the 
-   storage distribution set 
+/* Check if storage distributions of a given distribution size exist in the
+   storage distribution set
    Returns true if storage distribution of the given distribution size is found */
 bool StorageDistributionSet::hasDistribution(TOKEN_UNIT dist_sz) {
   return (this->set.find(dist_sz) != this->set.end());
@@ -382,7 +392,7 @@ bool StorageDistributionSet::hasStorageDistribution(StorageDistribution checkDis
 // Check if DSE completion conditions have been met
 bool StorageDistributionSet::isSearchComplete(StorageDistributionSet checklist,
                                               TIME_UNIT target_thr) {
-  /* search is complete when the max throughput has been found and there 
+  /* search is complete when the max throughput has been found and there
      isn't any more storage distributions of the same distribution size
      left to check */
   VERBOSE_DSE("Checking if search is complete:" << std::endl);
@@ -626,7 +636,7 @@ void StorageDistributionSet::updateInfeasibleSet(StorageDistribution newDist,
     maxDistSz = this->set.rbegin()->first; // store largest SD
     // std::cout << "Max size: " << maxDistSz << std::endl;
   }
-  
+
   // if new SD has larger distribution size, then can definitely add
   if (newDistSz >= maxDistSz) {
     // std::cout << "Adding SD of size " << newDist.getDistributionSize()
@@ -702,7 +712,7 @@ void StorageDistributionSet::updateFeasibleSet(StorageDistribution newDist) {
     minDistSz = this->set.begin()->first; // store smallest SD
     // std::cout << "Min size: " << minDistSz << std::endl;
   }
-  
+
   // if new SD has smaller distribution size, then can definitely add
   if (newDistSz <= minDistSz) {
     // std::cout << "Adding SD of size " << newDist.getDistributionSize()
@@ -757,39 +767,45 @@ void StorageDistributionSet::updateFeasibleSet(StorageDistribution newDist) {
 
 // Print info of all storage distributions of a given distribution size in set
 std::string StorageDistributionSet::printDistributions(TOKEN_UNIT dist_sz,
-						       models::Dataflow* const dataflow) {
+                                                       models::Dataflow* const dataflow,
+                                                       bool modelBoundedBuffers) {
   assert(set.find(dist_sz) != set.end());
 
   std::string dInfo;
   dInfo += "Printing storage distributions of distribution size: "
     + std::to_string(dist_sz) + "\n";
   for (auto &i : set[dist_sz]) {
-    dInfo += i.printInfo(dataflow);
+    dInfo += i.printInfo(dataflow, modelBoundedBuffers);
   }
   return dInfo;
 }
 
 // Print info of all storage distributions in set
-std::string StorageDistributionSet::printDistributions(models::Dataflow* const dataflow) {
+std::string StorageDistributionSet::printDistributions(models::Dataflow* const dataflow,
+                                                       bool modelBoundedBuffers) {
   std::string allInfo;
   for (auto &it : this->set) {
-    allInfo += printDistributions(it.first, dataflow);
+    allInfo += printDistributions(it.first, dataflow, modelBoundedBuffers);
   }
   return allInfo;
 }
 
 /* Writes storage distribution set info to a CSV file to plot data
-   Takes in file name as argument --- explicitly state file 
+   Takes in file name as argument --- explicitly state file
    format (e.g. "example_filename.csv") */
 void StorageDistributionSet::writeCSV(std::string filename,
-				      models::Dataflow* const dataflow) {
+                                      models::Dataflow* const dataflow,
+                                      bool modelBoundedBuffers) {
   std::ofstream outputFile;
+  std::string colDelimiter = ";";
   outputFile.open(filename);
-  outputFile << "storage distribution size,throughput,channel quantities" << std::endl; // initialise headers
+  outputFile << "storage distribution size" << colDelimiter
+             << "throughput" << colDelimiter
+             << "channel quantities" << std::endl; // initialise headers
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
-      outputFile << it.first << "," << sd.getThroughput() << ","
-		 << sd.print_quantities_csv(dataflow) << std::endl;
+      outputFile << it.first << colDelimiter << sd.getThroughput() << colDelimiter
+                 << sd.print_quantities_csv(dataflow, modelBoundedBuffers) << std::endl;
     }
   }
   outputFile.close();
@@ -837,13 +853,14 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
                           std::map<Edge,
                           std::pair<TOKEN_UNIT, TOKEN_UNIT>> &minChannelSizes) {
   VERBOSE_DSE("Calculating minimal channel sizes (for postive throughput)..." << std::endl);
-  
+
   {ForEachEdge(dataflow, c) {
       // initialise channel size to maximum int size
+      minChannelSizes[c].first = dataflow->getPreload(c); // set initial tokens according to dataflow graph TODO look into why I didn't originally do this
       minChannelSizes[c].second = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
       TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
                                                             dataflow->getEdgeOutPhasesCount(c));
-      
+
       for (TOKEN_UNIT i = 0; i < ratePeriod; i++) {
         // might want to change variables to p, c, and t for legibility
         TOKEN_UNIT tokensProduced = dataflow->getEdgeInVector(c)[i % dataflow->getEdgeInPhasesCount(c)];
@@ -862,7 +879,7 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
             std::gcd(tokensProduced, tokensConsumed);
         }
         lowerBound = (lowerBound > tokensInitial ? lowerBound : tokensInitial);
-        
+
         // take the lowest bound amongst phases of prod/cons
         if (lowerBound < minChannelSizes[c].second) {
           minChannelSizes[c].second = lowerBound;
@@ -874,17 +891,17 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
 }
 
 /*
- * Returns the distribution size of a given graph by summing the channel quantities 
+ * Returns the distribution size of a given graph by summing the channel quantities
  * on every channel
  */
 TOKEN_UNIT findMinimumDistributionSz(std::map<Edge,
                                      std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes) {
   TOKEN_UNIT minDistributionSize = 0;
-  
+
   for (auto it = minChannelSizes.begin(); it != minChannelSizes.end(); it++) {
     minDistributionSize += it->second.second;
   }
-  
+
   VERBOSE_DSE("Lower bound distribution size: " << minDistributionSize << std::endl);
   return minDistributionSize;
 }
@@ -929,7 +946,8 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
                            StorageDistributionSet &kneeSet,
                            StorageDistribution newSD,
                            kperiodic_result_t deps,
-                           std::map<Edge, TOKEN_UNIT> &bufferLb) {
+                           std::map<Edge, TOKEN_UNIT> &bufferLb,
+                           bool modelBoundedBuffers) {
   if ((deps.critical_edges).empty()) {
     std::cerr << "ERROR: throughput requirement unreachable (no critical edges found)" << std::endl;
   }
@@ -937,20 +955,43 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
   std::vector<Edge> edges = checkSD.getEdges();
   std::set<Edge> dependencies = deps.critical_edges;
   int nDeps = 0;
-  for (auto edge : edges) {
-    if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) {
+  if (modelBoundedBuffers) {
+    for (auto edge : edges) {
+      if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) {
+        if (dependencies.find(edge) != dependencies.end()) {
+          nDeps++;
+        }
+      }
+    }
+    // std::cout << "Number of dependencies: " << nDeps << std::endl;
+    if (nDeps == (ARRAY_INDEX) (edges.size() / 2)) {
+      // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
+    } else {
+      // std::cout << "Updating lower bounds..." << std::endl;
+      for (auto edge : edges) {
+        if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) { // only consider edges modelling bounded buffers
+          if (dependencies.find(edge) != dependencies.end()) { // for edges with storage dependencies
+            if (bufferLb[edge] < checkSD.getChannelQuantity(edge)) { // never decrease bounds
+              // std::cout << "Increasing Lb of " << dataflow->getEdgeName(edge)
+              //           << " to " << checkSD.getChannelQuantity(edge) << std::endl;
+              bufferLb[edge] = checkSD.getChannelQuantity(edge);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    for (auto edge : edges) {
       if (dependencies.find(edge) != dependencies.end()) {
         nDeps++;
       }
     }
-  }
-  // std::cout << "Number of dependencies: " << nDeps << std::endl;
-  if (nDeps == (ARRAY_INDEX) (edges.size() / 2)) {
-    // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
-  } else {
-    // std::cout << "Updating lower bounds..." << std::endl;
-    for (auto edge : edges) {
-      if (dataflow->getEdgeId(edge) > (ARRAY_INDEX) (edges.size() / 2)) { // only consider edges modelling bounded buffers
+    // std::cout << "Number of dependencies: " << nDeps << std::endl;
+    if (nDeps == (ARRAY_INDEX) edges.size()) {
+      // std::cout << "No need to update lower bounds as no non-critical channels" << std::endl;
+    } else {
+      // std::cout << "Updating lower bounds..." << std::endl;
+      for (auto edge : edges) {
         if (dependencies.find(edge) != dependencies.end()) { // for edges with storage dependencies
           if (bufferLb[edge] < checkSD.getChannelQuantity(edge)) { // never decrease bounds
             // std::cout << "Increasing Lb of " << dataflow->getEdgeName(edge)
@@ -961,6 +1002,7 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
       }
     }
   }
+
 
   // std::cout << "SD sent to updateInfeasible is dist sz: " << checkSD.getDistributionSize() << std::endl;
   infeasibleSet.updateInfeasibleSet(checkSD, bufferLb);
@@ -1073,19 +1115,29 @@ void StorageDistributionSet::add(StorageDistribution sd,
 void StorageDistributionSet::addCut(models::Dataflow *dataflow,
                                     StorageDistribution sd,
                                     kperiodic_result_t result,
-                                    StorageDistributionSet &kneePoints) {
+                                    StorageDistributionSet &kneePoints,
+                                    bool modelBoundedBuffers) {
   // TODO need to check if there aren't any critical edges --- throw error if so
   if (!(result.critical_edges).empty()) {
     bool isCut = false;
     StorageDistribution tempDist(sd);
-    {ForEachEdge(dataflow, e) {
-        if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+    if (modelBoundedBuffers) {
+      {ForEachEdge(dataflow, e) {
+          if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+            if ((result.critical_edges).find(e) == (result.critical_edges).end()) {
+              tempDist.setChannelQuantity(e, INT_MAX);
+              isCut = true;
+            }
+          }
+        }}
+    } else {
+      {ForEachEdge(dataflow, e) {
           if ((result.critical_edges).find(e) == (result.critical_edges).end()) {
             tempDist.setChannelQuantity(e, INT_MAX);
             isCut = true;
           }
-        }
-      }}
+        }}
+    }
     if (isCut) {
       this->add(tempDist, kneePoints);
     }
@@ -1115,14 +1167,22 @@ void addToExtensions(StorageDistributionSet &extensions,
 StorageDistribution createPoint(models::Dataflow *dataflow,
                                 StorageDistribution sd,
                                 StorageDistribution hp,
-                                TOKEN_UNIT m) {
+                                TOKEN_UNIT m,
+                                bool modelBoundedBuffers) {
   StorageDistribution newDist(sd);
-  {ForEachEdge(dataflow, e) {
-      if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+  if (modelBoundedBuffers) {
+    {ForEachEdge(dataflow, e) {
+        if (dataflow->getEdgeId(e) > dataflow->getEdgesCount()/2) {
+          newDist.setChannelQuantity(e, sd.getChannelQuantity(e) +
+                                     (hp.getChannelQuantity(e) * m));
+        }
+      }}
+  } else {
+    {ForEachEdge(dataflow, e) {
         newDist.setChannelQuantity(e, sd.getChannelQuantity(e) +
                                    (hp.getChannelQuantity(e) * m));
-      }
-    }}
+      }}
+  }
   return newDist;
 }
 

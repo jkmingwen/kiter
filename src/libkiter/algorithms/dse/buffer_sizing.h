@@ -36,10 +36,11 @@ public:
   bool operator==(const StorageDistribution& distribution) const;
   bool operator!=(const StorageDistribution& distribution) const;
   void updateDistributionSize();
-  std::string printInfo(models::Dataflow* const dataflow);
-  std::string print_quantities_csv(models::Dataflow* const dataflow);
+  std::string printInfo(models::Dataflow* const dataflow, bool isSymbExec);
+  std::string print_quantities_csv(models::Dataflow* const dataflow, bool isSymbExec);
   std::string print_dependency_mask(models::Dataflow* const dataflow,
-                                    kperiodic_result_t const result);
+                                    kperiodic_result_t const result,
+                                    bool isSymbExec);
   std::string printGraph(models::Dataflow* const dataflow);
   // BASE MONOTONIC OPTIMISATION FUNCTIONS
   bool inBackConeOf(StorageDistribution checkDist);
@@ -87,22 +88,26 @@ public:
                            std::map<Edge, TOKEN_UNIT> bufferLb); // add new SD to infeasible set of SDs for monotonic optimisation
   void updateFeasibleSet(StorageDistribution new_sd); // add new SD to infeasible set of SDs for monotonic optimisation
   std::string printDistributions(TOKEN_UNIT dist_sz,
-				 models::Dataflow* const dataflow); /* prints info of all storage distributions 
-								       of given distribution size */
-  std::string printDistributions(models::Dataflow* const dataflow); // prints info of all storage distributions in set
-  void writeCSV(std::string filename, models::Dataflow* const dataflow); // writes to a CSV file for plots
+                                 models::Dataflow* const dataflow,
+                                 bool isSymbExec); /* prints info of all storage distributions
+                                                      of given distribution size */
+  std::string printDistributions(models::Dataflow* const dataflow,
+                                 bool isSymbExec); // prints info of all storage distributions in set
+  void writeCSV(std::string filename, models::Dataflow* const dataflow,
+                bool isSymbExec); // writes to a CSV file for plots
   void printGraphs(models::Dataflow* const dataflow, std::string filename); // iterate through storage distribution set and print graphs
   // BASE MONOTONIC OPTIMISATION FUNCTIONS
   bool addToUnsat(StorageDistribution sd);
   void addToSat(StorageDistribution sd);
   void add(StorageDistribution sd, StorageDistributionSet &kneePoints);
   void addCut(models::Dataflow *dataflow, StorageDistribution sd,
-              kperiodic_result_t result, StorageDistributionSet &kneePoints);
+              kperiodic_result_t result, StorageDistributionSet &kneePoints,
+              bool modelBoundedBuffers);
   bool satContains(StorageDistribution sd);
   bool unsatContains(StorageDistribution sd);
-  
+
 private:
-  std::map<TOKEN_UNIT, std::vector<StorageDistribution>> set; /* store storage distributions 
+  std::map<TOKEN_UNIT, std::vector<StorageDistribution>> set; /* store storage distributions
                                                                  by distribution size*/
   std::pair<TOKEN_UNIT, TIME_UNIT> p_max; /* stores the current maximum throughput and corresponding
                                              distribution size of set */
@@ -129,12 +134,14 @@ void handleInfeasiblePoint(models::Dataflow* const dataflow,
                            StorageDistributionSet &kneeSet,
                            StorageDistribution newSD,
                            kperiodic_result_t deps,
-                           std::map<Edge, TOKEN_UNIT> &bufferLb);
+                           std::map<Edge, TOKEN_UNIT> &bufferLb,
+                           bool modelBoundedBuffers);
 // BASE MONOTONIC OPTIMISATION FUNCTIONS
 void addToExtensions(StorageDistributionSet &extensions,
                      StorageDistribution sd);
 StorageDistribution createPoint(models::Dataflow *dataflow,
                                 StorageDistribution sd,
                                 StorageDistribution hp,
-                                TOKEN_UNIT m);
+                                TOKEN_UNIT m,
+                                bool modelBoundedBuffers);
 #endif /* BUFFER_SIZING_H_ */

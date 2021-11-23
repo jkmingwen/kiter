@@ -13,21 +13,59 @@ State::State()
   :executingActors(),
    actorPhases(),
    currentTokens(),
+   bufferCapacities(),
    actors(),
-   timeElapsed{0} {}
+   timeElapsed{0},
+   isBounded{false} {}
 
 // construct state using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
              std::map<ARRAY_INDEX, Actor> actorMap) {
   {ForEachEdge(dataflow, e) {
-      currentTokens[e] = dataflow->getPreload(e);
+      currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
     }}
   {ForEachTask(dataflow, t) {
       actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
       actors.push_back(t);
     }}
   timeElapsed = 0;
+  isBounded = false; // if no buffer sizes specified, assume unbounded buffers
 }
+
+// construct state with bounded buffers using current graph and actor map information
+State::State(models::Dataflow* const dataflow,
+             std::map<ARRAY_INDEX, Actor> actorMap,
+             std::map<Edge, TOKEN_UNIT> &bufferSizes) {
+  {ForEachEdge(dataflow, e) {
+      currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
+      bufferCapacities[e] = bufferSizes[e];
+      bufferSpaces[e] = bufferSizes[e] - dataflow->getPreload(e);
+    }}
+  {ForEachTask(dataflow, t) {
+      actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
+      actors.push_back(t);
+    }}
+  timeElapsed = 0;
+  isBounded = true;
+}
+
+State::State(models::Dataflow* const dataflow,
+             std::map<ARRAY_INDEX, Actor> actorMap,
+             StorageDistribution &storDist) {
+  {ForEachEdge(dataflow, e) {
+      currentTokens[e] = dataflow->getPreload(e); // TODO look into why getInitialTokens not working
+      bufferCapacities[e] = storDist.getChannelQuantity(e);
+      bufferSpaces[e] = storDist.getChannelQuantity(e) - dataflow->getPreload(e);
+    }}
+  {ForEachTask(dataflow, t) {
+      actorPhases[t] = actorMap[dataflow->getVertexId(t)].getPhase();
+      actors.push_back(t);
+    }}
+  timeElapsed = 0;
+  isBounded = true;
+}
+
+// TODO make state constructor for that uses a State object instead
 
 // returns current phase of actor
 PHASE_INDEX State::getPhase(Vertex a) const {
@@ -37,6 +75,16 @@ PHASE_INDEX State::getPhase(Vertex a) const {
 // returns current tokens in edge
 TOKEN_UNIT State::getTokens(Edge e) const {
   return currentTokens.at(e);
+}
+
+// returns maximum token capacity of edge
+TOKEN_UNIT State::getBufferSize(Edge e) const {
+  return bufferCapacities.at(e);
+}
+
+// returns amount of token spaces left in edge
+TOKEN_UNIT State::getBufferSpace(Edge e) const {
+  return bufferSpaces.at(e);
 }
 
 // returns list of amount of time left for executions for actor
@@ -65,7 +113,12 @@ void State::setPhase(Vertex a, PHASE_INDEX newPhase) {
 }
 
 void State::setTokens(Edge e, TOKEN_UNIT newTokens) {
+  // buffer sizes vs token counts are checked in Actor 'isReadyForExec' function
   this->currentTokens[e] = newTokens;
+}
+
+void State::setBufferSpace(Edge e, TOKEN_UNIT newSpace) {
+  this->bufferSpaces[e] = newSpace;
 }
 
 void State::addExecution(Vertex a, std::pair<TIME_UNIT, PHASE_INDEX> newExec) {
@@ -92,7 +145,7 @@ void State::updateState(models::Dataflow* const dataflow,
       setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
     }}
   {ForEachEdge(dataflow, e) {
-      setTokens(e, dataflow->getPreload(e));
+      setTokens(e, this->getTokens(e));
     }}
 }
 
@@ -142,6 +195,10 @@ TIME_UNIT State::advanceTimeWithMod() {
   VERBOSE_INFO("Time advanced by: " << timeElapsed);
   VERBOSE_INFO("Total time elapsed: " << this->getTimeElapsed());
   return timeElapsed;
+}
+
+bool State::hasBoundedBuffers() {
+  return this->isBounded;
 }
 
 bool State::operator==(const State& s) const {

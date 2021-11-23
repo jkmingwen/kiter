@@ -121,11 +121,31 @@ EXEC_COUNT Actor::getNumExecutions() {
 bool Actor::isReadyForExec(State s) {
   // Execution conditions (for given phase):
   // (1) enough room in output channel, (2) enough tokens in input channel, (3) not currently executing
+  VERBOSE_DEBUG("Is Actor " << this->getId() << " ready to execute?" << std::endl);
   bool isExecutable = true;
   for (auto const &e : this->consPhaseCount) {
+    VERBOSE_DEBUG("\tTokens in channel (current/required): "
+                  << s.getTokens(e.first) << "/" << this->getExecRate(e.first)
+                  << std::endl);
     if (s.getTokens(e.first) < this->getExecRate(e.first) || this->isExecuting) {
       isExecutable = false;
     }
+  }
+  if (s.hasBoundedBuffers()) {
+    for (auto const &e : this->prodPhaseCount) {
+      VERBOSE_DEBUG("\tSpace in channel (current/required): "
+                    << s.getBufferSpace(e.first) << "/" << this->getExecRate(e.first)
+                    << std::endl);
+      // if (s.getBufferSize(e.first) - s.getTokens(e.first) < this->getExecRate(e.first)) {
+      if (s.getBufferSpace(e.first) < this->getExecRate(e.first) || this->isExecuting) {
+        isExecutable = false;
+      }
+    }
+  }
+  if (isExecutable) {
+    VERBOSE_DEBUG("Actor " << this->getId() << " is ready to execute" << std::endl);
+  } else {
+    VERBOSE_DEBUG("Actor " << this->getId() << " is not ready to execute" << std::endl);
   }
   return isExecutable;
 }
@@ -138,7 +158,7 @@ bool Actor::isReadyForExecWithMod(models::Dataflow* const dataflow, State s, std
     if (s.getTokens(e.first) < this->getExecRate(e.first) || this->isExecuting) {
       isExecutable = false;
     }
-    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e.first)), 
+    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e.first)),
       dataflow->getVertexId(dataflow->getEdgeTarget(e.first)))] == step){
       currSlot = true;
     }
@@ -162,7 +182,7 @@ bool Actor::isReadyToEndExecWithMod(State s, models::Dataflow* const dataflow, s
     return false;
   }
   {ForOutputEdges(dataflow, this->actor, e) {
-      if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)), 
+      if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)),
       dataflow->getVertexId(dataflow->getEdgeTarget(e)))] == step){
         return true;
       }
@@ -172,10 +192,17 @@ bool Actor::isReadyToEndExecWithMod(State s, models::Dataflow* const dataflow, s
 
 // Begin actor's execution, consuming tokens from input channels
 void Actor::execStart(models::Dataflow* const dataflow, State &s) {
-  dataflow->reset_computation();
   {ForInputEdges(dataflow, this->actor, e) {
-      dataflow->setPreload(e, dataflow->getPreload(e) - this->getExecRate(e));
+      s.setTokens(e, s.getTokens(e) - this->getExecRate(e));
     }}
+  if (s.hasBoundedBuffers()) { // for bounded buffers, need to 'reserve' space for tokens about to be produced
+    {ForOutputEdges(dataflow, this->actor, e) {
+        VERBOSE_DEBUG("Consuming space in Channel " << dataflow->getEdgeId(e)
+                      << ": " << s.getBufferSpace(e) << "-" << this->getExecRate(e)
+                      << "=" << s.getBufferSpace(e) - this->getExecRate(e));
+        s.setBufferSpace(e, s.getBufferSpace(e) - this->getExecRate(e));
+      }}
+  }
   std::pair<TIME_UNIT, PHASE_INDEX> newExec(dataflow->getVertexDuration(this->actor,
                                                                         this->getPhase()),
                                             this->getPhase());
@@ -185,17 +212,17 @@ void Actor::execStart(models::Dataflow* const dataflow, State &s) {
 }
 
 // Begin actor's execution, consuming tokens from input channels
-void Actor::execStartWithMod(models::Dataflow* const dataflow, State &s, 
+void Actor::execStartWithMod(models::Dataflow* const dataflow, State &s,
 std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step) {
   dataflow->reset_computation();
   {ForInputEdges(dataflow, this->actor, e) {
-    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)), 
+    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)),
       dataflow->getVertexId(dataflow->getEdgeTarget(e)))] == step){
-        dataflow->setPreload(e, dataflow->getPreload(e) - this->getExecRate(e));
+        dataflow->setPreload(e, dataflow->getPreload(e) - this->getExecRate(e)); // TODO don't edit dataflow graph
 
-      //   std::cout << "Checked for " << dataflow->getVertexId(dataflow->getEdgeSource(e)) 
-      //   << "->" << dataflow->getVertexId(dataflow->getEdgeTarget(e)) << ": " 
-      //   << "slot " << cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)), 
+      //   std::cout << "Checked for " << dataflow->getVertexId(dataflow->getEdgeSource(e))
+      //   << "->" << dataflow->getVertexId(dataflow->getEdgeTarget(e)) << ": "
+      //   << "slot " << cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)),
       // dataflow->getVertexId(dataflow->getEdgeTarget(e)))] << "==" << step << std::endl;
     }
     }}
@@ -209,36 +236,80 @@ std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step) {
 
 // End actor's execution, producing tokens into output channels
 void Actor::execEnd(models::Dataflow* const dataflow, State &s) {
-  PHASE_INDEX currentPhase;
-  dataflow->reset_computation();
+  // NOTE it is important that the tokens/spaces produced correspond to the phase
+  // of the execution in the execution queue in order to correctly end execution
+  PHASE_INDEX currentPhase = s.getRemExecTime(this->actor).front().second;; // phase of actor's execution in queue, rather than phase actor is currently in
   {ForOutputEdges(dataflow, this->actor, e) {
-      currentPhase = s.getRemExecTime(this->actor).front().second;
       VERBOSE_INFO("ending execution for phase "
                 << currentPhase << ", producing "
                 << this->getExecRate(e, currentPhase) << " tokens");
-      dataflow->setPreload(e, dataflow->getPreload(e) + this->getExecRate(e, currentPhase));
+      s.setTokens(e, s.getTokens(e) + this->getExecRate(e, currentPhase));
     }}
+  if (s.hasBoundedBuffers()) { // free up spaces after tokens that have been consumed
+    {ForInputEdges(dataflow, this->actor, e) {
+        VERBOSE_DEBUG("Producing space in Channel " << dataflow->getEdgeId(e)
+                      << ": " << s.getBufferSpace(e) << "+" << this->getExecRate(e, currentPhase)
+                      << "=" << s.getBufferSpace(e) + this->getExecRate(e, currentPhase));
+        s.setBufferSpace(e, s.getBufferSpace(e) + this->getExecRate(e, currentPhase));
+      }}
+  }
   s.removeFrontExec(this->actor);
   this->isExecuting = false;
 }
 
-void Actor::execEndWithMod(models::Dataflow* const dataflow, State &s, 
+void Actor::execEndWithMod(models::Dataflow* const dataflow, State &s,
 std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step) {
   PHASE_INDEX currentPhase;
   dataflow->reset_computation();
   {ForOutputEdges(dataflow, this->actor, e) {
-    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)), 
+    if (cond[std::make_pair(dataflow->getVertexId(dataflow->getEdgeSource(e)),
       dataflow->getVertexId(dataflow->getEdgeTarget(e)))] == step){
         currentPhase = s.getRemExecTime(this->actor).front().second;
         VERBOSE_INFO("ending execution for phase "
                   << currentPhase << ", producing "
                   << this->getExecRate(e, currentPhase) << " tokens");
-        dataflow->setPreload(e, dataflow->getPreload(e) + this->getExecRate(e, currentPhase));
+        dataflow->setPreload(e, dataflow->getPreload(e) + this->getExecRate(e, currentPhase)); // TODO don't edit dataflow graph
       }
-      
+
     }}
   s.removeFrontExec(this->actor);
   this->isExecuting = false;
+}
+
+void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState,
+                              abstractDepGraph &absDepGraph) {
+  for (auto const &e : this->consPhaseCount) {
+    Vertex source = dataflow->getEdgeSource(e.first);
+    Vertex target = dataflow->getEdgeTarget(e.first);
+    ARRAY_INDEX sourceId = dataflow->getVertexId(source);
+    ARRAY_INDEX targetId = dataflow->getVertexId(target);
+    VERBOSE_DEBUG("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                  << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DEBUG("\t\t " << prevState.getTokens(e.first) << " tokens available previously, "
+                  << this->getExecRate(e.first) << " required (p "
+                  << this->getPhase(e.first) << ")" << std::endl);
+    if (prevState.getTokens(e.first) < this->getExecRate(e.first)) {
+      VERBOSE_DEBUG("\t\t\tCausal dep between " << targetId << " and "
+                    << sourceId << std::endl);
+      absDepGraph.addCausalDep(targetId, sourceId);
+    }
+  }
+  for (auto const &e : this->prodPhaseCount) {
+    Vertex source = dataflow->getEdgeSource(e.first);
+    Vertex target = dataflow->getEdgeTarget(e.first);
+    ARRAY_INDEX sourceId = dataflow->getVertexId(source);
+    ARRAY_INDEX targetId = dataflow->getVertexId(target);
+    VERBOSE_DEBUG("\t\tChannel " << dataflow->getEdgeId(e.first) << " ("
+                  << sourceId << "->" << targetId << "):" << std::endl);
+    VERBOSE_DEBUG("\t\t " << prevState.getBufferSpace(e.first)
+                  << " spaces available previously, " << this->getExecRate(e.first)
+                  << " required (p " << this->getPhase(e.first) << ")" << std::endl);
+    if (prevState.getBufferSpace(e.first) < this->getExecRate(e.first)) {
+      VERBOSE_DEBUG("\t\t\tCausal dep between " << sourceId << " and "
+                    << targetId << std::endl);
+      absDepGraph.addCausalDep(sourceId, targetId);
+    }
+  }
 }
 
 std::string Actor::printStatus(models::Dataflow* const dataflow) {
