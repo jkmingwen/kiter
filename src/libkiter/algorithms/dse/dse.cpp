@@ -264,10 +264,18 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
   }
-  else {
-    methodName = "_symbexec";
+  else if (parameters.find("SYMB_EXEC_ORIGINAL") != parameters.end()) {
+    methodName = "_symbexec_original";
     checklist = StorageDistributionSet(initDist.getDistributionSize(),
                                        initDist);
+  }
+  else if (parameters.find("SYMB_EXEC_CORRECTED") != parameters.end()) {
+    methodName = "_symbexec_corrected";
+    checklist = StorageDistributionSet(initDist.getDistributionSize(),
+                                       initDist);
+  }
+  else {
+    VERBOSE_WARNING("No DSE supported method specified; ending search.");
   }
 
 
@@ -278,16 +286,22 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
   // initialise data logging file
   std::ofstream dseLog;
+  std::string colDelimiter = ";";
   if (writeLogFiles) {
     if (modelBoundedBuffers) {
       dseLog.open(logDirName + dataflow_prime->getGraphName() + "_dselog" + methodName + ".csv");
     } else {
       dseLog.open(logDirName + dataflow->getGraphName() + "_dselog" + methodName + ".csv");
     }
-    dseLog << "storage distribution size,throughput,channel quantities,dependency mask,computation duration,cumulative duration"
+    dseLog << "storage distribution size" << colDelimiter
+           << "throughput" << colDelimiter
+           << "channel quantities" << colDelimiter
+           // << "dependency mask" << colDelimiter
+           << "computation duration" << colDelimiter
+           << "cumulative duration"
            << std::endl; // initialise headers
   } else {
-    std::cout << "storage distribution size,throughput,channel quantities,computation duration,cumulative duration"
+    std::cout << "storage distribution size;throughput;channel quantities;computation duration;cumulative duration"
               << std::endl; // initialise headers
   }
 
@@ -346,30 +360,30 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
     // write current storage distribution info to DSE log
     if (writeLogFiles) {
-      dseLog << checkDist.getDistributionSize() << ","
-             << checkDist.getThroughput() << ",";
+      dseLog << checkDist.getDistributionSize() << colDelimiter
+             << checkDist.getThroughput() << colDelimiter;
       if (modelBoundedBuffers) {
-        dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << ","
-               << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
-               << execTime.count() << ","
+        dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
+               // << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
+               << execTime.count() << colDelimiter
                << cumulativeTime.count() << std::endl;
       } else {
-        dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << ","
-               << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
-               << execTime.count() << ","
+        dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
+               // << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
+               << execTime.count() << colDelimiter
                << cumulativeTime.count() << std::endl;
       }
 
     } else {
-      std::cout << checkDist.getDistributionSize() << ","
-                << checkDist.getThroughput() << ",";
+      std::cout << checkDist.getDistributionSize() << colDelimiter
+                << checkDist.getThroughput() << colDelimiter;
       if (modelBoundedBuffers) {
-        std::cout << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << ","
-                  << execTime.count() << ","
+        std::cout << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
+                  << execTime.count() << colDelimiter
                   << cumulativeTime.count() << std::endl;
       } else {
-        std::cout << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << ","
-                  << execTime.count() << ","
+        std::cout << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
+                  << execTime.count() << colDelimiter
                   << cumulativeTime.count() << std::endl;
       }
     }

@@ -10,9 +10,16 @@ import pandas as pd
 import psutil
 import seaborn as sns
 
-sns.set_theme()
+# sns.set_theme()
+sns.set() # NOTE uncomment for workaround for earlier versions (<0.11.0) of seaborn
 
-methods = {"kiter": "red", "speriodic": "purple", "periodic": "green", "sdf3": "black"}
+# methods tested: comment out as required
+methods = {"kiter": "red",
+           "speriodic": "purple",
+           "periodic": "green",
+           "sdf3": "black",
+           "symbexec_corrected": "blue",
+           "symbexec_original": "orange"}
 
 
 def load_app_dse(
@@ -25,7 +32,7 @@ def load_app_dse(
     filename = f"{logdir}/{appname}_dselog_{method}.csv"
 
     try:
-        df = pd.read_csv(filename, usecols=cols)
+        df = pd.read_csv(filename, usecols=cols, delimiter=";")
         return df
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
@@ -134,11 +141,11 @@ def plot_app_dse(logdir, appname):
 
         start_time = time.time()
         print("Plot", appname, method)
-        
+
         cxmax,cymax = plot_dse(df, method, color)
         xmax = max(xmax, cxmax)
         ymax = max(ymax, cymax)
-        
+
         print("Plotted after", time.time() - start_time, "sec.")
 
     plt.xlabel("Execution time (ms)")
@@ -148,7 +155,7 @@ def plot_app_dse(logdir, appname):
 
     if ymax:
         plt.ylim(bottom=0, top=1.3 * ymax)
-        
+
     if xmax:
         plt.xlim(left=0, right=1.3 * xmax)
 
@@ -182,7 +189,7 @@ def plot_app_pareto(logdir, appname):
     plt.ylabel("Period (sec)")
     plt.title(f"{appname}")
     plt.legend(loc="upper left", ncol=2, borderaxespad=0.5)
-    
+
     if ymax:
         plt.ylim(bottom=0, top=1.3 * ymax)
 
@@ -231,9 +238,9 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
             v = df[df["throughput"] >0]["storage distribution size"].min() if "throughput" in df else "-"
             res[m].append(v)
 
-            
-    df = pd.DataFrame(res)[["name","speriodic","periodic"]]    
-    df["overhead"] = 100 - 100 * (df["periodic"] /  df["speriodic"]) 
+
+    df = pd.DataFrame(res)[["name","speriodic","periodic"]]
+    df["overhead"] = 100 - 100 * (df["periodic"] /  df["speriodic"])
     df = df.rename (columns = {
         "overhead":"Overhead(%)",
         "name" : "Graph",
@@ -241,7 +248,7 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
         "periodic" : "1-Periodic",
     })
     colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
-               
+
     latex = df.to_latex(
         float_format="{:0.1f}".format, column_format=colformat, index=False
     )
@@ -250,7 +257,7 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
     fd.write(latex)
     fd.close()
 
-   
+
 def plot_all_pareto(logdir, graphs, outputname=None):
     plot_all(logdir, graphs, plotfunc=plot_app_pareto, outputname=outputname)
 
@@ -282,7 +289,7 @@ if __name__ == "__main__":
         help="location of the output pareto plot file",
         required=False,
     )
-    
+
     parser.add_argument(
         "--tminsize",
         type=str,
@@ -313,12 +320,12 @@ if __name__ == "__main__":
         print("Generate pareto output")
         plot_all_pareto(logdir=logdir, graphs=graphs, outputname=args.opareto)
 
-        
+
 
     if args.tminsize:
         print("Generate minimal size table")
         gen_minsize(logdir=logdir, graphs=graphs, outputname=args.tminsize)
-        
+
     endmem = process.memory_info().rss
     print(
         "Memory usage from",

@@ -797,11 +797,14 @@ void StorageDistributionSet::writeCSV(std::string filename,
                                       models::Dataflow* const dataflow,
                                       bool modelBoundedBuffers) {
   std::ofstream outputFile;
+  std::string colDelimiter = ";";
   outputFile.open(filename);
-  outputFile << "storage distribution size,throughput,channel quantities" << std::endl; // initialise headers
+  outputFile << "storage distribution size" << colDelimiter
+             << "throughput" << colDelimiter
+             << "channel quantities" << std::endl; // initialise headers
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
-      outputFile << it.first << "," << sd.getThroughput() << ","
+      outputFile << it.first << colDelimiter << sd.getThroughput() << colDelimiter
                  << sd.print_quantities_csv(dataflow, modelBoundedBuffers) << std::endl;
     }
   }
