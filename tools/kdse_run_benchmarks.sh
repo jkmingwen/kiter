@@ -76,4 +76,4 @@ done
 
 
 ./tools/dsereader.py --logdir ./"${LOGDIR}"/dse_logs/ bipartite samplerate modem satellite fig8 h263dec --opareto sdf3bench_pareto.png --odse sdf3bench_dse.png
-./tools/dsereader.py --logdir ./logs/dse_logs/ Black-scholes echo MotionJPEG2000_CODEC_cad_V3 ViolaJones_Methode1 encoderH264 --opareto kiterbench_pareto.png --odse kiterbench_dse.png
+./tools/dsereader.py --logdir ./"${LOGDIR}"/dse_logs/ Black-scholes echo MotionJPEG2000_CODEC_cad_V3 ViolaJones_Methode1 encoderH264 --opareto kiterbench_pareto.png --odse kiterbench_dse.png
