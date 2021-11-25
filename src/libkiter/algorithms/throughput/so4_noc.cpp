@@ -196,8 +196,8 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
     for (cast_out_idx = 0; cast_out_idx < (*n_buffer).size(); ++cast_out_idx){
       if ((*n_buffer)[cast_out_idx].first <= curr_step){
         Edge e = dataflow->getEdgeById((*n_buffer)[cast_out_idx].second.first);
-        dataflow->setPreload(e,
-        dataflow->getPreload(e) + (*n_buffer)[cast_out_idx].second.second);
+        currState.setTokens(e,
+                            currState.getTokens(e) + (*n_buffer)[cast_out_idx].second.second);
       }
       else{
         break;
