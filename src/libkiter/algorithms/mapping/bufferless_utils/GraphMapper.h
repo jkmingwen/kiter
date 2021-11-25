@@ -232,8 +232,11 @@ private :
 			}}
 
 
-			if(best_contention_l1 != -1 && (float)pathlen > best_contention_l1) //reducing search space
-				continue;
+			if(best_contention_l1 != -1 && (float)pathlen > best_contention_l1) { //reducing search space
+
+				VERBOSE_DEBUG("  REDUCE SPACE: pathlen:" << pathlen << " > best_contention_l1:" << best_contention_l1);
+				//continue;
+			}
 
 			{ForInputEdges(d, vtx, e){	//Find the core index
 				Vertex source_vtx = d->getEdgeSource(e);
@@ -265,7 +268,9 @@ private :
 			if(counter > 0 )
 				cost += (float)pathlen/(float)counter;
 
-			VERBOSE_DEBUG("cost=" << cost);
+			VERBOSE_DEBUG("  cost=" << cost);
+			VERBOSE_DEBUG("  counter=" << counter);
+			VERBOSE_DEBUG("  pathlen=" << pathlen);
 			//std::cout << "cost=" << cost << "\n";
 
 			if(best_contention_l1 == -1 || cost < best_contention_l1)
