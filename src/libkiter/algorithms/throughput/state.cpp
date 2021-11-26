@@ -182,18 +182,19 @@ TIME_UNIT State::advanceTimeWithMod() {
   }
   // check for cases where time shouldn't advance/deadlock
   if (timeElapsed == 0) {
-    return timeElapsed; // there exists actors that need to end execution
+    return 0;
   }
   if (timeElapsed == LONG_MAX) {
-    return 0; // simply have faith that the periodic code did not break amen
+    this->timeElapsed += 1;
+    return 1; // potentially no actors fired due to tdma slot mismatching the current time slot (counter to prevent non-termination?)
   }
   // advance time for all actors
   for (auto &it : this->executingActors) {
     this->advanceRemExecTime(it.first, timeElapsed);
   }
   this->timeElapsed += timeElapsed;
-  VERBOSE_INFO("Time advanced by: " << timeElapsed);
-  VERBOSE_INFO("Total time elapsed: " << this->getTimeElapsed());
+
+  std::cout << "time elapsed: " << timeElapsed << std::endl;
   return timeElapsed;
 }
 
