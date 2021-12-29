@@ -14,7 +14,6 @@
 #include "actor.h"
 #include "state.h"
 #include "so4_noc.h"
-#include <printers/stdout.h>
 #include "../../models/Scheduling.h"
 #include "../scc.h"
 #include "../buffersizing/periodic_fixed.h"

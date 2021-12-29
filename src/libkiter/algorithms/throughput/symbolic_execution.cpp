@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <map>
 #include <vector>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <commons/commons.h>
 #include <models/Dataflow.h>

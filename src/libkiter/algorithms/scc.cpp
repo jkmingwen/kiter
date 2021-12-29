@@ -7,7 +7,6 @@
 #include <map>
 #include <vector>
 #include <stack>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <commons/commons.h>
 #include <models/Dataflow.h>

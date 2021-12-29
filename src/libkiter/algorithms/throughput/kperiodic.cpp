@@ -13,7 +13,6 @@
 #include <chrono>
 #include <map>
 #include <vector>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <models/EventGraph.h>
