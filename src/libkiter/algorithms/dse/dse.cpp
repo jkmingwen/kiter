@@ -33,6 +33,8 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   bool isBaseMonoOpt = false;
   bool thrTargetSpecified = false;
   bool modelBoundedBuffers = true;
+  bool useCoarse = false;
+  int coarseMultiplier = 2;
   std::string dirName = "./data/"; // default
 
   // parse parameters for KDSE
@@ -60,6 +62,10 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   if (parameters.find("SYMB_EXEC_ORIGINAL") != parameters.end() ||
       parameters.find("SYMB_EXEC_CORRECTED") != parameters.end()) {
     modelBoundedBuffers = false;
+  }
+  if (parameters.find("COARSE") != parameters.end()) { // use coarse step sizes (multiply by certain amount)
+    useCoarse = true;
+    coarseMultiplier = std::stoi(parameters["COARSE"]);
   }
 
 
@@ -277,6 +283,9 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   else {
     VERBOSE_WARNING("No DSE supported method specified; ending search.");
   }
+  if (useCoarse) {
+    methodName += "_coarse";
+  }
 
 
   /* Initialise set of minimal storage distributions
@@ -405,8 +414,13 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
           VERBOSE_DSE("\tFound storage dependency in channel "
                       << dataflow_prime->getEdgeName(*it) << std::endl);
           // make new modelled storage distribution according to storage dependencies
-          newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
-                                           minStepSizes[*it]));
+          if (!useCoarse) {
+            newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
+                                             minStepSizes[*it]));
+          } else {
+            newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
+                                             (minStepSizes[*it] * coarseMultiplier)));
+          }
           VERBOSE_DSE("\t\tIncreasing channel size of "
                       << dataflow_prime->getEdgeName(*it) << " to "
                       << newDist.getChannelQuantity(*it) << std::endl);
@@ -418,8 +432,13 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
         VERBOSE_DSE("\tFound storage dependency in channel "
                     << dataflow->getEdgeName(*it) << std::endl);
         // make new modelled storage distribution according to storage dependencies
-        newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
-                                         minStepSizes[*it]));
+          if (!useCoarse) {
+            newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
+                                             minStepSizes[*it]));
+          } else {
+            newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
+                                             (minStepSizes[*it] * coarseMultiplier)));
+          }
         VERBOSE_DSE("\t\tIncreasing channel size of "
                     << dataflow->getEdgeName(*it) << " to "
                     << newDist.getChannelQuantity(*it) << std::endl);
