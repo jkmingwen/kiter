@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <map>
 #include <vector>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <commons/commons.h>
 #include <models/Dataflow.h>
@@ -221,8 +220,8 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
     }}
-  State prevState(dataflow, actorMap, {});
-  State currState(dataflow, actorMap, {});
+  State prevState(dataflow, actorMap);
+  State currState(dataflow, actorMap);
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");
@@ -267,7 +266,7 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
             }
           }
           actorMap[dataflow->getVertexId(t)].execEnd(dataflow, currState);
-          currState.updateState(dataflow, actorMap, {}); // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
+          currState.updateState(dataflow, actorMap); // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
         }
       }}
     VERBOSE_INFO("Printing current state status after ending firing");
@@ -604,8 +603,8 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
     }}
-  State prevState(dataflow, actorMap, {});
-  State currState(dataflow, actorMap, {});
+  State prevState(dataflow, actorMap);
+  State currState(dataflow, actorMap);
   VERBOSE_INFO("Printing initial state status");
   VERBOSE_INFO(prevState.print(dataflow));
   VERBOSE_INFO("Printing actor statuses:");
@@ -659,7 +658,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
             }
           }
           actorMap[dataflow->getVertexId(t)].execEnd(dataflow, currState);
-          currState.updateState(dataflow, actorMap, {}); // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
+          currState.updateState(dataflow, actorMap); // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
         }
       }}
     VERBOSE_INFO("Printing current state status after ending firing");
@@ -671,9 +670,9 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
     VERBOSE_INFO(printStatus(dataflow, currState));
     // start actor firing
     {ForEachTask(dataflow, t) {
-        while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState, {})) {
+        while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
           actorMap[dataflow->getVertexId(t)].execStart(dataflow, currState);
-          currState.updateState(dataflow, actorMap, {});
+          currState.updateState(dataflow, actorMap);
 
           if (end_check){
             if (actors_check[dataflow->getVertexId(t)] < 0){

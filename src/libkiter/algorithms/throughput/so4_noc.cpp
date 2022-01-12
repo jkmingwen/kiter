@@ -14,7 +14,6 @@
 #include "actor.h"
 #include "state.h"
 #include "so4_noc.h"
-#include <printers/stdout.h>
 #include "../../models/Scheduling.h"
 #include "../scc.h"
 #include "../buffersizing/periodic_fixed.h"
@@ -33,13 +32,13 @@ std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflo
       }
     }
     const char* temp = (const char*) tdma_node->properties->children->content;
-    slots = atoi(temp); //TODO: change to strtol 
+    slots = atoi(temp); //TODO: change to strtol
     for (xmlNodePtr cur_node = tdma_node->children; cur_node; cur_node = cur_node->next) {
       if (cur_node->type == XML_ELEMENT_NODE) {
         if (std::string((const char*)cur_node->name) == std::string("rule")) {
           long eid;
           long s;
-          char *ss1, *ss2; 
+          char *ss1, *ss2;
           for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next){
             if (strcmp((const char*)cur_attr->name,"slot") == 0){
               temp = (const char*) cur_attr->children->content;
@@ -75,7 +74,7 @@ std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflo
     while (getline (readfile, line)) {
       std::istringstream ss(line);
       std::string subline;
-      std::vector<long> vals = {}; 
+      std::vector<long> vals = {};
       while(std::getline(ss, subline, ',')) {
         if (subline != "src" & subline != "dest" & subline != "slot"){
           vals.push_back(std::stol(subline));
@@ -100,7 +99,7 @@ std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflo
       }
     }}
   }
-  return {condition, slots};
+  return {condition, slots+1};
 }
 
 std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(models::Dataflow* const dataflow,
@@ -114,7 +113,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   TIME_UNIT timeStep; // total time passed
   int periodic_state_idx; // idx of first periodic state in statelist
   TIME_UNIT thr;
-  bool end_check = false; // 
+  bool end_check = false; //
   int actors_left = 0;
   std::map<ARRAY_INDEX, TIME_UNIT> actors_check;
   {ForEachTask(dataflow, t){
@@ -125,7 +124,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   std::map<ARRAY_INDEX, long> condition;
   long slots;
   std::tie(condition, slots) = generateConditions(dataflow, filename, new_edges);
-  
+
   std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>> *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
   std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>> *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
   scheduling_t task_schedule; // {vertex_id : {time_unit: [time_unit]}}
@@ -134,16 +133,15 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   TIME_UNIT skip_time = 0;
   TIME_UNIT curr_step = 0;
   std::map<ARRAY_INDEX, std::vector<std::vector<TIME_UNIT>>> starts; //{task idx : [[state 0 starts], [state 1 ...]]}
-  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]}, 
+  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
   bool periodic_state = false;
-
   // initialise actors
   std::map<ARRAY_INDEX, Actor> actorMap;
   {ForEachTask(dataflow, t) {
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
     }}
-  State prevState(dataflow, actorMap, new_edges);
-  State currState(dataflow, actorMap, new_edges);
+  State prevState(dataflow, actorMap);
+  State currState(dataflow, actorMap);
   {ForEachTask(dataflow, t) {
       // track actor with lowest repetition factor (determines when states are stored)
       if (actorMap[dataflow->getVertexId(t)].getRepFactor() < minRepFactor) {
@@ -151,7 +149,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
         minRepActorId = actorMap[dataflow->getVertexId(t)].getId();
       }
     }}
- 
+
   minActorInfo = std::make_pair(minRepActorId, minRepFactor);
   // Start ASAP execution loop
   while (true) {
@@ -187,18 +185,18 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
           }
           actorMap[dataflow->getVertexId(t)].execEndWithMod(dataflow, currState, n_buffer, curr_step, slots, condition);
           // NOTE updating tokens/phase in state done separately from execEnd function, might be a cause for bugs
-          // std::cout <<"END FIRING\n"<< std::endl; 
+          // std::cout <<"END FIRING\n"<< std::endl;
           // std::cout << currState.print(dataflow) << std::endl;
         }
       }}
-    
+
     // set preload from ended firings
     int cast_out_idx;
     for (cast_out_idx = 0; cast_out_idx < (*n_buffer).size(); ++cast_out_idx){
       if ((*n_buffer)[cast_out_idx].first <= curr_step){
         Edge e = dataflow->getEdgeById((*n_buffer)[cast_out_idx].second.first);
-        dataflow->setPreload(e, 
-        dataflow->getPreload(e) + (*n_buffer)[cast_out_idx].second.second);
+        currState.setTokens(e,
+                            currState.getTokens(e) + (*n_buffer)[cast_out_idx].second.second);
       }
       else{
         break;
@@ -208,16 +206,16 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
       (*n_buffer).pop_front();
       cast_out_idx--;
     }
-    currState.updateState(dataflow, actorMap, new_edges);
+    currState.updateState(dataflow, actorMap);
 
     {ForEachTask(dataflow, t) {
 
       // if (skip_time != 0 && dataflow->getVertexId(t) != skip_vertex){
       //   continue;
       // }
-        if(actorMap[dataflow->getVertexId(t)].isReadyForExec(currState, new_edges)) {
+        if(actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
             actorMap[dataflow->getVertexId(t)].execStart(dataflow, currState);
-              currState.updateState(dataflow, actorMap, new_edges);
+              currState.updateState(dataflow, actorMap);
               // std::cout <<"FIRING\n"<< std::endl;
               // std::cout << currState.print(dataflow) << std::endl;
               if (end_check){
@@ -228,20 +226,20 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
                 }
                 if (actors_left == 0){
                   {ForEachTask(dataflow, task){ //Creates schedule after additional actor is fired after end of period
-                    static_task_schedule_t initials; 
+                    static_task_schedule_t initials;
                     periodic_task_schedule_t periodics;
                     for(std::size_t i = 0; i < starts[dataflow->getVertexId(task)].size(); ++i){
                       if (i < periodic_state_idx){ //initials
                         initials.insert(initials.end(),starts[dataflow->getVertexId(task)][i].begin(),starts[dataflow->getVertexId(task)][i].end());
                         continue;
-                      } 
+                      }
                       if (i == starts[dataflow->getVertexId(task)].size() - 1){
                         periodics.second.insert(periodics.second.end(),starts[dataflow->getVertexId(task)][i].begin(),starts[dataflow->getVertexId(task)][i].end()-1);
                       } else { //periodic
                         periodics.second.insert(periodics.second.end(),starts[dataflow->getVertexId(task)][i].begin(),starts[dataflow->getVertexId(task)][i].end());
                       }
                     }
-                    periodics.first = actors_check[dataflow->getVertexId(task)] - periodics.second[0]; 
+                    periodics.first = actors_check[dataflow->getVertexId(task)] - periodics.second[0];
                     task_schedule_t sched_struct = {initials,periodics};
                     schedule.set(dataflow->getVertexId(task), sched_struct);
                     // std::cout << dataflow->getVertexName(task) << ": initial starts=" << commons::toString(initials) << ", periodic starts=" << commons::toString(periodics) << std::endl;
@@ -257,6 +255,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
               }
         }
       }}
+    VERBOSE_INFO(currState.print(dataflow));
     timeStep = currState.advanceTimeWithMod();
     curr_step+= timeStep;
     if (timeStep == LONG_MAX) { // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
@@ -270,10 +269,14 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
                                          parameters_list_t param_list) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
+
+  models::Dataflow* const temp_df = new models::Dataflow();
+  *temp_df = *dataflow;
+
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
   std::vector<models::Dataflow*> sccDataflows;
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
-  
+
   scheduling_t scheduling_result;
   int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
 
@@ -314,7 +317,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
         }
       }
     }
-    
+
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
 
@@ -325,6 +328,10 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
     std::cout << "So4 throughput is  " << minThroughput << std::endl;
     std::cout << "So4 period is  " << omega << std::endl;
 
+    temp_df->is_consistent();
+    models::Scheduling test = models::Scheduling(temp_df, omega, scheduling_result);
+    std::cout << "Schedule Check: " << test.is_valid_schedule() << std::endl;
+
     return;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
@@ -334,6 +341,9 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   scheduling_result = res_pair.second;
   std::cout << "Throughput of graph: " << minThroughput << std::endl;
   TIME_UNIT omega = 1.0 / minThroughput ;
+
+  temp_df->is_consistent();
+
   models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
   std::cout << res.asASCII(linesize);
   std::cout << res.asText();

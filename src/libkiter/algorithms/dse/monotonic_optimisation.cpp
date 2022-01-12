@@ -7,9 +7,7 @@
 
 #include <map>
 #include <vector>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
-#include <printers/SDF3Wrapper.h> // to write XML files
 #include <commons/commons.h>
 #include <models/Dataflow.h>
 #include <models/EventGraph.h>

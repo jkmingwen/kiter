@@ -10,7 +10,6 @@
 
 #include <algorithms/throughput/kperiodic.h>
 #include <models/EventGraph.h>
-#include <printers/SDF3Wrapper.h>
 
 
  const periodicity_vector_t algorithms::scheduling::generateNPeriodicVector (const models::Dataflow* dataflow) {
@@ -101,11 +100,6 @@ models::Scheduling algorithms::scheduling::CSDF_1PeriodicScheduling (const model
 
 models::Scheduling algorithms::scheduling::CSDF_KPeriodicScheduling    (const models::Dataflow* const dataflow) {
 
-	if (VERBOSE_IS_DEBUG()) {
-	    VERBOSE_DEBUG("Save SDF3 XML file.");
-		static int count = 0;
-		printers::writeSDF3File( "CSDF_KPeriodicScheduling_" + std::to_string(count++) + ".xml", dataflow);
-	}
 
    VERBOSE_ASSERT((dataflow->has_repetition_vector()),"inconsistent graph or repetition vector not computed");
 
@@ -259,7 +253,6 @@ models::Scheduling algorithms::scheduling::CSDF_KPeriodicScheduling    (const mo
     VERBOSE_INFO("K-periodic schedule - total_ki=" << sumKi << " total_ni=" << sumNi );
 
     TIME_UNIT res = result.throughput;
-    std::cout << res << std::endl;
     VERBOSE_INFO( "Maximum throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  res );
     VERBOSE_INFO( "Maximum period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << 1.0/res   );
 
