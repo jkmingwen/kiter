@@ -21,6 +21,7 @@
 #include <algorithms/throughput/degroote.h>
 #include <algorithms/throughput/csdf_strictly_periodic.h>
 #include <algorithms/experiments.h>
+#include <algorithms/analysis/cycle_detection.h>
 
 
 
