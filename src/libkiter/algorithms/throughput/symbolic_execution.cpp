@@ -380,9 +380,9 @@ kperiodic_result_t algorithms::computeComponentThroughputCycles(models::Dataflow
     VERBOSE_INFO(printStatus(dataflow, currState));
     // start actor firing
     {ForEachTask(dataflow, t) {
-        while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState, {})) {
+        while (actorMap[dataflow->getVertexId(t)].isReadyForExec(currState)) {
           actorMap[dataflow->getVertexId(t)].execStart(dataflow, currState);
-          currState.updateState(dataflow, actorMap, {});
+          currState.updateState(dataflow, actorMap);
         }
       }}
     VERBOSE_INFO("Printing Current State Status");
