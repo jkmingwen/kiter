@@ -415,6 +415,7 @@ inline  Vertex                addUnsafeVertex         (const ARRAY_INDEX id)    
 	inline  void					removeEdge   		(const Edge c)			{
 		ASSERT_WRITABLE();
 		reset_computation();
+                setEdgeName(c, getEdgeName(c) + "removed"); // NOTE quick fix (to remove after proper fix)
 		boost::remove_edge(c.e,this->getG());
 	}
 
