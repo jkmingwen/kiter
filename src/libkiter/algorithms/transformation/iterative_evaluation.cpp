@@ -7,6 +7,7 @@
 
 
 #include "iterative_evaluation.h"
+#include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
 
@@ -29,17 +30,24 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
   if (params.find("OUTPUT_NAME") != params.end()) {
     outputName = dirName + params["OUTPUT_NAME"] + ".xml";
   }
+  VERBOSE_INFO("Beginning iterative evaluation...");
   models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
   while (changeDetected) {
-    dataflow_prime = new models::Dataflow(*dataflow_prime);
+    VERBOSE_INFO("");
+    VERBOSE_INFO("Starting new iteration of iterative evaluation:")
     changeDetected = false;
       {ForEachVertex(dataflow_prime, v) {
           std::string opName = dataflow_prime->getVertexType(v);
+          VERBOSE_INFO("Visiting " << opName
+                       << " (" << dataflow_prime->getVertexName(v) << ")...");
           if (opName == "delay") {
             // identify input signal edge and static delay amount
             int delayAmt;
             Edge inputSig, delayArg;
             if (checkForStaticDelay(dataflow_prime, v, inputSig, delayArg, delayAmt)) {
+              VERBOSE_INFO("\tBypassing static delay");
+              VERBOSE_INFO("\t\tDelay amount: " << delayAmt
+                           << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
               bypassDelay(dataflow_prime, v, inputSig, delayArg, delayAmt);
               changeDetected = true;
               break;
@@ -51,14 +59,23 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
                 inputArgs.push_back(dataflow_prime->getVertexType(dataflow_prime->getEdgeSource(e)));
               }}
             if (binaryOps.find(opName) != binaryOps.end() && inputArgs.size() == 2) {
+              VERBOSE_INFO("\tEvaluating binary operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: " << inputArgs[0] << ", " << inputArgs[1]);
               applyResult(dataflow_prime, v, evalBinop(opName, inputArgs[0], inputArgs[1]));
               changeDetected = true;
               break;
             } else if (castOps.find(opName) != castOps.end() && inputArgs.size() == 1) {
+              VERBOSE_INFO("\tEvaluating cast operator: " << opName);
+              VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
               applyResult(dataflow_prime, v, evalCast(opName, inputArgs[0]));
               changeDetected = true;
               break;
             } else {
+              VERBOSE_INFO("\tEvaluating operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: ");
+              for (auto &i : inputArgs) {
+                VERBOSE_INFO("\t\t  " << i);
+              }
               applyResult(dataflow_prime, v, evalOther(opName, inputArgs));
               changeDetected = true;
               break;
@@ -66,7 +83,8 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           }
         }}
   }
-  std::cout << "no more changes detected" << std::endl;
+  VERBOSE_INFO("No further possible evaluations detected, producing simplified graph");
+  VERBOSE_INFO("Simplified graph:" << outputName);
   // TODO use printers::writeSDF3File(path/to/file, dataflow_graph) to produce updated SDF file
   printers::writeSDF3File(outputName, dataflow_prime);
 }
@@ -208,16 +226,15 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   } else { // NOTE could be adapted to multiple outputs by storing a vector of edge sources and targets
     {ForOutputEdges(dataflow, v, e) {
         newTarget = dataflow->getEdgeTarget(e);
-        std::cout << "\tOutput edge: " << dataflow->getEdgeName(e) << std::endl;
-        std::cout << "\tNew target for " << dataflow->getVertexType(newSource)
-                  << ": " << dataflow->getVertexType(newTarget) << std::endl;
+        VERBOSE_DEBUG("\tOutput edge: " << dataflow->getEdgeName(e));
+        VERBOSE_DEBUG("\tNew target for " << dataflow->getVertexType(newSource)
+                      << ": " << dataflow->getVertexType(newTarget));
       }}
   }
-  std::cout << "Replace edge with bypass edge" << std::endl;
-  std::cout << "\tSource: " << dataflow->getVertexName(newSource)
-            << ", " << dataflow->getVertexType(newSource) << std::endl;
-  std::cout << "\tTarget: " << dataflow->getVertexName(newTarget)
-            << ", " << dataflow->getVertexType(newTarget) << std::endl;
+  VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
+               << dataflow->getVertexName(newSource) << ") ---> "
+               << dataflow->getVertexType(newTarget) << " ("
+               << dataflow->getVertexName(newTarget) << ")");
   // bypass delay operator with new edge
   dataflow->removeEdge(inputSig);
   Edge newEdge = dataflow->addEdge(newSource, newTarget, edgeName);
@@ -230,12 +247,12 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
      note that if the delay arg actor has multiple output edges,
      we just delete the corresponding edge so we don't unnecessarily
      alter the graph */
-  std::cout << "\tnumber of outputs for delay argument: " << delayArgOutputCnt << std::endl;
+  VERBOSE_DEBUG("\tnumber of outputs for delay argument: " << delayArgOutputCnt);
   if (delayArgOutputCnt > 1) {
-    std::cout << "\t\tremoving edge from delay argument" << std::endl;
+    VERBOSE_INFO("\t\tRemoving edge from delay argument (" << dataflow->getEdgeName(delayArg) << ")");
     dataflow->removeEdge(delayArg);
   } else { // only one output edge
-    std::cout << "\t\tremoving delay argument from graph" << std::endl;
+    VERBOSE_INFO("\t\tRemoving delay argument from graph (" << delayArgSourceName << ")");
     dataflow->removeVertex(dataflow->getVertexByName(delayArgSourceName));
   }
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
@@ -244,6 +261,7 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
 // update vertex with the specified result, removing any input arguments
 void algorithms::applyResult(models::Dataflow* const dataflow, Vertex v,
                              std::string result) {
+  VERBOSE_INFO("\tReplacing " << dataflow->getVertexType(v) << " with " << result);
   std::vector<std::string> inputVertices; // store names of vertices acting as input args to v
   {ForInputEdges(dataflow, v, e) {
       inputVertices.push_back(dataflow->getVertexName(dataflow->getEdgeSource(e)));
