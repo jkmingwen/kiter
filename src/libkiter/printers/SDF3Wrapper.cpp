@@ -703,9 +703,9 @@ void writeChannel (xmlTextWriterPtr writer, const models::Dataflow* dataflow, co
 
 	const std::string edge_name = dataflow->getEdgeName(e);
 	const std::string edge_srcActor = dataflow->getVertexName(dataflow->getEdgeSource(e));
-	const std::string edge_srcPort ="in_" + commons::toString(dataflow->getEdgeId(e));
+	const std::string edge_srcPort = dataflow->getEdgeInputPortName(e);
 	const std::string edge_dstActor =dataflow->getVertexName(dataflow->getEdgeTarget(e));
-	const std::string edge_dstPort = "out_" + commons::toString(dataflow->getEdgeId(e));
+	const std::string edge_dstPort = dataflow->getEdgeOutputPortName(e);
 	const DATA_UNIT edge_size = dataflow->getTokenSize(e);
 	const TOKEN_UNIT edge_initialTokens = dataflow->getPreload(e);
 	xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "channel");
@@ -773,7 +773,7 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 					for (auto it : dataflow->in_edges(t)) {
 									Edge e = *it;
-									const std::string out_port =  "out_" + commons::toString(dataflow->getEdgeId(e));
+									const std::string out_port = dataflow->getEdgeOutputPortName(e);
 									const auto in_init_rates = dataflow->getEdgeInitOutVector(e);
 									const auto in_rates = dataflow->getEdgeOutVector(e);
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
@@ -789,7 +789,7 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 					for (auto it : dataflow->out_edges(t)) {
 									Edge e = *it;
-									const std::string in_port =  "in_" + commons::toString(dataflow->getEdgeId(e));
+									const std::string in_port = dataflow->getEdgeInputPortName(e);
 									const auto out_init_rates = dataflow->getEdgeInitInVector(e);
 									const auto out_rates = dataflow->getEdgeInVector(e);
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");

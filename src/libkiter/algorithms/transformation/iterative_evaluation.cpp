@@ -216,6 +216,8 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   std::vector<TOKEN_UNIT> inPhases = dataflow->getEdgeInVector(inputSig);
   std::vector<TOKEN_UNIT> outPhases = dataflow->getEdgeOutVector(inputSig);
   std::string edgeName = dataflow->getEdgeName(inputSig);
+  std::string edgeInPort = dataflow->getEdgeInputPortName(inputSig);
+  std::string edgeOutPort = dataflow->getEdgeOutputPortName(inputSig);
   std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
@@ -240,6 +242,8 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   Edge newEdge = dataflow->addEdge(newSource, newTarget, edgeName);
   dataflow->setEdgeInPhases(newEdge, inPhases);
   dataflow->setEdgeOutPhases(newEdge, outPhases);
+  dataflow->setEdgeInputPortName(newEdge, edgeInPort);
+  dataflow->setEdgeOutputPortName(newEdge, edgeOutPort);
   dataflow->setPreload(newEdge, delayAmt);
   dataflow->setTokenSize(newEdge, 1);
 
