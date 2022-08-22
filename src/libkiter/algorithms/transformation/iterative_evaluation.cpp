@@ -246,6 +246,14 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   dataflow->setEdgeOutputPortName(newEdge, edgeOutPort);
   dataflow->setPreload(newEdge, delayAmt);
   dataflow->setTokenSize(newEdge, 1);
+  // update target name to reflect new input argument if necessary
+  if (dataflow->getVertexName(newTarget).find(delayName) != std::string::npos) {
+    std::string newTargetName = dataflow->getVertexName(newTarget);
+    newTargetName.replace(newTargetName.find(delayName),
+                          delayName.length(),
+                          dataflow->getVertexName(newSource));
+    dataflow->setVertexName(newTarget, newTargetName);
+  }
 
   /* remove vertex providing delay argument:
      note that if the delay arg actor has multiple output edges,
@@ -266,11 +274,13 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
 void algorithms::applyResult(models::Dataflow* const dataflow, Vertex v,
                              std::string result) {
   VERBOSE_INFO("\tReplacing " << dataflow->getVertexType(v) << " with " << result);
+  std::string vName = dataflow->getVertexName(v);
   std::vector<std::string> inputVertices; // store names of vertices acting as input args to v
   {ForInputEdges(dataflow, v, e) {
       inputVertices.push_back(dataflow->getVertexName(dataflow->getEdgeSource(e)));
     }}
   dataflow->setVertexType(v, result); // update with given result
+  dataflow->setVertexName(v, vName.substr(0, vName.find("_"))); // remove extended name indicating input argument order after applying result
   {ForInputEdges(dataflow, v, e) {
       Vertex inputVertex = dataflow->getEdgeSource(e);
       if (dataflow->getVertexOutDegree(inputVertex) > 1) {
