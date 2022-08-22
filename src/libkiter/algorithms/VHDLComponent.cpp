@@ -86,13 +86,16 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     componentType = baseCompType;
   } else if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), baseCompType)) {
     isConstVal = false;
-    if (inputTypes.size() == 1) {
-      if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
-        dataType = "fp"; // TODO remove this workaround during refactoring
-      } else if (inputTypes.begin()->first == "int") {
-        dataType = inputTypes.begin()->first;
-      }
-    } else { // NOTE expecting arithmetic operators to be able to be defined by input types
+    if (inputTypes.size() > 1) { // mixing input types might result in unintended behaviour
+      VERBOSE_WARNING(inputTypes.size() << " input types on " << compType
+                      << " (" << dataflow->getVertexName(a) << ")");
+    }
+    // infer arithmetic operator data type based on first data type stated by input port
+    if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
+      dataType = "fp"; // TODO remove this workaround during refactoring
+    } else if (inputTypes.begin()->first == "int") {
+      dataType = inputTypes.begin()->first;
+    } else {
       dataType = "undefined"; // TODO replace with assert
     }
     std::string compTypePrefix = dataType + "_";
