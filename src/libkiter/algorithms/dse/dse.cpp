@@ -113,6 +113,8 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
   std::map<Edge, TOKEN_UNIT> minStepSizes;
   std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
   TOKEN_UNIT minDistributionSize;
+  std::chrono::duration<double, std::milli> cumulativeTime; // store timings
+  auto cumulativeStart = std::chrono::steady_clock::now(); // DSE cumulative time starts here
 
   VERBOSE_DSE("INITIALISING SEARCH PARAMETERS:" << std::endl);
   if (modelBoundedBuffers) {
@@ -218,7 +220,6 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
   // add initial distribution to list of storage distributions
   StorageDistributionSet checklist;
-  std::chrono::duration<double, std::milli> cumulativeTime; // store timings
   // if (isMonoOpt) {
   //   methodName = "_m_opt";
   //   auto startTime = std::chrono::steady_clock::now();
@@ -262,7 +263,7 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
     }
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-    cumulativeTime += execTime;
+    cumulativeTime += execTime; // NOTE this will need to be updated: we want to track cumulative time as the global time elapsed rather than the sum of execution times
     std::cout << "B_M_OPT: time taken: " << cumulativeTime.count() << std::endl;
   }
   else if (modelBoundedBuffers) {
@@ -352,7 +353,6 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
 
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-    cumulativeTime += execTime;
     computation_counter++;
 
     if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
@@ -364,37 +364,6 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
       VERBOSE_DSE(checkDist.printInfo(dataflow_prime, modelBoundedBuffers));
     } else {
       VERBOSE_DSE(checkDist.printInfo(dataflow, modelBoundedBuffers));
-    }
-
-
-    // write current storage distribution info to DSE log
-    if (writeLogFiles) {
-      dseLog << checkDist.getDistributionSize() << colDelimiter
-             << checkDist.getThroughput() << colDelimiter;
-      if (modelBoundedBuffers) {
-        dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
-               // << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
-               << execTime.count() << colDelimiter
-               << cumulativeTime.count() << std::endl;
-      } else {
-        dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
-               // << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
-               << execTime.count() << colDelimiter
-               << cumulativeTime.count() << std::endl;
-      }
-
-    } else {
-      std::cout << checkDist.getDistributionSize() << colDelimiter
-                << checkDist.getThroughput() << colDelimiter;
-      if (modelBoundedBuffers) {
-        std::cout << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
-                  << execTime.count() << colDelimiter
-                  << cumulativeTime.count() << std::endl;
-      } else {
-        std::cout << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
-                  << execTime.count() << colDelimiter
-                  << cumulativeTime.count() << std::endl;
-      }
     }
 
     // Add storage distribution and computed throughput to set of minimal storage distributions
@@ -448,12 +417,43 @@ void algorithms::throughput_buffering_tradeoff_dse(models::Dataflow* const dataf
       }
 
     }
-
+    // NOTE we track cumulative time before the minimization algorithm in order to keep the experiment consistent with SDF3
+    cumulativeTime = std::chrono::steady_clock::now() - cumulativeStart; // track time since start of DSE
     // Ensure minimal set is indeed minimal
     VERBOSE_DSE("\tTrying to minimise set with distribution size: "
                 << checkDist.getDistributionSize() << std::endl);
     minStorageDist.minimizeStorageDistributions(checkDist);
     VERBOSE_DSE(std::endl);
+
+    // write current storage distribution info to DSE log
+    if (writeLogFiles) {
+      dseLog << checkDist.getDistributionSize() << colDelimiter
+             << checkDist.getThroughput() << colDelimiter;
+      if (modelBoundedBuffers) {
+        dseLog << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
+          // << checkDist.print_dependency_mask(dataflow_prime, result, modelBoundedBuffers) << ","
+               << execTime.count() << colDelimiter
+               << cumulativeTime.count() << std::endl;
+      } else {
+        dseLog << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
+          // << checkDist.print_dependency_mask(dataflow, result, modelBoundedBuffers) << ","
+               << execTime.count() << colDelimiter
+               << cumulativeTime.count() << std::endl;
+      }
+
+    } else {
+      std::cout << checkDist.getDistributionSize() << colDelimiter
+                << checkDist.getThroughput() << colDelimiter;
+      if (modelBoundedBuffers) {
+        std::cout << checkDist.print_quantities_csv(dataflow_prime, modelBoundedBuffers) << colDelimiter
+                  << execTime.count() << colDelimiter
+                  << cumulativeTime.count() << std::endl;
+      } else {
+        std::cout << checkDist.print_quantities_csv(dataflow, modelBoundedBuffers) << colDelimiter
+                  << execTime.count() << colDelimiter
+                  << cumulativeTime.count() << std::endl;
+      }
+    }
   }
 
   // The minimum storage distribution for a throughput of 0 is (0, 0,..., 0)
