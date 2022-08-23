@@ -130,3 +130,19 @@ cp /opt/gurobi912/linux64/src/build/libgurobi_c++.a /opt/gurobi912/linux64/lib/
 - print a channel properties XML even if empty
 - In the print mapping, if task are on the same mapping, spread then X,Y slightly
 - Add new task and a few more function really slow, need to speed them up.
+
+
+# Related projects
+
+## Mapping of SDF over Network on Chip (Katherine Sun)
+
+Kiter can provide a symbolic execution of communications:
+```
+./Release/bin/kiter -f graph.xml -a createNoC -a randomMapping -a randomRouting -a SymbolicExecutionWP
+```
+
+This related project, 
+based on the symbolic execution and details of TDMA tables, 
+generates a valid mapping of the application.
+
+[Source code](https://github.com/katwinkl3/Scheduling-CP)
