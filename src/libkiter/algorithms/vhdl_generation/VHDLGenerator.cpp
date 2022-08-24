@@ -24,7 +24,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   bool bufferless = false;
   std::string dirName = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
   std::string componentDir = dirName + "/components/";
-  std::string referenceDir = "./kiter/vhdl_generation/";
+  std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
   std::ofstream outputFile;
   VHDLCircuit circuit;
   circuit.setName(dataflow->getGraphName());
