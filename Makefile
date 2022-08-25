@@ -128,6 +128,7 @@ sdf3_benchmarks : ${SDF3_BENCHMARK} ${SDF3_MEM_BENCHMARK}  ${SDF3_CS_BENCHMARK} 
 ${SDF3_BINARY_ROOT} : ./tools/install_sdf3.sh
 	@echo "###########"" ENTER IN $@ : $^  #####################"
 	@echo "Please run manually '$< ${SDF3_ROOT}' before running the Makefile"
+	mkdir -p ${SDF3_ROOT}
 	exit 1
 
 ${SDF3_CS_BENCHMARK} : ${SDF3_ROOT}/sdfg_designflow_case_study.zip
