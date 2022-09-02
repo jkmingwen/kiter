@@ -10,7 +10,6 @@
 #include <chrono> // to take computation timings
 #include <queue>
 #include <commons/commons.h>
-#include <algorithms/buffersizing.h>
 #include <algorithms/buffersizing/periodic.h>
 #include <algorithms/buffersizing/periodic_fixed.h> // include speriodic
 #include <algorithms/throughput/kperiodic.h>

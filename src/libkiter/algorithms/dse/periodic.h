@@ -10,7 +10,6 @@
 
 #include <commons/KiterRegistry.h>
 #include <commons/basic_types.h>
-#include <algorithms/buffersizing.h>
 #include <functional>
 
 namespace models {

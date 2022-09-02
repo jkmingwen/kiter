@@ -85,6 +85,8 @@ int main (int argc, char **argv)
 			std::cerr << "Command: kiter -f FILENAME or -g GENERATOR, then -a ALGORITHM." << std::endl;
 			std::cerr << " List of supported generator (-g) is " << std::endl;
 			KiterRegistry<generator_t>::print();
+			std::cerr << " List of supported buffer sizing algorithms (-a) is " << std::endl;
+			KiterRegistry<buffer_sizing_t>::print();
 			std::cerr << " List of supported algorithms (-a) is " << std::endl;
 			KiterRegistry<transformation_t>::print();
 			exit(0);
@@ -101,6 +103,13 @@ int main (int argc, char **argv)
 	 * */
 
 	models::Dataflow* csdf = nullptr;
+
+
+    if ((filename == "") and (generators.size() == 0)) {
+        VERBOSE_ERROR("Unsupported arguments: need a filename or a generator");
+        std::cerr << " No input file or enable to read it, please us -f FILENAME or -g GENERATOR." << std::endl;
+        exit(1);
+    }
 
 
 	// Step 1 = Load XML file if any
@@ -155,19 +164,29 @@ int main (int argc, char **argv)
 	// Step 4 = Apply selected algorithm
 	for ( std::vector<std::pair<std::string,parameters_list_t>>::iterator it = algos.begin() ; it != algos.end() ; it++ ) {
 		std::string name = (*it).first;
-		const transformation_t* transformation = KiterRegistry<transformation_t>::get(name);
-		if (!transformation) {
-			std::cerr << " Unsupported algorithm (-a " << name << "), list of supported algorithms is " << std::endl;
-			KiterRegistry<transformation_t>::print();
-			exit(1);
-		} else {
-			VERBOSE_INFO ("Run " << transformation->name);
-			tock();
-			(*it).second.insert(parameters.begin(),parameters.end());
-			transformation->fun(csdf,(*it).second);
-			double duration = tock();
-			VERBOSE_INFO (transformation->name << " duration=" << duration);
-		}
+        const transformation_t* transformation = KiterRegistry<transformation_t>::get(name);
+        const buffer_sizing_t* buffer_sizing = KiterRegistry<buffer_sizing_t>::get(name);
+
+        tock();
+
+        if (transformation) {
+            VERBOSE_INFO ("Run transformation " << transformation->name);
+            (*it).second.insert(parameters.begin(),parameters.end());
+            transformation->fun(csdf,(*it).second);
+        } else if (buffer_sizing) {
+            VERBOSE_INFO ("Run buffer sizing " << transformation->name);
+            (*it).second.insert(parameters.begin(),parameters.end());
+            BufferSizingResult res = buffer_sizing->fun(csdf,(*it).second);
+            VERBOSE_INFO ("Total size is " << res.total_size());
+
+        } else {
+            std::cerr << " Unsupported algorithm (-a " << name << "), list of supported algorithms is " << std::endl;
+            KiterRegistry<transformation_t>::print();
+            exit(1);
+        }
+
+        double duration = tock();
+        VERBOSE_INFO (transformation->name << " duration=" << duration);
 	}
 
 

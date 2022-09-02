@@ -69,7 +69,7 @@ BufferSizingResult algorithms::speriodic_memory_sizing_csdf (models::Dataflow* c
     }
 }
 
-void algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataflow, parameters_list_t params) {
+BufferSizingResult algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataflow, parameters_list_t params) {
         std::map<Vertex,std::vector<TIME_UNIT> > offsets;
 
         VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -103,11 +103,8 @@ void algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataf
 
         generateStrictlyPeriodicOffsets(dataflow,period,offsets);
         checkOffsets(dataflow,period,offsets);
-        auto total_buffer_size = compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only).total_size();
-        std::cout << "Total buffer size : " << total_buffer_size
-                    << " + 2 * " << dataflow->getVerticesCount() << " = "
-                    << total_buffer_size + 2 * dataflow->getVerticesCount() << std::endl ;
-            std::cout << "SPeriodicSizing size is " << total_buffer_size << std::endl;
+        return compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only);
+
 }
 
    void algorithms::add_vbuffers (models::Dataflow* const  dataflow, parameters_list_t params) {
@@ -155,7 +152,7 @@ void algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataf
     }
 
 
-void algorithms::compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params){
+BufferSizingResult algorithms::compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params){
     std::map<Vertex,std::vector<TIME_UNIT> > offsets;
 
     VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -186,12 +183,8 @@ void algorithms::compute_fixed_offset_buffer_sizing (models::Dataflow* const dat
     }
 
     checkOffsets(dataflow,period,offsets);
-    auto total_buffer_size = compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only).total_size();
+    return compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only);
 
-    std::cout << "Total buffer size : " << total_buffer_size
-                << " + 2 * " << dataflow->getVerticesCount() << " = "
-                << total_buffer_size + 2 * dataflow->getVerticesCount() << std::endl ;
-    std::cout << (std::string) mem << " Sizing size is " << total_buffer_size << std::endl;
 }
 
 

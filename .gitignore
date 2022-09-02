@@ -74,3 +74,8 @@ tools/sdf3*/
 __pycache__
 /ascent_pictures/
 /*.tex
+
+
+#  CLion related
+.idea/
+cmake-build-debug/

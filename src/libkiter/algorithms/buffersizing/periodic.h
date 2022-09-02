@@ -18,12 +18,12 @@ namespace models {
 namespace algorithms {
 
 BufferSizingResult periodic_memory_sizing_csdf   (models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool INTEGERSOLVING, bool ILPGENERATIONONLY) ;
-void compute_csdf_1periodic_memory       (models::Dataflow* const  dataflow, parameters_list_t);
+    BufferSizingResult compute_csdf_1periodic_memory       (models::Dataflow* const  dataflow, parameters_list_t);
 
 } // end of namespace algorithms
 
 
-ADD_TRANSFORMATION(PeriodicSizing,
-		transformation_t({ "PeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling method.", algorithms::compute_csdf_1periodic_memory}));
+ADD_BUFFER_SIZING(PeriodicSizing,
+		buffer_sizing_t({ "PeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling method.", algorithms::compute_csdf_1periodic_memory}));
 
 #endif /* THROUGHPUT_H_ */

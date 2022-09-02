@@ -13,10 +13,10 @@
 
 models::Dataflow*  generators::generate_random_sdf(parameters_list_t   param_list) {
 		RandomGeneratorConfiguration config;
-		config.min_vertices_count       = 10;
-		config.max_vertices_count       = 20;
-		config.min_edges_count          = 20;
-		config.max_edges_count          = 30;
+		config.min_vertices_count       = 5;
+		config.max_vertices_count       = 10;
+		config.min_edges_count          = 5;
+		config.max_edges_count          = 10;
 		config.max_weight               = 10;
 		config.max_duration             = 1;
 		config.max_phase_quantity       = 1;

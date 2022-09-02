@@ -593,6 +593,7 @@ public :
     inline std::string           getEdgeTypeStr (const Edge e )    const     {
     	EDGE_TYPE et = this->getEdgeType(e);
     	switch (et) {
+            case VIRTUAL_EDGE : return "VIRTUAL_EDGE";
     		case NORMAL_EDGE : return "NORMAL_EDGE";
     		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
     		default : return "UNKNOWN";
