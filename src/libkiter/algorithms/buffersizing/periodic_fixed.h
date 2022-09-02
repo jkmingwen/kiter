@@ -24,13 +24,13 @@ namespace algorithms {
     void checkOffsets (models::Dataflow * const dataflow, TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & offsets) ;
 
     bool generateBurstOffsets(models::Dataflow * const dataflow,std::map<Vertex,std::vector<TIME_UNIT> > & res);
-    bool generateStrictlyPeriodicOffsets(models::Dataflow * dataflow, TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res) ;
+    bool generateStrictlyPeriodicOffsets(models::Dataflow * const dataflow, TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res) ;
     bool generateAverageOffsets(models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res);
     bool generateMinMaxOffsets(models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res);
     bool generateWiggersOffsets(models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res);
 
     BufferSizingResult speriodic_memory_sizing_csdf(models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool INTEGERSOLVING, bool ilp_solving) ;
-    BufferSizingResult compute_periodic_fixed_memory(models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & res,  TIME_UNIT PERIOD , bool ilp_solving , bool gen_only);
+    BufferSizingResult compute_periodic_fixed_memory(models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & offsets,  TIME_UNIT PERIOD , bool ilp_solving , bool gen_only);
 
     void compute_strictly_periodic_memory(models::Dataflow* const  dataflow, parameters_list_t params);
     void compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params);
