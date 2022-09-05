@@ -25,11 +25,17 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
                                                     parameters_list_t params) {
   bool changeDetected = true;
   std::string dirName = "./"; // use current directory as default
-  std::string outputName = dirName + dataflow->getGraphName() + "_simplified" + ".xml"; // use graph name as default
+  std::string outputName = dataflow->getGraphName() + "_simplified" + ".xml"; // use graph name as default
 
-  if (params.find("OUTPUT_NAME") != params.end()) {
-    outputName = dirName + params["OUTPUT_NAME"] + ".xml";
+  if (params.find("OUTPUT_DIR") != params.end()) {
+    dirName = params["OUTPUT_DIR"];
+    VERBOSE_INFO("DIR NAME: " << dirName);
   }
+  if (params.find("OUTPUT_NAME") != params.end()) {
+    outputName = params["OUTPUT_NAME"] + ".xml";
+  }
+  outputName = dirName + outputName; // set output file path
+
   VERBOSE_INFO("Beginning iterative evaluation...");
   models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
   while (changeDetected) {
