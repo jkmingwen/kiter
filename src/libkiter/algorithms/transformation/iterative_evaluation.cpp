@@ -229,37 +229,47 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
   Vertex newTarget;
 
-  if (dataflow->getVertexOutDegree(v) > 1) {
-    std::cerr << "Bypassing delay with multiple outputs not yet supported" << std::endl;
-  } else { // NOTE could be adapted to multiple outputs by storing a vector of edge sources and targets
-    {ForOutputEdges(dataflow, v, e) {
-        newTarget = dataflow->getEdgeTarget(e);
-        VERBOSE_DEBUG("\tOutput edge: " << dataflow->getEdgeName(e));
-        VERBOSE_DEBUG("\tNew target for " << dataflow->getVertexType(newSource)
-                      << ": " << dataflow->getVertexType(newTarget));
-      }}
-  }
-  VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
-               << dataflow->getVertexName(newSource) << ") ---> "
-               << dataflow->getVertexType(newTarget) << " ("
-               << dataflow->getVertexName(newTarget) << ")");
-  // bypass delay operator with new edge
   dataflow->removeEdge(inputSig);
-  Edge newEdge = dataflow->addEdge(newSource, newTarget, edgeName);
-  dataflow->setEdgeInPhases(newEdge, inPhases);
-  dataflow->setEdgeOutPhases(newEdge, outPhases);
-  dataflow->setEdgeInputPortName(newEdge, edgeInPort);
-  dataflow->setEdgeOutputPortName(newEdge, edgeOutPort);
-  dataflow->setPreload(newEdge, delayAmt);
-  dataflow->setTokenSize(newEdge, 1);
-  // update target name to reflect new input argument if necessary
-  if (dataflow->getVertexName(newTarget).find(delayName) != std::string::npos) {
-    std::string newTargetName = dataflow->getVertexName(newTarget);
-    newTargetName.replace(newTargetName.find(delayName),
-                          delayName.length(),
-                          dataflow->getVertexName(newSource));
-    dataflow->setVertexName(newTarget, newTargetName);
-  }
+  int edgeCount = 0;
+  {ForOutputEdges(dataflow, v, e) { // bypass delay operator with new edge
+      newTarget = dataflow->getEdgeTarget(e);
+      VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
+                   << dataflow->getVertexName(newSource) << ") ---> "
+                   << dataflow->getVertexType(newTarget) << " ("
+                   << dataflow->getVertexName(newTarget) << ")");
+      std::string newEdgeName = edgeName;
+      std::string newInPortName = edgeInPort;
+      std::string newOutPortName = edgeOutPort;
+      if (dataflow->getVertexOutDegree(v) > 1) {
+        std::string edgeNumber = std::string("_" + std::to_string(edgeCount) + "_");
+        newEdgeName.replace(newEdgeName.find_last_of("_"),
+                            1,
+                            edgeNumber);
+        newInPortName.replace(newInPortName.find_last_of("_"),
+                              1,
+                              edgeNumber);
+        newOutPortName.replace(newOutPortName.find_last_of("_"),
+                               1,
+                               edgeNumber);
+      }
+      Edge newEdge = dataflow->addEdge(newSource, newTarget, newEdgeName);
+      dataflow->setEdgeInPhases(newEdge, inPhases);
+      dataflow->setEdgeOutPhases(newEdge, outPhases);
+      dataflow->setEdgeInputPortName(newEdge, newInPortName);
+      dataflow->setEdgeOutputPortName(newEdge, newOutPortName);
+      dataflow->setPreload(newEdge, delayAmt);
+      dataflow->setTokenSize(newEdge, 1);
+      edgeCount++;
+      // update target name to reflect new input argument if necessary
+      // as VHDLGeneration uses the vertex name to determine order of arguments for binary operators
+      if (dataflow->getVertexName(newTarget).find(delayName) != std::string::npos) {
+        std::string newTargetName = dataflow->getVertexName(newTarget);
+        newTargetName.replace(newTargetName.find(delayName),
+                              delayName.length(),
+                              dataflow->getVertexName(newSource));
+        dataflow->setVertexName(newTarget, newTargetName);
+      }
+    }}
 
   /* remove vertex providing delay argument:
      note that if the delay arg actor has multiple output edges,
