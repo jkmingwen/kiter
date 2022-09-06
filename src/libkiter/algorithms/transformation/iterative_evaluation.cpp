@@ -14,7 +14,7 @@
 std::set<std::string> binaryOps = {
   "add", "diff", "prod", "div", "mod", "l_shift",
   "r_shift", "greaterthan", "lessthan", "geq",
-  "leq", "equal", "notequal", "AND", "OR", "XOR"
+  "leq", "equal", "notequal", "AND", "OR", "XOR", "pow"
 };
 
 std::set<std::string> castOps = {
@@ -178,6 +178,8 @@ std::string algorithms::evalBinop(std::string op, std::string arg1, std::string 
     result = arg1Int | arg2Int;
   } else if (op == "XOR") {
     result = arg1Int ^ arg2Int;
+  } else if (op == "pow") { // NOTE we assume that power actor only ever has 2 input args, might have to reimplement for more than 2 input args in the future; we also assume that the last operand is always the exponent
+    result = pow(arg1Float, arg2Float);
   } else {
     std::cerr << "Specified binary operator " << op << " not currently supported" << std::endl;
   }
