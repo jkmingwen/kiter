@@ -59,6 +59,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               break;
             }
           }
+          if (opName == "Proj") {
+            VERBOSE_INFO("\tBypassing Proj");
+            bypassProj(dataflow_prime, v);
+            changeDetected = true;
+            break;
+          }
           if (checkForNumericInputs(dataflow_prime, v)) {
             std::vector<std::string> inputArgs;
             {ForInputEdges(dataflow_prime, v, e) {
@@ -233,15 +239,11 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
   Vertex newTarget;
+  int edgeCount = 0;
 
   dataflow->removeEdge(inputSig);
-  int edgeCount = 0;
   {ForOutputEdges(dataflow, v, e) { // bypass delay operator with new edge
       newTarget = dataflow->getEdgeTarget(e);
-      VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
-                   << dataflow->getVertexName(newSource) << ") ---> "
-                   << dataflow->getVertexType(newTarget) << " ("
-                   << dataflow->getVertexName(newTarget) << ")");
       std::string newEdgeName = edgeName;
       std::string newInPortName = edgeInPort;
       std::string newOutPortName = edgeOutPort;
@@ -257,6 +259,10 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
                                1,
                                edgeNumber);
       }
+      VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
+                   << dataflow->getVertexName(newSource) << ") ---> "
+                   << dataflow->getVertexType(newTarget) << " ("
+                   << dataflow->getVertexName(newTarget) << ")");
       Edge newEdge = dataflow->addEdge(newSource, newTarget, newEdgeName);
       dataflow->setEdgeInPhases(newEdge, inPhases);
       dataflow->setEdgeOutPhases(newEdge, outPhases);
@@ -289,6 +295,131 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
     dataflow->removeVertex(dataflow->getVertexByName(delayArgSourceName));
   }
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
+}
+
+void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
+  std::string projName = dataflow->getVertexName(v);
+
+  if (dataflow->getVertexInDegree(v) > 1) { // multiple inputs to Proj operator: map to outputs in order of inputs
+    VERBOSE_DEBUG_ASSERT(dataflow->getVertexInDegree(v) == dataflow->getVertexOutDegree(v),
+                         "Number of inputs (" << dataflow->getVertexInDegree(v)
+                         << ") doesn't match number of outputs"
+                         << dataflow->getVertexOutDegree(v) << "for Proj operator");
+    VERBOSE_INFO("\t\tBypassing Proj with multiple inputs:");
+    std::vector<Vertex> newSources;
+    Vertex newTarget;
+    std::vector<Edge> oldInputEdges;
+    std::vector<std::string> edgeNames, edgeInPorts, edgeOutPorts;
+    std::vector<std::vector<TOKEN_UNIT>> inPhases, outPhases;
+    std::vector<int> initTokens;
+    int currentEdge = 0;
+    {ForInputEdges(dataflow, v, e) {
+        newSources.push_back(dataflow->getEdgeSource(e));
+        edgeNames.push_back(dataflow->getEdgeName(e));
+        edgeInPorts.push_back(dataflow->getEdgeInputPortName(e));
+        edgeOutPorts.push_back(dataflow->getEdgeOutputPortName(e));
+        inPhases.push_back(dataflow->getEdgeInVector(e));
+        outPhases.push_back(dataflow->getEdgeOutVector(e));
+        initTokens.push_back(dataflow->getPreload(e));
+        oldInputEdges.push_back(e);
+      }}
+    dataflow->removeEdge(oldInputEdges[currentEdge]);
+    {ForOutputEdges(dataflow, v, e) {
+        newTarget =  dataflow->getEdgeTarget(e);
+        std::string newEdgeName = edgeNames[currentEdge];
+        std::string newInPortName = edgeInPorts[currentEdge];
+        std::string newOutPortName = edgeOutPorts[currentEdge];
+        VERBOSE_INFO("\t\tNew edge: "
+                     << dataflow->getVertexType(newSources[currentEdge]) << " ("
+                     << dataflow->getVertexName(newSources[currentEdge]) << ") ---> "
+                     << dataflow->getVertexType(newTarget) << " ("
+                     << dataflow->getVertexName(newTarget) << ")");
+        Edge newEdge = dataflow->addEdge(newSources[currentEdge], newTarget, newEdgeName);
+        dataflow->setEdgeInPhases(newEdge, inPhases[currentEdge]);
+        dataflow->setEdgeOutPhases(newEdge, outPhases[currentEdge]);
+        dataflow->setEdgeInputPortName(newEdge, newInPortName);
+        dataflow->setEdgeOutputPortName(newEdge, newOutPortName);
+        dataflow->setPreload(newEdge, initTokens[currentEdge]);
+        dataflow->setTokenSize(newEdge, 1);
+        currentEdge++;
+        // update target name to reflect new input argument if necessary
+        // as VHDLGeneration uses the vertex name to determine order of arguments for binary operators
+        if (dataflow->getVertexName(newTarget).find(projName) != std::string::npos) {
+          std::string newTargetName = dataflow->getVertexName(newTarget);
+          std::string sourceName = dataflow->getVertexName(newSources[currentEdge]);
+          if (sourceName.find("_") != std::string::npos) { // only need the base name of binary operators
+            sourceName = sourceName.substr(0, sourceName.find("_"));
+          }
+          newTargetName.replace(newTargetName.find(projName),
+                                projName.length(),
+                                sourceName);
+          dataflow->setVertexName(newTarget, newTargetName);
+        }
+      }}
+  } else {
+    Vertex newSource, newTarget;
+    Edge oldEdge;
+    std::string edgeName, edgeInPort, edgeOutPort;
+    std::vector<TOKEN_UNIT> inPhases, outPhases;
+    int initTokens;
+    int edgeCount = 0;
+    {ForInputEdges(dataflow, v, e) {
+        newSource = dataflow->getEdgeSource(e);
+        edgeName = dataflow->getEdgeName(e);
+        edgeInPort = dataflow->getEdgeInputPortName(e);
+        edgeOutPort = dataflow->getEdgeOutputPortName(e);
+        inPhases = dataflow->getEdgeInVector(e);
+        outPhases = dataflow->getEdgeOutVector(e);
+        initTokens = dataflow->getPreload(e);
+        oldEdge = e;
+      }}
+    dataflow->removeEdge(oldEdge);
+    {ForOutputEdges(dataflow, v, e) {
+        newTarget = dataflow->getEdgeTarget(e);
+        std::string newEdgeName = edgeName;
+        std::string newInPortName = edgeInPort;
+        std::string newOutPortName = edgeOutPort;
+        if (dataflow->getVertexOutDegree(v) > 1) {
+          std::string edgeNumber = std::string("_" + std::to_string(edgeCount) + "_");
+          newEdgeName.replace(newEdgeName.find_last_of("_"),
+                              1,
+                              edgeNumber);
+          newInPortName.replace(newInPortName.find_last_of("_"),
+                                1,
+                                edgeNumber);
+          newOutPortName.replace(newOutPortName.find_last_of("_"),
+                                 1,
+                                 edgeNumber);
+        }
+        VERBOSE_INFO("\t\tNew edge: " << dataflow->getVertexType(newSource) << " ("
+                     << dataflow->getVertexName(newSource) << ") ---> "
+                     << dataflow->getVertexType(newTarget) << " ("
+                     << dataflow->getVertexName(newTarget) << ")");
+        Edge newEdge = dataflow->addEdge(newSource, newTarget, newEdgeName);
+        dataflow->setEdgeInPhases(newEdge, inPhases);
+        dataflow->setEdgeOutPhases(newEdge, outPhases);
+        dataflow->setEdgeInputPortName(newEdge, newInPortName);
+        dataflow->setEdgeOutputPortName(newEdge, newOutPortName);
+        dataflow->setPreload(newEdge, initTokens);
+        dataflow->setTokenSize(newEdge, 1);
+        edgeCount++;
+        // update target name to reflect new input argument if necessary
+        // as VHDLGeneration uses the vertex name to determine order of arguments for binary operators
+        if (dataflow->getVertexName(newTarget).find(projName) != std::string::npos) {
+          std::string newTargetName = dataflow->getVertexName(newTarget);
+          std::string sourceName = dataflow->getVertexName(newSource);
+          if (sourceName.find("_") != std::string::npos) { // only need the base name of binary operators
+            sourceName = sourceName.substr(0, sourceName.find("_"));
+          }
+          newTargetName.replace(newTargetName.find(projName),
+                                projName.length(),
+                                sourceName);
+          dataflow->setVertexName(newTarget, newTargetName);
+        }
+      }}
+  }
+
+  dataflow->removeVertex(dataflow->getVertexByName(projName));
 }
 
 // update vertex with the specified result, removing any input arguments
