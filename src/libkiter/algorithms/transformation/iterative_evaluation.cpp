@@ -76,6 +76,9 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               applyResult(dataflow_prime, v, evalCast(opName, inputArgs[0]));
               changeDetected = true;
               break;
+            } else if (opName.find("OUTPUT") != std::string::npos) {
+              VERBOSE_INFO("\tAll inputs to output are constants");
+              break;
             } else {
               VERBOSE_INFO("\tEvaluating operator: " << opName);
               VERBOSE_INFO("\t\tInput arguments: ");
