@@ -275,9 +275,13 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
       // as VHDLGeneration uses the vertex name to determine order of arguments for binary operators
       if (dataflow->getVertexName(newTarget).find(delayName) != std::string::npos) {
         std::string newTargetName = dataflow->getVertexName(newTarget);
+        std::string sourceName = dataflow->getVertexName(newSource);
+        if (sourceName.find("_") != std::string::npos) { // only need the base name of binary operators
+          sourceName = sourceName.substr(0, sourceName.find("_"));
+        }
         newTargetName.replace(newTargetName.find(delayName),
                               delayName.length(),
-                              dataflow->getVertexName(newSource));
+                              sourceName);
         dataflow->setVertexName(newTarget, newTargetName);
       }
     }}
