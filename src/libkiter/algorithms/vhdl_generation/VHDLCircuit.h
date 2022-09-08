@@ -38,10 +38,10 @@ class VHDLCircuit {
   int getOperatorLifespan(std::string opType);
   std::string getOperatorFPCName(std::string opType);
   std::map<int, int> getNumOutputs(std::string opType);
-  std::string getConnectionNameFromComponents(std::string srcActorName,
-                                              std::string dstActorName);
-  std::string getDstPortBetweenComponents(std::string srcActorName,
-                                          std::string dstActorName);
+  std::vector<std::string> getConnectionNameFromComponents(std::string srcActorName,
+                                                           std::string dstActorName);
+  std::vector<std::string> getDstPortBetweenComponents(std::string srcActorName,
+                                                       std::string dstActorName);
   std::string getComponentFullName(std::string partialName);
   void setName(std::string);
   std::vector<std::string> getMultiOutActors();

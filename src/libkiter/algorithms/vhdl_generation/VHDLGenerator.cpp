@@ -839,19 +839,30 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
         outputSignals = op.second.getOutputPorts();
       }
       if (op.second.getArgOrder().size()) { // match input signals to argument ordering given by name
-        assert(op.second.getArgOrder().size() == inputSignals.size());
+        assert(op.second.getArgOrder().size() == inputSignals.size()); // number of input signals must match number of arguments
         inputSignals.clear();
         for (auto i = 0; i < op.second.getArgOrder().size(); i++) {
           std::string srcActorName = circuit.getComponentFullName(op.second.getArgOrder()[i]);
           std::string dstActorName = op.second.getName();
           if (isBufferless) {
-            inputSignals.push_back(circuit.getConnectionNameFromComponents(srcActorName,
-                                                                           dstActorName));
+            std::vector<std::string> connNames = circuit.getConnectionNameFromComponents(srcActorName,
+                                                                                         dstActorName);
+            for (auto &name : connNames) {
+              if (std::find(inputSignals.begin(), inputSignals.end(), name) == inputSignals.end()) {
+                inputSignals.push_back(name);
+              }
+            }
           } else {
-            inputSignals.push_back(circuit.getDstPortBetweenComponents(srcActorName,
-                                                                       dstActorName));
+            std::vector<std::string> connNames = circuit.getDstPortBetweenComponents(srcActorName,
+                                                                                     dstActorName);
+            for (auto &name : connNames) {
+              if (std::find(inputSignals.begin(), inputSignals.end(), name) == inputSignals.end()) {
+                inputSignals.push_back(name);
+              }
+            }
           }
         }
+        assert(op.second.getArgOrder().size() == inputSignals.size()); // make sure we retrieved the right number of inputSignal names
       }
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);

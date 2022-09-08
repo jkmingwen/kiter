@@ -101,10 +101,11 @@ std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
 }
 
 // return name of the channel between two components
-std::string VHDLCircuit::getConnectionNameFromComponents(std::string srcActorName,
-                                                         std::string dstActorName) {
+std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(std::string srcActorName,
+                                                                      std::string dstActorName) {
   std::vector<std::string> srcOutputEdges;
   std::vector<std::string> dstInputEdges;
+  std::vector<std::string> connNames;
 
   for (auto& comp : this->componentMap) {
     if (comp.second.getName() == srcActorName) {
@@ -113,26 +114,38 @@ std::string VHDLCircuit::getConnectionNameFromComponents(std::string srcActorNam
       dstInputEdges = comp.second.getInputEdges();
     }
   }
+  std::vector<std::string> originalOrder = dstInputEdges; // save original ordering of input arguments
+  std::sort(srcOutputEdges.begin(), srcOutputEdges.end()); // need to sort vectors for set_intersection to work correctly
+  std::sort(dstInputEdges.begin(), dstInputEdges.end());
   std::vector<std::string>::iterator it;
-  std::vector<std::string> connName(std::max(srcOutputEdges.size(), dstInputEdges.size()));
+  std::vector<std::string> matchingNames(std::max(srcOutputEdges.size(), dstInputEdges.size()));
   it = std::set_intersection(srcOutputEdges.begin(), srcOutputEdges.end(),
                              dstInputEdges.begin(), dstInputEdges.end(),
-                             connName.begin());
-  connName.resize(it - connName.begin());
-  assert(connName.size() == 1); // there can only be a single edge between two components
-  return connName[0];
+                             matchingNames.begin());
+  matchingNames.resize(it - matchingNames.begin());
+  for (auto i : originalOrder) { // restore original ordering of input signals; necessary when multiple input signals come from the same actor
+    if (std::find(matchingNames.begin(), matchingNames.end(), i) != matchingNames.end()) {
+      connNames.push_back(i);
+    }
+  }
+
+  return connNames;
 }
 
 // return destination port of connection between two components
-std::string VHDLCircuit::getDstPortBetweenComponents(std::string srcActorName,
-                                                     std::string dstActorName) {
-  std::string connName = this->getConnectionNameFromComponents(srcActorName,
-                                                               dstActorName);
-  for (auto& conn : this->connectionMap) {
-    if (conn.second.getName() == connName) {
-      return conn.second.getDstPort();
+std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(std::string srcActorName,
+                                                                  std::string dstActorName) {
+  std::vector<std::string> connNames = this->getConnectionNameFromComponents(srcActorName, dstActorName);
+  std::vector<std::string> portNames;
+  for (auto &name : connNames) {
+    for (auto &conn : this->connectionMap) {
+      if (conn.second.getName() == name) {
+        portNames.push_back(conn.second.getDstPort());
+      }
     }
   }
+
+  return portNames;
 }
 
 // Looks for the component that starts with the given substring
