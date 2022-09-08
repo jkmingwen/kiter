@@ -59,12 +59,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               break;
             }
           }
-          if (opName == "Proj") {
-            VERBOSE_INFO("\tBypassing Proj");
-            bypassProj(dataflow_prime, v);
-            changeDetected = true;
-            break;
-          }
+          // if (opName == "Proj") {
+          //   VERBOSE_INFO("\tBypassing Proj");
+          //   bypassProj(dataflow_prime, v);
+          //   changeDetected = true;
+          //   break;
+          // }
           if (checkForNumericInputs(dataflow_prime, v)) {
             std::vector<std::string> inputArgs;
             {ForInputEdges(dataflow_prime, v, e) {
