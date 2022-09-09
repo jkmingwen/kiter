@@ -86,7 +86,7 @@ const inline std::string _verbosegetFilename(const std::string s) { return s.sub
 #ifdef __RELEASE_MODE__
 #define EXIT_ON_FAILURE(msg)  /*int* toto = NULL; *toto = 1;*/ exit(EXIT_FAILURE)
 #else
-#define EXIT_ON_FAILURE(msg)  {throw new std::runtime_error(msg);} exit(EXIT_FAILURE)
+#define EXIT_ON_FAILURE(msg)  {throw std::runtime_error(msg);} exit(EXIT_FAILURE)
 
 #endif
 

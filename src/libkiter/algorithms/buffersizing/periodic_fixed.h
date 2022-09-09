@@ -34,6 +34,7 @@ namespace algorithms {
 
     BufferSizingResult compute_strictly_periodic_memory(models::Dataflow* const  dataflow, parameters_list_t params);
     BufferSizingResult compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params);
+
     void add_vbuffers (models::Dataflow* const  dataflow, parameters_list_t params);
 
 } // end of namespace algorithms

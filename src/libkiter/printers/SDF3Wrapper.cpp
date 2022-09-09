@@ -38,6 +38,7 @@ std::string vectorAsStr(const std::vector<T>& t)
 		}
 		return s.str();
 }
+
 template<>
 std::string vectorAsStr(const std::vector<TIME_UNIT>& t)
 {
@@ -86,11 +87,11 @@ std::vector<TOKEN_UNIT> inline stringlist2tokenlist (const std::vector<std::stri
 	std::vector<TOKEN_UNIT>   res;
 
 	for (unsigned int i = 1 ; i <= input.size() ; i++) {
-		const std::string cur = input[i-1];
+		const std::string& cur = input[i-1];
 		std::vector<std::string>  cur_separated = commons::split<std::string> (cur, '*');
 
 		TOKEN_UNIT count = (cur_separated.size() == 2) ? commons::fromString<TOKEN_UNIT>(cur_separated[0]) : 1;
-		TOKEN_UNIT value = commons::fromString<TOKEN_UNIT>(cur_separated[cur_separated.size() - 1]) ;
+		auto value = commons::fromString<TOKEN_UNIT>(cur_separated[cur_separated.size() - 1]) ;
 
 		for (int p = 1 ; p <= count ; p++) {
 			res.push_back(value);
@@ -103,7 +104,7 @@ std::vector<TOKEN_UNIT> inline stringlist2tokenlist (const std::vector<std::stri
 
 
 
-std::pair<std::vector<TOKEN_UNIT>,std::vector<TOKEN_UNIT>>  StringRate2Vectors (const std::string rates) {
+std::pair<std::vector<TOKEN_UNIT>,std::vector<TOKEN_UNIT>>  StringRate2Vectors (const std::string& rates) {
 
 	std::pair<std::vector<TOKEN_UNIT>,std::vector<TOKEN_UNIT>>  res ;
 
@@ -119,23 +120,23 @@ std::pair<std::vector<TOKEN_UNIT>,std::vector<TOKEN_UNIT>>  StringRate2Vectors (
 }
 
 
-void                        readSDF3OutputSpec      (models::Dataflow *to, const Edge c, const std::string rates) {
+void                        readSDF3OutputSpec      (models::Dataflow *to, const Edge c, const std::string& rates) {
 	auto cons = StringRate2Vectors (rates) ;
-	VERBOSE_ASSERT(cons.second.size() > 0, "Edges output rates must have a periodic pattern. ");
+	VERBOSE_ASSERT(not cons.second.empty(), "Edges output rates must have a periodic pattern. ");
 	to->setEdgeOutInitPhases(c,cons.first);
 	to->setEdgeOutPhases(c,cons.second);
 }
 
-void                        readSDF3InputSpec      (models::Dataflow *to, const Edge c, const std::string rates) {
+void                        readSDF3InputSpec      (models::Dataflow *to, const Edge c, const std::string& rates) {
 	auto prod = StringRate2Vectors (rates) ;
-	VERBOSE_ASSERT(prod.second.size() > 0, "Edges input rates must have a periodic pattern. ");
+	VERBOSE_ASSERT(not prod.second.empty(), "Edges input rates must have a periodic pattern. ");
 	to->setEdgeInInitPhases(c,prod.first);
 	to->setEdgeInPhases(c,prod.second);
 }
 
-void readSDF3VertexPorts (models::Dataflow *to,xmlNodePtr taskNode) {
+void parse_actor_node (models::Dataflow *to, xmlNodePtr taskNode) {
 
-	std::string taskName = "";
+	std::string taskName;
 	Vertex pVertex;
 
 	// get Vertex name
@@ -145,7 +146,7 @@ void readSDF3VertexPorts (models::Dataflow *to,xmlNodePtr taskNode) {
 		}
 	}
 
-	VERBOSE_ASSERT(taskName != "",TXT_XML_ERROR);
+	VERBOSE_ASSERT(not taskName.empty(),TXT_XML_ERROR);
 
 	// get Vertex
 	pVertex = to->getVertexByName(taskName);
@@ -155,7 +156,7 @@ void readSDF3VertexPorts (models::Dataflow *to,xmlNodePtr taskNode) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (strcmp((const char*)cur_node->name,"port") == 0) {
 
-				std::string type,rate,name = "";
+				std::string type,rate,name;
 
 				for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
 					if (strcmp((const char*)cur_attr->name,"type") == 0) { type = (const char*)cur_attr->children->content;}
@@ -194,9 +195,9 @@ void readSDF3VertexPorts (models::Dataflow *to,xmlNodePtr taskNode) {
 
 
 
-void readSDF3VertexTimings (models::Dataflow *to,xmlNodePtr taskNode) {
+void parse_actorproperties_node (models::Dataflow *to, xmlNodePtr taskNode) {
 
-	std::string taskName,timings = "";
+	std::string taskName,timings;
 	Vertex pVertex;
 
 	// get Vertex name
@@ -207,7 +208,7 @@ void readSDF3VertexTimings (models::Dataflow *to,xmlNodePtr taskNode) {
 		}
 	}
 
-	VERBOSE_ASSERT(taskName.size() > 0,TXT_XML_ERROR);
+	VERBOSE_ASSERT(not taskName.empty(),TXT_XML_ERROR);
 
 	// get Vertex
 	pVertex = to->getVertexByName(taskName);
@@ -255,8 +256,8 @@ void readSDF3VertexTimings (models::Dataflow *to,xmlNodePtr taskNode) {
 	std::vector<TIME_UNIT> init_times;
 	std::vector<TIME_UNIT> periodic_times;
 
-	to->setInitPhasesQuantity(pVertex,init_phases.size());
-	to->setPhasesQuantity(pVertex,periodic_phases.size());
+	to->setInitPhasesQuantity(pVertex, static_cast<EXEC_COUNT>(init_phases.size()));
+	to->setPhasesQuantity(pVertex, static_cast<EXEC_COUNT>(periodic_phases.size()));
 
 	for (unsigned int i = 1 ; i <= periodic_phases.size() ; i++) {
 		periodic_times.push_back(commons::fromString<TIME_UNIT>(periodic_phases[i-1]));
@@ -270,7 +271,7 @@ void readSDF3VertexTimings (models::Dataflow *to,xmlNodePtr taskNode) {
 }
 
 
-bool onlyOneRate(std::string rates) {
+bool onlyOneRate(const std::string& rates) {
 
 
 	auto res = StringRate2Vectors (rates);
@@ -284,14 +285,14 @@ bool onlyOneRate(std::string rates) {
 
 	return true;
 }
-bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr cur_node) {
+bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr task_node) {
 
 
 
-	std::string sourceName,targetName,inPortName,outPortName,preload = "";
+	std::string sourceName,targetName,inPortName,outPortName,preload;
 	preload = "0";
 
-	for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
+	for (xmlAttrPtr cur_attr = task_node->properties; cur_attr; cur_attr = cur_attr->next) {
 		if (strcmp((const char*)cur_attr->name,"srcActor") == 0) {
 			sourceName = (const char*)cur_attr->children->content;
 			continue;
@@ -332,20 +333,20 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr cur_node) {
 	for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
 		if (cur_node->type == XML_ELEMENT_NODE) {
 			if (strcmp((const char*)cur_node->name,"actor") == 0) {
-				for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
-					if (strcmp((const char*)cur_attr->name,"name") == 0) {
-						if (strcmp((const char*)cur_attr->children->content,sourceName.c_str()) == 0) {
+				for (xmlAttrPtr actor_attr = cur_node->properties; actor_attr; actor_attr = actor_attr->next) {
+					if (strcmp((const char*)actor_attr->name,"name") == 0) {
+						if (strcmp((const char*)actor_attr->children->content,sourceName.c_str()) == 0) {
 							// acteur source
 							for (xmlNodePtr port_node = cur_node->children; port_node; port_node = port_node->next) {
 								if (port_node->type == XML_ELEMENT_NODE) {
 									if (strcmp((const char*)port_node->name,"port") == 0) {
 
-										std::string type,rate,name = "";
+										std::string type,rate,name;
 
-										for (xmlAttrPtr cur_attr = port_node->properties; cur_attr; cur_attr = cur_attr->next) {
-											if (strcmp((const char*)cur_attr->name,"type") == 0) { type = (const char*)cur_attr->children->content;}
-											if (strcmp((const char*)cur_attr->name,"name") == 0) { name = (const char*)cur_attr->children->content;}
-											if (strcmp((const char*)cur_attr->name,"rate") == 0) { rate = (const char*)cur_attr->children->content;}
+										for (xmlAttrPtr port_attr = port_node->properties; port_attr; port_attr = port_attr->next) {
+											if (strcmp((const char*)port_attr->name,"type") == 0) { type = (const char*)port_attr->children->content;}
+											if (strcmp((const char*)port_attr->name,"name") == 0) { name = (const char*)port_attr->children->content;}
+											if (strcmp((const char*)port_attr->name,"rate") == 0) { rate = (const char*)port_attr->children->content;}
 										}
 										if ((type == "out") && (name == inPortName)) {
 											//check rate all 1
@@ -361,13 +362,13 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr cur_node) {
 							}
 
 						}
-						if (strcmp((const char*)cur_attr->children->content,targetName.c_str()) == 0) {
+						if (strcmp((const char*)actor_attr->children->content,targetName.c_str()) == 0) {
 							// acteur target
 							for (xmlNodePtr port_node = cur_node->children; port_node; port_node = port_node->next) {
 								if (port_node->type == XML_ELEMENT_NODE) {
 									if (strcmp((const char*)port_node->name,"port") == 0) {
 
-										std::string type,rate,name = "";
+										std::string type,rate,name;
 
 										for (xmlAttrPtr cur_attr = port_node->properties; cur_attr; cur_attr = cur_attr->next) {
 											if (strcmp((const char*)cur_attr->name,"type") == 0) { type = (const char*)cur_attr->children->content;}
@@ -408,22 +409,189 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr cur_node) {
 
 }
 
-models::Dataflow* wrapSDF3Dataflow (xmlDocPtr doc) {
+void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
+
+    xmlNodePtr csdf= nullptr,csdfproperties = nullptr;
+    // Get graph name
+    //--------------------------------
+
+    for (xmlAttrPtr cur_attr = AG->properties; cur_attr; cur_attr = cur_attr->next) {
+        if (strcmp((const char*)cur_attr->name,"name") == 0) {
+
+            to->setAppName((const char*)cur_attr->children->content);
+        }
+    }
+
+    VERBOSE_DEBUG("App name is: " << to->getAppName());
+
+    // get the sdf/csdf node and the sdfProperties/csdfproperties node
+    //--------------------------------------------------------------------------------
+
+    for (xmlNodePtr cur_node = AG->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+            if (std::string((const char*)cur_node->name) == std::string("csdf"))           csdf = cur_node;
+            if (std::string((const char*)cur_node->name) == std::string("csdfProperties")) csdfproperties = cur_node;
+            if (std::string((const char*)cur_node->name) == std::string("sdf"))           csdf = cur_node;
+            if (std::string((const char*)cur_node->name) == std::string("sdfProperties")) csdfproperties = cur_node;
+        }
+    }
+
+    if (csdf == nullptr)           { FAILED("Document XML invalide, csdf not found");}
+    if (csdfproperties == nullptr) { FAILED("Document XML invalide, csdfproperties not found");}
+
+
+
+    for (xmlAttrPtr cur_attr = csdf->properties; cur_attr; cur_attr = cur_attr->next) {
+        if (strcmp((const char*)cur_attr->name,"name") == 0) {
+            to->setGraphName((const char*)cur_attr->children->content);
+        }
+        if (strcmp((const char*)cur_attr->name,"type") == 0) {
+            to->setGraphType((const char*)cur_attr->children->content);
+        }
+    }
+
+    VERBOSE_DEBUG("Parsing the tasks");
+
+
+    // Generate Vertex list with names, type, and zero reentrancy
+    //--------------------------------------------------------------------------------
+
+    for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+
+            if (std::string((const char*)cur_node->name) == std::string("actor")) {
+
+                Vertex newVertex = to->addVertex();
+                to->setReentrancyFactor(newVertex,0); // par defaut une tâche SDF3 est reetrante à l'infini
+
+                for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
+                    if (strcmp((const char*)cur_attr->name,"name") == 0) {
+
+                        to->setVertexName(newVertex,(const char*)cur_attr->children->content);
+                    }
+                    if (strcmp((const char*)cur_attr->name,"type") == 0) {
+
+                        to->setVertexType(newVertex,(const char*)cur_attr->children->content);
+                    }
+                }
+            }
+        }
+    }
+
+
+    // Generate Edge list with names, in and out vertices, tokensize and preload
+    // If the edge is seen as a reentrancy edge, only set reentrancy to the task
+    //--------------------------------------------------------------------------------
+
+    VERBOSE_DEBUG("Parsing the channels");
+
+    for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+
+            if (std::string((const char*)cur_node->name) == std::string("channel")) {
+                std::string bufferName,sourceName,targetName,inPortName,outPortName,preload,tokenSize;
+                preload = "0";
+                for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
+                    if (strcmp((const char*)cur_attr->name,"name") == 0) {
+                        bufferName = (const char*)cur_attr->children->content;
+                    }
+                    if (strcmp((const char*)cur_attr->name,"srcActor") == 0) {
+                        sourceName = (const char*)cur_attr->children->content;
+                    }
+                    if (strcmp((const char*)cur_attr->name,"dstActor") == 0) {
+                        targetName = (const char*)cur_attr->children->content;
+                    }
+
+                    if (strcmp((const char*)cur_attr->name,"srcPort") == 0) {
+                        inPortName = (const char*)cur_attr->children->content;
+                    }
+                    if (strcmp((const char*)cur_attr->name,"dstPort") == 0) {
+                        outPortName = (const char*)cur_attr->children->content;
+                    }
+                    if (strcmp((const char*)cur_attr->name,"initialTokens") == 0) {
+                        preload = (const char*)cur_attr->children->content;
+                    }
+                    if (strcmp((const char*)cur_attr->name,"size") == 0) {
+                        tokenSize = (const char*)cur_attr->children->content;
+                    }
+                }
+
+                if (checkReentrancy(csdf,cur_node)) {
+                    VERBOSE_DEBUG("checkReentrancy(csdf,cur_node) returns TRUE");
+                    // reentrancy edge
+                    to->setReentrancyFactor(to->getVertexByName(sourceName),1);
+                } else {
+                    Edge newEdge = to->addEdge(to->getVertexByName(sourceName),to->getVertexByName(targetName));
+
+                    to->setEdgeName(newEdge,bufferName);
+
+                    to->setEdgeInputPortName(newEdge,inPortName);
+                    to->setEdgeOutputPortName(newEdge,outPortName);
+
+                    if (not tokenSize.empty()) {
+                        to->setTokenSize(newEdge,commons::fromString<TOKEN_UNIT>(tokenSize));
+                    } else {
+                        to->setTokenSize(newEdge,1);
+                    }
+                    if (not preload.empty()) {
+                        to->setPreload(newEdge,commons::fromString<TOKEN_UNIT>(preload));
+                    } else {
+                        to->setPreload(newEdge,0);
+                    }
+                }
+            }
+        }
+    }
+
+
+    VERBOSE_DEBUG("Parsing the timings");
+
+
+    // get task timings
+    //--------------------------------------------------------------------------------
+    for (xmlNodePtr cur_node = csdfproperties->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+
+            if (std::string((const char*)cur_node->name) == std::string("actorProperties")) {
+                parse_actorproperties_node(to, cur_node);
+            }
+        }
+    }
+
+    VERBOSE_DEBUG("Parsing the rates");
+
+
+    // get task phase count and productions
+    //--------------------------------------------------------------------------------
+    for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
+
+            if (std::string((const char*)cur_node->name) == std::string("actor")) {
+                parse_actor_node(to, cur_node);
+            }
+        }
+    }
+
+
+}
+
+models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 
 
 	VERBOSE_DEBUG("Start wrapSDF3Dataflow");
 
 
-	xmlNodePtr AG= NULL,csdf= NULL,csdfproperties = NULL;
+	xmlNodePtr AG = nullptr;
 	models::Dataflow *to = new models::Dataflow(0);
 	xmlNodePtr sdf3 = xmlDocGetRootElement(doc);
+
 
 	// Check file is correct
 	//--------------------------------
 
 	VERBOSE_DEBUG("Check file is correct");
 
-	if (sdf3 == NULL) {
+	if (sdf3 == nullptr) {
 		FAILED("Document XML invalide");
 	}
 
@@ -431,201 +599,57 @@ models::Dataflow* wrapSDF3Dataflow (xmlDocPtr doc) {
 		FAILED("Document XML invalide");
 	}
 
+    // Look for ApplicationGraph Node
+    //--------------------------------
 
-	// Look for ApplicationGraph Node
-	//--------------------------------
+    for (xmlNodePtr cur_node = sdf3->children; cur_node; cur_node = cur_node->next) {
+        if (cur_node->type == XML_ELEMENT_NODE) {
 
-	for (xmlNodePtr cur_node = sdf3->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-			if (std::string((const char*)cur_node->name) == std::string("applicationGraph")) AG = cur_node;
-		}
-	}
+            if (std::string((const char*)cur_node->name) == std::string("applicationGraph")) {
+                AG = cur_node;
+                VERBOSE_DEBUG("Found ApplicationGraph node.");
+                parse_ApplicationGraph_node (to, AG);
+            } else if (std::string((const char*)cur_node->name) == std::string("architectureGraph")) {
+                VERBOSE_DEBUG("Ignore architectureGraph node.");
 
-	if (!AG) {
-		FAILED("Document XML invalide");
-	} else {
-		VERBOSE_DEBUG("Found ApplicationGraph node.");
-	}
+            } else if (std::string((const char*)cur_node->name) == std::string("mapping")) {
+                VERBOSE_DEBUG("Ignore mapping node.");
 
+            } else if (std::string((const char*)cur_node->name) == std::string("systemUsage")) {
+                VERBOSE_DEBUG("Ignore systemUsage node.");
 
-	// Get graph name
-	//--------------------------------
+            } else if (std::string((const char*)cur_node->name) == std::string("storageThroughputTradeOffs")) {
+                VERBOSE_DEBUG("Ignore storageThroughputTradeOffs node.");
 
-	for (xmlAttrPtr cur_attr = AG->properties; cur_attr; cur_attr = cur_attr->next) {
-		if (strcmp((const char*)cur_attr->name,"name") == 0) {
+            } else if (std::string((const char*)cur_node->name) == std::string("messagesSet")) {
+                VERBOSE_DEBUG("Ignore messagesSet node.");
 
-			to->setAppName((const char*)cur_attr->children->content);
-		}
-	}
+            } else if (std::string((const char*)cur_node->name) == std::string("settings")) {
+                VERBOSE_DEBUG("Ignore settings node.");
 
-	VERBOSE_DEBUG("App name is: " << to->getAppName());
+            }
+        }
+    }
 
-	// get the sdf/csdf node and the sdfProperties/csdfproperties node
-	//--------------------------------------------------------------------------------
-
-	for (xmlNodePtr cur_node = AG->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-			if (std::string((const char*)cur_node->name) == std::string("csdf"))           csdf = cur_node;
-			if (std::string((const char*)cur_node->name) == std::string("csdfProperties")) csdfproperties = cur_node;
-			if (std::string((const char*)cur_node->name) == std::string("sdf"))           csdf = cur_node;
-			if (std::string((const char*)cur_node->name) == std::string("sdfProperties")) csdfproperties = cur_node;
-		}
-	}
-
-	if (csdf == NULL)           { FAILED("Document XML invalide, csdf not found");}
-	if (csdfproperties == NULL) { FAILED("Document XML invalide, csdfproperties not found");}
-
-
-
-	for (xmlAttrPtr cur_attr = csdf->properties; cur_attr; cur_attr = cur_attr->next) {
-		if (strcmp((const char*)cur_attr->name,"name") == 0) {
-			to->setGraphName((const char*)cur_attr->children->content);
-		}
-		if (strcmp((const char*)cur_attr->name,"type") == 0) {
-			to->setGraphType((const char*)cur_attr->children->content);
-		}
-	}
-
-	VERBOSE_DEBUG("Parsing the tasks");
-
-
-	// Generate Vertex list with names and zero reentrancy
-	//--------------------------------------------------------------------------------
-
-	for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-
-			if (std::string((const char*)cur_node->name) == std::string("actor")) {
-
-				Vertex newVertex = to->addVertex();
-				to->setReentrancyFactor(newVertex,0); // par defaut une tâche SDF3 est reetrante à l'infini
-
-				for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
-					if (strcmp((const char*)cur_attr->name,"name") == 0) {
-
-						to->setVertexName(newVertex,(const char*)cur_attr->children->content);
-					}
-					if (strcmp((const char*)cur_attr->name,"type") == 0) {
-
-						to->setVertexType(newVertex,(const char*)cur_attr->children->content);
-					}
-				}
-			}
-		}
-	}
-
-
-	// Generate Edge list with names, in and out vertices, tokensize and preload
-	// If the edge is seen as a reentrancy edge, only set reentrancy to the task
-	//--------------------------------------------------------------------------------
-
-	VERBOSE_DEBUG("Parsing the channels");
-
-	for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-
-			if (std::string((const char*)cur_node->name) == std::string("channel")) {
-				std::string bufferName,sourceName,targetName,inPortName,outPortName,preload,tokenSize = "";
-				preload = "0";
-				for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next) {
-					if (strcmp((const char*)cur_attr->name,"name") == 0) {
-						bufferName = (const char*)cur_attr->children->content;
-					}
-					if (strcmp((const char*)cur_attr->name,"srcActor") == 0) {
-						sourceName = (const char*)cur_attr->children->content;
-					}
-					if (strcmp((const char*)cur_attr->name,"dstActor") == 0) {
-						targetName = (const char*)cur_attr->children->content;
-					}
-
-					if (strcmp((const char*)cur_attr->name,"srcPort") == 0) {
-						inPortName = (const char*)cur_attr->children->content;
-					}
-					if (strcmp((const char*)cur_attr->name,"dstPort") == 0) {
-						outPortName = (const char*)cur_attr->children->content;
-					}
-					if (strcmp((const char*)cur_attr->name,"initialTokens") == 0) {
-						preload = (const char*)cur_attr->children->content;
-					}
-					if (strcmp((const char*)cur_attr->name,"size") == 0) {
-						tokenSize = (const char*)cur_attr->children->content;
-					}
-				}
-
-				if (checkReentrancy(csdf,cur_node)) {
-					VERBOSE_DEBUG("checkReentrancy(csdf,cur_node) returns TRUE");
-					//arc de reetrance
-					to->setReentrancyFactor(to->getVertexByName(sourceName),1);
-				} else {
-					Edge newEdge = to->addEdge(to->getVertexByName(sourceName),to->getVertexByName(targetName));
-
-					to->setEdgeName(newEdge,bufferName);
-
-					to->setEdgeInputPortName(newEdge,inPortName);
-					to->setEdgeOutputPortName(newEdge,outPortName);
-					if (tokenSize != "") {
-						to->setTokenSize(newEdge,commons::fromString<TOKEN_UNIT>(tokenSize));
-					} else {
-						to->setTokenSize(newEdge,1);
-					}
-					if (preload != "") {
-						to->setPreload(newEdge,commons::fromString<TOKEN_UNIT>(preload));
-					} else {
-						to->setPreload(newEdge,0);
-					}
-				}
-			}
-		}
-	}
-
-
-	VERBOSE_DEBUG("Parsing the timings");
-
-
-	// get task timings
-	//--------------------------------------------------------------------------------
-	for (xmlNodePtr cur_node = csdfproperties->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-
-			if (std::string((const char*)cur_node->name) == std::string("actorProperties")) {
-				readSDF3VertexTimings(to,cur_node);
-			}
-		}
-	}
-
-	VERBOSE_DEBUG("Parsing the rates");
-
-
-	// get task phase count and productions
-	//--------------------------------------------------------------------------------
-	for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
-		if (cur_node->type == XML_ELEMENT_NODE) {
-
-			if (std::string((const char*)cur_node->name) == std::string("actor")) {
-				readSDF3VertexPorts(to,cur_node);
-			}
-		}
-	}
-
-
-
-
+    if (!AG) {
+        FAILED("Document XML invalide");
+    }
 
 	return to;
 }
 
-models::Dataflow*  parseSDF3XML         (const std::string data) {
+models::Dataflow*  parseSDF3XML         (const std::string& data) {
 
-	xmlDocPtr doc =  xmlReadMemory(data.c_str(), (int) data.size(), NULL, NULL,XML_PARSE_NOERROR|XML_PARSE_NOWARNING|XML_PARSE_RECOVER);
+	xmlDocPtr doc =  xmlReadMemory(data.c_str(), (int) data.size(), nullptr, nullptr,XML_PARSE_NOERROR|XML_PARSE_NOWARNING|XML_PARSE_RECOVER);
 
-	if (doc == NULL) {
+	if (doc == nullptr) {
 		VERBOSE_ERROR("Document XML invalide");
-		return NULL;
+		return nullptr;
 	}
 
 
 
-	models::Dataflow* wrappedDataflow = wrapSDF3Dataflow(doc);
+	models::Dataflow* wrappedDataflow = xml_to_kiter(doc);
 	wrappedDataflow->setFilename("FromMemory");
 
 	xmlFreeDoc(doc);
@@ -635,16 +659,16 @@ models::Dataflow*  parseSDF3XML         (const std::string data) {
 
 models::Dataflow*  readSDF3File         (const std::string f) {
 
-	xmlDocPtr doc =  xmlReadFile(f.c_str(),NULL,XML_PARSE_NOERROR|XML_PARSE_NOWARNING|XML_PARSE_RECOVER);
+	xmlDocPtr doc =  xmlReadFile(f.c_str(),nullptr,XML_PARSE_NOERROR|XML_PARSE_NOWARNING|XML_PARSE_RECOVER);
 
-	if (doc == NULL) {
+	if (doc == nullptr) {
 		VERBOSE_ERROR("Document XML '" + f + "' invalide");
-		return NULL;
+		return nullptr;
 	}
 
 
 
-	models::Dataflow* wrappedDataflow = wrapSDF3Dataflow(doc);
+	models::Dataflow* wrappedDataflow = xml_to_kiter(doc);
 	wrappedDataflow->setFilename(f);
 
 	xmlFreeDoc(doc);
@@ -680,10 +704,12 @@ void writeLoopbackChannel (xmlTextWriterPtr writer, const models::Dataflow* data
 void writeLoopbackPorts (xmlTextWriterPtr writer, const models::Dataflow* dataflow, const Vertex t) {
 	const std::string out_port = "out_R" + dataflow->getVertexName(t);
 	const std::string in_port = "in_R" + dataflow->getVertexName(t);
-	const std::vector<TOKEN_UNIT> periodic_rates        =    std::vector<TOKEN_UNIT> (dataflow->getPhasesQuantity(t),1) ;
-	const std::vector<TOKEN_UNIT> init_rates        =    std::vector<TOKEN_UNIT> (dataflow->getInitPhasesQuantity(t),1) ;
+	const std::vector<TOKEN_UNIT> periodic_rates        =    std::vector<TOKEN_UNIT> (
+            static_cast<unsigned long>(dataflow->getPhasesQuantity(t)), 1) ;
+	const std::vector<TOKEN_UNIT> init_rates        =    std::vector<TOKEN_UNIT> (
+            static_cast<unsigned long>(dataflow->getInitPhasesQuantity(t)), 1) ;
 	std::string rates = vectorAsStr(periodic_rates);
-	if (init_rates.size()) rates = vectorAsStr(init_rates) + INIT_PERIODIC_SEPARATOR +   rates ;
+	if (!init_rates.empty()) rates = vectorAsStr(init_rates) + INIT_PERIODIC_SEPARATOR +   rates ;
 
 	xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
@@ -733,14 +759,14 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 
 	xmlBufferPtr buf = xmlBufferCreate();
-	if (buf == NULL) {
+	if (buf == nullptr) {
 		VERBOSE_ERROR("xmlBufferCreate: Error creating the xml buffer");
 		return "";
 	}
 
 	xmlTextWriterPtr writer = xmlNewTextWriterMemory(buf,0);
 	// xmlTextWriterPtr writer = xmlNewTextWriterFilename(filename.c_str(), 0);
-	xmlTextWriterStartDocument(writer, NULL, "UTF-8", NULL);
+	xmlTextWriterStartDocument(writer, nullptr, "UTF-8", nullptr);
 	xmlTextWriterSetIndent(writer,1); xmlTextWriterStartElement(writer, (const xmlChar*) "sdf3");
 
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"xmlns:xsi", (const xmlChar*)"http://www.w3.org/2001/XMLSchema-instance");
@@ -773,15 +799,19 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 					for (auto it : dataflow->in_edges(t)) {
 									Edge e = *it;
-									const std::string out_port =  "out_" + commons::toString(dataflow->getEdgeId(e));
-									const auto in_init_rates = dataflow->getEdgeInitOutVector(e);
-									const auto in_rates = dataflow->getEdgeOutVector(e);
+                                    const std::string out_port_stored = dataflow->getEdgeOutputPortName(e);
+                                   // Recent change here, Check if the port is name, and reuse the name if so
+									const std::string out_port =   out_port_stored.empty() ? "out_" + commons::toString(dataflow->getEdgeId(e)) : out_port_stored;
+                                    // VERBOSE_ASSERT_EQUALS(out_port_stored, out_port);
+									const vector<TOKEN_UNIT>& in_init_rates = dataflow->getEdgeInitOutVector(e);
+                                    const vector<TOKEN_UNIT>& in_rates = dataflow->getEdgeOutVector(e);
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) out_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "in");
 									std::string rates_str = vectorAsStr(in_rates);
-									if (in_init_rates.size()) {
-										rates_str = vectorAsStr(in_init_rates) + INIT_PERIODIC_SEPARATOR + rates_str;
+									if (not in_init_rates.empty()) {
+                                        // Recent change here: insert the string in from of it, should be more efficient
+                                        rates_str.insert(0, vectorAsStr(in_init_rates) + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -789,15 +819,19 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 					for (auto it : dataflow->out_edges(t)) {
 									Edge e = *it;
-									const std::string in_port =  "in_" + commons::toString(dataflow->getEdgeId(e));
-									const auto out_init_rates = dataflow->getEdgeInitInVector(e);
-									const auto out_rates = dataflow->getEdgeInVector(e);
+                                    const std::string in_port_stored = dataflow->getEdgeInputPortName(e);
+                                    // Recent change here, Check if the port is name, and reuse the name if so
+									const std::string in_port =  in_port_stored.empty() ?  "in_" + commons::toString(dataflow->getEdgeId(e)) : in_port_stored;
+                                    // VERBOSE_ASSERT_EQUALS(in_port_stored, in_port);
+                                    const vector<TOKEN_UNIT>&  out_init_rates = dataflow->getEdgeInitInVector(e);
+                                    const vector<TOKEN_UNIT>&  out_rates = dataflow->getEdgeInVector(e);
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "out");
 									std::string rates_str = vectorAsStr(out_rates);
-									if (out_init_rates.size()) {
-										rates_str = vectorAsStr(out_init_rates) + INIT_PERIODIC_SEPARATOR + rates_str;
+									if (not out_init_rates.empty()) {
+                                        // Recent change here: insert the string in from of it, should be more efficient
+                                        rates_str.insert(0, vectorAsStr(out_init_rates) + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -835,11 +869,11 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 								xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"default", (const xmlChar*) "true");
 								{
 
-									auto periodicExecutionTime = dataflow->getVertexPhaseDuration(t);
-									auto initExecutionTime = dataflow->getVertexInitPhaseDuration(t);
+									const auto& periodicExecutionTime = dataflow->getVertexPhaseDuration(t);
+									const auto& initExecutionTime = dataflow->getVertexInitPhaseDuration(t);
 									std::string times_str = vectorAsStr(periodicExecutionTime);
-									if (initExecutionTime.size()) {
-										times_str = vectorAsStr(initExecutionTime) + INIT_PERIODIC_SEPARATOR + times_str;
+									if (!initExecutionTime.empty()) {
+                                        times_str.insert(0, vectorAsStr(initExecutionTime) + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "executionTime");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"time", (const xmlChar*)  times_str.c_str());
@@ -871,11 +905,11 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 }
 
 
-void writeSDF3File         (std::string filename, const models::Dataflow* dataflow)  {
-	std::ofstream mfile;
-	mfile.open (filename);
-	mfile << generateSDF3XML(dataflow);
-	mfile.close();
+void writeSDF3File         (const std::string& filename, const models::Dataflow* dataflow)  {
+	std::ofstream m_file;
+    m_file.open (filename);
+    m_file << generateSDF3XML(dataflow);
+    m_file.close();
 
 }
 
