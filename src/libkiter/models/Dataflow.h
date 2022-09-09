@@ -842,7 +842,7 @@ public :
 
 
     inline Edge               getInputEdgeByPortName         (const Vertex t,
-                                                                    const std::string   name) const {
+                                                                    const std::string&   name) const {
           {ForInputEdges(this,t,pChannel) {
               if (getEdgeOutputPortName(pChannel) == name) return pChannel;
           }}
@@ -850,7 +850,7 @@ public :
           }
 
       inline Edge               getOutputEdgeByPortName         (const Vertex t,
-                                                                    const std::string   name)  const{
+                                                                    const std::string&   name)  const{
           {ForOutputEdges(this,t,pChannel) {
               if (getEdgeInputPortName(pChannel) == name) return pChannel;
           }}
