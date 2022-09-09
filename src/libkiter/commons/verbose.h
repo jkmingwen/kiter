@@ -135,7 +135,7 @@ static inline bool  VERBOSE_IS_ILP()                     { return (commons::VERB
 
 
 #ifndef __RELEASE_MODE__
-#define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("Internal Error"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("Internal Error");}
+#define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("VERBOSE_BAD_PROGRAMMING"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("VERBOSE_BAD_PROGRAMMING");}
 #else
 #define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("Internal Error"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("Internal Error");}
 #endif
