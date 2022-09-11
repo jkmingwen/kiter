@@ -21,6 +21,10 @@ std::set<std::string> castOps = {
   "int", "float"
 };
 
+std::set<std::string> trigOps = {
+  "cos", "sin", "tan"
+};
+
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
@@ -80,6 +84,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               VERBOSE_INFO("\tEvaluating cast operator: " << opName);
               VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
               applyResult(dataflow_prime, v, evalCast(opName, inputArgs[0]));
+              changeDetected = true;
+              break;
+            } else if (trigOps.find(opName) != trigOps.end() && inputArgs.size() == 1) {
+              VERBOSE_INFO("\tEvaluating cast operator: " << opName);
+              VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
+              applyResult(dataflow_prime, v, evalTrig(opName, inputArgs[0]));
               changeDetected = true;
               break;
             } else if (opName.find("OUTPUT") != std::string::npos) {
@@ -225,6 +235,27 @@ std::string algorithms::evalOther(std::string op, std::vector<std::string> args)
     std::cerr << "Specified operator " << op << " not currently supported" << std::endl;
     return NULL;
   }
+}
+
+/* evaluate trigonometric expressions given the operator specified by op
+ * note that we assume that there will only ever be 1 argument to the actor;
+ * we also assume that the argument is given in radians rather than degrees
+ */
+std::string algorithms::evalTrig(std::string op, std::string arg) {
+  float result = 0; // NOTE assume all results are floats for simplicity; might have to make this more flexible
+  float argRadians = std::stof(arg);
+
+  if (op == "cos") {
+    result = cos(argRadians);
+  } else if (op == "sin") {
+    result = sin(argRadians);
+  } else if (op == "tan") {
+    result = tan(argRadians);
+  } else {
+    std::cerr << "Specified trigonometric operator " << op << " not currently supported" << std::endl;
+  }
+
+  return std::to_string(result);
 }
 
 void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,

@@ -33,6 +33,7 @@ namespace algorithms {
   std::string evalBinop(std::string op, std::string arg1, std::string arg2);
   std::string evalCast(std::string op, std::string arg);
   std::string evalOther(std::string op, std::vector<std::string> args);
+  std::string evalTrig(std::string op, std::string arg);
   void bypassDelay(models::Dataflow* const dataflow, Vertex v,
                    Edge inputSig, Edge delayArg, int delayAmt);
   void bypassProj(models::Dataflow* const dataflow, Vertex v);
