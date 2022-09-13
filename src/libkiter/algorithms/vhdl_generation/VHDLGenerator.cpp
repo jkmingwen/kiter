@@ -1007,3 +1007,25 @@ void algorithms::generateMergingScript(std::vector<std::string> actorNames, std:
                 << " does not exist/not found!" << std::endl; // TODO turn into assert
   }
 }
+
+void algorithms::printCircuitInfo(models::Dataflow* const dataflow,
+                                  parameters_list_t param_list) {
+  VHDLCircuit circuit;
+  circuit.setName(dataflow->getGraphName());
+
+  // populate circuit object with components and connections based on dataflow
+  {ForEachVertex(dataflow, actor) {
+      VHDLComponent newComp(dataflow, actor);
+      circuit.addComponent(newComp);
+    }}
+  {ForEachEdge(dataflow, edge) {
+      VHDLConnection newConn(dataflow, edge);
+      circuit.addConnection(newConn);
+    }}
+
+  std::cout << circuit.printStatus() << std::endl;
+  if (circuit.getMultiOutActors().size()) {
+    std::cout << "Actors with abnormal number of outputs detected:\n" << std::endl;
+  }
+  return;
+}
