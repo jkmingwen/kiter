@@ -298,8 +298,8 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
       operatorRef.close();
       vhdlOutput.close();
     } else {
-      std::cout << "Reference file for flopoco_axi_interface does not exist/not found!"
-                << std::endl;
+      std::cout << "Reference file for " << "flopoco_axi_interface_" + opInputCount
+                << ".vhd does not exist/not found!" << std::endl;
     }
   }
 }
@@ -974,11 +974,17 @@ void algorithms::generateMergingScript(std::vector<std::string> actorNames, std:
   std::stringstream nameList;
   std::string wordsToReplace[] = {"#OUTPUT_DIR", "#GRAPH_NAME",
                                   "#MERGED_NAME", "#ACTOR_NAMES"};
+  std::string delimiter = ",";
+  size_t elemNumber = 0;
   for (auto& name : actorNames) {
-    nameList << name << " ";
+    elemNumber++;
+    if (elemNumber >= actorNames.size()) {
+      delimiter = "";
+    }
+    nameList << name << delimiter;
   }
   std::map<std::string, std::string> replacementWords = {{"#OUTPUT_DIR", "\"" + dirName + "\""},
-                                                         {"#GRAPH_NAME", "\"" + graphName + ".dsp-sig.xml" + "\""},
+                                                         {"#GRAPH_NAME", "\"" + graphName + "_simplified.xml" + "\""},
                                                          {"#MERGED_NAME", "\"" + graphName + "_merged.xml" + "\""},
                                                          {"#ACTOR_NAMES", nameList.str()}};
   std::ifstream scriptRef(referenceDir + scriptName + ".sh");
