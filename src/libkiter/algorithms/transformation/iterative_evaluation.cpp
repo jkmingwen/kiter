@@ -138,18 +138,39 @@ bool algorithms::checkForNumericInputs(models::Dataflow* const dataflow, Vertex 
 // provided arguments; also assigns the delay amount
 bool algorithms::checkForStaticDelay(models::Dataflow* const dataflow, Vertex v,
                                      Edge &inputSig, Edge &delayArg, int &delayAmt) {
+  VERBOSE_INFO("Checking " << dataflow->getVertexName(v) << " for static delay");
+  VERBOSE_DEBUG_ASSERT(dataflow->getVertexInDegree(v) == 2,
+                       "Expected number of input arguments for delay is 2; number of inputs detected: "
+                       << dataflow->getVertexInDegree(v));
   bool intArgFound = false;
+  std::vector<Edge> inputEdges;
+  std::string inputArgType;
   {ForInputEdges(dataflow, v, e) {
-      std::string actorType = dataflow->getVertexType(dataflow->getEdgeSource(e));
-      // https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
-      if (actorType.find_first_not_of( "0123456789" ) == std::string::npos) {
-        delayAmt = std::stoi(actorType);
-        delayArg = e;
-        intArgFound = true;
-      } else {
-        inputSig = e;
-      }
+      inputEdges.push_back(e);
     }}
+  /* NOTE we assume that the channel with the smaller channel number is the delayed signal
+     while the larger is the delay arg; this has been true based off our observations but
+     might not always be in the future */
+  if (getChannelNumber(dataflow->getEdgeName(inputEdges.front())) < getChannelNumber(dataflow->getEdgeName(inputEdges.back()))) {
+    VERBOSE_INFO("\tParsing input edge: " << dataflow->getEdgeName(inputEdges.back()));
+    inputArgType = dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.back()));
+    delayArg = inputEdges.back();
+    inputSig = inputEdges.front();
+  } else {
+    VERBOSE_INFO("\tParsing input edge: " << dataflow->getEdgeName(inputEdges.front()));
+    inputArgType = dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.front()));
+    delayArg = inputEdges.front();
+    inputSig = inputEdges.back();
+  }
+  VERBOSE_INFO("\tInput edge source actor is of type " << inputArgType);
+
+  // https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
+  if (inputArgType.find_first_not_of("0123456789") == std::string::npos) {
+    delayAmt = std::stoi(inputArgType);
+    intArgFound = true;
+    VERBOSE_INFO("\t\tFound integer argument of value " << delayAmt);
+    VERBOSE_INFO("\t\tInput edge set to " << dataflow->getEdgeName(inputSig));
+  }
 
   return intArgFound;
 }
@@ -483,4 +504,18 @@ void algorithms::applyResult(models::Dataflow* const dataflow, Vertex v,
     Vertex i = dataflow->getVertexByName(input);
     dataflow->removeVertex(i);
   }
+}
+
+// helper function for comparing ordering of channels (via channel name rather than ID)
+int algorithms::getChannelNumber(std::string channelName) {
+  std::string prefix = "channel_";
+
+  VERBOSE_DEBUG_ASSERT(channelName.find("channel_") != std::string::npos,
+                       "Cannot identify channel number if channel name doesn't start with specified prefix");
+  channelName.replace(channelName.find(prefix), prefix.length(), ""); // remove prefix
+  channelName.erase(channelName.find("_"));
+  VERBOSE_DEBUG_ASSERT(channelName.find_first_not_of("0123456789") == std::string::npos,
+                       "Channel number extracted is not a number");
+
+  return std::stoi(channelName);
 }
