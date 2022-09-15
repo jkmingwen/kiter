@@ -64,7 +64,7 @@ class VHDLComponent {
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
                                       "vslider"}; // NOTE temporary workaround to handle UI components
   std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
-                                              "prod", "sqrt"};
+                                              "prod", "sqrt", "pow"};
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
 };

@@ -89,14 +89,38 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     if (inputTypes.size() > 1) { // mixing input types might result in unintended behaviour
       VERBOSE_WARNING(inputTypes.size() << " input types on " << compType
                       << " (" << dataflow->getVertexName(a) << ")");
-    }
-    // infer arithmetic operator data type based on first data type stated by input port
-    if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
-      dataType = "fp"; // TODO remove this workaround during refactoring
-    } else if (inputTypes.begin()->first == "int") {
-      dataType = inputTypes.begin()->first;
+      bool isInt = false;
+      bool isFloat = false;
+      bool isUndefined = false;
+      for (auto &type : inputTypes) {
+        if (type.first == "real" || type.first == "vect") {
+          isFloat = true;
+        } else if (type.first == "int") {
+          isInt = true;
+        } else {
+          isUndefined = true;
+        }
+      }
+      if (isUndefined) {
+        VERBOSE_WARNING("\tUndefined input type detected");
+        dataType = "undefined"; // TODO replace with assert
+      } else if (isInt && isFloat) { // if both integer and float input types detected, default to FP
+        VERBOSE_WARNING("\tBoth Int and Float types detected; setting type to floating point");
+        dataType = "fp";
+      } else if (isFloat) {
+        dataType = "fp";
+      } else if (isInt) {
+        dataType = "int";
+      }
     } else {
-      dataType = "undefined"; // TODO replace with assert
+      // infer arithmetic operator data type based on first data type stated by input port
+      if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
+        dataType = "fp"; // TODO remove this workaround during refactoring
+      } else if (inputTypes.begin()->first == "int") {
+        dataType = inputTypes.begin()->first;
+      } else {
+        dataType = "undefined"; // TODO replace with assert
+      }
     }
     std::string compTypePrefix = dataType + "_";
     componentType = compTypePrefix + baseCompType;
