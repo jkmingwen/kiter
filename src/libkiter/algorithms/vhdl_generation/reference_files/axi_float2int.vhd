@@ -53,15 +53,12 @@ architecture connections of axi_float2int is
 begin
   rounding <= "00";
 
-  op_in_ready <= op_out_ready_0;
-  op_out_valid <= op_in_valid_0;
+  op_in_ready_0 <= op_out_ready_0;
+  op_out_valid_0 <= op_in_valid_0;
   op_out_data_0(33 downto 32) <= "00";
-  f2i : float2int port map ( DATA_IN => op_in_data (31 downto 0) ,
-                             DATA_OUT => op_out_data (31 downto 0),
+  f2i : float2int port map ( DATA_IN => op_in_data_0 (31 downto 0) ,
+                             DATA_OUT => op_out_data_0 (31 downto 0),
                              ROUNDING_MODE => rounding );
--- DATA_IN <= op_in_data (31 downto 0);
-  -- DATA_OUT <= op_out_data (31 downto 0);
-  --                                   ROUNDING_MODE <= rounding
 
 
 end connections;
