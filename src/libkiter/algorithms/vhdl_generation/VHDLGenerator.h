@@ -30,6 +30,8 @@ namespace algorithms {
                                    std::string referenceDir);
   void generateSplitterOperators(std::string compDir, std::string referenceDir,
                                  std::map<int, int> outputCounts);
+  void generateRoutingOperators(VHDLComponent comp, std::string compDir,
+                                std::string referenceDir);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
                            std::string referenceDir);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,

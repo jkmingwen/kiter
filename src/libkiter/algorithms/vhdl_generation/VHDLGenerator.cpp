@@ -105,6 +105,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     } else if (op.first == "int2float" || op.first == "float2int") {
       generateConversionOperators(circuit.getFirstComponentByType(op.first),
                                   compDir, compRefDir);
+    } else if (op.first == "select2") {
+      generateRoutingOperators(circuit.getFirstComponentByType(op.first),
+                               compDir, compRefDir);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir);
@@ -227,6 +230,41 @@ void algorithms::generateSplitterOperators(std::string compDir, std::string refe
     }
   }
 
+}
+
+// Generate signal routing operators
+void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDir,
+                                          std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  std::string entityName = comp.getType();
+  std::string axiInterfaceName = "axi_" + entityName;
+  vhdlOutput.open(compDir + entityName + ".vhd");
+  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+  std::string fileContent;
+  // generate select operator
+  if (operatorRef.is_open()) {
+    while (std::getline(operatorRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    operatorRef.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << comp.getType()
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
+  // generate AXI interface for select operator
+  vhdlOutput.open(compDir + axiInterfaceName + ".vhd");
+  std::ifstream interfaceRef(referenceDir + axiInterfaceName + ".vhd");
+  if (interfaceRef.is_open()) {
+    while (std::getline(interfaceRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    interfaceRef.close();
+    vhdlOutput.close();
+  } else {
+    std::cout << "Reference file for " << comp.getType()
+              << " does not exist/not found!" << std::endl; // TODO turn into assert
+  }
 }
 
 // Copy FloPoCo operator from reference file to project
@@ -559,7 +597,7 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   std::string componentName;
   if (comp.getType() == "const_value") {
     componentName = comp.getType();
-  } else if (comp.getType() == "int2float" || comp.getType() == "float2int") {
+  } else if (comp.getType() == "int2float" || comp.getType() == "float2int" || comp.getType() == "select2") {
     componentName = "axi_" + comp.getType();
   } else {
     componentName = comp.getType();
@@ -808,7 +846,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
-      } else if (op.second.getType() == "int2float" || op.second.getType() == "float2int") {
+      } else if (op.second.getType() == "int2float" || op.second.getType() == "float2int" || op.second.getType() == "select2") {
         componentName = "axi_" + opName;
       } else {
         componentName = opName;
