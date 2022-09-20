@@ -45,7 +45,7 @@ entity axi_splitter_9 is
 
          out_ready_8 : in std_logic;
          out_valid_8 : out std_logic;
-         out_data_8 : out std_logic_vector (bit_width-1 downto 0););
+         out_data_8 : out std_logic_vector (bit_width-1 downto 0) );
 end axi_splitter_9;
 
 architecture Behavioral of axi_splitter_9 is
