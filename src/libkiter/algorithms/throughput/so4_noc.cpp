@@ -136,7 +136,8 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
   bool periodic_state = false;
   // initialise actors
-  std::map<ARRAY_INDEX, Actor> actorMap;
+
+  ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);
   {ForEachTask(dataflow, t) {
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
     }}

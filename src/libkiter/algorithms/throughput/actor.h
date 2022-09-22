@@ -8,8 +8,9 @@
 #define ACTOR_H_
 
 #include "../dse/abstract_dep_graph.h"
-#include "state.h"
 #include <models/Dataflow.h>
+
+#include <vector>
 
 namespace models {
   class Dataflow;
@@ -59,4 +60,7 @@ class Actor {
   std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> prodExecRate;
   std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> consExecRate;
 };
+
+typedef  std::vector<Actor> ActorMap_t;
+
 #endif /* ACTOR_H_ */

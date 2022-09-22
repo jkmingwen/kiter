@@ -7,6 +7,7 @@
  */
 
 #include "actor.h"
+#include "state.h"
 #include <models/Dataflow.h>
 
 Actor::Actor()

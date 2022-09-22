@@ -16,18 +16,17 @@ namespace models {
   class Dataflow;
 }
 
-class Actor;
 
 class State {
  public:
   State();
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap);
+        ActorMap_t& actorMap);
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap,
+        ActorMap_t& actorMap,
         std::map<Edge, TOKEN_UNIT> &bufferSizes);
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap,
+        ActorMap_t& actorMap,
         StorageDistribution &storDist);
   PHASE_INDEX getPhase(Vertex a) const; // returns current phase of actor
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
@@ -44,7 +43,7 @@ class State {
   void advanceRemExecTime(Vertex a, TIME_UNIT timeStep);
   void setTimeElapsed(TIME_UNIT time);
   void updateState(models::Dataflow* const dataflow,
-                   std::map<ARRAY_INDEX, Actor> actorMap); // updates state with current status of graph
+                   ActorMap_t& actorMap); // updates state with current status of graph
   TIME_UNIT advanceTime();
   TIME_UNIT advanceTimeWithMod();
   bool hasBoundedBuffers();

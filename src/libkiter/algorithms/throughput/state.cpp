@@ -20,7 +20,7 @@ State::State()
 
 // construct state using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap) {
+             ActorMap_t& actorMap) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
     }}
@@ -34,7 +34,7 @@ State::State(models::Dataflow* const dataflow,
 
 // construct state with bounded buffers using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap,
+             ActorMap_t& actorMap,
              std::map<Edge, TOKEN_UNIT> &bufferSizes) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
@@ -50,7 +50,7 @@ State::State(models::Dataflow* const dataflow,
 }
 
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap,
+             ActorMap_t& actorMap,
              StorageDistribution &storDist) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // TODO look into why getInitialTokens not working
@@ -140,7 +140,7 @@ void State::setTimeElapsed(TIME_UNIT time) {
 
 // update phase count for each actor and token counts per channel
 void State::updateState(models::Dataflow* const dataflow,
-                        std::map<ARRAY_INDEX, Actor> actorMap) {
+                        ActorMap_t& actorMap) {
   {ForEachTask(dataflow, t) {
       setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
     }}

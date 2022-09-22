@@ -215,8 +215,10 @@ TIME_UNIT algorithms::computeComponentThroughput(models::Dataflow* const dataflo
   TIME_UNIT timeStep;
 
   // initialise actors
-  std::map<ARRAY_INDEX, Actor> actorMap;
-  {ForEachTask(dataflow, t) {
+    // std::map<ARRAY_INDEX, Actor> actorMap;
+    ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);
+
+    {ForEachTask(dataflow, t) {
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
     }}
@@ -314,7 +316,7 @@ kperiodic_result_t algorithms::computeComponentThroughputCycles(models::Dataflow
   kperiodic_result_t result;
 
   // initialise actors
-  std::map<ARRAY_INDEX, Actor> actorMap;
+  ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);
   {ForEachTask(dataflow, t) {
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
@@ -432,7 +434,7 @@ std::vector<models::Dataflow*> algorithms::generateSCCs(models::Dataflow* const 
 std::set<Edge> algorithms::computePeriodicStorageDeps(models::Dataflow* const dataflow,
                                                       State &currState,
                                                       State &prevState,
-                                                      std::map<ARRAY_INDEX, Actor> actorMap,
+                                                      ActorMap_t& actorMap,
                                                       ARRAY_INDEX minRepActorId,
                                                       EXEC_COUNT minRepFactor,
                                                       TOKEN_UNIT minRepActorExecCount,
@@ -514,7 +516,7 @@ std::set<Edge> algorithms::computePeriodicStorageDeps(models::Dataflow* const da
 // compute and return set of edges with storage dependencies given a deadlocked state
 std::set<Edge> algorithms::computeDeadlockStorageDeps(models::Dataflow* const dataflow,
                                                       State &s,
-                                                      std::map<ARRAY_INDEX, Actor> actorMap,
+                                                      ActorMap_t& actorMap,
                                                       bool useCorrectedStorDepDetection) {
   VERBOSE_DSE(s.print(dataflow));
   abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
@@ -598,7 +600,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
 
   // initialise actors
-  std::map<ARRAY_INDEX, Actor> actorMap;
+  ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);
   {ForEachTask(dataflow, t) {
       actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
       VERBOSE_INFO("\n");
