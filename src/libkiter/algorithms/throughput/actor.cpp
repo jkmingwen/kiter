@@ -53,12 +53,12 @@ Actor::Actor(models::Dataflow* const dataflow, Vertex a) {
 }
 
 EXEC_COUNT Actor::getPhaseCount(Edge e) {
-  assert(this->consPhaseCount.find(e) != this->consPhaseCount.end() ||
-         this->prodPhaseCount.find(e) != this->prodPhaseCount.end()); // given edge must be either input/output edge
-  if (this->consPhaseCount.find(e) != this->consPhaseCount.end()) {
-    return this->consPhaseCount[e];
-  } else if (this->prodPhaseCount.find(e) != this->prodPhaseCount.end()) {
-    return this->prodPhaseCount[e];
+  assert(this->consExecRate.find(e) != this->consExecRate.end() ||
+         this->prodExecRate.find(e) != this->prodExecRate.end()); // given edge must be either input/output edge
+  if (this->consExecRate.find(e) != this->consExecRate.end()) {
+    return this->consExecRate[e].size();
+  } else if (this->prodExecRate.find(e) != this->prodExecRate.end()) {
+    return this->prodExecRate[e].size();
   } else {
     std::cout << "Specified edge not attached to given actor!" << std::endl;
     return 0;
@@ -124,7 +124,7 @@ bool Actor::isReadyForExec(State& s) {
   // (1) enough room in output channel, (2) enough tokens in input channel, (3) not currently executing
   VERBOSE_DEBUG("Is Actor " << this->getId() << " ready to execute?" << std::endl);
   bool isExecutable = true;
-  for (auto const &e : this->consPhaseCount) {
+  for (auto const &e : this->consExecRate) {
     VERBOSE_DEBUG("\tTokens in channel (current/required): "
                   << s.getTokens(e.first) << "/" << this->getExecRate(e.first)
                   << std::endl);
@@ -133,7 +133,7 @@ bool Actor::isReadyForExec(State& s) {
     }
   }
   if (s.hasBoundedBuffers()) {
-    for (auto const &e : this->prodPhaseCount) {
+    for (auto const &e : this->prodExecRate) {
       VERBOSE_DEBUG("\tSpace in channel (current/required): "
                     << s.getBufferSpace(e.first) << "/" << this->getExecRate(e.first)
                     << std::endl);
@@ -236,7 +236,7 @@ void Actor::execEndWithMod(models::Dataflow* const dataflow, State &s, std::dequ
 
 void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState,
                               abstractDepGraph &absDepGraph) {
-  for (auto const &e : this->consPhaseCount) {
+  for (auto const &e : this->consExecRate) {
     Vertex source = dataflow->getEdgeSource(e.first);
     Vertex target = dataflow->getEdgeTarget(e.first);
     ARRAY_INDEX sourceId = dataflow->getVertexId(source);
@@ -252,7 +252,7 @@ void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState
       absDepGraph.addCausalDep(targetId, sourceId);
     }
   }
-  for (auto const &e : this->prodPhaseCount) {
+  for (auto const &e : this->prodExecRate) {
     Vertex source = dataflow->getEdgeSource(e.first);
     Vertex target = dataflow->getEdgeTarget(e.first);
     ARRAY_INDEX sourceId = dataflow->getVertexId(source);
