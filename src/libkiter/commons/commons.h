@@ -372,8 +372,17 @@ template<typename T>
 	 return s.str();
 }
 
+template<typename T, typename Q>
+    std::string toString(const std::map<T,Q>& v)
+    {
+        std::ostringstream stream;
+        for (auto item : v) {
+            stream << commons::toString<T>(item.first) << ":" << commons::toString<Q>(item.second) << " ";
+        }
+        return stream.str();
+    }
 
-template<>
+    template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) ;
 template<>
     std::string toString(const std::set<long unsigned int, std::less<long unsigned int>, std::allocator<long unsigned int> >& t) ;
