@@ -257,11 +257,11 @@ StateList::StateList() {
 
 }
 
-StateList::StateList(State s) {
+StateList::StateList(State &s) {
   this->visitedStates.push_back(s);
 }
 
-bool StateList::addState(State s) {
+bool StateList::addState(State &s) {
   this->repeatedState = std::find(this->visitedStates.begin(),
                                   this->visitedStates.end(),
                                   s);
@@ -296,7 +296,7 @@ TIME_UNIT StateList::computeThroughput() {
 }
 
 // Get index of state
-int StateList::computeIdx(State s){
+int StateList::computeIdx(State& s){
   auto i = std::find(this->visitedStates.begin(), this->visitedStates.end(), s);
   if (i != this->visitedStates.end()) {
     return std::distance(this->visitedStates.begin(), i);

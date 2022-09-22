@@ -589,15 +589,15 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   TIME_UNIT thr;
   bool end_check = false; // temp workaround before replacing with mathematical solution
   int actors_left = 0; // seems more efficient to use a counter check than to check through the array
-  std::map<ARRAY_INDEX, TIME_UNIT> actors_check;
+  std::vector<TIME_UNIT> actors_check (dataflow->getMaxVertexId() + 1);
   {ForEachTask(dataflow, t){
     ++actors_left;
     actors_check[dataflow->getVertexId(t)] = -1;
   }}
 
   TIME_UNIT curr_step = 0;
-  std::map<ARRAY_INDEX, std::vector<std::vector<TIME_UNIT>>> starts; //{task idx : [[state 0 starts], [state 1 ...]]}
-  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
+  std::vector<std::vector<std::vector<TIME_UNIT>>> starts (dataflow->getMaxVertexId() + 1); //{task idx : [[state 0 starts], [state 1 ...]]}
+  std::vector<std::vector<TIME_UNIT>> state_start (dataflow->getMaxVertexId() + 1);  //{task idx : [ starts]},
 
   // initialise actors
   ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);

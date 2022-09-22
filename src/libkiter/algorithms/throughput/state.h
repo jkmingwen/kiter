@@ -67,11 +67,11 @@ class State {
 class StateList {
 public:
   StateList();
-  StateList(State s);
-  bool addState(State s);
+  StateList(State& s);
+  bool addState(State& s);
   std::list<State>::iterator getRepeatedState();
   TIME_UNIT computeThroughput();
-  int computeIdx(State s);
+  int computeIdx(State& s);
 
 private:
   std::list<State> visitedStates;
