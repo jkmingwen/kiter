@@ -31,40 +31,22 @@ Actor::Actor(models::Dataflow* const dataflow, Vertex a) {
   {ForInputEdges(dataflow, actor, e) {
       VERBOSE_INFO("input port execution rates (phases = "
                    << dataflow->getEdgeOutPhasesCount(e) <<"): ");
-      {ForEachPhase(dataflow, actor, p) {
-          VERBOSE_INFO(dataflow->getEdgeOutPhase(e, p) << " ");
-          consExecRate[e][p] = dataflow->getEdgeOutPhase(e, p);
-        }}
+          consExecRate[e] = dataflow->getEdgeOutVector(e);
       VERBOSE_INFO("\n");
     }}
   {ForOutputEdges(dataflow, actor, e) {
       VERBOSE_INFO("output port execution rates (phases = "
                    << dataflow->getEdgeInPhasesCount(e) <<"): ");
-      {ForEachPhase(dataflow, actor, p) {
-          VERBOSE_INFO(dataflow->getEdgeInPhase(e, p) << " ");
-          prodExecRate[e][p] = dataflow->getEdgeInPhase(e, p);
-        }}
+          prodExecRate[e] = dataflow->getEdgeInVector(e);
+
       VERBOSE_INFO("\n");
     }}
 }
 
-EXEC_COUNT Actor::getPhaseCount(Edge e) {
-  assert(this->consExecRate.find(e) != this->consExecRate.end() ||
-         this->prodExecRate.find(e) != this->prodExecRate.end()); // given edge must be either input/output edge
-  if (this->consExecRate.find(e) != this->consExecRate.end()) {
-    return this->consExecRate[e].size();
-  } else if (this->prodExecRate.find(e) != this->prodExecRate.end()) {
-    return this->prodExecRate[e].size();
-  } else {
-    std::cout << "Specified edge not attached to given actor!" << std::endl;
-    return 0;
-  }
+EXEC_COUNT Actor::getPhaseCount() {
+    return this->phaseCount;
 }
 
-// Return phase of execution for given edge (allows for different number of phases for each port)
-PHASE_INDEX Actor::getPhase(Edge e) {
-  return (this->getNumExecutions() % getPhaseCount(e)) + 1;
-}
 
 // Return phase of execution for actor (assumes that all ports have equal number of phases)
 PHASE_INDEX Actor::getPhase() {
@@ -84,26 +66,17 @@ void Actor::setId(ARRAY_INDEX newId) {
 }
 
 TOKEN_UNIT Actor::getExecRate(Edge e) {
-  assert(this->prodExecRate.find(e) != this->prodExecRate.end() ||
-         this->consExecRate.find(e) != this->consExecRate.end()); // given edge must be either input/output edge
-  PHASE_INDEX curPhase = (this->getNumExecutions() % getPhaseCount(e)) + 1; // phase indexing starts from 1 but stored in Actor class as starting from 0
-  if (this->prodExecRate.find(e) != this->prodExecRate.end()) {
-    return this->prodExecRate[e][curPhase];
-  } else if (this->consExecRate.find(e) != this->consExecRate.end()) {
-    return this->consExecRate[e][curPhase];
-  } else {
-    std::cout << "Specified edge not attached to given actor!" << std::endl;
-    return 0;
-  }
+  PHASE_INDEX curPhase = (this->getNumExecutions() % getPhaseCount()) + 1; // phase indexing starts from 1 but stored in Actor class as starting from 0
+  return this->getExecRate(e, curPhase);
 }
 
 TOKEN_UNIT Actor::getExecRate(Edge e, PHASE_INDEX p) {
   assert(this->prodExecRate.find(e) != this->prodExecRate.end() ||
          this->consExecRate.find(e) != this->consExecRate.end()); // given edge must be either input/output edge
   if (this->prodExecRate.find(e) != this->prodExecRate.end()) {
-    return this->prodExecRate[e][p];
+    return this->prodExecRate[e][p-1];
   } else if (this->consExecRate.find(e) != this->consExecRate.end()) {
-    return this->consExecRate[e][p];
+    return this->consExecRate[e][p-1];
   } else {
     std::cout << "Specified edge not attached to given actor!" << std::endl;
     return 0;
@@ -149,12 +122,12 @@ bool Actor::isReadyForExec(State& s) {
 
 // Given current state of graph, returns whether actor is ready to end execution or not
 bool Actor::isReadyToEndExec(State& s) {
-  bool isEndable = true;
-  if (s.getExecQueue()[this->actor].empty() ||
-      s.getExecQueue()[this->actor].front().first != 0) {
-    isEndable = false;
+  if (not s.getExecQueue().count(this->actor)  ||
+      s.getExecQueue().at(this->actor).empty() ||
+      s.getExecQueue().at(this->actor).front().first != 0) {
+    return false;
   }
-  return isEndable;
+  return true;
 }
 
 // Begin actor's execution, consuming tokens from input channels
@@ -241,7 +214,7 @@ void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState
                   << sourceId << "->" << targetId << "):" << std::endl);
     VERBOSE_DEBUG("\t\t " << prevState.getTokens(e.first) << " tokens available previously, "
                   << this->getExecRate(e.first) << " required (p "
-                  << this->getPhase(e.first) << ")" << std::endl);
+                  << this->getPhase() << ")" << std::endl);
     if (prevState.getTokens(e.first) < this->getExecRate(e.first)) {
       VERBOSE_DEBUG("\t\t\tCausal dep between " << targetId << " and "
                     << sourceId << std::endl);
@@ -257,7 +230,7 @@ void Actor::computeCausalDeps(models::Dataflow* const dataflow, State &prevState
                   << sourceId << "->" << targetId << "):" << std::endl);
     VERBOSE_DEBUG("\t\t " << prevState.getBufferSpace(e.first)
                   << " spaces available previously, " << this->getExecRate(e.first)
-                  << " required (p " << this->getPhase(e.first) << ")" << std::endl);
+                  << " required (p " << this->getPhase() << ")" << std::endl);
     if (prevState.getBufferSpace(e.first) < this->getExecRate(e.first)) {
       VERBOSE_DEBUG("\t\t\tCausal dep between " << sourceId << " and "
                     << targetId << std::endl);

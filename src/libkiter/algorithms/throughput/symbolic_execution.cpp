@@ -531,10 +531,10 @@ std::set<Edge> algorithms::computeDeadlockStorageDeps(models::Dataflow* const da
                     << "):" << std::endl);
       VERBOSE_DEBUG("\t\t " << s.getTokens(e) << " tokens available, "
                     << actorMap[targetId].getExecRate(e) << " required (p "
-                    << actorMap[targetId].getPhase(e) << ")" << std::endl);
+                    << actorMap[targetId].getPhase() << ")" << std::endl);
       VERBOSE_DEBUG("\t\t " << s.getBufferSpace(e) << " spaces available, "
                     << actorMap[sourceId].getExecRate(e) << " required (p "
-                    << actorMap[sourceId].getPhase(e) << ")" << std::endl);
+                    << actorMap[sourceId].getPhase() << ")" << std::endl);
       if (s.getTokens(e) < actorMap[targetId].getExecRate(e)) {
         VERBOSE_DEBUG("\t\t\tCausal dep between " << targetId << " and "
                       << sourceId << std::endl);

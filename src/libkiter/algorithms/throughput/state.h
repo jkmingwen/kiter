@@ -32,8 +32,8 @@ class State {
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
   TOKEN_UNIT getBufferSize(Edge e) const; // returns maximum token capacity of edge
   TOKEN_UNIT getBufferSpace(Edge e) const; // returns amount of space left in buffer
-  std::list<std::pair<TIME_UNIT, PHASE_INDEX>> getRemExecTime(Vertex a) const; // returns amount of time left for execution
-  std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>> getExecQueue();
+  const std::list<std::pair<TIME_UNIT, PHASE_INDEX>>& getRemExecTime(Vertex a) const; // returns amount of time left for execution
+  const std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>>& getExecQueue();
   void removeFrontExec(Vertex a);
   TIME_UNIT getTimeElapsed() const; // returns total elapsed time in state
   void setPhase(Vertex a, PHASE_INDEX newPhase);

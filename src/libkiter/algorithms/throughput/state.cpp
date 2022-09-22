@@ -88,12 +88,12 @@ TOKEN_UNIT State::getBufferSpace(Edge e) const {
 }
 
 // returns list of amount of time left for executions for actor
-std::list<std::pair<TIME_UNIT, PHASE_INDEX>> State::getRemExecTime(Vertex a) const {
+const std::list<std::pair<TIME_UNIT, PHASE_INDEX>>& State::getRemExecTime(Vertex a) const {
   return executingActors.at(a);
 }
 
 // returns entire execution queue
-std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>> State::getExecQueue() {
+const std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>>& State::getExecQueue() {
   return this->executingActors;
 }
 

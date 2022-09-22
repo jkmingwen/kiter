@@ -24,8 +24,7 @@ class Actor {
   Actor();
   Actor(models::Dataflow* const dataflow, Vertex a); // actor must be associated to a graph
 
-  EXEC_COUNT getPhaseCount(Edge e);
-  PHASE_INDEX getPhase(Edge e); // returns current phase using edge (allows for different number of phases for each port)
+  EXEC_COUNT getPhaseCount();
   PHASE_INDEX getPhase();
   EXEC_COUNT getRepFactor();
   ARRAY_INDEX getId();
@@ -55,8 +54,8 @@ class Actor {
   EXEC_COUNT repFactor;
   ARRAY_INDEX id;
   bool isExecuting; // FIXME this is a workaround for preventing actors from executing more than once in a single time frame
-  std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> prodExecRate;
-  std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> consExecRate;
+  std::map<Edge, std::vector<TOKEN_UNIT>> prodExecRate;
+  std::map<Edge, std::vector<TOKEN_UNIT>> consExecRate;
 };
 
 typedef  std::vector<Actor> ActorMap_t;
