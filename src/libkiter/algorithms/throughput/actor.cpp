@@ -119,7 +119,7 @@ EXEC_COUNT Actor::getNumExecutions() {
 }
 
 // Given current state of graph, returns whether actor is ready to execute or not
-bool Actor::isReadyForExec(State s) {
+bool Actor::isReadyForExec(State& s) {
   // Execution conditions (for given phase):
   // (1) enough room in output channel, (2) enough tokens in input channel, (3) not currently executing
   VERBOSE_DEBUG("Is Actor " << this->getId() << " ready to execute?" << std::endl);
@@ -152,7 +152,7 @@ bool Actor::isReadyForExec(State s) {
 }
 
 // Given current state of graph, returns whether actor is ready to end execution or not
-bool Actor::isReadyToEndExec(State s) {
+bool Actor::isReadyToEndExec(State& s) {
   bool isEndable = true;
   if (s.getExecQueue()[this->actor].empty() ||
       s.getExecQueue()[this->actor].front().first != 0) {

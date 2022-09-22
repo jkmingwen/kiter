@@ -33,8 +33,8 @@ class Actor {
   TOKEN_UNIT getExecRate(Edge e);
   TOKEN_UNIT getExecRate(Edge e, PHASE_INDEX p);
   EXEC_COUNT getNumExecutions();
-  bool isReadyForExec(State s);
-  bool isReadyToEndExec(State s);
+  bool isReadyForExec(State& s);
+  bool isReadyToEndExec(State& s);
   // int isReadyForExecWithMod(State s);
   // bool isReadyToEndExecWithMod(State s, models::Dataflow* const dataflow, std::map<std::pair<ARRAY_INDEX, ARRAY_INDEX>, long> cond, long step);
   void execStart(models::Dataflow* const dataflow, State &s);
