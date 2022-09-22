@@ -55,8 +55,6 @@ class Actor {
   EXEC_COUNT repFactor;
   ARRAY_INDEX id;
   bool isExecuting; // FIXME this is a workaround for preventing actors from executing more than once in a single time frame
-  std::map<Edge, EXEC_COUNT> consPhaseCount; // number of consumption phases of execution
-  std::map<Edge, EXEC_COUNT> prodPhaseCount; // number of production phases of execution
   std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> prodExecRate;
   std::map<Edge, std::map<PHASE_INDEX, TOKEN_UNIT>> consExecRate;
 };

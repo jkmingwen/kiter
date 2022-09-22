@@ -17,8 +17,6 @@ Actor::Actor()
    repFactor{0},
    id{},
    isExecuting{false},
-   consPhaseCount(),
-   prodPhaseCount(),
    prodExecRate(),
    consExecRate() {}
 
@@ -33,7 +31,6 @@ Actor::Actor(models::Dataflow* const dataflow, Vertex a) {
   {ForInputEdges(dataflow, actor, e) {
       VERBOSE_INFO("input port execution rates (phases = "
                    << dataflow->getEdgeOutPhasesCount(e) <<"): ");
-      consPhaseCount[e] = dataflow->getEdgeOutPhasesCount(e);
       {ForEachPhase(dataflow, actor, p) {
           VERBOSE_INFO(dataflow->getEdgeOutPhase(e, p) << " ");
           consExecRate[e][p] = dataflow->getEdgeOutPhase(e, p);
@@ -43,7 +40,6 @@ Actor::Actor(models::Dataflow* const dataflow, Vertex a) {
   {ForOutputEdges(dataflow, actor, e) {
       VERBOSE_INFO("output port execution rates (phases = "
                    << dataflow->getEdgeInPhasesCount(e) <<"): ");
-      prodPhaseCount[e] = dataflow->getEdgeInPhasesCount(e);
       {ForEachPhase(dataflow, actor, p) {
           VERBOSE_INFO(dataflow->getEdgeInPhase(e, p) << " ");
           prodExecRate[e][p] = dataflow->getEdgeInPhase(e, p);
