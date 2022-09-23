@@ -418,7 +418,9 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       vhdlOutput << generateConstComponents(constOutputs) << std::endl;
     }
   }
-  if (!isBufferless) {
+  // no need to generate buffer component if there's only one operator between the input/output
+  if (!isBufferless &&
+      (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) {
     vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
   }
   // Track top-level input and output signals
@@ -557,7 +559,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
     }
   }
   // data signals
-  if (!noOperators) { // no need to use internal signals if no operators
+  if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
     vhdlOutput << "signal ";
     std::string delim = ",";
     int counter = 0;
