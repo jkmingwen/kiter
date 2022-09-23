@@ -45,6 +45,8 @@ class VHDLCircuit {
   std::string getComponentFullName(std::string partialName);
   void setName(std::string);
   std::vector<std::string> getMultiOutActors();
+  std::vector<VHDLComponent> getDstComponents(VHDLComponent srcComponent);
+  void convConstIntToFloat(Vertex v);
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;

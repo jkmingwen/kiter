@@ -38,10 +38,12 @@ class VHDLComponent {
   std::map<std::string, int> getOutputTypes();
   std::string getDataType();
   bool isConst();
+  bool hasMixedType();
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   void setLifespan(int lifespan);
   void setFPCName(std::string newName);
+  void convConstIntToFloat();
   std::string printStatus();
 
  private:
@@ -67,5 +69,6 @@ class VHDLComponent {
                                               "prod", "sqrt", "pow"};
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
+  bool isMixedType; // true if it has input edges of types int and fp
 };
 #endif /* VHDL_COMPONENT_H_ */

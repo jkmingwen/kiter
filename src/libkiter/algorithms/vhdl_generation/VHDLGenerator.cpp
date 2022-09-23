@@ -73,6 +73,19 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
+  for (auto &comp : circuit.getComponentMap()) {
+    if (comp.second.isConst() && comp.second.getDataType() == "int") {
+      std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
+      for (auto &i : dstComps) {
+        if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
+          VERBOSE_WARNING("The destination component, " << i.getName()
+                          << " has mixed input types; casting the binary representation of the value provided by "
+                          << comp.second.getName() << " as a float");
+          circuit.convConstIntToFloat(comp.first);
+        }
+      }
+    }
+  }
   generateOperators(circuit, componentDir, referenceDir, bufferless);
   generateCircuit(circuit, dirName, bufferless);
   std::cout << circuit.printStatus() << std::endl;
@@ -856,7 +869,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
                    << " : " << componentName << "\n" << std::endl;
-      if (op.second.isConst()) {
+      if (op.second.isConst()) { // NOTE binary representation of const_val operators set here
         outputStream << "generic map (\n"
                      << "    " << "value => " << "\""
                      << op.second.getBinaryValue() << "\"" << "\n)\n"

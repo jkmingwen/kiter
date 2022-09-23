@@ -226,3 +226,25 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() {
   }
   return actorNames;
 }
+
+std::vector<VHDLComponent> VHDLCircuit::getDstComponents(VHDLComponent srcComponent) {
+  VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
+  std::vector<VHDLComponent> dstComponents;
+  std::vector<std::string> srcOutEdges = srcComponent.getOutputEdges();
+  for (auto &comp : this->componentMap) {
+    for (auto &inEdge : comp.second.getInputEdges()) {
+      if (std::find(srcOutEdges.begin(), srcOutEdges.end(), inEdge) != srcOutEdges.end()) {
+        dstComponents.push_back(comp.second);
+        break; // just need to identify one matching edge to determine destination component
+      }
+    }
+  }
+
+  return dstComponents;
+}
+
+// converts a constant value int type to float
+void VHDLCircuit::convConstIntToFloat(Vertex v) {
+  VERBOSE_ASSERT(this->componentMap.find(v) != this->componentMap.end(), "Specified constant value component doesn't exist in this circuit's component map");
+  this->componentMap.at(v).convConstIntToFloat();
+}
