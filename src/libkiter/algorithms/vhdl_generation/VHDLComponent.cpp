@@ -67,9 +67,17 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
 
   // check and track input/output data types
   for (auto port : inputPorts) {
-    inputTypes[port.substr(port.find_last_of("_") + 1)]++;
+    std::string portName = port;
+    if (portName.substr(portName.find_last_of("_") + 1) == "vect") { // we ignore "vect" to find the actual data type
+      portName.erase(portName.find_last_of("_"), std::string::npos);
+    }
+    inputTypes[portName.substr(portName.find_last_of("_") + 1)]++;
   }
   for (auto port : outputPorts) {
+    std::string portName = port;
+    if (portName.substr(portName.find_last_of("_") + 1) == "vect") { // we ignore "vect" to find the actual data type
+      portName.erase(portName.find_last_of("_"), std::string::npos);
+    }
     outputTypes[port.substr(port.find_last_of("_") + 1)]++;
   }
   // check if component type is a float
@@ -94,7 +102,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       bool isFloat = false;
       bool isUndefined = false;
       for (auto &type : inputTypes) {
-        if (type.first == "real" || type.first == "vect") {
+        if (type.first == "real") {
           isFloat = true;
         } else if (type.first == "int") {
           isInt = true;
@@ -116,7 +124,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       }
     } else {
       // infer arithmetic operator data type based on first data type stated by input port
-      if (inputTypes.begin()->first == "real" || inputTypes.begin()->first == "vect") {
+      if (inputTypes.begin()->first == "real") {
         dataType = "fp"; // TODO remove this workaround during refactoring
       } else if (inputTypes.begin()->first == "int") {
         dataType = inputTypes.begin()->first;
@@ -143,7 +151,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     else {
       dataType = "undefined"; // TODO replace with assert
     }
-    if (dataType == "real" || dataType == "vect") { // const is of type float, NOTE still coupling vect with floats for now
+    if (dataType == "real") { // const is of type float
       fpValue = numericValue;
       std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
       binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
@@ -292,7 +300,7 @@ std::string VHDLComponent::printStatus() {
   outputStream << "\tIs constant?";
   if (this->isConstVal) {
     outputStream << " Y" << std::endl;
-    if (this->dataType == "real" || this->dataType == "vect") {
+    if (this->dataType == "real") {
       outputStream <<"\t\tValue: " << this->fpValue << std::endl;
     } else if (this->dataType == "int") {
       outputStream <<"\t\tValue: " << this->intValue << std::endl;
