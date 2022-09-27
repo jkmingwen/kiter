@@ -28,14 +28,17 @@ std::set<std::string> trigOps = {
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
+  bool outputSpecified = false;
   std::string dirName = "./"; // use current directory as default
   std::string outputName = dataflow->getGraphName() + "_simplified" + ".xml"; // use graph name as default
 
   if (params.find("OUTPUT_DIR") != params.end()) {
+    outputSpecified = true;
     dirName = params["OUTPUT_DIR"];
     VERBOSE_INFO("DIR NAME: " << dirName);
   }
   if (params.find("OUTPUT_NAME") != params.end()) {
+    outputSpecified = true;
     outputName = params["OUTPUT_NAME"] + ".xml";
   }
   outputName = dirName + outputName; // set output file path
@@ -109,9 +112,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
         }}
   }
   VERBOSE_INFO("No further possible evaluations detected, producing simplified graph");
-  VERBOSE_INFO("Simplified graph:" << outputName);
-  // TODO use printers::writeSDF3File(path/to/file, dataflow_graph) to produce updated SDF file
-  printers::writeSDF3File(outputName, dataflow_prime);
+  if (outputSpecified) { // only write output file if output directory specified
+    VERBOSE_INFO("Simplified graph:" << outputName);
+    printers::writeSDF3File(outputName, dataflow_prime);
+  } else {
+    std::cout << printers::generateSDF3XML(dataflow_prime) << std::endl;
+  }
 }
 
 // returns true if all input vertices to the given vertex have numeric values
