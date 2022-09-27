@@ -63,7 +63,8 @@ class VHDLCircuit {
   std::map<std::string, int> operatorLifespans = {{"fp_add", 14}, {"fp_prod", 3},
                                                   {"fp_div", 29}, {"fp_sqrt", 22},
                                                   {"fp_diff", 14}, {"fp_pow", 37},
-                                                  {"int_add", 1}, {"int_prod", 2}};
+                                                  {"int_add", 1}, {"int_prod", 2},
+                                                  {"float2int", 4}, {"int2float", 4}};
   std::map<std::string, std::string> FPCNames = {{"fp_add", "FPAdd_8_23_F400_uid2"},
                                                  {"fp_prod", "FPMult_8_23_8_23_8_23_uid2_F400_uid3"},
                                                  {"fp_div", "FPDiv_8_23_F400_uid2"},
@@ -71,7 +72,9 @@ class VHDLCircuit {
                                                  {"fp_diff", "FPAdd_8_23_F400_uid2"},
                                                  {"fp_pow", "FPPowr_8_23_F400_uid2"},
                                                  {"int_add", "IntAdder_34_F400_uid2"},
-                                                 {"int_prod", "IntMultiplier_F400_uid2"}};
+                                                 {"int_prod", "IntMultiplier_F400_uid2"},
+                                                 {"float2int", "FP2Fix_8_23_0_33_S_NT_F400_uid2"},
+                                                 {"int2float", "Fix2FP_0_33_S_8_23_F400_uid2"}};
 
 };
 #endif /* VHDL_CIRCUIT_H_ */

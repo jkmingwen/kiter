@@ -115,9 +115,6 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
       generateSplitterOperators(compDir, compRefDir, outputCounts);
     } else if (op.first == "const_value") {
       generateConstOperator(compDir, compRefDir, outputCounts);
-    } else if (op.first == "int2float" || op.first == "float2int") {
-      generateConversionOperators(circuit.getFirstComponentByType(op.first),
-                                  compDir, compRefDir);
     } else if (op.first == "select2") {
       generateRoutingOperators(circuit.getFirstComponentByType(op.first),
                                compDir, compRefDir);
@@ -612,8 +609,6 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   std::string componentName;
   if (comp.getType() == "const_value") {
     componentName = comp.getType();
-  } else if (comp.getType() == "int2float" || comp.getType() == "float2int" || comp.getType() == "select2") {
-    componentName = "axi_" + comp.getType();
   } else {
     componentName = comp.getType();
   }
@@ -861,8 +856,6 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
-      } else if (op.second.getType() == "int2float" || op.second.getType() == "float2int" || op.second.getType() == "select2") {
-        componentName = "axi_" + opName;
       } else {
         componentName = opName;
       }
