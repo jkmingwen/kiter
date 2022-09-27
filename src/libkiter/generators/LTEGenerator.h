@@ -37,7 +37,7 @@ namespace generators {
 
 ADD_GENERATOR(genLTESDF,
 		generator_t(
-				{ "genLTESDF" , "generate LTE SDF.", generators::generate_lte_sdf})
+				{ "genLTESDF" , "generate LTE SDF, parameters are miwf, cwac, ifft, dd.", generators::generate_lte_sdf})
 );
 
 
