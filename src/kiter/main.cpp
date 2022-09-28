@@ -83,12 +83,7 @@ int main (int argc, char **argv)
 		}
 		if (c == 'h') {
 			std::cerr << "Command: kiter -f FILENAME or -g GENERATOR, then -a ALGORITHM." << std::endl;
-			std::cerr << " List of supported generator (-g) is " << std::endl;
-			KiterRegistry<generator_t>::print();
-			std::cerr << " List of supported buffer sizing algorithms (-a) is " << std::endl;
-			KiterRegistry<buffer_sizing_t>::print();
-			std::cerr << " List of supported algorithms (-a) is " << std::endl;
-			KiterRegistry<transformation_t>::print();
+			KiterRegistry<>::print_all(std::cerr);
 			exit(0);
 		}
 	}
@@ -138,7 +133,7 @@ int main (int argc, char **argv)
 				VERBOSE_INFO (generator->name << " duration=" << duration);
 			} else {
 				std::cerr << " Unsupported generator (-g NAME) or no filename (-f FILENAME), list of supported generator is " << std::endl;
-				KiterRegistry<generator_t>::print();
+                KiterRegistry<generator_t>::print(std::cerr);
 				exit(1);
 			}
 
@@ -166,6 +161,7 @@ int main (int argc, char **argv)
 		std::string name = (*it).first;
         const transformation_t* transformation = KiterRegistry<transformation_t>::get(name);
         const buffer_sizing_t* buffer_sizing = KiterRegistry<buffer_sizing_t>::get(name);
+        const printer_t* printer = KiterRegistry<printer_t>::get(name);
 
         tock();
 
@@ -179,9 +175,14 @@ int main (int argc, char **argv)
             BufferSizingResult res = buffer_sizing->fun(csdf,(*it).second);
             VERBOSE_INFO ("Total size is " << res.total_size());
 
+        } else if (printer) {
+            VERBOSE_INFO ("Run printer " << transformation->name);
+            (*it).second.insert(parameters.begin(),parameters.end());
+            printer->fun(csdf,(*it).second);
+
         } else {
             std::cerr << " Unsupported algorithm (-a " << name << "), list of supported algorithms is " << std::endl;
-            KiterRegistry<transformation_t>::print();
+            KiterRegistry<>::print_all(std::cerr);
             exit(1);
         }
 

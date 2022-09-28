@@ -79,37 +79,48 @@ struct printer_t {
 #define ADD_GENERATOR(name,t)        ADD_KITER_TOOL(name,generator_t,t)
 #define ADD_PRINTER(name,t)          ADD_KITER_TOOL(name,printer_t,t)
 
-template <typename T>
+template <typename T = transformation_t>
 class KiterRegistry {
 
   public:
-    typedef std::map<std::string, T> transformations_map;
+    typedef std::map<std::string, T> tools_map;
 
     static bool add(const T& t) {
-    	transformations_map& map = getSingletonMap();
+        tools_map& map = getSingletonMap();
     	if (map.find(t.name) != map.end()) return false;
     	map[t.name] = t;
     	return true;
     }
 
     static const T* get(const std::string& name) {
-    	transformations_map& map = getSingletonMap();
+        tools_map& map = getSingletonMap();
     	if (map.find(name) == map.end()) return nullptr;
     	return &(map[name]);
     }
+    static void print (std::ostream &out) {
+        for (auto i : KiterRegistry<T>::getSingletonMap()) {
+            out << " - " << i.second.name << " : " << i.second.desc << std::endl;
+        }
+    }
+    static void print_all (std::ostream &out) {
+        out << " List of supported generator (-g) is " << std::endl;
+        KiterRegistry<generator_t>::print(out);
 
-    static void print () { //TODO; don't like this, should not access stderr like that
-    	transformations_map& map = getSingletonMap();
-    	for (auto i : map) {
-				std::cerr << " - " << i.second.name << " : " << i.second.desc << std::endl;
-    	}
+        out << " List of supported buffer sizing algorithms (-a) is " << std::endl;
+        KiterRegistry<buffer_sizing_t>::print(out);
+
+        out << " List of supported algorithms (-a) is " << std::endl;
+        KiterRegistry<transformation_t>::print(out);
+
+        out << " List of supported printers (-a) is " << std::endl;
+        KiterRegistry<printer_t>::print(out);
+
     }
 
+private:
 
-  private:
-
-    static transformations_map& getSingletonMap() {
-      static transformations_map map;
+    static tools_map& getSingletonMap() {
+      static tools_map map;
       return map;
     }
 };
