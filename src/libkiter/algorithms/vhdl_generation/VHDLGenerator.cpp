@@ -243,14 +243,19 @@ void algorithms::generateSplitterOperators(std::string compDir, std::string refe
 }
 
 // Generate signal routing operators
+// NOTE currently only supports select2 operator
 void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDir,
                                           std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
-  std::string axiInterfaceName = "axi_" + entityName;
-  vhdlOutput.open(compDir + entityName + ".vhd");
-  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+  std::string componentName = entityName + "_component"; // just need a distinct name for the component instantiation in the AXI interface declaration in VHDL
+  vhdlOutput.open(compDir + entityName + "_op.vhd"); // write operator implementation
+  std::ifstream operatorRef(referenceDir + entityName + "_op.vhd");
   std::string fileContent;
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
+                                  "$COMPONENT_NAME", "$OP_LIFESPAN",
+                                  "$AXM_TYPE"};
+  std::string opInputCount = std::to_string(comp.getInputPorts().size());
   // generate select operator
   if (operatorRef.is_open()) {
     while (std::getline(operatorRef, fileContent)) {
@@ -262,18 +267,35 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
     std::cout << "Reference file for " << comp.getType()
               << " does not exist/not found!" << std::endl; // TODO turn into assert
   }
+  std::string axmType = "";
+  if (comp.getType() == "select2") {
+    axmType = "_three";
+  }
+  std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
+                                                         {"$FLOPOCO_OP_NAME", entityName + "_op"},
+                                                         {"$COMPONENT_NAME", componentName},
+                                                         {"$OP_LIFESPAN", std::to_string(1)}, // AXI interface requires lifespan to be >0
+                                                         {"$AXM_TYPE", axmType}};
   // generate AXI interface for select operator
-  vhdlOutput.open(compDir + axiInterfaceName + ".vhd");
-  std::ifstream interfaceRef(referenceDir + axiInterfaceName + ".vhd");
+  vhdlOutput.open(compDir + entityName + ".vhd");
+  std::ifstream interfaceRef(referenceDir + "flopoco_axi_interface"
+                             + "_" + opInputCount + ".vhd");
   if (interfaceRef.is_open()) {
     while (std::getline(interfaceRef, fileContent)) {
+      for (const std::string &word : wordsToReplace) {
+        size_t pos = fileContent.find(word);
+        if (pos != std::string::npos) {
+          fileContent.replace(pos, word.length(),
+                              replacementWords[word]);
+        }
+      }
       vhdlOutput << fileContent << std::endl;
     }
     interfaceRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Reference file for " << comp.getType()
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+    std::cout << "AXI interface file for " << "flopoco_axi_interface_" + opInputCount
+              << ".vhd does not exist/not found!" << std::endl; // TODO turn into assert
   }
 }
 
@@ -781,7 +803,7 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   // names of reference files required to copy into project; add/remove as required
   std::vector<std::string> componentNames = {"axi_merger", "delay",
                                              "store_send", "axi_merger_negate",
-                                             "axi_merger_one"};
+                                             "axi_merger_one", "axi_merger_three"};
   if (!isBufferless) {
     componentNames.push_back("axi_fifo");
     componentNames.push_back("axi_fifo_n");
