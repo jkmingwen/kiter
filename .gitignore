@@ -30,6 +30,8 @@
 # Temporary files
 *~
 \#*\#
+.Rhistory
+.ipynb_checkpoints/
 
 # Eclipse files
 /.cproject
@@ -51,10 +53,6 @@ benchmarks/sdf3cs/
 benchmarks/sdf3examples/
 benchmarks/sdf3mem/
 
-# Temporary files
-*~
-.Rhistory
-.ipynb_checkpoints/
 
 # Ascent testbench
 benchmarks/ascenttestbench/
