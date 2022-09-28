@@ -31,7 +31,7 @@ void algorithms::compute_asap_throughput_wrapper(models::Dataflow* const dataflo
 }
 
 TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
-                                              parameters_list_t param_list) {
+                                              parameters_list_t ) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
@@ -123,7 +123,7 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
       }
 
     }
-    if (specifiedCaps.size() != dataflow->getEdgesCount()) {
+    if ((ARRAY_INDEX) specifiedCaps.size() != dataflow->getEdgesCount()) {
       VERBOSE_ERROR("Mismatch in number of channel quantities specified --- expecting "
                     << dataflow->getEdgesCount() << ", " << "got "
                     << specifiedCaps.size() << std::endl);
@@ -585,7 +585,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   TOKEN_UNIT minRepActorExecCount = 0;
   TIME_UNIT timeStep;
 
-  int periodic_state_idx;
+  size_t periodic_state_idx;
   TIME_UNIT thr;
   bool end_check = false; // temp workaround before replacing with mathematical solution
   int actors_left = 0; // seems more efficient to use a counter check than to check through the array

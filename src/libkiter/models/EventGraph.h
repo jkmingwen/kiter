@@ -8,7 +8,7 @@
 
 #ifndef EVENTGRAPH_H_
 #define EVENTGRAPH_H_
-
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS // Required for boost graph to avoid warnings.
 #include <iostream>
 #include <cassert>
 #include <ctime>

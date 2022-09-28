@@ -12,6 +12,7 @@
 #include <algorithms/schedulings.h>
 #include <string>
 #include <algorithm>
+#include <utility>
 
 //Function to remove the edges and obtain phase vector values
 //v1 -> cfg -> v2
@@ -37,7 +38,7 @@ bool algorithms::transformation::mergeCSDFFromKperiodicSchedule(models::Dataflow
 	to->reset_computation();
 	VERBOSE_ASSERT(computeRepetitionVector(to),"inconsistent graph");
 	models::Scheduling scheduling_res = algorithms::scheduling::CSDF_KPeriodicScheduling(to);
-	return algorithms::transformation::mergeCSDFFromSchedule(to,name,mergeNodes,&scheduling_res);
+	return algorithms::transformation::mergeCSDFFromSchedule(to,std::move(name),mergeNodes,&scheduling_res);
 }
 
 bool algorithms::transformation::basic_mergeCSDFFromSchedule(models::Dataflow* to, std::string name , const std::vector< ARRAY_INDEX >& mergeNodes, const models::Scheduling* scheduling_res) {
@@ -75,7 +76,7 @@ bool algorithms::transformation::basic_mergeCSDFFromSchedule(models::Dataflow* t
 		auto period = persched[vid].periodic_starts.first;
 		auto starts = persched[vid].periodic_starts.second;
 		VERBOSE_INFO("For task " << vid << " (" <<  vname << ") period is " << std::fixed  << std::setprecision(2) << period << " and starts " << commons::toString(starts));
-		ARRAY_INDEX current_start_index = 0;
+		size_t current_start_index = 0;
 		TIME_UNIT current_start_time = starts[0];
 
 		while (current_start_time < max_start) {
@@ -256,7 +257,7 @@ TIME_UNIT get_next_execution_time (vertex_infos infos, EXEC_COUNT index) {
 	VERBOSE_DEBUG("get_next_execution_time: Init starts: " << commons::toString(std::vector<TIME_UNIT>(infos.starts.begin(), infos.starts.begin() + infos.init_phases)));
 	VERBOSE_DEBUG("get_next_execution_time: periodic starts: " << commons::toString(std::vector<TIME_UNIT>(infos.starts.begin() + infos.init_phases, infos.starts.end())));
 
-	if (index < infos.starts.size()) {
+	if (index < (ARRAY_INDEX) infos.starts.size()) {
 		VERBOSE_DEBUG("get_next_execution_time: result: " << infos.starts[index]);
 		return infos.starts[index];
 	}
@@ -582,11 +583,11 @@ bool algorithms::transformation::mergeCSDFFromSchedule (models::Dataflow* to, st
 		EXEC_COUNT  phase = exec_pair.task_iteration;
 		vertex_infos infos = original_tasks.at(tid);
 
-		TIME_UNIT execution_time = (phase < infos.durations.size()) ? infos.durations[phase]: infos.durations[infos.init_phases +  ((phase - infos.init_phases) % infos.periodic_phases)];
+		TIME_UNIT execution_time = (phase < (ARRAY_INDEX) infos.durations.size()) ? infos.durations[phase]: infos.durations[infos.init_phases +  ((phase - infos.init_phases) % infos.periodic_phases)];
 
 		VERBOSE_INFO("     - Execution of task "  << tid << ", phase=" << phase << " duration=" << execution_time << " taken from " << commons::toString(infos.durations));
 
-		if (init_duration_vec.size() < init_phase_count) {
+		if ((ARRAY_INDEX) init_duration_vec.size() < init_phase_count) {
 			init_duration_vec.push_back(execution_time);
 		} else {
 			periodic_duration_vec.push_back(execution_time);

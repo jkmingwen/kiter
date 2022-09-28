@@ -80,7 +80,7 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 endif()
 
 # -g in debug mode
-SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -std=c++17 -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions")
+SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -coverage -std=c++17 -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions")
 # -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions
 
 # -O3 in normal mode

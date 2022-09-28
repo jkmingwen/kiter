@@ -7,28 +7,28 @@
 
 #include <models/Dataflow.h>
 #include <algorithms/mappings.h>
-#include <stdio.h>
-#include <string.h>
-#include <libxml/parser.h>
 #include <libxml/tree.h>
 
-void algorithms::mapping::generateTDMA (models::Dataflow* const  dataflow, parameters_list_t params) {
+#include <utility>
+#define GOOD_CAST (const xmlChar *)
+void algorithms::mapping::generateTDMA (models::Dataflow* const  dataflow, parameters_list_t params_list) {
 
-    xmlDocPtr doc = xmlNewDoc(BAD_CAST"1.0");
-	xmlNodePtr root = xmlNewNode(NULL,BAD_CAST"tdma");
-    xmlNewProp(root,BAD_CAST"slots",BAD_CAST"1");
+    std::string output_file = commons::get_parameter(std::move(params_list), "output", "");
+    xmlDocPtr doc = xmlNewDoc(GOOD_CAST"1.0");
+	xmlNodePtr root = xmlNewNode(nullptr,GOOD_CAST"tdma");
+    xmlNewProp(root,GOOD_CAST"slots",GOOD_CAST"1");
     xmlDocSetRootElement(doc,root);
 
+    // TODO : This bit of code is strange, need to double check
     {ForEachEdge(dataflow,e){
-        long* r;
-        (*r) = dataflow->getRoute(e)[0];
-        const unsigned char* rid = (unsigned char*)r;
-        xmlNodePtr rule = xmlNewNode(NULL,BAD_CAST"rule");
-        xmlNewProp(rule,BAD_CAST"id",rid);
-        xmlNewProp(rule,BAD_CAST"slot",BAD_CAST"0");
+        const edge_id_t * e_id = &dataflow->getRoute(e)[0];
+        const auto* rid = (const unsigned char*)e_id;
+        xmlNodePtr rule = xmlNewNode(nullptr,GOOD_CAST"rule");
+        xmlNewProp(rule,GOOD_CAST"id",rid);
+        xmlNewProp(rule,GOOD_CAST"slot",GOOD_CAST"0");
     }}
 
-    xmlSaveFile("../../../../benchmarks/tdmaeg.xml",doc);
+    if (!output_file.empty()) xmlSaveFile(output_file.c_str(),doc);
 	xmlFreeDoc(doc);
 
 }

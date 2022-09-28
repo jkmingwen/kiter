@@ -18,7 +18,7 @@
 #include "../scc.h"
 #include "../buffersizing/periodic_fixed.h"
 
-std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflow* const dataflow, std::string filename, std::set<ARRAY_INDEX> new_edges){
+std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflow* const dataflow, const std::string& filename, std::set<ARRAY_INDEX> new_edges){
   std::map<ARRAY_INDEX, long> condition; // dataflow edge : [slot]
   long slots = 0;
   std::filesystem::path file(filename);
@@ -125,8 +125,8 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   long slots;
   std::tie(condition, slots) = generateConditions(dataflow, filename, new_edges);
 
-  std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>> *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
-  std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>> *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
+  auto *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
+  auto *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
   scheduling_t task_schedule; // {vertex_id : {time_unit: [time_unit]}}
   ARRAY_INDEX skip_edge = 0;
   ARRAY_INDEX skip_vertex = 0;
@@ -137,17 +137,17 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   bool periodic_state = false;
   // initialise actors
 
-  ActorMap_t actorMap (dataflow->getMaxVertexId() + 1);
+  ActorMap_t actorMap (static_cast<unsigned long>(dataflow->getMaxVertexId() + 1));
   {ForEachTask(dataflow, t) {
-      actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
+      actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))] = Actor(dataflow, t);
     }}
   State prevState(dataflow, actorMap);
   State currState(dataflow, actorMap);
   {ForEachTask(dataflow, t) {
       // track actor with lowest repetition factor (determines when states are stored)
-      if (actorMap[dataflow->getVertexId(t)].getRepFactor() < minRepFactor) {
-        minRepFactor = actorMap[dataflow->getVertexId(t)].getRepFactor();
-        minRepActorId = actorMap[dataflow->getVertexId(t)].getId();
+      if (actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getRepFactor() < minRepFactor) {
+        minRepFactor = actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getRepFactor();
+        minRepActorId = actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getId();
       }
     }}
 

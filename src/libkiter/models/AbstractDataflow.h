@@ -13,23 +13,27 @@
 #include <models/NoC.h>
 
 
-/* Dataflow defintion */
-
-enum EDGE_TYPE {
-    NORMAL_EDGE, BUFFERLESS_EDGE, VIRTUAL_EDGE
-};
-typedef  std::string VERTEX_TYPE;
-//enum VERTEX_TYPE {NORMAL_VERTEX, PERIODIC_VERTEX};
-
-
-struct Vertex {};
-struct Edge {};
-class edge_iterator {};
-class in_edge_iterator {};
-class out_edge_iterator {};
-class vertex_iterator {};
 
 namespace models {
+
+
+/* Dataflow defintion */
+
+    enum EDGE_TYPE {
+        NORMAL_EDGE, BUFFERLESS_EDGE, VIRTUAL_EDGE
+    };
+
+    enum VERTEX_TYPE {
+        NORMAL_VERTEX, PERIODIC_VERTEX
+    };
+
+
+    struct Vertex { ARRAY_INDEX vertex_index; };
+    struct Edge { ARRAY_INDEX edge_index; };
+    class edge_iterator {};
+    class in_edge_iterator {};
+    class out_edge_iterator {};
+    class vertex_iterator {};
 
     class AbstractDataflow {
 
@@ -39,7 +43,7 @@ namespace models {
 
 
     public :
-        Dataflow(unsigned int nVertex = 0);
+        AbstractDataflow () {};
 
 
         /*
@@ -47,9 +51,8 @@ namespace models {
          */
 
         void set_read_only();
-        void reset_computation();
+        void reset_read_only();
         bool is_read_only() const;
-
 
         /*
          * Basic modification operations (Add and remove Edges/Vertex)

@@ -11,7 +11,7 @@
 
 void models::Scheduling::verbose_print() const {
 
-	for (auto  key : this->_tasks_schedule) {
+	for (const auto&  key : this->_tasks_schedule) {
 			auto task_vtx = _dataflow->getVertexById(key.first);
 
 			std::cout << "Task " <<  _dataflow->getVertexName(task_vtx)
@@ -29,18 +29,18 @@ std::string models::Scheduling::asText () const{
 
 		std::ostringstream returnStream;
 
-		for (auto item : this->getTaskSchedule()) {
+		for (const auto& item : this->getTaskSchedule()) {
 			ARRAY_INDEX tid = item.first;
 			Vertex v = _dataflow->getVertexById(item.first);
-			std::string  tname = _dataflow->getVertexName(v);
+			std::string  t_name = _dataflow->getVertexName(v);
 			TIME_UNIT period = item.second.periodic_starts.first;//item.second.first;
-			std::vector<TIME_UNIT> &starts = item.second.initial_starts;//item.second.second;
-			std::vector<TIME_UNIT> &pedstarts = item.second.periodic_starts.second;
+			const std::vector<TIME_UNIT> &starts = item.second.initial_starts;//item.second.second;
+			const std::vector<TIME_UNIT> &period_starts = item.second.periodic_starts.second;
 
-			returnStream << std::setw(5) << tid << ") " << tname
+			returnStream << std::setw(5) << tid << ") " << t_name
 					<< " | starts:" << commons::toString(starts)
 					<< " | period:" << period
-					<< " | periodic starts:" << commons::toString(pedstarts)
+					<< " | periodic starts:" << commons::toString(period_starts)
 					<< " | durations:" << commons::toString(_dataflow->getVertexInitPhaseDuration(v))
 			                           << ";[" << commons::toString(_dataflow->getVertexPhaseDuration(v)) << "]"
 					<< std::endl;
@@ -51,98 +51,96 @@ std::string models::Scheduling::asText () const{
 
 	}
 
-std::string models::Scheduling::asASCIINewNew (int line_size) const{
+std::string models::Scheduling::asASCII (size_t ls) const{
 
 
 	std::ostringstream returnStream;
-	int idx = 0;
+    ARRAY_INDEX idx = 0;
 
-	for (auto item : this->getTaskSchedule()) {
+	for (const auto& item : this->getTaskSchedule()) {
 		ARRAY_INDEX tid = item.first;
 		Vertex v = _dataflow->getVertexById(item.first);
-		std::vector<TIME_UNIT> &starts = item.second.initial_starts;// initial starts
-		std::vector<TIME_UNIT> &pedstarts = item.second.periodic_starts.second; //periodic starts
+		const std::vector<TIME_UNIT> &starts = item.second.initial_starts;// initial starts
+		const std::vector<TIME_UNIT> &period_starts = item.second.periodic_starts.second; //periodic starts
 		TIME_UNIT period = item.second.periodic_starts.first;
 		std::string start_str;
 		std::string period_str;
-		TIME_UNIT prev = -1;
+		TIME_UNIT prev = 0;
 		std::vector<TIME_UNIT> phases = _dataflow->getVertexPhaseDuration(v);
-		int phase_count = phases.size();
+        size_t phase_count = phases.size();
 
-		std::string line = "";
-		int linesize = line_size;
+		std::string line;
+        size_t line_size = ls;
 		// add to string 1) initial starts 2) trailing spaces (before periodic starts)
-		int exec_idx = 0;
+        size_t exec_idx = 0;
 		for (TIME_UNIT i: starts) {
-			std::string add_space(i-prev-1, ' ');
+			std::string add_space(static_cast<unsigned long>(i - prev), ' ');
 			start_str += add_space;
-			std::string exec(phases[exec_idx % phase_count]-1, '#');
+			std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
 			start_str += '@';
 			start_str += exec;
-			prev = i+exec.size();
+			prev = i + exec.size() + 1;
 			++exec_idx;
 		}
-		std::string leading_space(pedstarts[0]-prev-1, ' ');
+		std::string leading_space(static_cast<unsigned long>(period_starts[0] - prev), ' ');
 		start_str += leading_space; 
-		if (start_str.length() <= linesize) {
+		if (start_str.length() <= line_size) {
 			line += start_str;
-			linesize -= start_str.length();
+            line_size -= start_str.length();
 		}
 		else {
-			line += (start_str.substr(0,linesize));
-			linesize = 0;
+			line += (start_str.substr(0, line_size));
+            line_size = 0;
 		}
 
 		// create period string without leading spaces so to use for both first and subsequent periods
-		if (!pedstarts.empty()){
-			prev = pedstarts[0]-1;
-			for (TIME_UNIT i: pedstarts) {
-				std::string add_space(i-prev-1, ' ');
+		if (!period_starts.empty()){
+			prev = period_starts[0];
+			for (TIME_UNIT i: period_starts) {
+				std::string add_space(static_cast<unsigned long>(i - prev), ' ');
 				period_str += add_space;
-				std::string exec(phases[exec_idx % phase_count]-1, '#');
+				std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
 				period_str += '@';
 				period_str += exec;
-				prev = i+exec.size();
+				prev = i + exec.size() + 1;
 				++exec_idx ;
 			}
 			// add trailing spaces after period starts (before next period)
-			std::string trailing_space((period+pedstarts[0])-prev-1, ' ');
-			period_str += trailing_space;
+			period_str += std::string(static_cast<unsigned long>((period + period_starts[0]) - prev), ' ');
 			// need to complete the period for all phases (by looking ahead)
-			if(phase_count > pedstarts.size()){
-				prev = pedstarts[0]-1;
-				int phase_idx = 0;
+			if(phase_count > period_starts.size()){
+				prev = period_starts[0];
+				size_t phase_idx = 0;
 				while (exec_idx % phase_count != 0){
-					TIME_UNIT i = pedstarts[phase_idx % pedstarts.size()];
-					std::string exec(phases[exec_idx % phase_count]-1, '#');
+					TIME_UNIT i = period_starts[phase_idx % period_starts.size()];
+					std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
 					period_str += '@';
 					period_str += exec;
-					if (i == pedstarts.back()){
-						std::string trailing_space((period+pedstarts[0])-(i+exec.size())-1, ' ');
-						period_str += trailing_space;
-					} else {
-						std::string add_space(pedstarts[phase_idx % pedstarts.size()]-i, ' ');
-						period_str += add_space;
+					if (i == period_starts.back()){ // trailing spaces
+						period_str += std::string (
+                                static_cast<unsigned long>((period + period_starts[0]) - (i + exec.size()) - 1), ' ');
+					} else { // add spaces
+						period_str +=  std::string (
+                                        static_cast<unsigned long>(period_starts[phase_idx % period_starts.size()] - i), ' ');
 					}
 					
-					prev = i+exec.size();
+					prev = i + exec.size() + 1;
 					++phase_idx;
 					++exec_idx;
 				}
 			}
 			// continuously add period_str to line
-			while (linesize > 0){
-				if (linesize >= period_str.length()){
+			while (line_size > 0){
+				if (line_size >= period_str.length()){
 					line += period_str;
-					linesize -= period_str.length();
+                    line_size -= period_str.length();
 				} else {
-					line += (period_str.substr(0,linesize));
-					linesize = 0;
+					line += (period_str.substr(0, line_size));
+                    line_size = 0;
 				}
 			}
 		}
-		
-		linesize = line_size;
+
 		++idx;
 
 		returnStream << std::setw(5) << tid << " |" << line << std::endl;
@@ -151,124 +149,11 @@ std::string models::Scheduling::asASCIINewNew (int line_size) const{
 	return returnStream.str();
 }
 
-
-std::string models::Scheduling::asASCIINew (int line_size) const{
-
-
-	std::ostringstream returnStream;
-	int idx = 0;
-
-	for (auto item : this->getTaskSchedule()) {
-		ARRAY_INDEX tid = item.first;
-		Vertex v = _dataflow->getVertexById(item.first);
-		std::vector<TIME_UNIT> &starts = item.second.initial_starts;// initial starts
-		std::vector<TIME_UNIT> &pedstarts = item.second.periodic_starts.second; //periodic starts
-		TIME_UNIT period = item.second.periodic_starts.first;
-		std::string start_str;
-		std::string period_str;
-		TIME_UNIT prev = -1;
-
-		std::string line = "";
-		int linesize = line_size;
-		// add to string 1) initial starts 2) trailing spaces (before periodic starts)
-		for (TIME_UNIT i: starts) {
-			std::string add_space(i-prev-1, ' ');
-			start_str += add_space;
-			start_str += "#";
-			prev = i;
-		}
-		std::string leading_space(pedstarts[0]-prev-1, ' ');
-		start_str += leading_space; 
-		if (start_str.length() <= linesize) {
-			line += start_str;
-			linesize -= start_str.length();
-		}
-		else {
-			line += (start_str.substr(0,linesize));
-			linesize = 0;
-		}
-
-		// create period string without leading spaces so to use for both first and subsequent periods
-		if (!pedstarts.empty()){
-			prev = pedstarts[0]-1;
-			for (TIME_UNIT i: pedstarts) {
-				std::string add_space(i-prev-1, ' ');
-				period_str += add_space;
-				period_str += "#";
-				prev = i;
-			}
-			// add trailing spaces after period starts (before next period)
-			std::string trailing_space((period+pedstarts[0])-prev-1, ' ');
-			period_str += trailing_space;
-			// continuously add period_str to line
-			while (linesize > 0){
-				if (linesize >= period_str.length()){
-					line += period_str;
-					linesize -= period_str.length();
-				} else {
-					line += (period_str.substr(0,linesize));
-					linesize = 0;
-				}
-			}
-		}
-		
-		linesize = line_size;
-		++idx;
-
-		returnStream << std::setw(5) << tid << " |" << line << std::endl;
-	}
-
-	return returnStream.str();
-}
-
-std::string models::Scheduling::asASCII (int line_size) const{
-
-	return asASCIINewNew(line_size);
-
-	std::ostringstream returnStream;
-
-	 for (auto item : this->getTaskSchedule()) {
-	 	ARRAY_INDEX tid = item.first;
-	 	Vertex v = _dataflow->getVertexById(item.first);
-	 	std::string  tname = _dataflow->getVertexName(v);
-	 	TIME_UNIT period = item.second.periodic_starts.first;//item.second.first;
-	 	std::vector<TIME_UNIT> &starts = item.second.initial_starts;//item.second.second;
-	 	std::string line = "";
-	 	ARRAY_INDEX max_iter = line_size / period;
-
-	 	VERBOSE_INFO("tid=" << tid);
-
-	 	for (TIME_UNIT t = 0 ; t < line_size ; t ++) {
-	 		bool execute = false;
-	 		for (ARRAY_INDEX iteration = 0 ; iteration <= max_iter ; iteration ++) {
-	 			for (auto sidx = 0 ; sidx < starts.size() ; sidx++) {
-	 				TIME_UNIT s = starts[sidx] + iteration * period;
-	 				EXEC_COUNT exec_count = sidx + iteration * starts.size();
-	 				TIME_UNIT d = _dataflow->getVertexDuration(v, 1 + (exec_count % _dataflow->getPhasesQuantity(v))); // TODO : unsupported init phases
-	 				//TIME_UNIT normalize = (time > s) ? (time - s) - ((time - s) / period) : (time - s);
-	 				//bool execute_here = ((0  <= normalize ) and (normalize < duration ));
-	 				bool case1 = ((t   <= s) and (s   <   t+1 ));
-	 				bool case2 =  (((s+d - 0.01) >  t) and (s+d + 0 <=  t+1 ));
-	 				bool case3 = ((s   <  t) and (t+1 <   s+d - 0 ));
-	 				bool execute_here = case1 or case2 or case3;
-
-	 				execute = execute or execute_here;
-	 			}
-	 		}
-	 		line += execute ? "#" : " ";
-	 	}
-	 	returnStream << std::setw(5) << tid << " |" << line << std::endl;
-	 }
-
-
-	return returnStream.str();
-
-}
 
 
 struct task_catalog {
-	EXEC_COUNT cur_phase;
-	EXEC_COUNT task_Ni;
+	EXEC_COUNT cur_phase{};
+	EXEC_COUNT task_Ni{};
 	std::vector<TIME_UNIT> phase_durations;
 	std::vector<TIME_UNIT> schedule;
 };
@@ -280,7 +165,7 @@ bool models::Scheduling::is_valid_schedule () const{
 	const models::Dataflow* g = this->getDataflow();
 	scheduling_t s = this->getTaskSchedule();
 	
-	std::vector<EXEC_COUNT> buffer_load (g->getMaxEdgeId());
+	std::map<ARRAY_INDEX,EXEC_COUNT> buffer_load;
 
 	{ForEachEdge(g,c) {
 		buffer_load[g->getEdgeId(c)] = g->getPreload(c);
@@ -295,18 +180,18 @@ bool models::Scheduling::is_valid_schedule () const{
 	{ForEachVertex(g,t) {
 		ARRAY_INDEX id = g->getVertexId(t); 
 		EXEC_COUNT Ni =  g->getNi(t);
-		task_catalog t;
-		t.cur_phase = 0;
-		t.task_Ni = Ni;
-		t.phase_durations = g->getVertexPhaseDuration((g->getVertexById(id)));
-		task_log[id] = t;
+		task_catalog tc;
+		tc.cur_phase = 0;
+		tc.task_Ni = Ni;
+		tc.phase_durations = g->getVertexPhaseDuration((g->getVertexById(id)));
+		task_log[id] = tc;
 	}}
 
 	// Creating one centralized schedule vector for each task
 
-	std::vector<EXEC_COUNT> exec_left (g->getMaxEdgeId());
+	std::map<ARRAY_INDEX, EXEC_COUNT> exec_left;
 
-	for (std::pair<const ARRAY_INDEX, task_schedule_t> task : s){
+	for (const std::pair<const ARRAY_INDEX, task_schedule_t>& task : s){
 
 		ARRAY_INDEX task_id = task.first;
 
@@ -346,7 +231,7 @@ bool models::Scheduling::is_valid_schedule () const{
 	};
 
 	// ###
-	for(auto task : task_log){ VERBOSE_INFO("TASK ID: " << task.first << " | PhaseDur: " << commons::toString(task.second.phase_durations) << " | Schedule: " << commons::toString(task.second.schedule)); }
+	for(const auto& task : task_log){ VERBOSE_INFO("TASK ID: " << task.first << " | PhaseDur: " << commons::toString(task.second.phase_durations) << " | Schedule: " << commons::toString(task.second.schedule)); }
 	VERBOSE_INFO("REMAINING EXECUTIONS: " << commons::toString(exec_left));
 	// ###
 	
@@ -355,7 +240,7 @@ bool models::Scheduling::is_valid_schedule () const{
 	std::pair<ARRAY_INDEX, TIME_UNIT> next_task;
 
 	// Tracking most recent next tasks of each task
-	std::vector<TIME_UNIT> task_history (g->getMaxEdgeId()); 
+	std::map<ARRAY_INDEX, TIME_UNIT> task_history ;
 	
 	// Initializing next task
 	for (std::pair<const ARRAY_INDEX, task_catalog> task : task_log){
@@ -368,17 +253,19 @@ bool models::Scheduling::is_valid_schedule () const{
 	// ###
 	VERBOSE_INFO("INIT TASK ID: " << next_task.first << " | EXEC TIME: " << next_task.second);
 	// ###
-
-	while(std::accumulate(exec_left.begin(), exec_left.end(), 0) != 0){
+    // This accumulate was already there, but I used a operator to adapt accumulate with map instead of vector
+	while(std::accumulate(exec_left.begin(), exec_left.end(), 0,
+                          [] (EXEC_COUNT value, const std::map<ARRAY_INDEX, EXEC_COUNT>::value_type& p)
+    { return value + p.second; }) != 0){
 
 		// Finding all tasks that completed execution before next_task is consumed
 
 		std::vector<ARRAY_INDEX> out_tasks;
 
-		for (std::pair<const ARRAY_INDEX, task_catalog> task : task_log){
+		for (const std::pair<const ARRAY_INDEX, task_catalog>& task : task_log){
 			
 			ARRAY_INDEX id = task.first;
-			TIME_UNIT phase_time = (task_log[id].phase_durations)[task_log[id].cur_phase];
+			TIME_UNIT phase_time = (task_log[id].phase_durations)[static_cast<unsigned long>(task_log[id].cur_phase)];
 			TIME_UNIT finish_time = phase_time + task_log[id].schedule[0];
 
 			if (finish_time <= next_task.second){
@@ -399,7 +286,7 @@ bool models::Scheduling::is_valid_schedule () const{
 		for (ARRAY_INDEX out_id : out_tasks){
 			Vertex out_v = g->getVertexById(out_id);
 			{ForOutputEdges(g,out_v,inE){
-				TOKEN_UNIT reqCount = (g->getEdgeInVector(inE))[task_log[out_id].cur_phase];
+				TOKEN_UNIT reqCount = (g->getEdgeInVector(inE))[static_cast<unsigned long>(task_log[out_id].cur_phase)];
 				TOKEN_UNIT inCount  = buffer_load[g->getEdgeId(inE)];
 				buffer_load[g->getEdgeId(inE)] = inCount + reqCount;
 			}}
@@ -408,7 +295,7 @@ bool models::Scheduling::is_valid_schedule () const{
 
 		Vertex in_v = g->getVertexById(next_task.first);
 		{ForInputEdges(g,in_v,inE)	{
-			TOKEN_UNIT reqCount = (g->getEdgeOutVector(inE))[task_log[next_task.first].cur_phase];
+			TOKEN_UNIT reqCount = (g->getEdgeOutVector(inE))[static_cast<unsigned long>(task_log[next_task.first].cur_phase)];
 			TOKEN_UNIT inCount  = buffer_load[g->getEdgeId(inE)];
 			buffer_load[g->getEdgeId(inE)] = inCount - reqCount;
 		
@@ -417,7 +304,9 @@ bool models::Scheduling::is_valid_schedule () const{
 		}}
 
 		for (ARRAY_INDEX out_id : out_tasks){
-			task_log[out_id].cur_phase = (task_log[out_id].cur_phase + 1) % task_log[out_id].phase_durations.size();
+			task_log[out_id].cur_phase = static_cast<EXEC_COUNT>((static_cast<unsigned long>(
+                    task_log[out_id].cur_phase + 1)) %
+                                                                 task_log[out_id].phase_durations.size());
 			task_log[out_id].schedule.erase(task_log[out_id].schedule.begin());
 			if (exec_left[out_id] > 0){ exec_left[out_id]--; }
 		}
@@ -453,14 +342,14 @@ bool models::Scheduling::is_valid_schedule () const{
 		next_task.second = (potential_next_tasks.begin())->first;
 
 		// ###
-		for(auto task : task_log){ VERBOSE_INFO("TASK ID: " << task.first <<" | SCHEDULE " << commons::toString(task.second.schedule)); }
+		for(const auto& task : task_log){ VERBOSE_INFO("TASK ID: " << task.first <<" | SCHEDULE " << commons::toString(task.second.schedule)); }
 		VERBOSE_INFO("BUFFER LOAD: " << commons::toString(buffer_load));
 		VERBOSE_INFO("REMAINING EXECUTIONS: " << commons::toString(exec_left));
 		VERBOSE_INFO("NEXT TASK ID: " << next_task.first << " | EXEC TIME: " << next_task.second);
 		// ### 
 
 		// Invalid Schedule Condition - infeasible task execution
-		TIME_UNIT task_duration = task_log[next_task.first].phase_durations[task_log[next_task.first].cur_phase];
+		TIME_UNIT task_duration = task_log[next_task.first].phase_durations[static_cast<unsigned long>(task_log[next_task.first].cur_phase)];
 		if (not g->getReentrancyFactor(g->getVertexById(next_task.first))) // only when task has reentrancy loop
 		if (next_task.second < task_history[next_task.first] + task_duration){
 			VERBOSE_ERROR("Invalide scheduling condition: Next task " << next_task.first << " expected t=" << next_task.second << " is lower than t=" << task_history[next_task.first] + task_duration);

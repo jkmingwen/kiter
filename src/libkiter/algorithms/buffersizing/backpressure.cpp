@@ -592,9 +592,9 @@ BufferSizingResult algorithms::compute_backpressure_memory_sizing (models::Dataf
 
 		}}
 
-        return res;
 	}
 
+    return res;
 
 
 
