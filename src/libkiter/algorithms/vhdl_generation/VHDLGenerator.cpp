@@ -35,14 +35,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
     dirName = param_list["OUTPUT_DIR"] + "/";
     std::cout << "Generating VHDL code in " << dirName << std::endl;
     componentDir = dirName + "/components/";
+    if (!boost::filesystem::is_directory(dirName)) {
+      boost::filesystem::create_directory(dirName);
+    }
+    boost::filesystem::create_directory(componentDir);
   } else {
     std::cout << "Use '-p OUTPUT_DIR=dirName' to set output directory"
               << std::endl;
   }
-  if (!boost::filesystem::is_directory(dirName)) {
-    boost::filesystem::create_directory(dirName);
-  }
-  boost::filesystem::create_directory(componentDir);
 
   // check if FIFO buffers should be generated
   if (param_list.find("BUFFERLESS") != param_list.end()) {
@@ -86,19 +86,26 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
       }
     }
   }
-  generateOperators(circuit, componentDir, referenceDir, bufferless);
-  generateCircuit(circuit, dirName, bufferless);
-  std::cout << circuit.printStatus() << std::endl;
-  if (circuit.getMultiOutActors().size()) {
-    std::cout << "Actors with abnormal number of outputs detected:\n"
-              << "\t1. Edit and run generated bash script "
-              << "(merge_outs_" << dataflow->getGraphName() << ".sh)\n"
-              << "\t2. Re-run VHDL generation on the resulting SDF (" << dataflow->getGraphName()
-              << "_merged.xml)" << std::endl;
-    generateMergingScript(circuit.getMultiOutActors(), dataflow->getGraphName(),
-                          dirName, referenceDir);
+  if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
+    generateOperators(circuit, componentDir, referenceDir, bufferless);
+    generateCircuit(circuit, dirName, bufferless);
+    std::cout << circuit.printStatus() << std::endl;
+    if (circuit.getMultiOutActors().size()) {
+      std::cout << "Actors with abnormal number of outputs detected:\n"
+                << "\t1. Edit and run generated bash script "
+                << "(merge_outs_" << dataflow->getGraphName() << ".sh)\n"
+                << "\t2. Re-run VHDL generation on the resulting SDF (" << dataflow->getGraphName()
+                << "_merged.xml)" << std::endl;
+      generateMergingScript(circuit.getMultiOutActors(), dataflow->getGraphName(),
+                            dirName, referenceDir);
+    }
+    std::cout << "VHDL files generated in: " << dirName << std::endl;
+  } else {
+    std::cout << circuit.printStatus() << std::endl;
+    if (circuit.getMultiOutActors().size()) {
+      std::cout << "Actors with abnormal number of outputs detected; would need to run merging script" << std::endl;
+    }
   }
-  std::cout << "VHDL files generated in: " << dirName << std::endl;
   return;
 }
 
@@ -801,6 +808,7 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
                                                 bool isBufferless) {
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
+  // TODO only produce the AXI component files if necessary; right now, we're just writing every file
   std::vector<std::string> componentNames = {"axi_merger", "delay",
                                              "store_send", "axi_merger_negate",
                                              "axi_merger_one", "axi_merger_three"};
