@@ -431,7 +431,7 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
            }}
 
            //fail with alone task
-           VERBOSE_ASSERT_EQUALS(res->size() , from->getVerticesCount());
+           VERBOSE_ASSERT_EQUALS((ARRAY_INDEX) res->size() , from->getVerticesCount());
            return res;
 
      } else {return NULL;}

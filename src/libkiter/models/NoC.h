@@ -22,6 +22,12 @@ typedef noc_id_t               edge_id_t;
 
 typedef std::vector<edge_id_t> route_t;
 
+class NoCException: public std::exception {
+    virtual const char* what() const throw() {
+        return "Error happened in the NoC component";
+    }
+};
+
 enum NetworkNodeType { Core, Router, Unknown };
 
 struct NetworkComponent {
@@ -103,6 +109,7 @@ public:
 					return it;
 			}
 		}
+        throw NoCException();
 	};
 	const NetworkEdge& getRightNeighbour(node_id_t src) const {
 		for (const auto &it : this->_vedges){
@@ -111,6 +118,7 @@ public:
 					return it;
 			}
 		}
+        throw NoCException();
 	};
 	const NetworkEdge& getTopNeighbour(node_id_t src) const {
 		for (const auto &it : this->_vedges){
@@ -119,6 +127,7 @@ public:
 					return it;
 			}
 		}
+        throw NoCException();
 	};
 	const NetworkEdge& getBottomNeighbour(node_id_t src) const {
 		for (const auto &it : this->_vedges){
@@ -127,6 +136,8 @@ public:
 					return it;
 			}
 		}
+
+        throw NoCException();
 	};
 	const NetworkEdge& getSrcNeighbour(node_id_t src) const {
 		//Match associated router
@@ -135,6 +146,7 @@ public:
 					return it;
 			}
 		}
+        throw NoCException();
 	};
 	const NetworkEdge& getDstNeighbour(node_id_t dst) const {
 		//Match associated router
@@ -143,6 +155,7 @@ public:
 					return it;
 			}
 		}
+        throw NoCException();
 	};
 
 

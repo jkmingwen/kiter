@@ -81,7 +81,7 @@ if(GLPK_FOUND)
 endif(GLPK_FOUND)
 
 
-ADD_LIBRARY			   (kiter_algorithms SHARED  ${algorithms_sources})
+ADD_LIBRARY			   (kiter_algorithms SHARED  ${algorithms_sources} algorithms/mapping/modelCommunications.h)
 TARGET_LINK_LIBRARIES  (kiter_algorithms PUBLIC kiter_commons kiter_models kiter_printers kiter_lp 
 							${Boost_FILESYSTEM_LIBRARY} 
  							${Boost_SYSTEM_LIBRARY})

@@ -166,6 +166,7 @@ void algorithms::unblock(ARRAY_INDEX id, cycle_detection_cache& cache ) {
     cache.blocked_set.erase(cache.blocked_set.find(id));
 
   VERBOSE_DEBUG("\tblocked set: ");
+  if (VERBOSE_IS_DEBUG())
   for (auto block : cache.blocked_set) {
     VERBOSE_DEBUG(block << " ");
   }
@@ -198,6 +199,7 @@ bool algorithms::find_simple_cycles_scc(const models::Dataflow* const scc,
           cache.dfs_stack.push_back(start_id);
         std::vector<ARRAY_INDEX> cycle(cache.dfs_stack);
         VERBOSE_DEBUG("\tFound cycle: ");
+          if (VERBOSE_IS_DEBUG())
         for (auto i : cycle) {
           VERBOSE_DEBUG(i << " ");
         }

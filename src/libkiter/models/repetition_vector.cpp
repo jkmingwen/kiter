@@ -165,7 +165,6 @@ bool computeRepetitionVector(models::Dataflow *from) {
     EXEC_COUNT ratePeriod = 1;
 
     // Compute period of repetition for rate vectors (dangerous way ...)
-
     {ForEachEdge(from,c) {
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeInPhasesCount(c));
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));

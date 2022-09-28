@@ -69,10 +69,8 @@ std::string algorithms::print_schedule (models::EventGraph* eg, models::Dataflow
 	{ForEachEvent(eg,e) {
 			models::SchedulingEvent se = eg->getEvent(e);
 			EXEC_COUNT ti = se.getTaskId();
-			EXEC_COUNT tp = se.getTaskPhase();
 			TIME_UNIT start = eg->getStartingTime(e);
 			Vertex v = dataflow->getVertexById(ti);
-			TIME_UNIT duration = dataflow->getVertexDuration(v,tp);
 			TIME_UNIT period = kvector.at(v) *  dataflow->getPhasesQuantity(v) * omega / dataflow->getNi(v);
 			EXEC_COUNT repeat = dataflow->getNi(v) * TOTAL_REPEAT;
 			maxtime = std::max ( maxtime, start + period * repeat);
@@ -827,7 +825,7 @@ void print_kiter_throughput_header () {
 
 }
 
-void print_kiter_throughput_iteration (models::Dataflow* const dataflow, models::EventGraph* eg, kperiodic_result_t & result, int iteration_count, double gduration, double hduration) {
+void print_kiter_throughput_iteration (models::Dataflow* const dataflow, models::EventGraph* eg, kperiodic_result_t & result, EXEC_COUNT iteration_count, double gduration, double hduration) {
 
 	EXEC_COUNT sumNi = sum_Ni (dataflow);
 	EXEC_COUNT sumNiNj = sum_NiNj (dataflow);
@@ -918,7 +916,6 @@ void algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow,
 	if (showdetails) {
 			double gduration = std::chrono::duration<double> (graph_done-start).count();
 			double hduration = std::chrono::duration<double> (end_phase-graph_done).count();
-			double  duration = std::chrono::duration<double> (end_phase-start).count();
 			VERBOSE_ASSERT(start <= end_phase,"Error in the system");
 			VERBOSE_ASSERT(start <= graph_done,"Error in the system");
 			VERBOSE_ASSERT(graph_done <= end_phase,"Error in the system");
@@ -983,7 +980,6 @@ void algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow,
 			if (showdetails) {
 						double gduration = std::chrono::duration<double> (graph_done-start).count();
 						double hduration = std::chrono::duration<double> (end_phase-graph_done).count();
-						double  duration = std::chrono::duration<double> (end_phase-start).count();
 						VERBOSE_ASSERT(start <= end_phase,"Error in the system");
 						VERBOSE_ASSERT(start <= graph_done,"Error in the system");
 						VERBOSE_ASSERT(graph_done <= end_phase,"Error in the system");

@@ -18,7 +18,7 @@
 #include "../scc.h"
 #include "../buffersizing/periodic_fixed.h"
 
-std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflow* const dataflow, const std::string& filename, std::set<ARRAY_INDEX> new_edges){
+std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflow* const dataflow, const std::string& filename, std::set<ARRAY_INDEX> ){
   std::map<ARRAY_INDEX, long> condition; // dataflow edge : [slot]
   long slots = 0;
   std::filesystem::path file(filename);
@@ -76,7 +76,7 @@ std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflo
       std::string subline;
       std::vector<long> vals = {};
       while(std::getline(ss, subline, ',')) {
-        if (subline != "src" & subline != "dest" & subline != "slot"){
+        if ((subline != "src") && (subline != "dest") && (subline != "slot")){
           vals.push_back(std::stol(subline));
         }
       }
@@ -111,7 +111,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   ARRAY_INDEX minRepActorId;
   TOKEN_UNIT minRepActorExecCount = 0;
   TIME_UNIT timeStep; // total time passed
-  int periodic_state_idx; // idx of first periodic state in statelist
+  size_t periodic_state_idx; // idx of first periodic state in statelist
   TIME_UNIT thr;
   bool end_check = false; //
   int actors_left = 0;
@@ -125,16 +125,16 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   long slots;
   std::tie(condition, slots) = generateConditions(dataflow, filename, new_edges);
 
-  auto *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
+  //auto *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
   auto *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
   scheduling_t task_schedule; // {vertex_id : {time_unit: [time_unit]}}
-  ARRAY_INDEX skip_edge = 0;
-  ARRAY_INDEX skip_vertex = 0;
-  TIME_UNIT skip_time = 0;
+  //ARRAY_INDEX skip_edge = 0;
+  //ARRAY_INDEX skip_vertex = 0;
+  //TIME_UNIT skip_time = 0;
   TIME_UNIT curr_step = 0;
   std::map<ARRAY_INDEX, std::vector<std::vector<TIME_UNIT>>> starts; //{task idx : [[state 0 starts], [state 1 ...]]}
   std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
-  bool periodic_state = false;
+  //bool periodic_state = false;
   // initialise actors
 
   ActorMap_t actorMap (static_cast<unsigned long>(dataflow->getMaxVertexId() + 1));
@@ -192,7 +192,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
       }}
 
     // set preload from ended firings
-    int cast_out_idx;
+    size_t cast_out_idx;
     for (cast_out_idx = 0; cast_out_idx < (*n_buffer).size(); ++cast_out_idx){
       if ((*n_buffer)[cast_out_idx].first <= curr_step){
         Edge e = dataflow->getEdgeById((*n_buffer)[cast_out_idx].second.first);
@@ -279,7 +279,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
 
   scheduling_t scheduling_result;
-  int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
+  size_t line_size = param_list.count("LINE") ? commons::fromString<size_t>(param_list["LINE"]) : 80;
 
   // Temp fix to turn graph into 1 SCC
   std::set<ARRAY_INDEX> new_edges = {};//add_vbuffers(dataflow, param_list);
@@ -322,7 +322,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
 
-    std::cout << res.asASCII(linesize);
+    std::cout << res.asASCII(line_size);
     std::cout << res.asText();
     // std::cout << printers::Scheduling2Tikz(res);
 
@@ -346,7 +346,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   temp_df->is_consistent();
 
   models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
-  std::cout << res.asASCII(linesize);
+  std::cout << res.asASCII(line_size);
   std::cout << res.asText();
 
   std::cout << "So4 throughput is  " << minThroughput << std::endl;

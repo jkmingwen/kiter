@@ -296,7 +296,7 @@ TIME_UNIT StateList::computeThroughput() {
 }
 
 // Get index of state
-int StateList::computeIdx(State& s){
+long StateList::computeIdx(State& s){
   auto i = std::find(this->visitedStates.begin(), this->visitedStates.end(), s);
   if (i != this->visitedStates.end()) {
     return std::distance(this->visitedStates.begin(), i);

@@ -24,7 +24,7 @@ models::EventGraph* algorithms::generate_csdf_strictly_periodic_event_graph (con
 		tid2event.insert({tid, models::SchedulingEvent(dataflow->getVertexId(t))});
 		eg->addEvent(tid2event.at(tid));
 
-		TIME_UNIT w = 1.0 /  dataflow->getNi(t) ; // We assume GetNi returns phit*qt
+		TIME_UNIT w = 1.0 /  (TIME_UNIT) dataflow->getNi(t) ; // We assume GetNi returns phit*qt
 		auto exec_times = dataflow->getVertexPhaseDuration(t);
 		TIME_UNIT d = *std::max_element(exec_times.begin(), exec_times.end());
 		models::SchedulingEventConstraint sec (tid2event.at(tid), tid2event.at(tid),  w, d, tid);

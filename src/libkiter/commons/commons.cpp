@@ -188,7 +188,7 @@ bool is_readable( const std::string & file )
 	 FILE * fp = popen (sendme.c_str(),"r");
 	 char buffer[1024];
 	 std::string res;
-	 size_t readcount = 0;
+	 size_t readcount;
 	 do {
 		 readcount = fread(buffer,sizeof(char),sizeof(buffer),fp);
 		 res += std::string(buffer).substr (0,readcount);
