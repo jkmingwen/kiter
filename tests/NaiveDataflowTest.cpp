@@ -32,7 +32,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertex& v1 = g->addVertex();
+        const models::NaiveVertexData& v1 = g->addVertex();
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -45,7 +45,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertex& v1 = g->addVertex("nop");
+        const models::NaiveVertexData& v1 = g->addVertex("nop");
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -58,7 +58,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertex& v1 = g->addVertex(10);
+        const models::NaiveVertexData& v1 = g->addVertex(10);
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -71,7 +71,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertex& v1 = g->addVertex(0, "A");
+        const models::NaiveVertexData& v1 = g->addVertex(0, "A");
         VERBOSE_DEBUG("g->addVertex() happended");
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 1 );
@@ -130,16 +130,21 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
     models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertex& v1 = g->addVertex();
-        auto v2 = g->addVertex();
-        auto v3 = g->addVertex();
-        auto e1 = g->addEdge(v1,v2);
-        auto e2 = g->addEdge(v2,v3);
+        auto v1 = g->getVertexId(g->addVertex());
+        auto v2 = g->getVertexId(g->addVertex());
+        auto v3 = g->getVertexId(g->addVertex());
+        auto e1 = g->getEdgeId(g->addEdge(g->getVertexById(v1),g->getVertexById(v2)));
+        auto e2 = g->getEdgeId(g->addEdge(g->getVertexById(v2),g->getVertexById(v3)));
 
-        g->removeEdge(e2);
-        g->removeVertex(v1);
+        g->removeEdge(g->getEdgeById(e1));
+        g->removeVertex(g->getVertexById(v1));
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 2 );
+        BOOST_REQUIRE_EQUAL( g->getEdgesCount(), 1 );
+
+        g->removeVertex(g->getVertexById(v3));
+
+        BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 1 );
         BOOST_REQUIRE_EQUAL( g->getEdgesCount(), 0 );
 
         delete g;

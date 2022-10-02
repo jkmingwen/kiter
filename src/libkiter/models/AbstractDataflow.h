@@ -22,16 +22,22 @@ namespace models {
     typedef  unsigned long edge_id_t;
     typedef  unsigned long vertex_id_t;
     typedef  unsigned long graph_id_t;
-    typedef unsigned long vertex_degree_t;
+    typedef  unsigned long vertex_degree_t;
+    typedef  unsigned long reentrancy_count_t;
+    typedef  unsigned long token_size_t;
+    typedef           long token_quantity_t;
+    typedef  unsigned long phase_quantity_t;
+    typedef           long phase_index_t;
+    typedef         double time_unit_t;
 
 
     template <typename Vertex, typename Edge>
     class AbstractDataflow {
     public:
-        typedef  typename std::vector<Edge>::const_iterator edge_iterator;
-        typedef  typename std::vector<Edge>::const_iterator  in_edge_iterator;
-        typedef  typename std::vector<Edge>::const_iterator  out_edge_iterator;
-        typedef  typename std::vector<Vertex>::const_iterator  vertex_iterator;
+        typedef  typename std::vector<Edge> edge_iterable;
+        typedef  typename std::vector<Edge> in_edge_iterable;
+        typedef  typename std::vector<Edge> out_edge_iterable;
+        typedef  typename std::vector<Vertex> vertex_iterable;
 
 
     public :
@@ -70,10 +76,10 @@ namespace models {
         /*
          * Basic accessors operations (Get Edges/Vertex)
          */
-        virtual std::pair<edge_iterator, edge_iterator> getEdges() const  = 0;
-        virtual std::pair<vertex_iterator, vertex_iterator> getVertices() const = 0;
-        virtual std::pair<in_edge_iterator, in_edge_iterator> getInputEdges(const Vertex &t) const = 0;
-        virtual std::pair<out_edge_iterator, out_edge_iterator> getOutputEdges(const Vertex &t) const = 0;
+        virtual const edge_iterable &getEdges() const  = 0;
+        virtual const vertex_iterable & getVertices() const = 0;
+        virtual const in_edge_iterable & getInputEdges(const Vertex &t) const = 0;
+        virtual const out_edge_iterable & getOutputEdges(const Vertex &t) const = 0;
 
         virtual const Vertex& getFirstVertex() const = 0;
         virtual const Edge& getFirstEdge() const = 0;
@@ -141,106 +147,107 @@ namespace models {
         virtual const std::string &getEdgeName(const Edge &c) const = 0;
         virtual const Edge &getEdgeByName(const std::string &s) const = 0;
 
-//        /*
-//         * Basic Vertex and edge properties (TYPE)
-//         */
-//
-//        void setEdgeType(const Edge e,
-//                         const EDGE_TYPE t);
-//        EDGE_TYPE getEdgeType(const Edge e) const;
-//        std::string getEdgeTypeStr(const Edge e) const;
-//        void setVertexType(const Vertex v,
-//                           const VERTEX_TYPE t);
-//        VERTEX_TYPE getVertexType(const Vertex v) const;
-//
-//
-//
-//
-//        /*
-//         * Rwentrancy
-//         */
-//
-//        void setReentrancyFactor(const Vertex t,
-//                                 const EXEC_COUNT r);
-//        EXEC_COUNT getReentrancyFactor(const Vertex t) const;
-//
-//        /*
-//         * Marking
-//         */
-//
-//        TOKEN_UNIT getPreload(const Edge c) const;
-//        void setPreload(const Edge c, const TOKEN_UNIT p);
-//        DATA_UNIT getTokenSize(const Edge c) const;
-//        void setTokenSize(const Edge c,
-//                          const DATA_UNIT ts);
-//
-//
-//        /*
-//         * Prod, Cons, and Phases
-//         */
-//
-//        void setPhasesQuantity(const Vertex t,
-//                               const EXEC_COUNT phi);
-//
-//        EXEC_COUNT getPhasesQuantity(const Vertex t) const;
-//
-//        void setInitPhasesQuantity(const Vertex t,
-//                                   const EXEC_COUNT phi);
-//
-//        EXEC_COUNT getInitPhasesQuantity(const Vertex t) const;
-//
-//        EXEC_COUNT getEdgeOutPhasesCount(const Edge c) const;
-//        EXEC_COUNT getEdgeInPhasesCount(const Edge c) const;
-//        EXEC_COUNT getEdgeOutInitPhasesCount(const Edge c) const;
-//        EXEC_COUNT getEdgeInInitPhasesCount(const Edge c) const;
-//        TOKEN_UNIT getEdgeOut(const Edge c) const;
-//
-//        const std::vector<TOKEN_UNIT> &getEdgeOutVector(const Edge c) const;
-//        const std::vector<TOKEN_UNIT> &getEdgeInVector(const Edge c) const;
-//        const std::vector<TOKEN_UNIT> &getEdgeInitOutVector(const Edge c) const;
-//        const std::vector<TOKEN_UNIT> &getEdgeInitInVector(const Edge c) const;
-//        TOKEN_UNIT getEdgeOutPhase(const Edge c, PHASE_INDEX k) const;
-//        void setEdgeOutPhases(const Edge c,
-//                              std::vector<TOKEN_UNIT> l);
-//        TOKEN_UNIT getEdgeOutInitPhase(const Edge c, PHASE_INDEX k) const;
-//        void setEdgeOutInitPhases(const Edge c,
-//                                  std::vector<TOKEN_UNIT> l);
-//        TOKEN_UNIT getEdgeIn(const Edge c) const;
-//        TOKEN_UNIT getEdgeInPhase(const Edge c, PHASE_INDEX k) const;
-//        void setEdgeInPhases(const Edge c,
-//                             std::vector<TOKEN_UNIT> l);
-//        TOKEN_UNIT getEdgeInInitPhase(const Edge c, PHASE_INDEX k) const;
-//        void setEdgeInInitPhases(const Edge c,
-//                                 std::vector<TOKEN_UNIT> l);
-//
-//
-//        /*
-//         * Ports
-//         */
-//        const std::string getEdgeInputPortName(const Edge c) const;
-//        void setEdgeInputPortName(const Edge c,
-//                                  const std::string name);
-//        const std::string getEdgeOutputPortName(const Edge c) const;
-//        void setEdgeOutputPortName(const Edge c,
-//                                   const std::string name);
-//        Edge getInputEdgeByPortName(const Vertex t, const std::string &name) const;
-//        Edge getOutputEdgeByPortName(const Vertex t, const std::string &name) const;
-//
-//
-//
-//        /*
-//         * Durations
-//         */
-//
-//        const std::vector<TIME_UNIT> &getVertexPhaseDuration(const Vertex t) const;
-//        const std::vector<TIME_UNIT> &getVertexInitPhaseDuration(const Vertex t) const;
-//        TIME_UNIT getVertexTotalDuration(const Vertex t) const;
-//        TIME_UNIT getVertexDuration(const Vertex t) const;
-//        TIME_UNIT getVertexDuration(const Vertex t, EXEC_COUNT k) const;
-//        TIME_UNIT getVertexInitDuration(const Vertex t, EXEC_COUNT k) const;
-//        void setVertexDuration(const Vertex t, std::vector<TIME_UNIT> l);
-//        void setVertexInitDuration(const Vertex t, std::vector<TIME_UNIT> l);
-//
+        /*
+         * Basic Vertex and edge properties (TYPE)
+         */
+
+        virtual void setEdgeType(const Edge &e, const EDGE_TYPE t) = 0;
+        virtual void setVertexType(const Vertex &v, const VERTEX_TYPE t) = 0;
+        virtual EDGE_TYPE getEdgeType(const Edge &e) const = 0;
+        virtual VERTEX_TYPE getVertexType(const Vertex &v) const = 0;
+
+        const std::string& getEdgeTypeStr(const Edge &e) const {
+            EDGE_TYPE et = this->getEdgeType(e);
+            switch (et) {
+                case VIRTUAL_EDGE : return "VIRTUAL_EDGE";
+                case NORMAL_EDGE : return "NORMAL_EDGE";
+                case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+                default : return "UNKNOWN";
+            }
+        }
+
+
+
+
+
+        /*
+         * Rwentrancy
+         */
+
+        virtual void setReentrancyFactor(const Vertex &t, const reentrancy_count_t r) = 0;
+        virtual reentrancy_count_t getReentrancyFactor(const Vertex &t) const = 0;
+
+        /*
+         * Marking
+         */
+
+        virtual token_quantity_t getPreload(const Edge &c) const = 0;
+        virtual void setPreload(const Edge &c, const token_quantity_t p) = 0;
+        virtual token_size_t getTokenSize(const Edge &c) const = 0;
+        virtual void setTokenSize(const Edge &c, const token_size_t ts) = 0;
+
+
+        /*
+         * Prod, Cons, and Phases
+         */
+
+
+        virtual void setPhasesQuantity(const Vertex &t, const phase_quantity_t phi) = 0;
+        virtual void setInitPhasesQuantity(const Vertex &t, const phase_quantity_t phi) = 0;
+
+        virtual phase_quantity_t getPhasesQuantity(const Vertex &t) const = 0;
+        virtual phase_quantity_t getInitPhasesQuantity(const Vertex &t) const = 0;
+
+        virtual phase_quantity_t getEdgeOutPhasesCount(const Edge &c) const = 0;
+        virtual phase_quantity_t getEdgeOutInitPhasesCount(const Edge &c) const = 0;
+
+        virtual phase_quantity_t getEdgeInPhasesCount(const Edge &c) const = 0;
+        virtual phase_quantity_t getEdgeInInitPhasesCount(const Edge &c) const = 0;
+
+
+        virtual token_quantity_t getEdgeOut(const Edge c) const = 0;
+        virtual const std::vector<token_quantity_t> &getEdgeOutVector(const Edge &c) const = 0;
+        virtual void setEdgeOutVector(const Edge &c, const std::vector<token_quantity_t> &l) = 0;
+        virtual const std::vector<token_quantity_t> &getEdgeOutInitVector(const Edge &c) const = 0;
+        virtual void setEdgeOutInitVector(const Edge &c, std::vector<token_quantity_t> &l) = 0;
+        virtual token_quantity_t getEdgeOutPhase(const Edge &c, phase_index_t k) const = 0;
+        virtual token_quantity_t getEdgeOutInitPhase(const Edge &c, phase_index_t k) const = 0;
+
+        virtual token_quantity_t getEdgeIn(const Edge c) const = 0;
+        virtual const std::vector<token_quantity_t> &getEdgeInVector(const Edge &c) const = 0;
+        virtual void setEdgeInVector(const Edge &c, const std::vector<token_quantity_t> &l) = 0;
+        virtual const std::vector<token_quantity_t> &getEdgeInInitVector(const Edge &c) const = 0;
+        virtual void setEdgeInInitVector(const Edge &c, std::vector<token_quantity_t> &l) = 0;
+        virtual token_quantity_t getEdgeInPhase(const Edge &c, phase_index_t k) const = 0;
+        virtual token_quantity_t getEdgeInInitPhase(const Edge &c, phase_index_t k) const = 0;
+
+
+        /*
+         * Ports
+         */
+        virtual const std::string &getEdgeInputPortName(const Edge &c) const = 0;
+        virtual void setEdgeInputPortName(const Edge &c,const std::string &name) = 0;
+        virtual const std::string &getEdgeOutputPortName(const Edge &c) const = 0;
+        virtual void setEdgeOutputPortName(const Edge &c,const std::string &name) = 0;
+        virtual const Edge &getInputEdgeByPortName(const Vertex &t, const std::string &name) const = 0;
+        virtual const Edge &getOutputEdgeByPortName(const Vertex &t, const std::string &name) const = 0;
+
+
+
+        /*
+         * Durations
+         */
+
+        virtual void setVertexVectorDuration(const Vertex &t, const std::vector<time_unit_t> &l)= 0;
+        virtual void setVertexInitVectorDuration(const Vertex &t, const std::vector<time_unit_t> &l)= 0;
+
+        virtual const std::vector<time_unit_t> &getVertexVectorDuration(const Vertex &t) const= 0;
+        virtual const std::vector<time_unit_t> &getVertexInitVectorDuration(const Vertex &t) const= 0;
+
+        virtual time_unit_t getVertexTotalDuration(const Vertex &t) const= 0;
+        virtual time_unit_t getVertexDuration(const Vertex &t, phase_index_t k) const= 0;
+        virtual time_unit_t getVertexInitDuration(const Vertex &t, phase_index_t k) const= 0;
+
 //        /**
 //         * GCDA work
 //         */
@@ -260,13 +267,13 @@ namespace models {
 //
 //        void set_normalize();
 //        bool is_normalized() const;
-//
-//        /*
-//         *
-//         * Repetition vector / consistency
-//         *
-//         */
-//
+
+        /*
+         *
+         * Repetition vector / consistency
+         *
+         */
+
 //        void set_repetition_vector();
 //        bool has_repetition_vector() const;
 //        bool is_consistent();
@@ -275,12 +282,12 @@ namespace models {
 //                   const EXEC_COUNT Ni);
 //
 //        EXEC_COUNT getNi(const Vertex t) const;
-//
-//        /*
-//         * Mapping related
-//         */
-//
-//
+
+        /*
+         * Mapping related
+         */
+
+
 //        const NoC &getNoC() const;
 //        void setNoC(NoC &noc);
 //
