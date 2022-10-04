@@ -8,6 +8,7 @@
 #include <vector>
 #include <numeric>
 #include <string>
+#include <commons/iterators.h>
 
 namespace models {
 
@@ -31,13 +32,13 @@ namespace models {
     typedef         double time_unit_t;
 
 
-    template <typename Vertex, typename Edge>
+    template <typename Vertex, typename Edge, typename v_iterable, typename e_iterable>
     class AbstractDataflow {
     public:
-        typedef  typename std::vector<Edge> edge_iterable;
-        typedef  typename std::vector<Edge> in_edge_iterable;
-        typedef  typename std::vector<Edge> out_edge_iterable;
-        typedef  typename std::vector<Vertex> vertex_iterable;
+        typedef  v_iterable vertex_iterable;
+        typedef  e_iterable edge_iterable;
+        typedef  edge_iterable in_edge_iterable;
+        typedef  edge_iterable out_edge_iterable;
 
 
     public :
@@ -76,10 +77,10 @@ namespace models {
         /*
          * Basic accessors operations (Get Edges/Vertex)
          */
-        virtual const edge_iterable &getEdges() const  = 0;
-        virtual const vertex_iterable & getVertices() const = 0;
-        virtual const in_edge_iterable & getInputEdges(const Vertex &t) const = 0;
-        virtual const out_edge_iterable & getOutputEdges(const Vertex &t) const = 0;
+        virtual range_t<edge_iterable>   getEdges() const  = 0;
+        virtual range_t<vertex_iterable> getVertices() const = 0;
+        virtual range_t<in_edge_iterable>   getInputEdges(const Vertex &t) const = 0;
+        virtual range_t<out_edge_iterable>   getOutputEdges(const Vertex &t) const = 0;
 
         virtual const Vertex& getFirstVertex() const = 0;
         virtual const Edge& getFirstEdge() const = 0;

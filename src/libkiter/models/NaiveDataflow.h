@@ -8,6 +8,7 @@
 #include "AbstractDataflow.h"
 #include "commons/verbose.h"
 #include "commons/commons.h"
+#include "commons/iterators.h"
 #include <map>
 #include <ostream>
 
@@ -117,18 +118,41 @@ namespace models {
 
 
     class NaiveEdgeRef {
-    private:
+    public: // TODO: turn private later
         edge_vector_index_t vector_index;
         NaiveEdgeRef(const NaiveEdgeData& data) : vector_index(data.vector_index) {};
     };
 
     class NaiveVertexRef {
-    private:
+    public: // TODO: turn private later
         vertex_vector_index_t vector_index;
+        NaiveVertexRef(vertex_vector_index_t idx) : vector_index(idx) {};
         NaiveVertexRef(const NaiveVertexData& data) : vector_index(data.vector_index) {};
+
+        NaiveVertexRef& operator++() {
+            vector_index ++ ;
+            return *this;
+        }
+        NaiveVertexRef operator++(int) {
+            auto r = *this;
+            ++(*this);
+            return r;
+        }
+
+        bool operator>(NaiveVertexRef& other) {return this->vector_index > other.vector_index;}
+
+        friend bool operator==( NaiveVertexRef const& lhs, NaiveVertexRef const& rhs ) {
+            return lhs.vector_index  == rhs.vector_index;
+        }
+        friend bool operator!=( NaiveVertexRef const& lhs, NaiveVertexRef const& rhs ) {
+            return !(lhs==rhs);
+        }
+
     };
 
-    class NaiveDataflow : public AbstractDataflow <NaiveVertexData, NaiveEdgeData> {
+    class NaiveDataflow : public AbstractDataflow <NaiveVertexData, NaiveEdgeData,
+            std::vector<NaiveVertexData>::const_iterator,
+            std::vector<NaiveEdgeData>::const_iterator > {
 
     public:
         NaiveDataflow () : AbstractDataflow() , vertex_ordered_list(0), edge_ordered_list(0)
@@ -325,30 +349,30 @@ namespace models {
             }
         }
 
-        const edge_iterable &getEdges() const override {
+        range_t<edge_iterable> getEdges() const override {
             return {edge_ordered_list.begin(), edge_ordered_list.end()};
         }
 
-        const vertex_iterable &getVertices() const override {
+        range_t<vertex_iterable> getVertices() const override {
             return {vertex_ordered_list.begin(), vertex_ordered_list.end()};
         }
 
-        const in_edge_iterable &getInputEdges(const NaiveVertexData &t) const override {
+        range_t<in_edge_iterable> getInputEdges(const NaiveVertexData &t) const override {
             static std::vector<NaiveEdgeData> cache;
             cache.clear();
             for (auto e_idx : vertex_input_ordered_list.at(t.vector_index)) {
                 cache.emplace_back(edge_ordered_list.at(e_idx));
             }
-            return cache;
+            return {cache.begin(), cache.end()};;
         }
 
-        const out_edge_iterable &getOutputEdges(const NaiveVertexData &t) const override {
+        range_t<out_edge_iterable> getOutputEdges(const NaiveVertexData &t) const override {
             static std::vector<NaiveEdgeData> cache;
             cache.clear();
             for (auto e_idx : vertex_output_ordered_list.at(t.vector_index)) {
                 cache.emplace_back(edge_ordered_list.at(e_idx));
             }
-            return cache;
+            return {cache.begin(), cache.end()};;
         }
 
         const NaiveVertexData &getFirstVertex() const override {
