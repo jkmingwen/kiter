@@ -75,6 +75,10 @@ void algorithms::transformation::singleOutput    (models::Dataflow* const datafl
             {ForOutputEdges(dataflow,t,c)	{
                 cnt++;
                 std::string edgeName = dataflow->getEdgeName(c);
+                // ignore "vect" to find the actual data type
+                if (edgeName.substr(edgeName.find_last_of("_") + 1) == "vect") {
+                  edgeName.erase(edgeName.find_last_of("_"), std::string::npos);
+                }
                 if (cnt == 1) {
                   c1 =  c;
                   c1_type = edgeName.substr(edgeName.find_last_of("_") + 1);
