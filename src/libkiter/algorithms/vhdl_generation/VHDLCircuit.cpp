@@ -246,5 +246,9 @@ std::vector<VHDLComponent> VHDLCircuit::getDstComponents(VHDLComponent srcCompon
 // converts a constant value int type to float
 void VHDLCircuit::convConstIntToFloat(Vertex v) {
   VERBOSE_ASSERT(this->componentMap.find(v) != this->componentMap.end(), "Specified constant value component doesn't exist in this circuit's component map");
-  this->componentMap.at(v).convConstIntToFloat();
+  if (this->componentMap.at(v).getDataType() == "fp") {
+    VERBOSE_WARNING("\t" << this->componentMap.at(v).getName() << " is already a float, bypassing conversion");
+  } else {
+    this->componentMap.at(v).convConstIntToFloat();
+  }
 }

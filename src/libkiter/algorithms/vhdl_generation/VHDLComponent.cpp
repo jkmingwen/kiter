@@ -78,7 +78,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     if (portName.substr(portName.find_last_of("_") + 1) == "vect") { // we ignore "vect" to find the actual data type
       portName.erase(portName.find_last_of("_"), std::string::npos);
     }
-    outputTypes[port.substr(port.find_last_of("_") + 1)]++;
+    outputTypes[portName.substr(portName.find_last_of("_") + 1)]++;
   }
   // check if component type is a float
   char* pEnd;
