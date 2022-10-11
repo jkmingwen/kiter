@@ -24,6 +24,7 @@ std::string Scheduling2Tikz    (const models::Scheduling& periodic_scheduling);
 
 std::string generate_kiter (const models::Dataflow* const  dataflow  , bool verbose = false);
 std::string GenerateGraphDOT       (models::Dataflow* const  dataflow  , bool simple = true);
+std::string GenerateSigGraphDOT       (models::Dataflow* const  dataflow  , bool simple = true);
 std::string GenerateNoCDOT       (models::Dataflow* const  dataflow  , bool connect_tasks = true , bool color_routes = true);
 std::string PeriodicScheduling2DOT    (models::Dataflow* const  dataflow, models::Scheduling& periodic_scheduling,   TIME_UNIT last_execution_end_at,  bool full , double xscale , double yscale );
 
@@ -32,6 +33,7 @@ void printMapping            (models::Dataflow* const  dataflow, parameters_list
 void printGraphAsKiterScript (models::Dataflow* const  dataflow, parameters_list_t = std::map<std::string,std::string>());
 void printInfos              (models::Dataflow* const  dataflow, parameters_list_t = std::map<std::string,std::string>());
 void printXML                (models::Dataflow* const  dataflow, parameters_list_t = std::map<std::string,std::string>());
+void printSigGraph           (models::Dataflow* const  dataflow, parameters_list_t = std::map<std::string,std::string>());
 }
 
 ADD_TRANSFORMATION(PrintXML,
@@ -50,5 +52,8 @@ ADD_TRANSFORMATION(PrintGraph,
 );
 ADD_TRANSFORMATION(PrintMapping,
 		transformation_t({ "PrintMapping" , "Print DOT file", printers::printMapping})
+);
+ADD_TRANSFORMATION(PrintSigGraph,
+		transformation_t({ "PrintSigGraph" , "Print DOT file", printers::printSigGraph})
 );
 #endif /* STDOUT_H_ */

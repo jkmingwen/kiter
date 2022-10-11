@@ -602,6 +602,79 @@ std::string printers::GenerateGraphDOT    (models::Dataflow* const  dataflow , b
 
 }
 
+std::string printers::GenerateSigGraphDOT    (models::Dataflow* const  dataflow , bool simple) {
+
+  bool consistent = dataflow->is_consistent();
+
+  std::ostringstream returnStream;
+
+  VERBOSE_DEBUG("Start Graph DOT generation");
+
+
+  returnStream << "// Auto-generate by Kiter" << std::endl;
+  returnStream << "//   use this dot file with circo for an optimal visu\n" << std::endl;
+  returnStream << "digraph G {\n" << std::endl;
+  returnStream <<  "    rankdir=\"LR\";" << std::endl;
+  returnStream <<  "  graph [label=\"" << ""
+               << "\",splines=curved]\n";
+  returnStream << "  edge [len=1.5,fontsize=8,labelsize=4,color=grey]" << std::endl;
+
+  returnStream << std::endl;
+
+
+  {ForEachVertex(dataflow,t) {
+
+      ARRAY_INDEX tid =  dataflow->getVertexId(t);
+
+      returnStream << "  t_" << tid << " ["
+                   << "shape=circle,  fixedsize=\"shape\", fontsize=\"7\","
+                   << "label=\"" << dataflow->getVertexType(t) << "\", "
+                   << "tooltip=\"" << dataflow->getVertexName(t);
+      if (!simple) {
+          returnStream	  << "\nid:" << tid
+                  << "\nPhases:" << commons::toString(dataflow->getPhasesQuantity(t))
+                  << "\nNi:" << (consistent ? commons::toString(dataflow->getNi(t)) : "N/A")
+                  << "\nduration:" << commons::toString(dataflow->getVertexPhaseDuration(t))
+              << "\nreentrancy:" << commons::toString(dataflow->getReentrancyFactor(t))  ;
+      }
+      returnStream  << "\" ];" << std::endl;
+    }}
+
+
+
+  {ForEachChannel(dataflow,c){
+      Vertex edgeIn  = (dataflow->getEdgeSource(c));
+      Vertex edgeOut = (dataflow->getEdgeTarget(c));
+      ARRAY_INDEX edgeInId  = dataflow->getVertexId(dataflow->getEdgeSource(c));
+      ARRAY_INDEX edgeOutId = dataflow->getVertexId(dataflow->getEdgeTarget(c));
+      returnStream << "  t_" << edgeInId << " -> t_" << edgeOutId << " [";
+      std::string bl = dataflow->getEdgeTypeStr(c) ;
+      ARRAY_INDEX eid = dataflow->getEdgeId(c) ;
+      returnStream << " xlabel=\"" ;
+      if (!simple) {
+          returnStream	  << bl
+                          << "\nid:" << eid
+                                  << "\npreload:"  << commons::toString(dataflow->getPreload(c)) ;
+      } else {
+
+          returnStream	  << commons::toString(dataflow->getPreload(c)) ;
+      }
+      returnStream << "\"," ;
+      returnStream << " headlabel=\"" ;
+      if (dataflow->getInitPhasesQuantity(edgeOut) > 0) {returnStream << "(" << commons::toString(dataflow->getEdgeInitOutVector(c)) << ")"  << ";" ;}
+      returnStream <<  commons::toString(dataflow->getEdgeOutVector(c)) << "\"," ;
+      returnStream << " taillabel=\"" ;
+      if (dataflow->getInitPhasesQuantity(edgeIn) > 0) {returnStream << "("  <<  commons::toString(dataflow->getEdgeInitInVector(c))  << ")" << ";" ;}
+      returnStream <<  commons::toString(dataflow->getEdgeInVector(c)) << "\"," ;
+      returnStream << " ] ;" << std::endl;
+    }}
+  returnStream << std::endl;
+
+  returnStream <<  "}" << std::endl;
+
+  return returnStream.str();
+
+}
 
 void printers::printMapping    (models::Dataflow* const  dataflow, parameters_list_t params ) {
 
@@ -658,6 +731,24 @@ void printers::printXML    (models::Dataflow* const  dataflow, parameters_list_t
 	} else {
 		 std::cout << printers::generateSDF3XML(dataflow) << std::endl;
 	}
+
+}
+
+void printers::printSigGraph    (models::Dataflow* const  dataflow, parameters_list_t params ) {
+
+	static const std::string filename_argument = "filename";
+	std::string data = printers::GenerateSigGraphDOT    ( dataflow ) ;
+
+	if (params.find(filename_argument) != params.end() ) {
+		std::string filename = params[filename_argument];
+		std::ofstream mfile;
+		mfile.open (filename);
+		mfile << data << std::endl;
+		mfile.close();
+	} else {
+		 std::cout << data << std::endl;
+	}
+
 
 }
 
