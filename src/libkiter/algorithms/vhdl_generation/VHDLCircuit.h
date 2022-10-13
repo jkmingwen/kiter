@@ -72,6 +72,7 @@ class VHDLCircuit {
                                                  {"fp_diff", "FPAdd_8_23_F400_uid2"},
                                                  {"fp_pow", "FPPowr_8_23_F400_uid2"},
                                                  {"int_add", "IntAdder_34_F400_uid2"},
+                                                 {"int_diff", "IntAdder_34_F400_uid2"},
                                                  {"int_prod", "IntMultiplier_F400_uid2"},
                                                  {"float2int", "FP2Fix_8_23_0_33_S_NT_F400_uid2"},
                                                  {"int2float", "Fix2FP_0_33_S_8_23_F400_uid2"}};
