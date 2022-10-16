@@ -32,7 +32,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertexData& v1 = g->addVertex();
+        auto v1 = g->addVertex();
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -45,7 +45,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertexData& v1 = g->addVertex("nop");
+        auto v1 = g->addVertex("nop");
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -58,7 +58,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertexData& v1 = g->addVertex(10);
+        auto v1 = g->addVertex(10);
         g->removeVertex(v1);
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 0 );
@@ -71,7 +71,7 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
     {
         models::NaiveDataflow* g = new models::NaiveDataflow();
 
-        const models::NaiveVertexData& v1 = g->addVertex(0, "A");
+        const models::NaiveVertexRef v1 = g->addVertex(0, "A");
         VERBOSE_DEBUG("g->addVertex() happended");
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 1 );

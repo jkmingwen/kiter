@@ -12,6 +12,8 @@
 #include <map>
 #include <ostream>
 
+#include <models/Dataflow.h>
+
 /**
  *
  * New data structure project
@@ -62,12 +64,13 @@ namespace models {
             return !(rhs == *this);
         }
 
-        VERTEX_TYPE _type = NORMAL_VERTEX;
+        DATAFLOW_VERTEX_TYPE _type = NORMAL_VERTEX;
         reentrancy_count_t _reentrancy = 0;
         phase_quantity_t _phase_quantity = 0;
         phase_quantity_t _initial_phase_quantity = 0;
         std::vector<time_unit_t> _init_phase_durations;
         std::vector<time_unit_t> _phase_durations;
+        execution_count_t _repetition_vector;
     };
 
 
@@ -81,7 +84,7 @@ namespace models {
         std:: string name;
         vertex_vector_index_t from;
         vertex_vector_index_t to;
-        explicit NaiveEdgeData(const NaiveVertexData& from, const NaiveVertexData& to, edge_vector_index_t ei) : vector_index (ei), from(from.vector_index), to(to.vector_index) {
+        explicit NaiveEdgeData(const vertex_vector_index_t& from, const vertex_vector_index_t& to, edge_vector_index_t ei) : vector_index (ei), from(from), to(to) {
         }
     public:
         NaiveEdgeData() = default;
@@ -100,7 +103,7 @@ namespace models {
             return os;
         }
     private: // data for edge
-        EDGE_TYPE _type = NORMAL_EDGE;
+        DATAFLOW_EDGE_TYPE _type = NORMAL_EDGE;
         token_quantity_t _preload = 0;
         token_size_t _token_size = 1;
         std::vector<token_quantity_t> out_vector;
@@ -118,15 +121,36 @@ namespace models {
 
 
     class NaiveEdgeRef {
-    public: // TODO: turn private later
+        friend NaiveDataflow;
         edge_vector_index_t vector_index;
+    public: // TODO: turn private later
         NaiveEdgeRef(const NaiveEdgeData& data) : vector_index(data.vector_index) {};
+        NaiveEdgeRef(const edge_vector_index_t& ref) : vector_index(ref) {};
+
+
+        NaiveEdgeRef& operator++() {
+            vector_index ++ ;
+            return *this;
+        }
+        NaiveEdgeRef operator++(int) {
+            auto r = *this;
+            ++(*this);
+            return r;
+        }
+
+        friend std::ostream &operator<<(std::ostream &os, const NaiveEdgeRef &edge) {
+            os << "vector_index: " << edge.vector_index;
+            return os;
+        }
+
+
     };
 
     class NaiveVertexRef {
-    public: // TODO: turn private later
+        friend NaiveDataflow;
         vertex_vector_index_t vector_index;
-        NaiveVertexRef(vertex_vector_index_t idx) : vector_index(idx) {};
+    public: // TODO: turn private later
+        //NaiveVertexRef(vertex_vector_index_t idx) : vector_index(idx) {};
         NaiveVertexRef(const NaiveVertexData& data) : vector_index(data.vector_index) {};
 
         NaiveVertexRef& operator++() {
@@ -147,17 +171,64 @@ namespace models {
         friend bool operator!=( NaiveVertexRef const& lhs, NaiveVertexRef const& rhs ) {
             return !(lhs==rhs);
         }
+        friend bool operator<( NaiveVertexRef const& lhs, NaiveVertexRef const& rhs ) {
+            return (lhs.vector_index<rhs.vector_index);
+        }
+
+        friend std::ostream &operator<<(std::ostream &os, const NaiveVertexRef &vertex) {
+            os << "vector_index: " << vertex.vector_index;
+            return os;
+        }
 
     };
 
-    class NaiveDataflow : public AbstractDataflow <NaiveVertexData, NaiveEdgeData,
-            std::vector<NaiveVertexData>::const_iterator,
-            std::vector<NaiveEdgeData>::const_iterator > {
+    class NaiveDataflow : public AbstractDataflow <NaiveVertexRef, NaiveEdgeRef,
+            incremental_iterator<NaiveVertexRef>,
+            incremental_iterator<NaiveEdgeRef>,
+            safe_iterator<edge_vector_index_t , NaiveEdgeRef>,
+            safe_iterator<edge_vector_index_t , NaiveEdgeRef> > {
 
     public:
         NaiveDataflow () : AbstractDataflow() , vertex_ordered_list(0), edge_ordered_list(0)
-        , vertex_input_ordered_list(0), vertex_output_ordered_list(0)  {
+                , vertex_input_ordered_list(0), vertex_output_ordered_list(0)  {
         }
+
+        NaiveDataflow (models::Dataflow& g) : AbstractDataflow() , vertex_ordered_list(0), edge_ordered_list(0)
+                , vertex_input_ordered_list(0), vertex_output_ordered_list(0)  {
+            for (auto v : g.vertices()) {
+                auto new_vertex = this->addVertex(g.getVertexId(v), g.getVertexName(v));
+                this->setPhasesQuantity(new_vertex, g.getPhasesQuantity(v));
+                this->setInitPhasesQuantity(new_vertex, g.getInitPhasesQuantity(v));
+                this->setVertexVectorDuration(new_vertex, (const std::vector<double> &) g.getVertexPhaseDuration(v));
+                this->setVertexInitVectorDuration(new_vertex,
+                                                  (const std::vector<double> &) g.getVertexInitPhaseDuration(v));
+                this->setReentrancyFactor(new_vertex, g.getReentrancyFactor(v));
+                this->setVertexType(new_vertex, DATAFLOW_VERTEX_TYPE::NORMAL_VERTEX);
+
+            }
+
+            {ForEachEdge (&g, e) {
+                    auto src = this->getVertexById(g.getVertexId(g.getEdgeSource(e)));
+                    auto tgt = this->getVertexById(g.getVertexId(g.getEdgeTarget(e)));
+                auto new_edge = this->addEdge(src,tgt, g.getEdgeId(e), g.getEdgeName(e));
+                    this->setEdgeInputPortName(new_edge,g.getEdgeInputPortName(e));
+                    this->setEdgeOutputPortName(new_edge,g.getEdgeOutputPortName(e));
+                    this->setPreload(new_edge,g.getPreload(e));
+                    this->setTokenSize(new_edge,g.getTokenSize(e));
+                    if (g.getEdgeType(e) == EDGE_TYPE::NORMAL_EDGE) {
+                        this->setEdgeType(new_edge, DATAFLOW_EDGE_TYPE::NORMAL_EDGE);
+                    } else {
+                        VERBOSE_FAILURE();
+                    }
+                    this->setEdgeInInitVector(new_edge,const_cast<std::vector<token_quantity_t> &>(g.getEdgeInitInVector(e)));
+                    this->setEdgeInVector(new_edge,const_cast<std::vector<token_quantity_t> &>(g.getEdgeInVector(e)));
+                    this->setEdgeOutInitVector(new_edge,const_cast<std::vector<token_quantity_t> &>(g.getEdgeInitOutVector(e)));
+                    this->setEdgeOutVector(new_edge,const_cast<std::vector<token_quantity_t> &>(g.getEdgeOutVector(e)));
+            }}
+
+
+        }
+
 
         virtual ~NaiveDataflow() = default ;
 
@@ -186,19 +257,19 @@ namespace models {
 
 
     public:
-        const NaiveVertexData &addVertex() override {
+        const NaiveVertexRef addVertex() override {
             return addVertex(this->pickRandomVertexId());
         }
 
-        const NaiveVertexData &addVertex(const vertex_id_t id) override {
+        const NaiveVertexRef addVertex(const vertex_id_t id) override {
             return addVertex(id, this->pickRandomVertexName(id));
         }
 
-        const NaiveVertexData &addVertex(const std::string &name) override {
+        const NaiveVertexRef addVertex(const std::string &name) override {
             return addVertex(this->pickRandomVertexId(), name);
         }
 
-        const NaiveVertexData &addVertex(const vertex_id_t id, const std::string &name) override {
+        const NaiveVertexRef addVertex(const vertex_id_t id, const std::string &name) override {
             VERBOSE_DEBUG("Add a new vertex with id " << id << " and name " << name);
             VERBOSE_DEBUG("vertex_ordered_list size is " << this->vertex_ordered_list.size());
             this->vertex_ordered_list.emplace_back(NaiveVertexData(this->vertex_ordered_list.size()));
@@ -220,7 +291,7 @@ namespace models {
 
 
         // The remove operator is expensive O(n).
-        void removeVertex(const NaiveVertexData &t) override {
+        void removeVertex(const NaiveVertexRef &t) override {
 
             VERBOSE_DEBUG("start to remove a vertex.");
 
@@ -234,7 +305,7 @@ namespace models {
             const auto &inputs = vertex_input_ordered_list.at(t.vector_index);
             const auto &outputs = vertex_output_ordered_list.at(t.vector_index);
 
-            VERBOSE_DEBUG("iterates inputs: " << commons::toString(inputs));
+            // VERBOSE_DEBUG("iterates inputs: " << commons::toString(inputs));
             while (inputs.size()) {
                 edge_vector_index_t idx = *inputs.begin();
                 VERBOSE_DEBUG("remove edge with index " << idx << " from edge list of size " << edge_ordered_list.size());
@@ -243,7 +314,7 @@ namespace models {
                 this->removeEdge(e);
             }
 
-            VERBOSE_DEBUG("iterates outputs: " << commons::toString(outputs));
+            // VERBOSE_DEBUG("iterates outputs: " << commons::toString(outputs));
             while (outputs.size()) {
                 edge_vector_index_t idx = *outputs.begin();
                 const NaiveEdgeData &e = edge_ordered_list.at(idx);
@@ -253,9 +324,9 @@ namespace models {
 
 
             VERBOSE_DEBUG("remove the vertex from the database");
-
-            vertex_id_to_index.erase(t.id);
-            vertex_name_to_index.erase(t.name);
+            NaiveVertexData & data = vertex_ordered_list[t.vector_index];
+            vertex_id_to_index.erase(data.id);
+            vertex_name_to_index.erase(data.name);
             vertex_ordered_list.erase(vertex_ordered_list.begin() + t.vector_index);
             vertex_output_ordered_list.erase(vertex_output_ordered_list.begin() + t.vector_index);
             vertex_input_ordered_list.erase(vertex_input_ordered_list.begin() + t.vector_index);
@@ -285,52 +356,52 @@ namespace models {
         std::string  pickRandomEdgeName(edge_id_t id) {return "edge" + id;}
     public:
 
-        const NaiveEdgeData &addEdge(const NaiveVertexData &from, const NaiveVertexData &to) override {
+        const NaiveEdgeRef addEdge(const NaiveVertexRef &from, const NaiveVertexRef &to) override {
             return addEdge(from, to , this->pickRandomEdgeId());
         }
 
-        const NaiveEdgeData &addEdge(const NaiveVertexData &from, const NaiveVertexData &to, const edge_id_t id) override {
+        const NaiveEdgeRef addEdge(const NaiveVertexRef &from, const NaiveVertexRef &to, const edge_id_t id) override {
             return addEdge(from, to , id, pickRandomEdgeName(id));
         }
 
-        const NaiveEdgeData &addEdge(const NaiveVertexData &from, const NaiveVertexData &to, const std::string &name) override {
+        const NaiveEdgeRef addEdge(const NaiveVertexRef &from, const NaiveVertexRef &to, const std::string &name) override {
             return addEdge(from, to , this->pickRandomEdgeId(), name);
         }
-        const NaiveEdgeData &
-        addEdge(const NaiveVertexData &from, const NaiveVertexData &to, const edge_id_t id, const std::string &name) override {
 
-            NaiveEdgeData& new_edge = edge_ordered_list.emplace_back(NaiveEdgeData(from, to, edge_ordered_list.size()));
+        const NaiveEdgeRef
+        addEdge(const NaiveVertexRef &from, const NaiveVertexRef &to, const edge_id_t id, const std::string &name) override {
+
+            NaiveEdgeData& new_edge = edge_ordered_list.emplace_back(NaiveEdgeData(from.vector_index, to.vector_index, edge_ordered_list.size()));
             this->setEdgeName(new_edge, name);
             this->setEdgeId(new_edge, id);
             max_edge_id = std::max(max_edge_id,id);
             vertex_ordered_list[new_edge.to].in_degree++;
             vertex_ordered_list[new_edge.from].out_degree++;
-            vertex_input_ordered_list[new_edge.to].insert(new_edge.vector_index);
             vertex_output_ordered_list[new_edge.from].insert(new_edge.vector_index);
             return new_edge;
         }
 
 
-        void removeEdge(const NaiveEdgeData &e) override {
+        void removeEdge(const NaiveEdgeRef &e) override {
             VERBOSE_DEBUG("An edge is going to be removed, index = " << e.vector_index);
 
             edge_vector_index_t old_edge_index = e.vector_index;
+            NaiveEdgeData & data = edge_ordered_list[e.vector_index];
+            vertex_ordered_list[data.to].in_degree--;
+            vertex_ordered_list[data.from].out_degree--;
 
-            vertex_ordered_list[e.to].in_degree--;
-            vertex_ordered_list[e.from].out_degree--;
-
-            VERBOSE_DEBUG("Source index = " << e.from);
-            VERBOSE_DEBUG("Target index = " << e.to);
+            VERBOSE_DEBUG("Source index = " << data.from);
+            VERBOSE_DEBUG("Target index = " << data.to);
             VERBOSE_DEBUG("vertex ordered list size = " << vertex_ordered_list.size());
             VERBOSE_DEBUG("vertex input ordered list size = " << vertex_input_ordered_list.size());
             VERBOSE_DEBUG("vertex output ordered list size = " << vertex_output_ordered_list.size());
 
-            vertex_input_ordered_list.at(e.to).erase(e.vector_index);
-            vertex_output_ordered_list.at(e.from).erase(e.vector_index);
+            vertex_input_ordered_list.at(data.to).erase(e.vector_index);
+            vertex_output_ordered_list.at(data.from).erase(e.vector_index);
 
 
-            edge_id_to_index.erase(e.id);
-            edge_name_to_index.erase(e.name);
+            edge_id_to_index.erase(data.id);
+            edge_name_to_index.erase(data.name);
             edge_ordered_list.erase(edge_ordered_list.begin() + e.vector_index);
 
             VERBOSE_DEBUG("Reordering stage..");
@@ -350,45 +421,44 @@ namespace models {
         }
 
         range_t<edge_iterable> getEdges() const override {
-            return {edge_ordered_list.begin(), edge_ordered_list.end()};
+            return {incremental_iterator<NaiveEdgeRef>(edge_ordered_list.at(0),edge_ordered_list.size()), edge_iterable()};
         }
 
         range_t<vertex_iterable> getVertices() const override {
-            return {vertex_ordered_list.begin(), vertex_ordered_list.end()};
+            return {incremental_iterator<NaiveVertexRef>(vertex_ordered_list.at(0),vertex_ordered_list.size()), vertex_iterable()};
+
         }
 
-        range_t<in_edge_iterable> getInputEdges(const NaiveVertexData &t) const override {
-            static std::vector<NaiveEdgeData> cache;
-            cache.clear();
-            for (auto e_idx : vertex_input_ordered_list.at(t.vector_index)) {
-                cache.emplace_back(edge_ordered_list.at(e_idx));
-            }
-            return {cache.begin(), cache.end()};;
+        range_t<in_edge_iterable> getInputEdges(const NaiveVertexRef &t) const override {
+            const std::set<edge_vector_index_t> & tmp = vertex_input_ordered_list.at(t.vector_index);
+            return {safe_iterator<edge_vector_index_t, NaiveEdgeRef>(tmp), safe_iterator<edge_vector_index_t, NaiveEdgeRef>()};
         }
 
-        range_t<out_edge_iterable> getOutputEdges(const NaiveVertexData &t) const override {
-            static std::vector<NaiveEdgeData> cache;
-            cache.clear();
-            for (auto e_idx : vertex_output_ordered_list.at(t.vector_index)) {
-                cache.emplace_back(edge_ordered_list.at(e_idx));
-            }
-            return {cache.begin(), cache.end()};;
+        range_t<out_edge_iterable> getOutputEdges(const NaiveVertexRef &t) const override {
+            const std::set<edge_vector_index_t> & tmp = vertex_output_ordered_list.at(t.vector_index);
+            return {safe_iterator<edge_vector_index_t, NaiveEdgeRef>(tmp), safe_iterator<edge_vector_index_t, NaiveEdgeRef>()};
         }
 
-        const NaiveVertexData &getFirstVertex() const override {
+        range_t<inout_edge_iterable> getConnectedEdges(const NaiveVertexRef &t) const override { // TODO: this is ugly
+            static std::set<edge_vector_index_t>  tmp = vertex_input_ordered_list.at(t.vector_index);
+            tmp.insert(vertex_output_ordered_list.at(t.vector_index).begin(),vertex_output_ordered_list.at(t.vector_index).end());
+            return {safe_iterator<edge_vector_index_t, NaiveEdgeRef>(tmp), safe_iterator<edge_vector_index_t, NaiveEdgeRef>()};
+        }
+
+        const NaiveVertexRef getFirstVertex() const override {
             return vertex_ordered_list.front();
         }
 
-        const NaiveEdgeData &getFirstEdge() const override {
+        const NaiveEdgeRef getFirstEdge() const override {
             return edge_ordered_list.front();
         }
 
-        const NaiveVertexData &getEdgeSource(const NaiveEdgeData &c) const override {
-            return vertex_ordered_list.at(c.from);
+        const NaiveVertexRef getEdgeSource(const NaiveEdgeRef &c) const override {
+            return vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).from);
         }
 
-        const NaiveVertexData &getEdgeTarget(const NaiveEdgeData &c) const override {
-            return vertex_ordered_list.at(c.to);
+        const NaiveVertexRef getEdgeTarget(const NaiveEdgeRef &c) const override {
+            return vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).to);
         }
 
         size_t getVerticesCount() const override {
@@ -399,37 +469,37 @@ namespace models {
             return edge_ordered_list.size();
         }
 
-        vertex_degree_t getVertexDegree(const NaiveVertexData &t) const override {
-            return  t.in_degree + t.out_degree;
+        vertex_degree_t getVertexDegree(const NaiveVertexRef &t) const override {
+            return  vertex_ordered_list.at(t.vector_index).in_degree + vertex_ordered_list.at(t.vector_index).out_degree;
         }
 
-        vertex_degree_t getVertexInDegree(const NaiveVertexData &t) const override {
-            return t.in_degree;
+        vertex_degree_t getVertexInDegree(const NaiveVertexRef &t) const override {
+            return vertex_ordered_list.at(t.vector_index).in_degree;
         }
 
-        vertex_degree_t getVertexOutDegree(const NaiveVertexData &t) const override {
-            return t.out_degree;
-        }
-
-
-        vertex_id_t getVertexId(const NaiveVertexData &t) const override {
-            return t.id;
-        }
-
-        edge_id_t getEdgeId(const NaiveEdgeData &c) const override {
-            return c.id;
-        }
-
-        const std::string &getVertexName(const NaiveVertexData &t) const override {
-            return t.name;
-        }
-
-        const std::string &getEdgeName(const NaiveEdgeData &c) const override {
-            return c.name;
+        vertex_degree_t getVertexOutDegree(const NaiveVertexRef &t) const override {
+            return vertex_ordered_list.at(t.vector_index).out_degree;
         }
 
 
-        void setVertexId(const NaiveVertexData &t, const vertex_id_t id) override {
+        vertex_id_t getVertexId(const NaiveVertexRef &t) const override {
+            return vertex_ordered_list.at(t.vector_index).id;
+        }
+
+        edge_id_t getEdgeId(const NaiveEdgeRef &c) const override {
+            return edge_ordered_list.at(c.vector_index).id;
+        }
+
+        const std::string &getVertexName(const NaiveVertexRef &t) const override {
+            return vertex_ordered_list.at(t.vector_index).name;
+        }
+
+        const std::string &getEdgeName(const NaiveEdgeRef &c) const override {
+            return edge_ordered_list.at(c.vector_index).name;
+        }
+
+
+        void setVertexId(const NaiveVertexRef &t, const vertex_id_t id) override {
             if (vertex_id_to_index.count(id)) {
                 VERBOSE_ASSERT(t.vector_index == vertex_id_to_index.at(id), "Cannot have two vertex with the same id");
             }
@@ -437,11 +507,11 @@ namespace models {
             vertex_ordered_list[t.vector_index].id = id;
         }
 
-        const NaiveVertexData &getVertexById(const vertex_id_t id) const override {
+        const NaiveVertexRef getVertexById(const vertex_id_t id) const override {
             return vertex_ordered_list[vertex_id_to_index.at(id)];
         }
 
-        void setEdgeId(const NaiveEdgeData &c, const edge_id_t id) override {
+        void setEdgeId(const NaiveEdgeRef &c, const edge_id_t id) override {
             if (edge_id_to_index.count(id)) {
                 VERBOSE_ASSERT(c.vector_index == vertex_id_to_index.at(id), "Cannot have two edges with the same id");
             }
@@ -449,13 +519,13 @@ namespace models {
             edge_ordered_list[c.vector_index].id = id;
         }
 
-        const NaiveEdgeData &getEdgeById(const edge_id_t id) const override {
+        const NaiveEdgeRef getEdgeById(const edge_id_t id) const override {
             return edge_ordered_list[edge_id_to_index.at(id)];
         }
 
 
 
-        void setVertexName(const NaiveVertexData &t, const std::string &name) override {
+        void setVertexName(const NaiveVertexRef &t, const std::string &name) override {
             if (vertex_name_to_index.count(name)) {
                 VERBOSE_ASSERT(t.vector_index == vertex_name_to_index.at(name), "Cannot have two vertex with the same name");
             }
@@ -463,7 +533,7 @@ namespace models {
             vertex_ordered_list[t.vector_index].name = name;
         }
 
-        void setEdgeName(const NaiveEdgeData &c, const std::string &name) override {
+        void setEdgeName(const NaiveEdgeRef &c, const std::string &name) override {
             if (edge_name_to_index.count(name)) {
                 VERBOSE_ASSERT(c.vector_index == edge_name_to_index.at(name), "Cannot have two edges with the same name");
             }
@@ -473,17 +543,17 @@ namespace models {
         }
 
 
-        const NaiveVertexData &getVertexByName(const std::string &name) const override {
+        const NaiveVertexRef getVertexByName(const std::string &name) const override {
             return vertex_ordered_list[vertex_name_to_index.at(name)];
         }
 
 
-        const NaiveEdgeData &getEdgeByName(const std::string &name) const override {
+        const NaiveEdgeRef getEdgeByName(const std::string &name) const override {
             return edge_ordered_list[edge_name_to_index.at(name)];
         }
 
 
-        bool edgeExist(const NaiveVertexData &from, const NaiveVertexData &to) const override {
+        bool edgeExist(const NaiveVertexRef &from, const NaiveVertexRef &to) const override {
             for (auto idx : vertex_output_ordered_list.at(from.vector_index)) {
                 if (edge_ordered_list.at(idx).to == to.vector_index) return true;
             }
@@ -492,43 +562,43 @@ namespace models {
 
 
 #define add_edge_property(function_name,data_type,property_name) \
-        data_type get##function_name(const  NaiveEdgeData &e) const override { return  edge_ordered_list[e.vector_index]._##property_name; } \
-        void set##function_name(const NaiveEdgeData &e, const data_type v) override { edge_ordered_list[e.vector_index]._##property_name = v; }
+        data_type get##function_name(const  NaiveEdgeRef &e) const override { return  edge_ordered_list[e.vector_index]._##property_name; } \
+        void set##function_name(const NaiveEdgeRef &e, const data_type v) override { edge_ordered_list[e.vector_index]._##property_name = v; }
 #define add_vertex_property(function_name,data_type,property_name) \
-        data_type get##function_name(const  NaiveVertexData &e) const override { return  vertex_ordered_list[e.vector_index]._##property_name; } \
-        void set##function_name(const NaiveVertexData &e, const data_type v) override { vertex_ordered_list[e.vector_index]._##property_name = v; }
+        data_type get##function_name(const  NaiveVertexRef &e) const override { return  vertex_ordered_list[e.vector_index]._##property_name; } \
+        void set##function_name(const NaiveVertexRef &e, const data_type v) override { vertex_ordered_list[e.vector_index]._##property_name = v; }
 
 
-        add_edge_property(EdgeType, EDGE_TYPE, type)
-        add_vertex_property(VertexType, VERTEX_TYPE, type)
+        add_edge_property(EdgeType, DATAFLOW_EDGE_TYPE, type)
+        add_vertex_property(VertexType, DATAFLOW_VERTEX_TYPE, type)
         add_vertex_property(ReentrancyFactor, reentrancy_count_t, reentrancy)
         add_edge_property(Preload, token_quantity_t, preload)
         add_edge_property(TokenSize, token_size_t, token_size)
         add_vertex_property(PhasesQuantity, phase_quantity_t, phase_quantity)
         add_vertex_property(InitPhasesQuantity, phase_quantity_t, initial_phase_quantity)
 
-        phase_quantity_t getEdgeOutPhasesCount(const NaiveEdgeData &c) const override {
-            return getPhasesQuantity(vertex_ordered_list.at(c.to));
+        phase_quantity_t getEdgeOutPhasesCount(const NaiveEdgeRef &c) const override {
+            return getPhasesQuantity(vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).to));
         }
 
-        phase_quantity_t getEdgeOutInitPhasesCount(const NaiveEdgeData &c) const override {
-            return getInitPhasesQuantity(vertex_ordered_list.at(c.to));
+        phase_quantity_t getEdgeOutInitPhasesCount(const NaiveEdgeRef &c) const override {
+            return getInitPhasesQuantity(vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).to));
         }
 
-        phase_quantity_t getEdgeInPhasesCount(const NaiveEdgeData &c) const override {
-            return getPhasesQuantity(vertex_ordered_list.at(c.from));
+        phase_quantity_t getEdgeInPhasesCount(const NaiveEdgeRef &c) const override {
+            return getPhasesQuantity(vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).from));
         }
 
-        phase_quantity_t getEdgeInInitPhasesCount(const NaiveEdgeData &c) const override {
-            return getInitPhasesQuantity(vertex_ordered_list.at(c.from));
+        phase_quantity_t getEdgeInInitPhasesCount(const NaiveEdgeRef &c) const override {
+            return getInitPhasesQuantity(vertex_ordered_list.at(edge_ordered_list.at(c.vector_index).from));
         }
 
 
-        const std::vector<token_quantity_t> &getEdgeOutVector(const NaiveEdgeData &c) const override {
+        const std::vector<token_quantity_t> &getEdgeOutVector(const NaiveEdgeRef &c) const override {
             return edge_ordered_list.at(c.vector_index).out_vector;
         }
 
-        void setEdgeOutVector(const NaiveEdgeData &c, const std::vector<token_quantity_t> &l) override {
+        void setEdgeOutVector(const NaiveEdgeRef &c, const std::vector<token_quantity_t> &l) override {
             NaiveEdgeData& current_edge  = edge_ordered_list.at(c.vector_index);
             phase_quantity_t q = this->getPhasesQuantity(this->getEdgeTarget(c));
             TOKEN_UNIT total =std::accumulate(l.begin(),l.end(),0);
@@ -541,13 +611,13 @@ namespace models {
             }
         }
 
-        const std::vector<token_quantity_t> &getEdgeOutInitVector(const NaiveEdgeData &c) const override {
+        const std::vector<token_quantity_t> &getEdgeOutInitVector(const NaiveEdgeRef &c) const override {
             return edge_ordered_list.at(c.vector_index).out_init_vector;
         }
 
-        void setEdgeOutInitVector(const NaiveEdgeData &c, std::vector<token_quantity_t> &l) override {
+        void setEdgeOutInitVector(const NaiveEdgeRef &c, std::vector<token_quantity_t> &l) override {
             NaiveEdgeData& current_edge  = edge_ordered_list.at(c.vector_index);
-            phase_quantity_t q = this->getPhasesQuantity(this->getEdgeTarget(c));
+            phase_quantity_t q = this->getInitPhasesQuantity(this->getEdgeTarget(c));
             TOKEN_UNIT total =std::accumulate(l.begin(),l.end(),0);
             current_edge.out_vector = l;
             current_edge.out_total = total;
@@ -561,20 +631,20 @@ namespace models {
 
 
 
-        token_quantity_t getEdgeIn(const NaiveEdgeData c) const override {
+        token_quantity_t getEdgeIn(const NaiveEdgeRef c) const override {
             return edge_ordered_list[c.vector_index].in_total;
         }
 
-        token_quantity_t getEdgeOut(const NaiveEdgeData c) const override {
+        token_quantity_t getEdgeOut(const NaiveEdgeRef c) const override {
             return edge_ordered_list[c.vector_index].out_total;
         }
 
 
-        const std::vector<token_quantity_t> &getEdgeInVector(const NaiveEdgeData &c) const override {
+        const std::vector<token_quantity_t> &getEdgeInVector(const NaiveEdgeRef &c) const override {
             return edge_ordered_list[c.vector_index].in_vector;
         }
 
-        void setEdgeInVector(const NaiveEdgeData &c, const std::vector<token_quantity_t> &l) override {
+        void setEdgeInVector(const NaiveEdgeRef &c, const std::vector<token_quantity_t> &l) override {
             NaiveEdgeData& current_edge  = edge_ordered_list.at(c.vector_index);
             phase_quantity_t q = this->getPhasesQuantity(this->getEdgeSource(c));
             TOKEN_UNIT total =std::accumulate(l.begin(),l.end(),0);
@@ -587,24 +657,24 @@ namespace models {
             }
         }
 
-        const std::vector<token_quantity_t> &getEdgeInInitVector(const NaiveEdgeData &c) const override {
+        const std::vector<token_quantity_t> &getEdgeInInitVector(const NaiveEdgeRef &c) const override {
             return edge_ordered_list.at(c.vector_index).in_init_vector;
         }
 
-        void setEdgeInInitVector(const NaiveEdgeData &c, std::vector<token_quantity_t> &l) override {
+        void setEdgeInInitVector(const NaiveEdgeRef &c, std::vector<token_quantity_t> &l) override {
             NaiveEdgeData& current_edge  = edge_ordered_list.at(c.vector_index);
-            phase_quantity_t q = this->getPhasesQuantity(this->getEdgeTarget(c));
+            phase_quantity_t task_phase_quantity = this->getInitPhasesQuantity(this->getEdgeTarget(c));
             TOKEN_UNIT total =std::accumulate(l.begin(),l.end(),0);
             current_edge.out_vector = l;
             current_edge.out_total = total;
-            if (q > 0) {
-                VERBOSE_ASSERT_EQUALS(q, l.size());
+            if (task_phase_quantity > 0) {
+                VERBOSE_ASSERT_EQUALS(task_phase_quantity, l.size());
             } else {
                 this->setPhasesQuantity(this->getEdgeTarget(c),l.size());
             }
         }
 
-        token_quantity_t getEdgeOutPhase(const NaiveEdgeData &c, phase_index_t k) const override {
+        token_quantity_t getEdgeOutPhase(const NaiveEdgeRef &c, phase_index_t k) const override {
             if (k <= 0 ) {
                 return getEdgeOutInitPhase(c, k + getEdgeOutInitVector(c).size());
             }
@@ -615,88 +685,91 @@ namespace models {
         }
 
 
-        token_quantity_t getEdgeInPhase(const NaiveEdgeData &c, phase_index_t k) const override {
+        token_quantity_t getEdgeInPhase(const NaiveEdgeRef &c, phase_index_t k) const override {
             if (k <= 0 ) {
                 return getEdgeInInitPhase(c, k + getEdgeInInitVector(c).size());
             }
             return edge_ordered_list.at(c.vector_index).in_vector[k-1];
         }
 
-        token_quantity_t getEdgeInInitPhase(const NaiveEdgeData &c, phase_index_t k) const override {
+        token_quantity_t getEdgeInInitPhase(const NaiveEdgeRef &c, phase_index_t k) const override {
             return getEdgeInInitVector(c).at(k-1);
         }
-        token_quantity_t getEdgeOutInitPhase(const NaiveEdgeData &c, phase_index_t k) const override {
+        token_quantity_t getEdgeOutInitPhase(const NaiveEdgeRef &c, phase_index_t k) const override {
             return getEdgeOutInitVector(c).at(k-1);
         }
 
 
-        const NaiveEdgeData &getInputEdgeByPortName(const NaiveVertexData &t, const std::string &name) const override {
-            for (const NaiveEdgeData &e : getInputEdges(t)) {
-                if (e._output_port_name == name) {
+        const NaiveEdgeRef getInputEdgeByPortName(const NaiveVertexRef &t, const std::string &name) const override {
+            for (const NaiveEdgeRef &e : getInputEdges(t)) {
+                if (edge_ordered_list.at(e.vector_index)._output_port_name == name) {
                     return edge_ordered_list[e.vector_index];
                 }
             }
             VERBOSE_FAILURE();
         }
 
-        const NaiveEdgeData &getOutputEdgeByPortName(const NaiveVertexData &t, const std::string &name) const override {
-            for (const NaiveEdgeData &e : getOutputEdges(t)) {
-                if (e._input_port_name == name) {
+        const NaiveEdgeRef getOutputEdgeByPortName(const NaiveVertexRef &t, const std::string &name) const override {
+            for (const NaiveEdgeRef &e : getOutputEdges(t)) {
+                if (edge_ordered_list.at(e.vector_index)._input_port_name == name) {
                     return edge_ordered_list[e.vector_index];
                 }
             }
             VERBOSE_FAILURE();
         }
 
-        const std::string& getEdgeOutputPortName(const NaiveEdgeData &e) const override{
+        const std::string& getEdgeOutputPortName(const NaiveEdgeRef &e) const override{
             return edge_ordered_list[e.vector_index].
                     _output_port_name;
         }
-        void setEdgeOutputPortName(const NaiveEdgeData &e, const std::string& v) override{
+        void setEdgeOutputPortName(const NaiveEdgeRef &e, const std::string& v) override{
             edge_ordered_list[e.vector_index].
                     _output_port_name = v;
         }
-        const std::string& getEdgeInputPortName(const NaiveEdgeData &e) const override{
+        const std::string& getEdgeInputPortName(const NaiveEdgeRef &e) const override{
             return edge_ordered_list[e.vector_index].
                     _input_port_name;
         }
-        void setEdgeInputPortName(const NaiveEdgeData &e, const std::string& v) override{
+        void setEdgeInputPortName(const NaiveEdgeRef &e, const std::string& v) override{
             edge_ordered_list[e.vector_index].
                     _input_port_name = v;
         }
 
-        time_unit_t getVertexTotalDuration(const NaiveVertexData &t) const override {
+        time_unit_t getVertexTotalDuration(const NaiveVertexRef &t) const override {
             auto l = getVertexVectorDuration(t);
             return std::accumulate(l.begin(),l.end(),0); // TODO: cache me
         }
 
 
 
-        time_unit_t getVertexDuration(const NaiveVertexData &t, phase_index_t k) const override {
+        time_unit_t getVertexDuration(const NaiveVertexRef &t, phase_index_t k) const override {
             return getVertexVectorDuration(t).at(k);
         }
 
-        time_unit_t getVertexInitDuration(const NaiveVertexData &t, phase_index_t k) const override {
+        time_unit_t getVertexInitDuration(const NaiveVertexRef &t, phase_index_t k) const override {
             return getVertexInitVectorDuration(t).at(k);
         }
 
-        const std::vector<time_unit_t>& getVertexVectorDuration(const NaiveVertexData &e) const override {
+        const std::vector<time_unit_t>& getVertexVectorDuration(const NaiveVertexRef &e) const override {
             return vertex_ordered_list.at(e.vector_index)._phase_durations;
         }
 
-        void setVertexVectorDuration(const NaiveVertexData &e, const std::vector<time_unit_t>& v) override {
+        void setVertexVectorDuration(const NaiveVertexRef &e, const std::vector<time_unit_t>& v) override {
             vertex_ordered_list[e.vector_index]._phase_durations = v;
         }
 
-        const std::vector<time_unit_t>& getVertexInitVectorDuration(const NaiveVertexData &e) const override {
+        const std::vector<time_unit_t>& getVertexInitVectorDuration(const NaiveVertexRef &e) const override {
             return vertex_ordered_list.at(e.vector_index)._init_phase_durations;
         }
 
-        void setVertexInitVectorDuration(const NaiveVertexData &e, const std::vector<time_unit_t>& v) override {
+        void setVertexInitVectorDuration(const NaiveVertexRef &e, const std::vector<time_unit_t>& v) override {
             vertex_ordered_list[e.vector_index]._init_phase_durations = v;
         }
 
 
+        void setNi(const NaiveVertexRef t, const execution_count_t Ni) override {
+            vertex_ordered_list.at(t.vector_index)._repetition_vector = Ni;
+        }
 
 
 

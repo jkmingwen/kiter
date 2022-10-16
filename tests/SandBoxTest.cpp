@@ -31,7 +31,7 @@ BOOST_FIXTURE_TEST_SUITE( sand_box_test_suite, WITH_VERBOSE)
         range_t<incremental_iterator<models::NaiveVertexRef>> vertices = {incremental_iterator<models::NaiveVertexRef>(ref1, 3), incremental_iterator<models::NaiveVertexRef>()};
 
     for (auto i : vertices) {
-        std::cout << "pouet " << i.vector_index << std::endl;
+        std::cout << "pouet " << i << std::endl;
     }
 
 

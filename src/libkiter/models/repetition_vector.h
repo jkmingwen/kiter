@@ -14,10 +14,12 @@
 
 namespace models {
 	class Dataflow;
+        class NaiveDataflow;
 }
 
 bool computeRepetitionVector(models::Dataflow *from);
 
+bool generic_repetition_vector (models::NaiveDataflow *from) ;
 
 
 #endif /* REPETITION_VECTOR_H_ */
