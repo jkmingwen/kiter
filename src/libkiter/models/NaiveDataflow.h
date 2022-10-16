@@ -210,7 +210,7 @@ namespace models {
             {ForEachEdge (&g, e) {
                     auto src = this->getVertexById(g.getVertexId(g.getEdgeSource(e)));
                     auto tgt = this->getVertexById(g.getVertexId(g.getEdgeTarget(e)));
-                auto new_edge = this->addEdge(src,tgt, g.getEdgeId(e), g.getEdgeName(e));
+                    auto new_edge = this->addEdge(src,tgt, g.getEdgeId(e), g.getEdgeName(e));
                     this->setEdgeInputPortName(new_edge,g.getEdgeInputPortName(e));
                     this->setEdgeOutputPortName(new_edge,g.getEdgeOutputPortName(e));
                     this->setPreload(new_edge,g.getPreload(e));

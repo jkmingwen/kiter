@@ -152,9 +152,9 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
 
 #include <models/NaiveDataflow.h>
 
-bool generic_calc_fractions_connected_actors(const models::NaiveDataflow *from, std::map<models::NaiveVertexRef,EXEC_COUNT_FRACT> &fractions, models::NaiveVertexRef a, TOKEN_UNIT ratePeriod) {
+bool generic_calc_fractions_connected_actors(const models::NaiveDataflow *from, std::map<models::vertex_id_t ,EXEC_COUNT_FRACT> &fractions, models::NaiveVertexRef a, TOKEN_UNIT ratePeriod) {
 
-    EXEC_COUNT_FRACT fractionA = fractions.at(a);
+    EXEC_COUNT_FRACT fractionA = fractions.at(from->getVertexId(a));
 
     // Inconsistent graph?
     if (fractionA == EXEC_COUNT_FRACT(0,1)) {
@@ -196,7 +196,7 @@ bool generic_calc_fractions_connected_actors(const models::NaiveDataflow *from, 
                 EXEC_COUNT_FRACT fractionB = fractionA * ratioAB;
 
                 // Known firing rate for 'b'
-                EXEC_COUNT_FRACT knownFractionB = fractions[b];
+                EXEC_COUNT_FRACT knownFractionB = fractions[from->getVertexId(b)];
 
                 // Compare known and calculated firing rate of 'b'
                 if (knownFractionB != EXEC_COUNT_FRACT(0)
@@ -209,13 +209,13 @@ bool generic_calc_fractions_connected_actors(const models::NaiveDataflow *from, 
                 else if (knownFractionB == EXEC_COUNT_FRACT(0,1))
                 {
                     // Set the firing rate of actor 'b'
-                    fractions[b] = fractionB;
+                    fractions[from->getVertexId(b)] = fractionB;
 
                     // Calculate firing rate for all actors connnected to 'b'
                     generic_calc_fractions_connected_actors(from, fractions, b, ratePeriod);
 
                     // Is graph inconsistent?
-                    if (fractions[b] == EXEC_COUNT_FRACT(0,1))
+                    if (fractions[from->getVertexId(b)] == EXEC_COUNT_FRACT(0,1))
                     {
                         VERBOSE_ERROR("(fractions[b] == EXEC_COUNT_FRACT(0,1))");
                         return false;
@@ -226,14 +226,14 @@ bool generic_calc_fractions_connected_actors(const models::NaiveDataflow *from, 
 }
 
 
-std::map<models::NaiveVertexRef,EXEC_COUNT> generic_calc_repetition_vector(models::NaiveDataflow *from,std::map<models::NaiveVertexRef,EXEC_COUNT_FRACT>& fractions, EXEC_COUNT ratePeriod) {
+std::map<models::vertex_id_t ,EXEC_COUNT> generic_calc_repetition_vector(models::NaiveDataflow *from,std::map<models::vertex_id_t ,EXEC_COUNT_FRACT>& fractions, EXEC_COUNT ratePeriod) {
 
-    std::map<models::NaiveVertexRef,EXEC_COUNT> repetitionVector;
+    std::map<models::vertex_id_t ,EXEC_COUNT> repetitionVector;
     EXEC_COUNT l = 1;
 
     // Find lowest common multiple (lcm) of all denominators
     for (auto v : from->getVertices()) {
-            l = std::lcm(l,fractions[v].denominator());
+            l = std::lcm(l,fractions[from->getVertexId(v)].denominator());
     }
 
     // Zero vector?
@@ -245,7 +245,7 @@ std::map<models::NaiveVertexRef,EXEC_COUNT> generic_calc_repetition_vector(model
 
     // Calculate non-zero repetition vector
     for (auto v : from->getVertices()) {
-            repetitionVector[v] = (fractions[v].numerator() * l) /  fractions[v].denominator();
+            repetitionVector[from->getVertexId(v)] = (fractions[from->getVertexId(v)].numerator() * l) /  fractions[from->getVertexId(v)].denominator();
     }
 
 
@@ -253,30 +253,30 @@ std::map<models::NaiveVertexRef,EXEC_COUNT> generic_calc_repetition_vector(model
     EXEC_COUNT g = repetitionVector.begin()->second;
 
     for (auto v : from->getVertices()) {
-            g = std::gcd(g, repetitionVector[v]);
+            g = std::gcd(g, repetitionVector[from->getVertexId(v)]);
     }
 
     VERBOSE_ASSERT(g > 0, TXT_NEVER_HAPPEND);
 
     // Minimize the repetition vector using the gcd
     for (auto v : from->getVertices()) {
-            repetitionVector[v] = repetitionVector[v] / g;
+            repetitionVector[from->getVertexId(v)] = repetitionVector[from->getVertexId(v)] / g;
     }
 
     for (auto v : from->getVertices()) {
-            repetitionVector[v] = repetitionVector[v] * ratePeriod;
+            repetitionVector[from->getVertexId(v)] = repetitionVector[from->getVertexId(v)] * ratePeriod;
     }
 
 #ifdef CRAZY
     // Workaround for repetition vector issues
     EXEC_COUNT subrate = ratePeriod;
     for (auto v : from->getVertices()) {
-            subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
+            subrate =  std::gcd(subrate, repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v));
     }
     VERBOSE_INFO("SubRate = " << subrate);
 
     for (auto v : from->getVertices()) {
-            repetitionVector[v] = repetitionVector[v] / subrate;
+            repetitionVector[from->getVertexId(v)] = repetitionVector[from->getVertexId(v)] / subrate;
     }
 #endif
 
@@ -323,7 +323,7 @@ bool computeRepetitionVector(models::Dataflow *from) {
 
 bool generic_repetition_vector (models::NaiveDataflow *from) {
 
-    std::map<models::NaiveVertexRef,EXEC_COUNT_FRACT> fractions;
+    std::map<models::vertex_id_t ,EXEC_COUNT_FRACT> fractions;
 
     for (auto v : from->getVertices()) {
         fractions[from->getVertexId(v)] = EXEC_COUNT_FRACT(0, 1);
@@ -354,8 +354,8 @@ bool generic_repetition_vector (models::NaiveDataflow *from) {
     auto repetitionVector =  generic_calc_repetition_vector(from,fractions, ratePeriod);
     VERBOSE_INFO("Repetition Vector done");
     for (auto v : from->getVertices()) {
-            from->setNi(v,repetitionVector[v]);
-            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+            from->setNi(v,repetitionVector[from->getVertexId(v)]);
+            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[from->getVertexId(v)] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
     }
 
     return true;
