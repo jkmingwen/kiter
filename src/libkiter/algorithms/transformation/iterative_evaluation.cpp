@@ -18,11 +18,15 @@ std::set<std::string> binaryOps = {
 };
 
 std::set<std::string> castOps = {
-  "int", "float"
+  "int", "float", "abs"
 };
 
 std::set<std::string> trigOps = {
   "cos", "sin", "tan"
+};
+
+std::set<std::string> nonEvalOps = { // operators that can't be evaluated
+  "select2"
 };
 
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
@@ -90,10 +94,18 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               changeDetected = true;
               break;
             } else if (trigOps.find(opName) != trigOps.end() && inputArgs.size() == 1) {
-              VERBOSE_INFO("\tEvaluating cast operator: " << opName);
+              VERBOSE_INFO("\tEvaluating trig operator: " << opName);
               VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
               applyResult(dataflow_prime, v, evalTrig(opName, inputArgs[0]));
               changeDetected = true;
+              break;
+            } else if (nonEvalOps.find(opName) != nonEvalOps.end()) {
+              VERBOSE_INFO("\tNon-evaluated operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: ");
+              for (auto &i : inputArgs) {
+                VERBOSE_INFO("\t\t  " << i);
+              }
+              changeDetected = false; // no change as actors aren't removed
               break;
             } else if (opName.find("OUTPUT") != std::string::npos) {
               VERBOSE_INFO("\tAll inputs to output are constants");
@@ -238,6 +250,8 @@ std::string algorithms::evalCast(std::string op, std::string arg) {
     return std::to_string(std::stoi(arg));
   } else if (op == "float") {
     return std::to_string(std::stof(arg));
+  } else if (op == "abs") {
+    return std::to_string(std::abs(std::stof(arg)));
   } else {
     std::cerr << "Specified cast " << op << " not currently supported" << std::endl;
     return NULL;
