@@ -615,8 +615,7 @@ std::string printers::GenerateSigGraphDOT    (models::Dataflow* const  dataflow 
   returnStream << "//   use this dot file with circo for an optimal visu\n" << std::endl;
   returnStream << "digraph G {\n" << std::endl;
   returnStream <<  "    rankdir=\"LR\";" << std::endl;
-  returnStream <<  "  graph [label=\"" << ""
-               << "\",splines=curved]\n";
+  returnStream <<  "  graph [label=\"\"]\n";
   returnStream << "  edge [len=1.5,fontsize=8,labelsize=4,color=grey]" << std::endl;
 
   returnStream << std::endl;
@@ -650,7 +649,7 @@ std::string printers::GenerateSigGraphDOT    (models::Dataflow* const  dataflow 
       returnStream << "  t_" << edgeInId << " -> t_" << edgeOutId << " [";
       std::string bl = dataflow->getEdgeTypeStr(c) ;
       ARRAY_INDEX eid = dataflow->getEdgeId(c) ;
-      returnStream << " xlabel=\"" ;
+      returnStream << " label=\"" ;
       if (!simple) {
           returnStream	  << bl
                           << "\nid:" << eid
