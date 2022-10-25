@@ -27,7 +27,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
   std::ofstream outputFile;
   VHDLCircuit circuit;
-  circuit.setName(dataflow->getGraphName());
+  std::string circuitName = dataflow->getGraphName();
+  // replace prohibited characters with underscores
+  std::replace(circuitName.begin(), circuitName.end(), '-', '_');
+  std::replace(circuitName.begin(), circuitName.end(), '.', '_');
+  circuit.setName(circuitName);
+  std::cout << "circuit name: " << circuitName << std::endl;
 
   // check for specified directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
