@@ -463,7 +463,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       vhdlOutput << generateConstComponents(constOutputs) << std::endl;
     }
   }
-  // no need to generate buffer component if there's only one operator between the input/output
+  // no need to generate buffer component if there aren't any operators between the input/output
   bool delayDetected = false;
   for (auto &conn : circuit.getConnectionMap()) {
     if (conn.second.getInitialTokenCount()) {
@@ -530,15 +530,11 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   for (auto &connection : circuit.getConnectionMap()) {
     if (isBufferless) {
       if (connection.second.getInitialTokenCount()) { // account for different signal names when channel has initial token count
-        hasInputDelay = true;
-        hasOutputDelay = true;
         isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
                                connection.second.getSrcPort()) != inSignalNames.end();
         isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
                                 connection.second.getDstPort()) != outSignalNames.end();
       } else {
-        hasInputDelay = false;
-        hasOutputDelay = false;
         isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
                                connection.second.getName()) != inSignalNames.end();
         isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
@@ -557,9 +553,11 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
       signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
       if (isBufferless && !noOperators) {
-        if (hasInputDelay) {
+        if (connection.second.getInitialTokenCount()) {
+          hasInputDelay = true;
           circuit.addInputPort(connection.second.getDstPort(), signalNames);
         } else {
+          hasInputDelay = false;
           circuit.addInputPort(connection.second.getName(), signalNames);
         }
       } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
@@ -579,9 +577,11 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
       signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
       if (isBufferless && !noOperators) {
-        if (hasOutputDelay) {
+        if (connection.second.getInitialTokenCount()) {
+          hasOutputDelay = true;
           circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
         } else {
+          hasOutputDelay = false;
           circuit.addOutputPort(connection.second.getName(), signalNames);
         }
         circuit.addOutputPort(connection.second.getName(), signalNames);
