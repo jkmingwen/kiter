@@ -157,10 +157,16 @@ std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(std::string sr
 std::string VHDLCircuit::getComponentFullName(std::string partialName) {
   std::vector<std::string> matchingNames;
   for (auto& comp : this->componentMap) {
-    std::size_t found = comp.second.getName().find(partialName);
-    if (found == 0) {
+    std::size_t found = comp.second.getName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
+    if ((found == 0) or (comp.second.getName() == partialName)) {
       matchingNames.push_back(comp.second.getName());
     }
+  }
+
+    VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns" << "'" << matchingNames[0] << "'");
+
+  if(matchingNames.size() != 1) {
+      VERBOSE_ERROR("Wrong name count for '" << partialName << "': " << commons::toString(matchingNames));
   }
   assert(matchingNames.size() == 1);
   return matchingNames.front();
