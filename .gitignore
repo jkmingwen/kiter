@@ -74,3 +74,6 @@ tools/sdf3*/
 __pycache__
 /ascent_pictures/
 /*.tex
+
+.idea/
+cmake-build-debug/
