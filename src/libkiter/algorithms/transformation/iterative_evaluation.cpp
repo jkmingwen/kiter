@@ -48,7 +48,10 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
   outputName = dirName + outputName; // set output file path
 
   VERBOSE_INFO("Beginning iterative evaluation...");
-  models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
+  // Bruno Edit: I removed the cached dataflow, now directly output to the original one
+  // models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
+  models::Dataflow* dataflow_prime = dataflow;
+
   while (changeDetected) {
     VERBOSE_INFO("");
     VERBOSE_INFO("Starting new iteration of iterative evaluation:")
@@ -128,7 +131,8 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
     VERBOSE_INFO("Simplified graph:" << outputName);
     printers::writeSDF3File(outputName, dataflow_prime);
   } else {
-    std::cout << printers::generateSDF3XML(dataflow_prime) << std::endl;
+    // Edit Bruno: Leave it to the system
+    // std::cout << printers::generateSDF3XML(dataflow_prime) << std::endl;
   }
 }
 
