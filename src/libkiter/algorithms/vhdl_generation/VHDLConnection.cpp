@@ -13,7 +13,7 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   connectionName = dataflow->getEdgeName(e);
   id = dataflow->getEdgeId(e);
   dataType = "float"; // assuming only data type is float for now
-  bufferSize = dataflow->getPreload(e) + 10; // TODO replace with buffer size from XML
+  bufferSize = dataflow->getPreload(e) + 1; // NOTE +1 of initial tokens is likely minimum buffer size; can replace with buffer size from XML after DSE in future
   initialTokenCount = dataflow->getPreload(e);
   dataTypeWidth = 34; // assume data type is float (using FloPoCo float representation)
   srcPort = dataflow->getEdgeInputPortName(e);
