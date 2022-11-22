@@ -12,12 +12,51 @@
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
+#include <algorithms/transformation/singleOutput.h>
 
 // for signal name retrieval
 #define VALID 0
 #define READY 1
 #define DATA 2
 
+VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferless) {
+
+    VHDLCircuit circuit;
+    std::string circuitName = dataflow->getGraphName();
+    // replace prohibited characters with underscores
+    std::replace(circuitName.begin(), circuitName.end(), '-', '_');
+    std::replace(circuitName.begin(), circuitName.end(), '.', '_');
+    circuit.setName(circuitName);
+    std::cout << "circuit name: " << circuitName << std::endl;
+
+
+
+    // populate circuit object with components and connections based on dataflow
+    {ForEachVertex(dataflow, actor) {
+            VHDLComponent newComp(dataflow, actor);
+            circuit.addComponent(newComp);
+        }}
+    {ForEachEdge(dataflow, edge) {
+            VHDLConnection newConn(dataflow, edge);
+            circuit.addConnection(newConn);
+        }}
+    for (auto &comp : circuit.getComponentMap()) { // convert any int constant values that are supplying fp components into fp representation
+        if (comp.second.isConst() && comp.second.getDataType() == "int") {
+            std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
+            for (auto &i : dstComps) {
+                if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
+                    VERBOSE_WARNING("The destination component, " << i.getName()
+                                                                  << " has mixed input types; casting the binary representation of the value provided by "
+                                                                  << comp.second.getName() << " as a float");
+                    circuit.convConstIntToFloat(comp.first);
+                }
+            }
+        }
+    }
+
+    return circuit;
+
+}
 void algorithms::generateVHDL(models::Dataflow* const dataflow,
                               parameters_list_t param_list) {
   bool outputDirSpecified = false;
@@ -26,13 +65,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
   std::string componentDir = dirName + "/components/";
   std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
   std::ofstream outputFile;
-  VHDLCircuit circuit;
-  std::string circuitName = dataflow->getGraphName();
-  // replace prohibited characters with underscores
-  std::replace(circuitName.begin(), circuitName.end(), '-', '_');
-  std::replace(circuitName.begin(), circuitName.end(), '.', '_');
-  circuit.setName(circuitName);
-  std::cout << "circuit name: " << circuitName << std::endl;
 
   // check for specified directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
@@ -69,49 +101,65 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
               << std::endl;
   }
 
-  // populate circuit object with components and connections based on dataflow
-  {ForEachVertex(dataflow, actor) {
-      VHDLComponent newComp(dataflow, actor);
-      circuit.addComponent(newComp);
-    }}
-  {ForEachEdge(dataflow, edge) {
-      VHDLConnection newConn(dataflow, edge);
-      circuit.addConnection(newConn);
-    }}
-  for (auto &comp : circuit.getComponentMap()) { // convert any int constant values that are supplying fp components into fp representation
-    if (comp.second.isConst() && comp.second.getDataType() == "int") {
-      std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
-      for (auto &i : dstComps) {
-        if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
-          VERBOSE_WARNING("The destination component, " << i.getName()
-                          << " has mixed input types; casting the binary representation of the value provided by "
-                          << comp.second.getName() << " as a float");
-          circuit.convConstIntToFloat(comp.first);
+    VHDLCircuit tmp = generateCircuitObject (dataflow, bufferless);
+
+//    VERBOSE_INFO("actors to single " << commons::toString(tmp.getMultiOutActors()));
+//    std::string actors = "";
+//    bool first = true;
+//    for (std::string actorName : tmp.getMultiOutActors()) {
+//        if (!first)  actors += "," ;
+//        actors += actorName;
+//        first = false;
+//    }
+
+
+//    std::stringstream nameList;
+//    std::string delimiter = ",";
+//    size_t elemNumber = 0;
+//    for (auto& name : tmp.getMultiOutActors()) {
+//        elemNumber++;
+//        if (elemNumber >= tmp.getMultiOutActors().size()) {
+//            delimiter = "";
+//        }
+//        nameList << name << delimiter;
+//    }
+//
+//    VERBOSE_INFO("name list is: " << nameList.str());
+//    parameters_list_t parameters;
+//    parameters["name"] = nameList.str();
+//    algorithms::transformation::singleOutput(dataflow, parameters);
+
+    for (std::string actorName : tmp.getMultiOutActors()) {
+        parameters_list_t parameters;
+        parameters["name"] = actorName;
+        VERBOSE_INFO("singleOutput actor " << actorName);
+        try {
+            algorithms::transformation::singleOutput(dataflow, parameters);
+        } catch (...) {
+            VERBOSE_WARNING("actor missing!");
         }
-      }
     }
-  }
-  if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-    generateOperators(circuit, componentDir, referenceDir, bufferless);
-    generateCircuit(circuit, dirName, bufferless);
-    std::cout << circuit.printStatus() << std::endl;
-    if (circuit.getMultiOutActors().size()) {
-      std::cout << "Actors with abnormal number of outputs detected:\n"
-                << "\t1. Edit and run generated bash script "
-                << "(merge_outs_" << dataflow->getGraphName() << ".sh)\n"
-                << "\t2. Re-run VHDL generation on the resulting SDF (" << dataflow->getGraphName()
-                << "_merged.xml)" << std::endl;
-      generateMergingScript(circuit.getMultiOutActors(), dataflow->getGraphName(),
-                            dirName, referenceDir);
+
+    VERBOSE_INFO("Regenerate Circuit");
+
+    VHDLCircuit merged_circuit = generateCircuitObject (dataflow, bufferless);
+    VERBOSE_ASSERT (merged_circuit.getMultiOutActors().size() == 0, "Error while add Dups") ;
+    VERBOSE_INFO("Output Circuit");
+
+
+    if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
+        generateMergingScript(tmp.getMultiOutActors(), dataflow->getGraphName(),
+                              dirName, referenceDir);
+        generateOperators(merged_circuit, componentDir, referenceDir, bufferless);
+        generateCircuit(merged_circuit, dirName, bufferless);
+
+        std::cout << merged_circuit.printStatus() << std::endl;
+        std::cout << "VHDL files generated in: " << dirName << std::endl;
+    } else {
+        std::cout << merged_circuit.printStatus() << std::endl;
     }
-    std::cout << "VHDL files generated in: " << dirName << std::endl;
-  } else {
-    std::cout << circuit.printStatus() << std::endl;
-    if (circuit.getMultiOutActors().size()) {
-      std::cout << "Actors with abnormal number of outputs detected; would need to run merging script" << std::endl;
-    }
-  }
-  return;
+
+    return;
 }
 
 void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
