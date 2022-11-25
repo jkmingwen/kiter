@@ -174,71 +174,71 @@ void VHDLComponent::convConstIntToFloat() {
   this->binaryValue = fpcFloatPrefix + floatToBinary(this->fpValue);
 }
 
-Vertex VHDLComponent::getActor() {
+Vertex VHDLComponent::getActor() const {
   return this->actor;
 }
 
-std::string VHDLComponent::getName() {
+std::string VHDLComponent::getName() const {
   return this->componentName;
 }
 
-ARRAY_INDEX VHDLComponent::getId() {
+ARRAY_INDEX VHDLComponent::getId() const {
   return this->id;
 }
 
-int VHDLComponent::getLifespan() {
+int VHDLComponent::getLifespan() const {
   return this->lifespan;
 }
 
-std::vector<std::string> VHDLComponent::getInputPorts() {
+const std::vector<std::string>& VHDLComponent::getInputPorts() const{
   return this->inputPorts;
 }
 
-std::vector<std::string> VHDLComponent::getOutputPorts() {
+const std::vector<std::string>& VHDLComponent::getOutputPorts() const{
   return this->outputPorts;
 }
 
-std::vector<std::string> VHDLComponent::getInputEdges() {
+const std::vector<std::string>& VHDLComponent::getInputEdges() const{
   return this->inputEdges;
 }
 
-std::vector<std::string> VHDLComponent::getOutputEdges() {
+const std::vector<std::string>& VHDLComponent::getOutputEdges() const{
   return this->outputEdges;
 }
 
-std::string VHDLComponent::getType() {
+std::string VHDLComponent::getType() const{
   return this->componentType;
 }
 
-std::string VHDLComponent::getFPCName() {
+std::string VHDLComponent::getFPCName() const{
   return this->FPCName;
 }
 
-std::vector<std::string> VHDLComponent::getArgOrder() {
+const std::vector<std::string>& VHDLComponent::getArgOrder() const{
   return this->argOrder;
 }
 
-std::map<std::string, int> VHDLComponent::getInputTypes() {
+const std::map<std::string, int>& VHDLComponent::getInputTypes() const{
   return this->inputTypes;
 }
 
-std::map<std::string, int> VHDLComponent::getOutputTypes() {
+const std::map<std::string, int>& VHDLComponent::getOutputTypes() const{
   return this->outputTypes;
 }
 
-std::string VHDLComponent::getDataType() {
+std::string VHDLComponent::getDataType() const{
   return this->dataType;
 }
 
-bool VHDLComponent::isConst() {
+bool VHDLComponent::isConst() const {
   return this->isConstVal;
 }
 
-bool VHDLComponent::hasMixedType() {
+bool VHDLComponent::hasMixedType() const{
   return this->isMixedType;
 }
 
-std::string VHDLComponent::getBinaryValue() {
+std::string VHDLComponent::getBinaryValue() const{
   return this->binaryValue;
 }
 
@@ -258,7 +258,7 @@ void VHDLComponent::setFPCName(std::string newName) {
   this->FPCName = newName;
 }
 
-std::string VHDLComponent::printStatus() {
+std::string VHDLComponent::printStatus() const  {
   std::stringstream outputStream;
 
   outputStream << "\nActor " << this->getName() << " (ID: " << this->getId()

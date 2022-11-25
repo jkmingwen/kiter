@@ -26,26 +26,27 @@ class VHDLCircuit {
   void addConnection(VHDLConnection newConnect);
   void addInputPort(std::string portName, std::vector<std::string> signalNames);
   void addOutputPort(std::string portName, std::vector<std::string> signalNames);
-  std::string printStatus();
-  std::map<Vertex, VHDLComponent> getComponentMap();
-  std::map<Edge, VHDLConnection> getConnectionMap();
-  std::map<std::string, int> getOperatorMap();
-  std::map<std::string, std::vector<std::string>> getInputPorts();
-  std::map<std::string, std::vector<std::string>> getOutputPorts();
-  int getOperatorCount(std::string op);
-  VHDLComponent getFirstComponentByType(std::string op);
-  std::string getName();
-  int getOperatorLifespan(std::string opType);
-  std::string getOperatorFPCName(std::string opType);
-  std::map<int, int> getNumOutputs(std::string opType);
+
+  std::string printStatus() const ;
+  const std::map<Vertex, VHDLComponent>& getComponentMap()const;
+  const std::map<Edge, VHDLConnection>& getConnectionMap()const;
+  const std::map<std::string, int>& getOperatorMap()const;
+  const std::map<std::string, std::vector<std::string>>& getInputPorts()const;
+  const std::map<std::string, std::vector<std::string>>& getOutputPorts()const;
+  int getOperatorCount(std::string op)const;
+  VHDLComponent getFirstComponentByType(std::string op)const;
+  std::string getName()const;
+  int getOperatorLifespan(std::string opType)const;
+  std::string getOperatorFPCName(std::string opType)const;
+  std::map<int, int> getNumOutputs(std::string opType)const;
   std::vector<std::string> getConnectionNameFromComponents(std::string srcActorName,
-                                                           std::string dstActorName);
+                                                           std::string dstActorName)const;
   std::vector<std::string> getDstPortBetweenComponents(std::string srcActorName,
-                                                       std::string dstActorName);
-  std::string getComponentFullName(std::string partialName);
+                                                       std::string dstActorName)const;
+  std::string getComponentFullName(std::string partialName)const;
   void setName(std::string);
-  std::vector<std::string> getMultiOutActors();
-  std::vector<VHDLComponent> getDstComponents(VHDLComponent srcComponent);
+  std::vector<std::string> getMultiOutActors()const;
+  std::vector<VHDLComponent> getDstComponents(VHDLComponent srcComponent)const;
   void convConstIntToFloat(Vertex v);
 
  private:

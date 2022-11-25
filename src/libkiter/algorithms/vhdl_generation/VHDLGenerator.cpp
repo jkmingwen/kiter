@@ -7,7 +7,7 @@
 
 #include <set>
 #include <string>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "VHDLGenerator.h"
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
@@ -27,7 +27,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
     std::replace(circuitName.begin(), circuitName.end(), '-', '_');
     std::replace(circuitName.begin(), circuitName.end(), '.', '_');
     circuit.setName(circuitName);
-    std::cout << "circuit name: " << circuitName << std::endl;
+    VERBOSE_DEBUG( "circuit name: " << circuitName );
 
 
 
@@ -57,90 +57,75 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
     return circuit;
 
 }
-void algorithms::generateVHDL(models::Dataflow* const dataflow,
-                              parameters_list_t param_list) {
+void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_t param_list) {
+
+
   bool outputDirSpecified = false;
   bool bufferless = false;
-  std::string dirName = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
-  std::string componentDir = dirName + "/components/";
+
+  std::string topDir      = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
+  std::string componentDir = topDir + "/components/";
   std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
-  std::ofstream outputFile;
 
   // check for specified directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
+
     outputDirSpecified = true;
-    dirName = param_list["OUTPUT_DIR"] + "/";
-    std::cout << "Generating VHDL code in " << dirName << std::endl;
-    componentDir = dirName + "/components/";
-    if (!boost::filesystem::is_directory(dirName)) {
-      boost::filesystem::create_directory(dirName);
-    }
-    boost::filesystem::create_directory(componentDir);
+      topDir = param_list["OUTPUT_DIR"] + "/";
+    componentDir = topDir + "/components/";
+    VERBOSE_INFO("Update output directory to " << topDir);
+
+    // This creates both topDir and componentDir directories
+    std::filesystem::create_directories(componentDir);
   } else {
-    std::cout << "Use '-p OUTPUT_DIR=dirName' to set output directory"
-              << std::endl;
+      VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory.");
   }
 
   // check if FIFO buffers should be generated
   if (param_list.find("BUFFERLESS") != param_list.end()) {
-    bufferless = true;
+      VERBOSE_INFO("Bufferless mode activated");
+      bufferless = true;
   } else {
-    std::cout << "Use '-p BUFFERLESS=t' to generate VHDL without FIFO buffers"
-              << std::endl;
+      VERBOSE_INFO("Please use '-p BUFFERLESS=t'  to generate VHDL without FIFO buffers");
   }
 
   // define location of VHDL generation reference files
   if (param_list.find("REFERENCE_DIR") != param_list.end()) {
     referenceDir = param_list["REFERENCE_DIR"] + "/";
-    std::cout << "Looking in " << referenceDir
-              << " for VHDL generation reference files" << std::endl;
+      VERBOSE_INFO("Update reference directory to " << referenceDir);
   } else {
-    std::cout << "Looking in " << referenceDir
-              << " for VHDL generation reference files by default" << std::endl;
-    std::cout << "\tUse -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory"
-              << std::endl;
+      VERBOSE_INFO("Default reference in used, you can use -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory");
   }
 
-    VHDLCircuit tmp = generateCircuitObject (dataflow, bufferless);
 
-//    VERBOSE_INFO("actors to single " << commons::toString(tmp.getMultiOutActors()));
-//    std::string actors = "";
-//    bool first = true;
-//    for (std::string actorName : tmp.getMultiOutActors()) {
-//        if (!first)  actors += "," ;
-//        actors += actorName;
-//        first = false;
-//    }
+  VERBOSE_INFO ("Looking in " << referenceDir << " for VHDL generation reference files");
 
+  if (!std::filesystem::is_directory(referenceDir)) {
+      VERBOSE_ERROR("Reference directory is not found.");
+      VERBOSE_FAILURE();
+  }
 
-//    std::stringstream nameList;
-//    std::string delimiter = ",";
-//    size_t elemNumber = 0;
-//    for (auto& name : tmp.getMultiOutActors()) {
-//        elemNumber++;
-//        if (elemNumber >= tmp.getMultiOutActors().size()) {
-//            delimiter = "";
-//        }
-//        nameList << name << delimiter;
-//    }
-//
-//    VERBOSE_INFO("name list is: " << nameList.str());
-//    parameters_list_t parameters;
-//    parameters["name"] = nameList.str();
-//    algorithms::transformation::singleOutput(dataflow, parameters);
+    VHDLCircuit tmp = generateCircuitObject(dataflow, bufferless);
+    while (tmp.getMultiOutActors().size() > 0) {
 
-    for (std::string actorName : tmp.getMultiOutActors()) {
-        parameters_list_t parameters;
-        parameters["name"] = actorName;
-        VERBOSE_INFO("singleOutput actor " << actorName);
-        try {
-            algorithms::transformation::singleOutput(dataflow, parameters);
-        } catch (...) {
-            VERBOSE_WARNING("actor missing!");
+        VERBOSE_INFO("getMultiOutActors is not empty");
+
+        /*  This block remove multiIO actors and replace them  */
+        for (std::string actorName: tmp.getMultiOutActors()) {
+            parameters_list_t parameters;
+            parameters["name"] = actorName;
+            VERBOSE_INFO("singleOutput actor " << actorName);
+            try {
+                algorithms::transformation::singleOutput(dataflow, parameters);
+            } catch (...) {
+                VERBOSE_WARNING("actor missing!");
+            }
         }
+
+        VERBOSE_INFO("Regenerate Circuit");
+        tmp = generateCircuitObject(dataflow, bufferless);
     }
 
-    VERBOSE_INFO("Regenerate Circuit");
 
     VHDLCircuit merged_circuit = generateCircuitObject (dataflow, bufferless);
     VERBOSE_ASSERT (merged_circuit.getMultiOutActors().size() == 0, "Error while add Dups") ;
@@ -148,27 +133,24 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow,
 
 
     if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-        generateMergingScript(tmp.getMultiOutActors(), dataflow->getGraphName(),
-                              dirName, referenceDir);
         generateOperators(merged_circuit, componentDir, referenceDir, bufferless);
-        generateCircuit(merged_circuit, dirName, bufferless);
-        generateTopWrapper(merged_circuit, dirName);
-
-        std::cout << merged_circuit.printStatus() << std::endl;
-        std::cout << "VHDL files generated in: " << dirName << std::endl;
+        generateCircuit(merged_circuit, topDir, bufferless);
+        generateTopWrapper(merged_circuit, topDir);
+        VERBOSE_INFO("VHDL files generated in: " << topDir);
     } else {
-        std::cout << merged_circuit.printStatus() << std::endl;
+        VERBOSE_WARNING("No VHDL files created.");
     }
 
-    return;
+    std::cout << merged_circuit.printStatus() << std::endl;
+
 }
 
-void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
+void algorithms::generateOperators(const VHDLCircuit &circuit, std::string compDir,
                                    std::string compRefDir, bool isBufferless) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
-    std::cout << "Generate VHDL component file for " << op.first << std::endl;
+      VERBOSE_DEBUG( "Generate VHDL component file for " << op.first );
     // track number of outputs for cases where operator can have different number of outputs
     std::map<int, int> outputCounts;
     outputCounts = circuit.getNumOutputs(op.first);
@@ -244,8 +226,7 @@ void algorithms::generateConstOperator(std::string compDir,
       compReference.close();
       vhdlOutput.close();
     } else {
-      std::cout << "Reference file for " << operatorFileName
-                << " does not exist/not found!" << std::endl; // TODO turn into assert
+        VERBOSE_ERROR("Reference file for " << operatorFileName << " does not exist/not found!"); // TODO turn into assert
     }
   }
 }
@@ -267,8 +248,7 @@ void algorithms::generateConversionOperators(VHDLComponent comp, std::string com
     operatorRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Reference file for " << comp.getType()
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
   }
   // generate AXI interface for conversion operator
   vhdlOutput.open(compDir + axiInterfaceName + ".vhd");
@@ -280,8 +260,7 @@ void algorithms::generateConversionOperators(VHDLComponent comp, std::string com
     interfaceRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Reference file for " << comp.getType()
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
   }
 }
 
@@ -302,8 +281,7 @@ void algorithms::generateSplitterOperators(std::string compDir, std::string refe
       compReference.close();
       vhdlOutput.close();
     } else {
-      std::cout << "Reference file for " << refFileName
-                << " does not exist/not found!" << std::endl; // TODO turn into assert
+        VERBOSE_ERROR ("Reference file for " << refFileName  << " does not exist/not found!"); // TODO turn into assert
     }
   }
 
@@ -331,8 +309,9 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
     operatorRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Reference file for " << comp.getType()
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+
+      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
+
   }
   std::string axmType = "";
   if (comp.getType() == "select2") {
@@ -361,8 +340,9 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
     interfaceRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "AXI interface file for " << "flopoco_axi_interface_" + opInputCount
-              << ".vhd does not exist/not found!" << std::endl; // TODO turn into assert
+
+      VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_" + opInputCount  << ".vhd does not exist/not found!"); // TODO turn into assert
+
   }
 }
 
@@ -386,8 +366,9 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
     operatorRef.close();
     vhdlOutput.close();
   } else {
-    std::cout << "Reference file for " << comp.getType()
-              << " does not exist/not found!" << std::endl; // TODO turn into assert
+
+      VERBOSE_ERROR ("Reference file for " <<  comp.getType()  << " does not exist/not found!"); // TODO turn into assert
+
   }
 }
 
@@ -435,8 +416,11 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
       operatorRef.close();
       vhdlOutput.close();
     } else {
-      std::cout << "Reference file for " << "flopoco_axi_interface_" + opInputCount
-                << ".vhd does not exist/not found!" << std::endl;
+
+
+        VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_" + opInputCount
+                                             << ".vhd does not exist/not found!"); // TODO turn into assert
+
     }
   }
 }
@@ -1189,8 +1173,10 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
       compReference.close();
       vhdlOutput.close();
     } else {
-      std::cout << "Reference file for " << component
-                << " does not exist/not found!" << std::endl; // TODO turn into assert
+
+        VERBOSE_ERROR( "Reference file for " << component
+                << " does not exist/not found!"); // TODO turn into assert
+
     }
   }
 }
@@ -1200,7 +1186,7 @@ std::vector<std::string> algorithms::generateSendSigNames(std::string srcPort,
   std::vector<std::string> sendSignals(3);
 
   if (circuit.getOutputPorts().count(srcPort)) {
-    sendSignals = circuit.getOutputPorts()[srcPort];
+    sendSignals = circuit.getOutputPorts().at(srcPort);
   } else {
     sendSignals[VALID] = srcPort + "_VALID";
     sendSignals[READY] = srcPort + "_READY";
@@ -1214,7 +1200,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
   std::vector<std::string> receiveSignals(3);
 
   if (circuit.getInputPorts().count(dstPort)) {
-    receiveSignals = circuit.getInputPorts()[dstPort];
+    receiveSignals = circuit.getInputPorts().at(dstPort);
   } else {
     receiveSignals[VALID] = dstPort + "_VALID";
     receiveSignals[READY] = dstPort + "_READY";
@@ -1510,8 +1496,8 @@ void algorithms::generateMergingScript(std::vector<std::string> actorNames, std:
     }
     bashOutput.close();
   } else {
-      std::cout << "Reference file for " << scriptName
-                << " does not exist/not found!" << std::endl; // TODO turn into assert
+      VERBOSE_ERROR( "Reference file for " << scriptName
+                << " does not exist/not found!" ); // TODO turn into assert
   }
 }
 

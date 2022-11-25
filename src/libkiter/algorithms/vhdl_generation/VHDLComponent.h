@@ -22,29 +22,29 @@ class VHDLComponent {
   // VHDLComponent();
   VHDLComponent(models::Dataflow* const dataflow, Vertex a); // actor must be associated to a graph
 
-  Vertex getActor();
-  std::string getName();
-  ARRAY_INDEX getId();
-  std::vector<std::string> getInputPorts();
-  std::vector<std::string> getOutputPorts();
-  std::vector<std::string> getInputEdges();
-  std::vector<std::string> getOutputEdges();
-  std::string getType();
-  int getLifespan();
-  std::string getBinaryValue();
-  std::string getFPCName();
-  std::vector<std::string> getArgOrder();
-  std::map<std::string, int> getInputTypes();
-  std::map<std::string, int> getOutputTypes();
-  std::string getDataType();
-  bool isConst();
-  bool hasMixedType();
+  Vertex getActor()const;
+  std::string getName()const;
+  ARRAY_INDEX getId()const;
+  const std::vector<std::string>& getInputPorts()const;
+  const std::vector<std::string>& getOutputPorts()const;
+  const std::vector<std::string>& getInputEdges()const;
+  const std::vector<std::string>& getOutputEdges()const;
+  std::string getType()const;
+  int getLifespan()const;
+  std::string getBinaryValue()const;
+  std::string getFPCName()const;
+  const std::vector<std::string>& getArgOrder() const;
+  const std::map<std::string, int>& getInputTypes() const;
+  const std::map<std::string, int>& getOutputTypes() const;
+  std::string getDataType() const ;
+  bool isConst() const;
+  bool hasMixedType() const;
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   void setLifespan(int lifespan);
   void setFPCName(std::string newName);
   void convConstIntToFloat();
-  std::string printStatus();
+  std::string printStatus() const ;
 
  private:
   Vertex actor;

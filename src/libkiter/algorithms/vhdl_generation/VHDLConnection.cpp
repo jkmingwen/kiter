@@ -20,39 +20,39 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   dstPort = dataflow->getEdgeOutputPortName(e);
 }
 
-Edge VHDLConnection::getEdge() {
+Edge VHDLConnection::getEdge()  const{
   return this->edge;
 }
 
-std::string VHDLConnection::getName() {
+std::string VHDLConnection::getName()  const{
   return this->connectionName;
 }
 
-ARRAY_INDEX VHDLConnection::getId() {
+ARRAY_INDEX VHDLConnection::getId()  const{
   return this->id;
 }
 
-std::string VHDLConnection::getSrcPort() {
+std::string VHDLConnection::getSrcPort()  const{
   return this->srcPort;
 }
 
-std::string VHDLConnection::getDstPort() {
+std::string VHDLConnection::getDstPort()  const{
   return this->dstPort;
 }
 
-std::string VHDLConnection::getType() {
+std::string VHDLConnection::getType()  const{
   return this->dataType;
 }
 
-TOKEN_UNIT VHDLConnection::getBufferSize() {
+TOKEN_UNIT VHDLConnection::getBufferSize()  const{
   return this->bufferSize;
 }
 
-TOKEN_UNIT VHDLConnection::getInitialTokenCount() {
+TOKEN_UNIT VHDLConnection::getInitialTokenCount()  const{
   return this->initialTokenCount;
 }
 
-int VHDLConnection::getTypeWidth() {
+int VHDLConnection::getTypeWidth()  const{
   return this->dataTypeWidth;
 }
 
@@ -73,7 +73,7 @@ void VHDLConnection::setInitialTokenCount(TOKEN_UNIT count) {
   this->initialTokenCount = count;
 }
 
-std::string VHDLConnection::printStatus() {
+std::string VHDLConnection::printStatus()  const{
   std::stringstream outputStream;
 
   outputStream << "\nEdge " << this->getName() << " (ID: " << this->getId()
