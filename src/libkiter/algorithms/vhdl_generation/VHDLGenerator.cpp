@@ -508,8 +508,8 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
       delayDetected = true;
     }
   }
-  if (delayDetected &&
-      (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) {
+  if ((delayDetected &&
+      (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) || !isBufferless) { // we will always have FIFO buffers if the bufferless flag is false
     vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
   }
   // Track top-level input and output signals
