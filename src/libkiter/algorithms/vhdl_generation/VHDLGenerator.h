@@ -22,7 +22,7 @@ namespace algorithms {
   enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
-  void generateOperators(const VHDLCircuit &circuit, std::string componentDirectory,
+  void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
                          std::string refDirectory, bool isBufferless);
   void generateConstOperator(std::string compDir, std::string referenceDir,
                              std::map<int, int> outputCounts);

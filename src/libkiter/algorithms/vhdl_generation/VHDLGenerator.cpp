@@ -143,7 +143,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
 }
 
-void algorithms::generateOperators(const VHDLCircuit &circuit, std::string compDir,
+void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
                                    std::string compRefDir, bool isBufferless) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   // Generate VHDL files for individual components
@@ -338,9 +338,8 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
     interfaceRef.close();
     vhdlOutput.close();
   } else {
-
-      VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_" + opInputCount  << ".vhd does not exist/not found!"); // TODO turn into assert
-
+     VERBOSE_ERROR ("AXI interface file for " << "flopoco_axi_interface_" + opInputCount
+              << ".vhd does not exist/not found!"); // TODO turn into assert
   }
 }
 
