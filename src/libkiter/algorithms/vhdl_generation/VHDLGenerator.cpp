@@ -126,22 +126,20 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         tmp = generateCircuitObject(dataflow, bufferless);
     }
 
-
-    VHDLCircuit merged_circuit = generateCircuitObject (dataflow, bufferless);
-    VERBOSE_ASSERT (merged_circuit.getMultiOutActors().size() == 0, "Error while add Dups") ;
+    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
     VERBOSE_INFO("Output Circuit");
 
 
     if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-        generateOperators(merged_circuit, componentDir, referenceDir, bufferless);
-        generateCircuit(merged_circuit, topDir, bufferless);
-        generateTopWrapper(merged_circuit, topDir);
+        generateOperators(tmp, componentDir, referenceDir, bufferless);
+        generateCircuit(tmp, topDir, bufferless);
+        generateTopWrapper(tmp, topDir);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
     } else {
         VERBOSE_WARNING("No VHDL files created.");
     }
 
-    std::cout << merged_circuit.printStatus() << std::endl;
+    std::cout << tmp.printStatus() << std::endl;
 
 }
 
