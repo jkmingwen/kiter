@@ -1,11 +1,11 @@
 --------------------------------------------------------------------------------
---                     Fix2FP_0_33_S_8_23_F400_uid2_LZOCS
---                (LZOCShifter_33_to_34_counting_64_F400_uid4)
+--                     Fix2FP_0_33_S_8_23_F125_uid2_LZOCS
+--                (LZOCShifter_33_to_34_counting_64_F125_uid4)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Florent de Dinechin, Bogdan Pasca (2007)
 --------------------------------------------------------------------------------
--- Pipeline depth: 3 cycles
+-- Pipeline depth: 1 cycles
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -15,23 +15,23 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2_LZOCS is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2_LZOCS is
+   port ( clk, rst : in std_logic;
           I : in  std_logic_vector(32 downto 0);
           OZb : in  std_logic;
           Count : out  std_logic_vector(5 downto 0);
           O : out  std_logic_vector(33 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2_LZOCS is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2_LZOCS is
 signal level6 :  std_logic_vector(32 downto 0);
-signal sozb, sozb_d1, sozb_d2, sozb_d3 :  std_logic;
-signal count5, count5_d1, count5_d2, count5_d3 :  std_logic;
-signal level5, level5_d1 :  std_logic_vector(32 downto 0);
-signal count4, count4_d1, count4_d2 :  std_logic;
+signal sozb, sozb_d1 :  std_logic;
+signal count5, count5_d1 :  std_logic;
+signal level5 :  std_logic_vector(32 downto 0);
+signal count4, count4_d1 :  std_logic;
 signal level4 :  std_logic_vector(32 downto 0);
-signal count3, count3_d1, count3_d2 :  std_logic;
-signal level3, level3_d1 :  std_logic_vector(32 downto 0);
+signal count3, count3_d1 :  std_logic;
+signal level3 :  std_logic_vector(32 downto 0);
 signal count2, count2_d1 :  std_logic;
 signal level2 :  std_logic_vector(32 downto 0);
 signal count1, count1_d1 :  std_logic;
@@ -44,17 +44,9 @@ begin
       begin
          if clk'event and clk = '1' then
             sozb_d1 <=  sozb;
-            sozb_d2 <=  sozb_d1;
-            sozb_d3 <=  sozb_d2;
             count5_d1 <=  count5;
-            count5_d2 <=  count5_d1;
-            count5_d3 <=  count5_d2;
-            level5_d1 <=  level5;
             count4_d1 <=  count4;
-            count4_d2 <=  count4_d1;
             count3_d1 <=  count3;
-            count3_d2 <=  count3_d1;
-            level3_d1 <=  level3;
             count2_d1 <=  count2;
             count1_d1 <=  count1;
             level1_d1 <=  level1;
@@ -65,32 +57,30 @@ begin
    count5<= '1' when level6(32 downto 1) = (32 downto 1=>sozb) else '0';
    level5<= level6(32 downto 0) when count5='0' else level6(0 downto 0) & (31 downto 0 => '0');
 
-   ----------------Synchro barrier, entering cycle 1----------------
-   count4<= '1' when level5_d1(32 downto 17) = (32 downto 17=>sozb_d1) else '0';
-   level4<= level5_d1(32 downto 0) when count4='0' else level5_d1(16 downto 0) & (15 downto 0 => '0');
+   count4<= '1' when level5(32 downto 17) = (32 downto 17=>sozb) else '0';
+   level4<= level5(32 downto 0) when count4='0' else level5(16 downto 0) & (15 downto 0 => '0');
 
-   count3<= '1' when level4(32 downto 25) = (32 downto 25=>sozb_d1) else '0';
+   count3<= '1' when level4(32 downto 25) = (32 downto 25=>sozb) else '0';
    level3<= level4(32 downto 0) when count3='0' else level4(24 downto 0) & (7 downto 0 => '0');
 
-   ----------------Synchro barrier, entering cycle 2----------------
-   count2<= '1' when level3_d1(32 downto 29) = (32 downto 29=>sozb_d2) else '0';
-   level2<= level3_d1(32 downto 0) when count2='0' else level3_d1(28 downto 0) & (3 downto 0 => '0');
+   count2<= '1' when level3(32 downto 29) = (32 downto 29=>sozb) else '0';
+   level2<= level3(32 downto 0) when count2='0' else level3(28 downto 0) & (3 downto 0 => '0');
 
-   count1<= '1' when level2(32 downto 31) = (32 downto 31=>sozb_d2) else '0';
+   count1<= '1' when level2(32 downto 31) = (32 downto 31=>sozb) else '0';
    level1<= level2(32 downto 0) when count1='0' else level2(30 downto 0) & (1 downto 0 => '0');
 
-   ----------------Synchro barrier, entering cycle 3----------------
-   count0<= '1' when level1_d1(32 downto 32) = (32 downto 32=>sozb_d3) else '0';
+   ----------------Synchro barrier, entering cycle 1----------------
+   count0<= '1' when level1_d1(32 downto 32) = (32 downto 32=>sozb_d1) else '0';
    level0<= level1_d1(32 downto 0) when count0='0' else level1_d1(31 downto 0) & (0 downto 0 => '0');
 
    O <= level0&(0 downto 0 => '0');
-   sCount <= count5_d3 & count4_d2 & count3_d2 & count2_d1 & count1_d1 & count0;
+   sCount <= count5_d1 & count4_d1 & count3_d1 & count2_d1 & count1_d1 & count0;
    Count <= sCount;
 end architecture;
 
 --------------------------------------------------------------------------------
---               Fix2FP_0_33_S_8_23_F400_uid2exponentConversion
---                           (IntAdder_8_f400_uid8)
+--               Fix2FP_0_33_S_8_23_F125_uid2exponentConversion
+--                           (IntAdder_8_f125_uid8)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -105,15 +95,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2exponentConversion is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2exponentConversion is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(7 downto 0);
           Y : in  std_logic_vector(7 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(7 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2exponentConversion is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2exponentConversion is
 begin
    process(clk)
       begin
@@ -125,8 +115,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                 Fix2FP_0_33_S_8_23_F400_uid2exponentFinal
---                          (IntAdder_9_f400_uid16)
+--                 Fix2FP_0_33_S_8_23_F125_uid2exponentFinal
+--                          (IntAdder_9_f125_uid16)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -141,15 +131,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2exponentFinal is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2exponentFinal is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(8 downto 0);
           Y : in  std_logic_vector(8 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(8 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2exponentFinal is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2exponentFinal is
 begin
    process(clk)
       begin
@@ -161,8 +151,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                     Fix2FP_0_33_S_8_23_F400_uid2zeroD
---                          (IntAdder_34_f400_uid24)
+--                     Fix2FP_0_33_S_8_23_F125_uid2zeroD
+--                          (IntAdder_34_f125_uid24)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -177,15 +167,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2zeroD is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2zeroD is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(33 downto 0);
           Y : in  std_logic_vector(33 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(33 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2zeroD is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2zeroD is
 begin
    process(clk)
       begin
@@ -197,8 +187,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                Fix2FP_0_33_S_8_23_F400_uid2_fractionConvert
---                          (IntAdder_35_f400_uid32)
+--                Fix2FP_0_33_S_8_23_F125_uid2_fractionConvert
+--                          (IntAdder_35_f125_uid32)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -213,15 +203,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2_fractionConvert is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2_fractionConvert is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(34 downto 0);
           Y : in  std_logic_vector(34 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(34 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2_fractionConvert is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2_fractionConvert is
 begin
    process(clk)
       begin
@@ -233,8 +223,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                Fix2FP_0_33_S_8_23_F400_uid2_oneSubstracter
---                          (IntAdder_9_f400_uid40)
+--                Fix2FP_0_33_S_8_23_F125_uid2_oneSubstracter
+--                          (IntAdder_9_f125_uid40)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -249,15 +239,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2_oneSubstracter is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2_oneSubstracter is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(8 downto 0);
           Y : in  std_logic_vector(8 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(8 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2_oneSubstracter is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2_oneSubstracter is
 begin
    process(clk)
       begin
@@ -269,8 +259,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                 Fix2FP_0_33_S_8_23_F400_uid2roundingAdder
---                          (IntAdder_32_f400_uid48)
+--                 Fix2FP_0_33_S_8_23_F125_uid2roundingAdder
+--                          (IntAdder_32_f125_uid48)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Bogdan Pasca, Florent de Dinechin (2008-2010)
@@ -285,15 +275,15 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2roundingAdder is
-   port ( clk : in std_logic;
+entity Fix2FP_0_33_S_8_23_F125_uid2roundingAdder is
+   port ( clk, rst : in std_logic;
           X : in  std_logic_vector(31 downto 0);
           Y : in  std_logic_vector(31 downto 0);
           Cin : in  std_logic;
           R : out  std_logic_vector(31 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2roundingAdder is
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2roundingAdder is
 begin
    process(clk)
       begin
@@ -305,12 +295,12 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                        Fix2FP_0_33_S_8_23_F400_uid2
+--                        Fix2FP_0_33_S_8_23_F125_uid2
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Radu Tudoran, Bogdan Pasca (2009)
 --------------------------------------------------------------------------------
--- Pipeline depth: 4 cycles
+-- Pipeline depth: 1 cycles
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -320,63 +310,63 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_33_S_8_23_F400_uid2 is
-   port ( clk : in std_logic;
-          X : in  std_logic_vector(33 downto 0);
-          R : out  std_logic_vector(8+23+2 downto 0)   );
+entity Fix2FP_0_33_S_8_23_F125_uid2 is
+   port ( clk, rst : in std_logic;
+          I : in  std_logic_vector(33 downto 0);
+          O : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_33_S_8_23_F400_uid2 is
-   component Fix2FP_0_33_S_8_23_F400_uid2_LZOCS is
-      port ( clk : in std_logic;
+architecture arch of Fix2FP_0_33_S_8_23_F125_uid2 is
+   component Fix2FP_0_33_S_8_23_F125_uid2_LZOCS is
+      port ( clk, rst : in std_logic;
              I : in  std_logic_vector(32 downto 0);
              OZb : in  std_logic;
              Count : out  std_logic_vector(5 downto 0);
              O : out  std_logic_vector(33 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2exponentConversion is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2exponentConversion is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(7 downto 0);
              Y : in  std_logic_vector(7 downto 0);
              Cin : in  std_logic;
              R : out  std_logic_vector(7 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2exponentFinal is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2exponentFinal is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(8 downto 0);
              Y : in  std_logic_vector(8 downto 0);
              Cin : in  std_logic;
              R : out  std_logic_vector(8 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2zeroD is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2zeroD is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(33 downto 0);
              Y : in  std_logic_vector(33 downto 0);
              Cin : in  std_logic;
              R : out  std_logic_vector(33 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2_fractionConvert is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2_fractionConvert is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(34 downto 0);
              Y : in  std_logic_vector(34 downto 0);
              Cin : in  std_logic;
              R : out  std_logic_vector(34 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2_oneSubstracter is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2_oneSubstracter is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(8 downto 0);
              Y : in  std_logic_vector(8 downto 0);
              Cin : in  std_logic;
              R : out  std_logic_vector(8 downto 0)   );
    end component;
 
-   component Fix2FP_0_33_S_8_23_F400_uid2roundingAdder is
-      port ( clk : in std_logic;
+   component Fix2FP_0_33_S_8_23_F125_uid2roundingAdder is
+      port ( clk, rst : in std_logic;
              X : in  std_logic_vector(31 downto 0);
              Y : in  std_logic_vector(31 downto 0);
              Cin : in  std_logic;
@@ -384,7 +374,7 @@ architecture arch of Fix2FP_0_33_S_8_23_F400_uid2 is
    end component;
 
 signal input :  std_logic_vector(33 downto 0);
-signal signSignal, signSignal_d1, signSignal_d2, signSignal_d3, signSignal_d4 :  std_logic;
+signal signSignal, signSignal_d1 :  std_logic;
 signal passedInput :  std_logic_vector(33 downto 0);
 signal input2LZOC :  std_logic_vector(32 downto 0);
 signal temporalExponent :  std_logic_vector(5 downto 0);
@@ -399,26 +389,26 @@ signal biassSignalBit :  std_logic_vector(8 downto 0);
 signal partialConvertedExponentBit :  std_logic_vector(8 downto 0);
 signal sign4OU :  std_logic;
 signal convertedExponentBit :  std_logic_vector(8 downto 0);
-signal convertedExponent, convertedExponent_d1 :  std_logic_vector(7 downto 0);
-signal underflowSignal, underflowSignal_d1 :  std_logic;
-signal overflowSignal, overflowSignal_d1 :  std_logic;
+signal convertedExponent :  std_logic_vector(7 downto 0);
+signal underflowSignal :  std_logic;
+signal overflowSignal :  std_logic;
 signal minusOne4ZD :  std_logic_vector(33 downto 0);
 signal zeroDS :  std_logic_vector(33 downto 0);
-signal zeroInput, zeroInput_d1, zeroInput_d2, zeroInput_d3, zeroInput_d4 :  std_logic;
+signal zeroInput, zeroInput_d1 :  std_logic;
 signal sign2vector :  std_logic_vector(33 downto 0);
 signal tempConvert :  std_logic_vector(33 downto 0);
 signal tempConvert0 :  std_logic_vector(34 downto 0);
 signal tempPaddingAddSign :  std_logic_vector(33 downto 0);
 signal tempAddSign :  std_logic_vector(34 downto 0);
 signal tempFractionResult :  std_logic_vector(34 downto 0);
-signal correctingExponent, correctingExponent_d1 :  std_logic;
-signal fractionConverted, fractionConverted_d1 :  std_logic_vector(22 downto 0);
-signal firstBitofRest, firstBitofRest_d1 :  std_logic;
-signal lastBitOfFraction, lastBitOfFraction_d1 :  std_logic;
+signal correctingExponent :  std_logic;
+signal fractionConverted :  std_logic_vector(22 downto 0);
+signal firstBitofRest :  std_logic;
+signal lastBitOfFraction :  std_logic;
 signal minusOne :  std_logic_vector(8 downto 0);
 signal fractionRemainder :  std_logic_vector(8 downto 0);
 signal zeroFractionResult :  std_logic_vector(8 downto 0);
-signal zeroRemainder, zeroRemainder_d1 :  std_logic;
+signal zeroRemainder :  std_logic;
 signal outputOfMux3 :  std_logic;
 signal outputOfMux2 :  std_logic;
 signal outputOfMux1 :  std_logic;
@@ -439,39 +429,27 @@ begin
       begin
          if clk'event and clk = '1' then
             signSignal_d1 <=  signSignal;
-            signSignal_d2 <=  signSignal_d1;
-            signSignal_d3 <=  signSignal_d2;
-            signSignal_d4 <=  signSignal_d3;
-            convertedExponent_d1 <=  convertedExponent;
-            underflowSignal_d1 <=  underflowSignal;
-            overflowSignal_d1 <=  overflowSignal;
             zeroInput_d1 <=  zeroInput;
-            zeroInput_d2 <=  zeroInput_d1;
-            zeroInput_d3 <=  zeroInput_d2;
-            zeroInput_d4 <=  zeroInput_d3;
-            correctingExponent_d1 <=  correctingExponent;
-            fractionConverted_d1 <=  fractionConverted;
-            firstBitofRest_d1 <=  firstBitofRest;
-            lastBitOfFraction_d1 <=  lastBitOfFraction;
-            zeroRemainder_d1 <=  zeroRemainder;
          end if;
       end process;
-   input <= X;
+   input <= I;
    signSignal<=input(33);
    passedInput<=input(33 downto 0);
    input2LZOC<=passedInput(32 downto 0);
-   LZOC_component: Fix2FP_0_33_S_8_23_F400_uid2_LZOCS  -- pipelineDepth=3 maxInDelay=0
+   LZOC_component: Fix2FP_0_33_S_8_23_F125_uid2_LZOCS  -- pipelineDepth=1 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Count => temporalExponent,
                  I => input2LZOC,
                  O => temporalFraction,
                  OZb => signSignal);
-   ----------------Synchro barrier, entering cycle 3----------------
+   ----------------Synchro barrier, entering cycle 1----------------
    MSB2Signal<=CONV_STD_LOGIC_VECTOR(32,8);
    zeroPadding4Exponent<=CONV_STD_LOGIC_VECTOR(0,2);
    valueExponent<= not (zeroPadding4Exponent & temporalExponent );
-   exponentConversion: Fix2FP_0_33_S_8_23_F400_uid2exponentConversion  -- pipelineDepth=0 maxInDelay=0
+   exponentConversion: Fix2FP_0_33_S_8_23_F125_uid2exponentConversion  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => '1',
                  R => partialConvertedExponent,
                  X => MSB2Signal,
@@ -481,8 +459,9 @@ begin
    biassSignalBit<='0' & biassSignal;
    partialConvertedExponentBit<= '0' & partialConvertedExponent;
    sign4OU<=partialConvertedExponent(7);
-   exponentFinal: Fix2FP_0_33_S_8_23_F400_uid2exponentFinal  -- pipelineDepth=0 maxInDelay=0
+   exponentFinal: Fix2FP_0_33_S_8_23_F125_uid2exponentFinal  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => '0',
                  R => convertedExponentBit,
                  X => partialConvertedExponentBit,
@@ -492,21 +471,23 @@ begin
    overflowSignal<= '1' when (sign4OU='0' and convertedExponentBit(8 downto 7) = "10" ) else '0' ;
    ---------------- cycle 0----------------
    minusOne4ZD<=CONV_STD_LOGIC_VECTOR(-1,34);
-   zeroD: Fix2FP_0_33_S_8_23_F400_uid2zeroD  -- pipelineDepth=0 maxInDelay=0
+   zeroD: Fix2FP_0_33_S_8_23_F125_uid2zeroD  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => '0',
                  R => zeroDS,
                  X => passedInput,
                  Y => minusOne4ZD);
    zeroInput<= zeroDS(33) and not(signSignal);
-   ---------------- cycle 3----------------
-   sign2vector<=(others => signSignal_d3);
+   ---------------- cycle 1----------------
+   sign2vector<=(others => signSignal_d1);
    tempConvert<= sign2vector xor temporalFraction;
    tempConvert0<= '0' & tempConvert;
    tempPaddingAddSign<=(others=>'0');
-   tempAddSign<=tempPaddingAddSign & signSignal_d3;
-   fractionConverter: Fix2FP_0_33_S_8_23_F400_uid2_fractionConvert  -- pipelineDepth=0 maxInDelay=0
+   tempAddSign<=tempPaddingAddSign & signSignal_d1;
+   fractionConverter: Fix2FP_0_33_S_8_23_F125_uid2_fractionConvert  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => '0',
                  R => tempFractionResult,
                  X => tempConvert0,
@@ -515,38 +496,39 @@ begin
    fractionConverted<=tempFractionResult(32 downto 10);
    firstBitofRest<=tempFractionResult(9);
    lastBitOfFraction<=tempFractionResult(10);
-   ---------------- cycle 3----------------
+   ---------------- cycle 1----------------
    minusOne<=CONV_STD_LOGIC_VECTOR(-1,9);
    fractionRemainder<= tempFractionResult(8 downto 0);
-   oneSubstracter: Fix2FP_0_33_S_8_23_F400_uid2_oneSubstracter  -- pipelineDepth=0 maxInDelay=0
+   oneSubstracter: Fix2FP_0_33_S_8_23_F125_uid2_oneSubstracter  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => '0',
                  R => zeroFractionResult,
                  X => fractionRemainder,
                  Y => minusOne);
    zeroRemainder<= not( not (tempFractionResult(8)) and zeroFractionResult(8));
-   ----------------Synchro barrier, entering cycle 4----------------
-   outputOfMux3<=lastBitOfFraction_d1;
-   with zeroRemainder_d1 select
+   outputOfMux3<=lastBitOfFraction;
+   with zeroRemainder select
    outputOfMux2 <= outputOfMux3 when '0', '1' when others;
-   with firstBitofRest_d1 select
+   with firstBitofRest select
    outputOfMux1 <= outputOfMux2 when '1', '0' when others;
-   possibleCorrector4Rounding<=CONV_STD_LOGIC_VECTOR(0,8) & correctingExponent_d1 & CONV_STD_LOGIC_VECTOR(0,23);
-   concatenationForRounding<= '0' & convertedExponent_d1 & fractionConverted_d1;
+   possibleCorrector4Rounding<=CONV_STD_LOGIC_VECTOR(0,8) & correctingExponent & CONV_STD_LOGIC_VECTOR(0,23);
+   concatenationForRounding<= '0' & convertedExponent & fractionConverted;
    testC<= concatenationForRounding;
    testR<= possibleCorrector4Rounding;
    testM<= outputOfMux1;
-   roundingAdder: Fix2FP_0_33_S_8_23_F400_uid2roundingAdder  -- pipelineDepth=0 maxInDelay=0
+   roundingAdder: Fix2FP_0_33_S_8_23_F125_uid2roundingAdder  -- pipelineDepth=0 maxInDelay=0
       port map ( clk  => clk,
+                 rst  => rst,
                  Cin => outputOfMux1,
                  R => roundedResult,
                  X => concatenationForRounding,
                  Y => possibleCorrector4Rounding);
    convertedExponentAfterRounding<= roundedResult(30 downto 23);
    convertedFractionAfterRounding<= roundedResult(22 downto 0);
-   MSBSelection<= overflowSignal_d1 or roundedResult(31);
-   LSBSelection<= not(underflowSignal_d1 and not(zeroInput_d4));
-   Selection<= MSBSelection & LSBSelection when zeroInput_d4='0' else "00";
+   MSBSelection<= overflowSignal or roundedResult(31);
+   LSBSelection<= not(underflowSignal and not(zeroInput_d1));
+   Selection<= MSBSelection & LSBSelection when zeroInput_d1='0' else "00";
    specialBits <= Selection;
-   R<= specialBits & signSignal_d4 & convertedExponentAfterRounding & convertedFractionAfterRounding;
+   O<= specialBits & signSignal_d1 & convertedExponentAfterRounding & convertedFractionAfterRounding;
 end architecture;
