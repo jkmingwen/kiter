@@ -350,7 +350,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
   std::string operatorRefDir = referenceDir + "/operators/";
   std::string operatorFileName = comp.getType() + "_flopoco";
   // workaround for diff hack
-  if (comp.getType() == "fp_diff" || comp.getType() == "int_diff") { // TODO separate operator type from name with data type
+  if (comp.getType() == "int_diff") { // TODO separate operator type from name with data type
     operatorFileName = comp.getDataType() + "_" + "add_flopoco"; // we use an add operator and negate the second argument
   }
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
@@ -389,7 +389,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     std::string fileContent;
     std::string operatorName = comp.getFPCName();
     std::string axmType = "";
-    if (comp.getType() == "fp_diff" || comp.getType() == "int_diff") {
+    if (comp.getType() == "int_diff") {
       axmType = "_negate";
     } else if (comp.getInputPorts().size() == 1) {
       axmType = "_one";
