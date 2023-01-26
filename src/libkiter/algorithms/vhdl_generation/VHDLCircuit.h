@@ -60,17 +60,17 @@ class VHDLCircuit {
      the generated AXI interface --- we track them using a predefined map where
      the keys are the "types" of the operators, which are taken from the actor
      types in the SDF file generated from the Faust application */
-  std::map<std::string, int> operatorLifespans = {{"fp_add", 14}, {"fp_prod", 3},
-                                                  {"fp_div", 29}, {"fp_sqrt", 22},
-                                                  {"fp_diff", 14}, {"fp_pow", 37},
+  std::map<std::string, int> operatorLifespans = {{"fp_add", 3}, {"fp_prod", 3},
+                                                  {"fp_div", 8}, {"fp_sqrt", 5},
+                                                  {"fp_diff", 14}, {"fp_pow", 8},
                                                   {"int_add", 1}, {"int_prod", 2},
                                                   {"float2int", 4}, {"int2float", 4}};
-  std::map<std::string, std::string> FPCNames = {{"fp_add", "FPAdd_8_23_F400_uid2"},
+  std::map<std::string, std::string> FPCNames = {{"fp_add", "FPAdd_8_23_F125_uid2"},
                                                  {"fp_prod", "FPMult_8_23_8_23_8_23_uid2_F400_uid3"},
-                                                 {"fp_div", "FPDiv_8_23_F400_uid2"},
+                                                 {"fp_div", "FPDiv_8_23_F125_uid2"},
                                                  {"fp_sqrt", "FPSqrt_8_23"},
                                                  {"fp_diff", "FPAdd_8_23_F400_uid2"},
-                                                 {"fp_pow", "FPPowr_8_23_F400_uid2"},
+                                                 {"fp_pow", "FPPowr_8_23_F125_uid2"},
                                                  {"int_add", "IntAdder_34_F400_uid2"},
                                                  {"int_diff", "IntAdder_34_F400_uid2"},
                                                  {"int_prod", "IntMultiplier_F400_uid2"},
