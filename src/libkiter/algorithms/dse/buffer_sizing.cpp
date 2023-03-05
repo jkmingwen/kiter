@@ -312,6 +312,11 @@ std::map<TOKEN_UNIT, std::vector<StorageDistribution>> StorageDistributionSet::g
   return reference_set;
 }
 
+std::pair<TOKEN_UNIT, TIME_UNIT> StorageDistributionSet::getThrDist() {
+  std::pair<TOKEN_UNIT, TIME_UNIT>res(this->p_max);
+  return res;
+}
+
 /* Removes the new storage distribution from the storage distribution set if:
    - there already is a storage distribution with equal distribution size with 
    throughput >= to new storage distribution's throughput

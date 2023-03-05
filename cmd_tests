@@ -1,0 +1,4 @@
+make -C Debug/ DSETest
+gdb ./Debug/bin/DSETest 
+* run 
+* bt 

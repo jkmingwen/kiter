@@ -65,6 +65,7 @@ public:
   StorageDistribution getNextDistribution() const;
   size_t getSize() const;
   std::map<TOKEN_UNIT, std::vector<StorageDistribution>> getSet();
+  std::pair<TOKEN_UNIT, TIME_UNIT> getThrDist();
   void minimizeStorageDistributions(StorageDistribution newDist);
   bool hasDistribution(TOKEN_UNIT dist_sz);
   bool hasStorageDistribution(StorageDistribution checkDist);
