@@ -25,6 +25,69 @@
 
 // #define WRITE_GRAPHS // uncomment to write dot files of explored graphs
 
+models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
+
+    models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
+
+    std::map<ARRAY_INDEX, ARRAY_INDEX> visited_vertices; // old index -> new index
+
+    VERBOSE_INFO("Critical edges found:");
+    for (Edge e_g : result.critical_edges){
+        
+        Vertex src_g = g->getEdgeSource(e_g);
+        Vertex trg_g = g->getEdgeTarget(e_g);
+        ARRAY_INDEX srcID = g->getVertexId(src_g);
+        ARRAY_INDEX trgID = g->getVertexId(trg_g);
+
+        // need to check if vertex visited because cycle will add same ID twice
+        bool src_visited = false, trg_visited = false;
+        for (std::pair<ARRAY_INDEX, ARRAY_INDEX> v : visited_vertices){
+            if (srcID == v.first) src_visited = true;
+            if (trgID == v.first) trg_visited = true;
+        }
+        
+        Vertex src_cc;
+        Vertex trg_cc; 
+        if (!src_visited){
+            src_cc = cc_g->addVertex(g->getVertexName(src_g)); // Adds ID as name
+            visited_vertices[srcID] = cc_g->getVertexId(src_cc);
+        } else {
+            src_cc = cc_g->getVertexById(visited_vertices[srcID]);
+        }
+        if (!trg_visited){
+            trg_cc = cc_g->addVertex(g->getVertexName(trg_g));
+            visited_vertices[trgID] = cc_g->getVertexId(trg_cc);
+        } else {
+            trg_cc = cc_g->getVertexById(visited_vertices[trgID]);
+        }
+
+        Edge e_cc = cc_g->addEdge(src_cc, trg_cc, g->getEdgeName(e_g));
+        cc_g->setPreload(e_cc, g->getPreload(e_g)); 
+        cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(e_g));
+        cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(e_g));
+
+        cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
+        cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
+        // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(*it), g->getEdgeName(*it));
+        
+        // VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
+        //                 << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
+        //                 << " | ChnQnt: " << cc_g->getPreload(e_cc));     
+        // VERBOSE_INFO("\tEdge(In)Phases: " << vec2string(cc_g->getEdgeInVector(e_cc)));    
+        // VERBOSE_INFO("\tEdge(Out)Phases: " << vec2string(cc_g->getEdgeOutVector(e_cc)));   
+        // VERBOSE_INFO("\tSrc(Name): " << cc_g->getVertexName(src_cc) 
+        //             << " -> Trg(Name): " << cc_g->getVertexName(trg_cc)); 
+        // VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(src_cc) 
+        //                 << "): " << vec2string(cc_g->getVertexPhaseDuration(src_cc)));    
+        // VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(trg_cc) 
+        //                 << "): " << vec2string(cc_g->getVertexPhaseDuration(trg_cc))); 
+
+    }
+
+    return cc_g;
+
+}
+
 // Compute and return period and causal dependency cycles of given dataflow graph
 kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::Dataflow* const dataflow, parameters_list_t parameters) {
   
@@ -819,59 +882,25 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
     /*
     1. Generate new dataflow of critical cycle
     2. Compute new buffer sizings for cc which exhibits local improvement
-      a) need compute function that returns graph rather than void
-
-    3. Ammend critical cycle in original dataflow with new buffer sizings
+    3. Ammend original StorageDist with new buffer sizings for CC only
     4. Add new critical cycle to search space
 
     */
-    models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
-    std::cout << "Critical edges found:" << std::endl;
-    for (std::set<Edge>::iterator it = (result.critical_edges).begin();
-         it != (result.critical_edges).end(); it++){
-        
-        Vertex src = cc_g->addVertex(dataflow_prime->getVertexId(dataflow_prime->getEdgeSource(*it)));
-        Vertex trg = cc_g->addVertex(dataflow_prime->getVertexId(dataflow_prime->getEdgeTarget(*it)));
-        Edge e = cc_g->addEdge(src, trg, dataflow_prime->getEdgeId(*it), dataflow_prime->getEdgeName(*it));
-        cc_g->setPreload(e, dataflow_prime->getPreload(*it)); 
-        std::cout << "Source -> Destination: " << src << " -> " << thrTargetSpecified << std::endl;
-        std::cout << "\tEdge id: " << dataflow_prime->getEdgeId(*it) << std::endl;
-        std::cout << "\tEdge name: " << dataflow_prime->getEdgeName(*it) << std::endl;
-        std::cout << "\tEdge Load: " << dataflow_prime->getPreload(*it) << std::endl;
-        
-
-    }
-    // does this take into account preload? it should because of usecase in dse
-    kperiodic_result_t  cc_res = compute_Kperiodic_throughput_and_cycles(cc_g, parameters);
+   // NEED TO EVALUATE IF dataflow_prime & results are correct params
+    models::Dataflow* cc_g = getCCGraph(dataflow_prime, result); //1
+    kperiodic_result_t  cc_res = compute_Kperiodic_throughput_and_cycles(cc_g, parameters);//2
     parameters_list_t new_params(parameters);
-    // STEP 1: Check next after; write unit test with jaime's function
-    // STEP 2: Check if max_set is returning the maximal set
-    new_params["THR"] = std::to_string(std::nextafter(cc_res.throughput, cc_res.throughput+1));
+    new_params["THR"] = std::to_string(cc_res.throughput+0.000001);
     new_params["MAX_SET"] = "t";
     
     StorageDistributionSet cc_new_sd = compute_Kperiodic_throughput_dse_sd(cc_g, new_params);
-    /* Iterate through new storage distribution to add to copy of dataflow_prime */
-    /* Add this graph to search space */
+    
+    // TODO: Append Graph SD with new CC sd
     for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_new_sd.getSet()){
-      /* Maybe check here if token size is same as previous one? better yet check if each
-      individual channel has actually grown */
+      
       for (StorageDistribution cc_sd : cc_pair.second){
-        StorageDistribution newDist(checkDist);
-        // update cc edge quantities and add to distribution
-        for (Edge it : cc_sd.getEdges()) {
-            if (dataflow_prime->getEdgeId(it) > dataflow->getEdgesCount()) {
-          VERBOSE_DSE("\tFound storage dependency in channel "
-                      << dataflow_prime->getEdgeName(it) << std::endl);
-          // make new modelled storage distribution according to storage dependencies
-          newDist.setChannelQuantity(it, cc_sd.getChannelQuantity(it));
-          VERBOSE_DSE("\t\tIncreasing channel size of "
-                      << dataflow_prime->getEdgeName(it) << " to "
-                      << newDist.getChannelQuantity(it) << std::endl);
-          VERBOSE_DSE("\tUpdating checklist with new storage distribution..."
-                      << std::endl);
-        }
-          
-        checklist.addStorageDistribution(newDist);
+                          
+        checklist.addStorageDistribution(cc_sd);
 
         }
       }
