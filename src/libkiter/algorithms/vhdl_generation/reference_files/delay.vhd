@@ -53,7 +53,7 @@ begin
       end if;
     end if;
 
-    if reset = '1' then
+    if reset = '0' then
       is_ready <= '0';
       is_trigger_store <= '0';
       local_counter <= 0;

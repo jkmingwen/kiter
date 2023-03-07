@@ -42,7 +42,7 @@ begin
         end if;
       end if;
       -- for resetting component
-      if (reset = '1') then
+      if (reset = '0') then
         is_stored <= '0';
         is_in_ready_0 <= '1';
         is_sent <= '0';

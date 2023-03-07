@@ -69,8 +69,8 @@ begin
 
   -- copy internal signals to output
 
-  buffer_in_ready <= not buffer_rst and  buffer_in_ready_local;
-  buffer_out_valid <= not buffer_rst and buffer_out_valid_local;
+  buffer_in_ready <= buffer_rst and  buffer_in_ready_local;
+  buffer_out_valid <= buffer_rst and buffer_out_valid_local;
 
   buffer_in_ready_local <= (not present);
   buffer_out_valid_local <= present or buffer_in_valid;
@@ -81,7 +81,7 @@ begin
 
   proc_main : process(buffer_rst, buffer_clk)
   begin
-    if buffer_rst = '1' then
+    if buffer_rst = '0' then
       if ram_init = 0 then
         present <= '0';
       else

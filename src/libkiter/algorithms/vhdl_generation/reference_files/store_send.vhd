@@ -46,7 +46,7 @@ begin
       else
         is_out_valid <= '0';
       end if;
-      if reset = '1' then
+      if reset = '0' then
         local_set <= '0';
         is_out_valid <= '0';
       end if;

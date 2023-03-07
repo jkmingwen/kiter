@@ -103,7 +103,7 @@ begin
   begin
 
 
-    if buffer_rst = '1' then
+    if buffer_rst = '0' then
       tail <= index_type'low;
       head <= index_type'low + ram_init;
       in_ready_local <= '0';
