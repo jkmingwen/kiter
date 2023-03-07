@@ -904,7 +904,7 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
 
         }
       }
-    }
+
 
     // // Create new storage distributions for every storage dependency found; add new storage distributions to checklist
     // for (std::set<Edge>::iterator it = (result.critical_edges).begin();

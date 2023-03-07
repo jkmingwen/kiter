@@ -81,6 +81,8 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
 
         cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
         cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
+        cc_g->setReentrancyFactor(src_cc, g->getReentrancyFactor(src_g));
+        cc_g->setReentrancyFactor(trg_cc, g->getReentrancyFactor(trg_g));
         // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(*it), g->getEdgeName(*it));
         
         VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
