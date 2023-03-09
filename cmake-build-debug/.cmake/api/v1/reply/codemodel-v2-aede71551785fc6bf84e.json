@@ -1,0 +1,371 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						4
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.0"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "build_results/src",
+					"childIndexes" : 
+					[
+						2,
+						3
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-build_results.src-Debug-ca2c0dcd955114642aae.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.6"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src"
+				},
+				{
+					"build" : "build_results/src/libkiter",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-build_results.src.libkiter-Debug-b9cb8fbdd7e12a2bf914.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.6"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/libkiter",
+					"targetIndexes" : 
+					[
+						21,
+						22,
+						23,
+						24,
+						25,
+						26,
+						27
+					]
+				},
+				{
+					"build" : "build_results/src/kiter",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-build_results.src.kiter-Debug-c702fa2dd3155f4fa019.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.6"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/kiter",
+					"targetIndexes" : 
+					[
+						20
+					]
+				},
+				{
+					"build" : "build_results/tests",
+					"jsonFile" : "directory-build_results.tests-Debug-c275300803529953a05f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.6"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "tests",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18,
+						19
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					],
+					"name" : "Kiter",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23,
+						24,
+						25,
+						26,
+						27
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 4,
+					"id" : "CommonsTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-CommonsTest-Debug-96a620ecf80f257326c5.json",
+					"name" : "CommonsTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "DSETest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-DSETest-Debug-48eb03cd212da10ca228.json",
+					"name" : "DSETest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "DataflowTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-DataflowTest-Debug-818c1b6913ece96f8d7e.json",
+					"name" : "DataflowTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "EventGraphTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-EventGraphTest-Debug-70b1746a605faa8083b4.json",
+					"name" : "EventGraphTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "FractionTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-FractionTest-Debug-2090b4f1805413ececce.json",
+					"name" : "FractionTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "MCRPTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-MCRPTest-Debug-9a0167b9f69580b02c43.json",
+					"name" : "MCRPTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "MappingTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-MappingTest-Debug-aff59c78e27332782318.json",
+					"name" : "MappingTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "MergeTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-MergeTest-Debug-20ab8aeb3cc63df61aa0.json",
+					"name" : "MergeTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "NewNamingTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-NewNamingTest-Debug-c5b13ffbce157dbddd73.json",
+					"name" : "NewNamingTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "NormalizationTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-NormalizationTest-Debug-b6aee955624793dc7829.json",
+					"name" : "NormalizationTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "PeriodicSchedulingTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-PeriodicSchedulingTest-Debug-d4ba1ca88787dca490e2.json",
+					"name" : "PeriodicSchedulingTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "PipelineNamingTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-PipelineNamingTest-Debug-50950b1b34facac4c078.json",
+					"name" : "PipelineNamingTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "RandomGeneratorTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-RandomGeneratorTest-Debug-bbfd88b19ca1885a5609.json",
+					"name" : "RandomGeneratorTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "RepetitionVectorTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-RepetitionVectorTest-Debug-f0d8541a5eb3e0ec5b61.json",
+					"name" : "RepetitionVectorTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "SDF3WriterTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-SDF3WriterTest-Debug-b8083d2c57ef7fddb54e.json",
+					"name" : "SDF3WriterTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "SchedulingTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-SchedulingTest-Debug-a367fe4fef34fe05f652.json",
+					"name" : "SchedulingTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "StdoutPrinterTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-StdoutPrinterTest-Debug-beb2edb3b9719a3e8915.json",
+					"name" : "StdoutPrinterTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "StrictlyPeriodicTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-StrictlyPeriodicTest-Debug-05aa8ffa6c805f81ef70.json",
+					"name" : "StrictlyPeriodicTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "UserCaseTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-UserCaseTest-Debug-8eae4ca47c56812eb625.json",
+					"name" : "UserCaseTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "ValidScheduleTest::@c46ba3116990b79a663f",
+					"jsonFile" : "target-ValidScheduleTest-Debug-7f9e26c0e4e942e3ac6c.json",
+					"name" : "ValidScheduleTest",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "kiter::@5cecb3260eab79c461fa",
+					"jsonFile" : "target-kiter-Debug-1bbba15a9ebd18da8b9c.json",
+					"name" : "kiter",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_algorithms::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_algorithms-Debug-ad674746caafddfb2eb8.json",
+					"name" : "kiter_algorithms",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_commons::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_commons-Debug-463d1bb4b4a65da55e78.json",
+					"name" : "kiter_commons",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_generators::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_generators-Debug-815477e6cd2cd8b47d74.json",
+					"name" : "kiter_generators",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_lp::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_lp-Debug-29198ce508590c51228b.json",
+					"name" : "kiter_lp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_models::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_models-Debug-4b140dafe5a4148c8980.json",
+					"name" : "kiter_models",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "kiter_printers::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-kiter_printers-Debug-7e6b40ea438a987b18bf.json",
+					"name" : "kiter_printers",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "libkiter::@95cd3e1e12c3d3a489f9",
+					"jsonFile" : "target-libkiter-Debug-9fa41b89f1e242664b29.json",
+					"name" : "libkiter",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/sam/yalenus/Dataflow/2kiter/kiter/cmake-build-debug",
+		"source" : "/home/sam/yalenus/Dataflow/2kiter/kiter"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 4
+	}
+}

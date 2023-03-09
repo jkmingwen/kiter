@@ -25,62 +25,65 @@
 
 // #define WRITE_GRAPHS // uncomment to write dot files of explored graphs
 
+template <class T>
+std::string vec2string(std::vector<T> v){
+    return std::accumulate(v.begin(), v.end(), std::string{},
+        [](const std::string& a, int b) {
+            return a + (a.empty() ? "" : ", ") + std::to_string(b);
+        });
+}
+
 models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
 
     models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
 
-    std::map<ARRAY_INDEX, ARRAY_INDEX> visited_vertices; // old index -> new index
+    std::set<std::string> visited_v;
 
     VERBOSE_INFO("Critical edges found:");
     for (Edge e_g : result.critical_edges){
         
         Vertex src_g = g->getEdgeSource(e_g);
         Vertex trg_g = g->getEdgeTarget(e_g);
-        ARRAY_INDEX srcID = g->getVertexId(src_g);
-        ARRAY_INDEX trgID = g->getVertexId(trg_g);
-
-        // need to check if vertex visited because cycle will add same ID twice
-        bool src_visited = false, trg_visited = false;
-        for (std::pair<ARRAY_INDEX, ARRAY_INDEX> v : visited_vertices){
-            if (srcID == v.first) src_visited = true;
-            if (trgID == v.first) trg_visited = true;
-        }
+        std::string src = g->getVertexName(src_g);
+        std::string trg = g->getVertexName(trg_g);
         
         Vertex src_cc;
         Vertex trg_cc; 
-        if (!src_visited){
+        if (visited_v.find(src) == std::end(visited_v)){
             src_cc = cc_g->addVertex(g->getVertexName(src_g)); // Adds ID as name
-            visited_vertices[srcID] = cc_g->getVertexId(src_cc);
+            visited_v.insert(src);
         } else {
-            src_cc = cc_g->getVertexById(visited_vertices[srcID]);
+            src_cc = cc_g->getVertexByName(src);
         }
-        if (!trg_visited){
+        if (visited_v.find(trg) == std::end(visited_v)){
             trg_cc = cc_g->addVertex(g->getVertexName(trg_g));
-            visited_vertices[trgID] = cc_g->getVertexId(trg_cc);
+            visited_v.insert(trg);
         } else {
-            trg_cc = cc_g->getVertexById(visited_vertices[trgID]);
+            trg_cc = cc_g->getVertexByName(trg);
         }
 
         Edge e_cc = cc_g->addEdge(src_cc, trg_cc, g->getEdgeName(e_g));
         cc_g->setPreload(e_cc, g->getPreload(e_g)); 
         cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(e_g));
         cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(e_g));
-
+        cc_g->setReentrancyFactor(src_cc, g->getReentrancyFactor(src_g));
         cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
+        cc_g->setReentrancyFactor(trg_cc, g->getReentrancyFactor(trg_g));
         cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
+
         // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(*it), g->getEdgeName(*it));
         
-        // VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
-        //                 << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
-        //                 << " | ChnQnt: " << cc_g->getPreload(e_cc));     
-        // VERBOSE_INFO("\tEdge(In)Phases: " << vec2string(cc_g->getEdgeInVector(e_cc)));    
-        // VERBOSE_INFO("\tEdge(Out)Phases: " << vec2string(cc_g->getEdgeOutVector(e_cc)));   
-        // VERBOSE_INFO("\tSrc(Name): " << cc_g->getVertexName(src_cc) 
-        //             << " -> Trg(Name): " << cc_g->getVertexName(trg_cc)); 
-        // VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(src_cc) 
-        //                 << "): " << vec2string(cc_g->getVertexPhaseDuration(src_cc)));    
-        // VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(trg_cc) 
-        //                 << "): " << vec2string(cc_g->getVertexPhaseDuration(trg_cc))); 
+        VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
+                        << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
+                        << " | ChnQnt: " << cc_g->getPreload(e_cc));     
+        VERBOSE_INFO("\tEdge(In)Phases: " << vec2string(cc_g->getEdgeInVector(e_cc)));    
+        VERBOSE_INFO("\tEdge(Out)Phases: " << vec2string(cc_g->getEdgeOutVector(e_cc)));   
+        VERBOSE_INFO("\tSrc(Name): " << cc_g->getVertexName(src_cc) 
+                    << " -> Trg(Name): " << cc_g->getVertexName(trg_cc)); 
+        VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(src_cc) 
+                        << "): " << vec2string(cc_g->getVertexPhaseDuration(src_cc)));    
+        VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(trg_cc) 
+                        << "): " << vec2string(cc_g->getVertexPhaseDuration(trg_cc))); 
 
     }
 
@@ -264,6 +267,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 	  bool isBaseMonoOpt = false;
 	  bool thrTargetSpecified = false;
     bool isMaxSet = false;
+    bool initPrev = false;
 	  std::string dirName = "./data/"; // default
 
 	  // parse parameters for KDSE
@@ -288,8 +292,11 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 	  } else {
 	    VERBOSE_WARNING("No target throughput specified (target throughput will be set to max throughput by default) --- specify target throughput with '-p THR=n' flag");
 	  }
-    if (parameters.find("MAX_SET") != parameters.end()) { // specify target throughput of DSE
+    if (parameters.find("MAX_SET") != parameters.end()) { // specify if only maximal SDs returned
 	    isMaxSet = true;
+	  }
+    if (parameters.find("INIT") != parameters.end()) { // specify if graph passed already initialized
+	    initPrev = true;
 	  }
 
 

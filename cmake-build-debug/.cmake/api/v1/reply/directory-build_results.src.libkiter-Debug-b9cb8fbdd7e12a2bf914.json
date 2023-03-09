@@ -1,0 +1,45 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"INSTALL"
+		],
+		"files" : 
+		[
+			"src/libkiter/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 156,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"lib/liblibkiter.so"
+			],
+			"targetId" : "libkiter::@95cd3e1e12c3d3a489f9",
+			"targetIndex" : 27,
+			"type" : "target"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "build_results/src/libkiter",
+		"source" : "src/libkiter"
+	}
+}

@@ -85,6 +85,8 @@ std::vector<Edge> StorageDistribution::getEdges() const {
   return edgeSet;
 }
 
+
+
 // Storage distributions are equal if every channel has the same quantity
 bool StorageDistribution::operator==(const StorageDistribution& distribution) const {
   assert(this->getEdgeCount() == distribution.getEdgeCount());

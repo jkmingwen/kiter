@@ -1,0 +1,235 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "lib/libkiter_models.so"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"ADD_LIBRARY",
+			"TARGET_LINK_LIBRARIES",
+			"INCLUDE_DIRECTORIES"
+		],
+		"files" : 
+		[
+			"src/libkiter/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 67,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 68,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 17,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -Wall -pedantic-errors -ansi  -Wextra     -Wunused  -Wno-error=unused-result       -Wno-deprecated -Wno-deprecated-declarations -Wno-unused-but-set-variable -Wconversion -Wno-float-equal -Wno-switch-default  -Wall -pedantic-errors -ansi  -Wextra  -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default    -Wswitch-enum       -Wno-endif-labels  -Wcast-qual    -Wcast-align      -Wno-packed   -Wmissing-format-attribute -Wredundant-decls -Wno-long-long -g -O0 -std=c++17 -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions  -Wconversion -Wno-float-equal -Wno-switch-default -fPIC -fdiagnostics-color=always"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"define" : "__DEBUG_MODE__"
+				},
+				{
+					"define" : "kiter_models_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "/home/sam/yalenus/Dataflow/2kiter/kiter/src/libkiter"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "/usr/include/libxml2"
+				}
+			],
+			"language" : "CXX",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "kiter_commons::@95cd3e1e12c3d3a489f9"
+		}
+	],
+	"id" : "kiter_models::@95cd3e1e12c3d3a489f9",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/sam/yalenus/Dataflow/2kiter/kiter/cmake-build-debug/lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "lib/libkiter_commons.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lxml2",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "kiter_models",
+	"nameOnDisk" : "libkiter_models.so",
+	"paths" : 
+	{
+		"build" : "build_results/src/libkiter",
+		"source" : "src/libkiter"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/Dataflow.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/EventGraph.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/NoC.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/NoCGraph.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/Scheduling.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/libkiter/models/repetition_vector.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/Dataflow.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/EventGraph.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/KiterTask.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/NoC.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/NoCGraph.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/Scheduling.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 1,
+			"path" : "src/libkiter/models/repetition_vector.h",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "SHARED_LIBRARY"
+}

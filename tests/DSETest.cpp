@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <numeric>
+#include <algorithm>
 #include <commons/commons.h>
 #include <models/Dataflow.h>
 #include <models/EventGraph.h>
@@ -24,14 +25,8 @@
 
 BOOST_FIXTURE_TEST_SUITE( DSETest , WITH_VERBOSE)
 
-std::string vec2string(std::vector<TIME_UNIT> v){
-    return std::accumulate(v.begin(), v.end(), std::string{},
-        [](const std::string& a, int b) {
-            return a + (a.empty() ? "" : ", ") + std::to_string(b);
-        });
-}
-
-std::string vec2string(std::vector<TOKEN_UNIT> v){
+template <class T>
+std::string vec2string(std::vector<T> v){
     return std::accumulate(v.begin(), v.end(), std::string{},
         [](const std::string& a, int b) {
             return a + (a.empty() ? "" : ", ") + std::to_string(b);
@@ -42,48 +37,41 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
 
     models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
 
-    std::map<ARRAY_INDEX, ARRAY_INDEX> visited_vertices; // old index -> new index
+    std::set<std::string> visited_v;
 
     VERBOSE_INFO("Critical edges found:");
     for (Edge e_g : result.critical_edges){
         
         Vertex src_g = g->getEdgeSource(e_g);
         Vertex trg_g = g->getEdgeTarget(e_g);
-        ARRAY_INDEX srcID = g->getVertexId(src_g);
-        ARRAY_INDEX trgID = g->getVertexId(trg_g);
-
-        // need to check if vertex visited because cycle will add same ID twice
-        bool src_visited = false, trg_visited = false;
-        for (std::pair<ARRAY_INDEX, ARRAY_INDEX> v : visited_vertices){
-            if (srcID == v.first) src_visited = true;
-            if (trgID == v.first) trg_visited = true;
-        }
+        std::string src = g->getVertexName(src_g);
+        std::string trg = g->getVertexName(trg_g);
         
         Vertex src_cc;
         Vertex trg_cc; 
-        if (!src_visited){
+        if (visited_v.find(src) == std::end(visited_v)){
             src_cc = cc_g->addVertex(g->getVertexName(src_g)); // Adds ID as name
-            visited_vertices[srcID] = cc_g->getVertexId(src_cc);
+            visited_v.insert(src);
         } else {
-            src_cc = cc_g->getVertexById(visited_vertices[srcID]);
+            src_cc = cc_g->getVertexByName(src);
         }
-        if (!trg_visited){
+        if (visited_v.find(trg) == std::end(visited_v)){
             trg_cc = cc_g->addVertex(g->getVertexName(trg_g));
-            visited_vertices[trgID] = cc_g->getVertexId(trg_cc);
+            visited_v.insert(trg);
         } else {
-            trg_cc = cc_g->getVertexById(visited_vertices[trgID]);
+            trg_cc = cc_g->getVertexByName(trg);
         }
 
         Edge e_cc = cc_g->addEdge(src_cc, trg_cc, g->getEdgeName(e_g));
         cc_g->setPreload(e_cc, g->getPreload(e_g)); 
         cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(e_g));
         cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(e_g));
-
-        cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
-        cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
         cc_g->setReentrancyFactor(src_cc, g->getReentrancyFactor(src_g));
+        cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
         cc_g->setReentrancyFactor(trg_cc, g->getReentrancyFactor(trg_g));
-        // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(*it), g->getEdgeName(*it));
+        cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
+
+        // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(e_cc), g->getEdgeName(e_cc));
         
         VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
                         << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
@@ -134,7 +122,7 @@ BOOST_AUTO_TEST_CASE( test_critical_cycle_mapping_to_graph )
         VERBOSE_INFO("(CC Edge) " << cc_g->getEdgeName(e_cc) << ": " 
                         << cc_g->getVertexName(src_cc) << "->" << cc_g->getVertexName(trg_cc));
         VERBOSE_INFO("(G Edge)  " << g->getEdgeName(e_g) << ": " 
-                        << g->getVertexName(src_g) << "->" << cc_g->getVertexName(trg_g));
+                        << g->getVertexName(src_g) << "->" << g->getVertexName(trg_g));
         // Checking if graphs are the same
         VERBOSE_ASSERT_EQUALS(cc_g->getPreload(e_cc), g->getPreload(e_g));
         VERBOSE_ASSERT_EQUALS(vec2string(cc_g->getEdgeInVector(e_cc)),
@@ -142,7 +130,6 @@ BOOST_AUTO_TEST_CASE( test_critical_cycle_mapping_to_graph )
         VERBOSE_ASSERT_EQUALS(vec2string(cc_g->getEdgeOutVector(e_cc)),
                                  vec2string(g->getEdgeOutVector(e_g)));
 
-        // AM I GOING CRAAAAAZY???? THEY PRINT THE SAME BUT NOT IN THE ASSERT????
         // VERBOSE_ASSERT_EQUALS(cc_g->getVertexName(src_cc), g->getVertexName(src_g));
         // VERBOSE_ASSERT_EQUALS(cc_g->getVertexName(trg_cc), g->getVertexName(trg_g));
         VERBOSE_ASSERT_EQUALS(vec2string(cc_g->getVertexPhaseDuration(src_cc)),
@@ -316,6 +303,7 @@ BOOST_AUTO_TEST_CASE( test_next_after_not_maximal )
 
 BOOST_AUTO_TEST_CASE( test_next_after_maximal )
 { // Confirming we still get output if trgThr > maxThr
+// NEED TO MIN!
 
     parameters_list_t parameters;
     models::Dataflow* g = generateSampleCycle(); 
@@ -323,7 +311,7 @@ BOOST_AUTO_TEST_CASE( test_next_after_maximal )
     kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
 
     parameters_list_t new_params(parameters);
-    new_params["THR"] = std::to_string(result.throughput+0.000001);
+    new_params["THR"] = std::to_string(std::min(result.throughput, result.throughput+0.000001));
     new_params["MAX_SET"] = "t";
 
     
@@ -352,8 +340,65 @@ BOOST_AUTO_TEST_CASE( test_next_after_maximal )
 
 }
 
-//TODO
+
 BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
+
+    parameters_list_t parameters;
+    parameters_list_t new_params(parameters);
+    new_params["MAX_SET"] = "t";
+
+    models::Dataflow* g = generateSampleCycle(); 
+    // create new graph with modelled bounded channel quantities
+    models::Dataflow* dataflow_prime = new models::Dataflow(*g);
+    dataflow_prime->reset_computation();
+    // add feedback channels in new graph to model bounded channel quantities
+    {ForEachEdge(g, c) {
+        auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
+                                                dataflow_prime->getEdgeSource(c));
+        dataflow_prime->setEdgeInPhases(new_edge,
+                                        dataflow_prime->getEdgeOutVector(c));
+        dataflow_prime->setEdgeOutPhases(new_edge,
+                                        dataflow_prime->getEdgeInVector(c));
+        dataflow_prime->setPreload(new_edge, g->getPreload(c));
+        dataflow_prime->setEdgeName(new_edge,
+                                    dataflow_prime->getEdgeName(c) + "_prime");
+        }}
+    
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters);
+
+    models::Dataflow* cc_g = getCCGraph(dataflow_prime, result);
+
+    StorageDistributionSet sds_g = algorithms::compute_Kperiodic_throughput_dse_sd(g, parameters);
+    StorageDistributionSet sds_cc = algorithms::compute_Kperiodic_throughput_dse_sd(cc_g, new_params);
+
+    StorageDistribution sd_g = sds_g.getNextDistribution();
+    StorageDistribution sd_cc = sds_cc.getNextDistribution();
+    // sd_g.printInfo(dataflow_prime);
+    // sd_cc.printInfo(cc_g);
+
+    StorageDistribution sd(sd_g); // making copy to update
+
+
+    for (Edge e_cc : result.critical_edges){
+
+
+        // only increase channel quantity on "modelled" channels
+        if (dataflow_prime->getEdgeId(e_cc) > g->getEdgesCount()) {
+            VERBOSE_DSE("\tFound storage dependency in channel "
+                        << dataflow_prime->getEdgeName(e_cc) << std::endl);
+            // make new modelled storage distribution according to storage dependencies
+
+            sd.setChannelQuantity(e_cc, sd_cc.getChannelQuantity(e_cc));
+            VERBOSE_DSE("\t\tIncreasing channel size of "
+                        << dataflow_prime->getEdgeName(e_cc) << " to "
+                        << sd_cc.getChannelQuantity(e_cc) << std::endl);
+            VERBOSE_DSE("\tUpdating checklist with new storage distribution..."
+                        << std::endl);
+        }
+
+    }
+
+    // sd.printInfo(dataflow_prime);
 
 
     VERBOSE_INFO("append_graph_sd_with_new_cc_sd #*&%" << std::endl << std::endl);

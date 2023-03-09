@@ -1,0 +1,231 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "bin/NewNamingTest"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"ADD_EXECUTABLE",
+			"target_link_libraries",
+			"add_definitions",
+			"INCLUDE_DIRECTORIES"
+		],
+		"files" : 
+		[
+			"tests/CMakeLists.txt",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 15,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 24,
+				"parent" : 3
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 5,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -Wall -pedantic-errors -ansi  -Wextra     -Wunused  -Wno-error=unused-result       -Wno-deprecated -Wno-deprecated-declarations -Wno-unused-but-set-variable  -Wall -pedantic-errors -ansi  -Wextra  -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default    -Wswitch-enum       -Wno-endif-labels  -Wcast-qual    -Wcast-align      -Wno-packed   -Wmissing-format-attribute -Wredundant-decls -Wno-long-long -g -O0 -std=c++17 -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions -fdiagnostics-color=always"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 2,
+					"define" : "BOOST_ALL_NO_LIB"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "BOOST_FILESYSTEM_DYN_LINK"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "BOOST_SYSTEM_DYN_LINK"
+				},
+				{
+					"backtrace" : 2,
+					"define" : "BOOST_UNIT_TEST_FRAMEWORK_DYN_LINK"
+				},
+				{
+					"backtrace" : 4,
+					"define" : "__DEBUG_MODE__"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 5,
+					"path" : "/home/sam/yalenus/Dataflow/2kiter/kiter/src/libkiter"
+				}
+			],
+			"language" : "CXX",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 2,
+			"id" : "kiter_commons::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "kiter_models::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "kiter_printers::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "kiter_lp::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "kiter_algorithms::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "kiter_generators::@95cd3e1e12c3d3a489f9"
+		},
+		{
+			"backtrace" : 2,
+			"id" : "libkiter::@95cd3e1e12c3d3a489f9"
+		}
+	],
+	"id" : "NewNamingTest::@c46ba3116990b79a663f",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-Wall -pedantic-errors -ansi  -Wextra     -Wunused  -Wno-error=unused-result       -Wno-deprecated -Wno-deprecated-declarations -Wno-unused-but-set-variable  -Wall -pedantic-errors -ansi  -Wextra  -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default    -Wswitch-enum       -Wno-endif-labels  -Wcast-qual    -Wcast-align      -Wno-packed   -Wmissing-format-attribute -Wredundant-decls -Wno-long-long -g -O0 -std=c++17 -fno-inline  -fno-default-inline -Wextra -fno-inline-small-functions",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-rdynamic",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/sam/yalenus/Dataflow/2kiter/kiter/cmake-build-debug/lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "lib/liblibkiter.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_unit_test_framework.so.1.71.0",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_generators.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_algorithms.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_lp.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lglpk",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_printers.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_models.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "lib/libkiter_commons.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "-lxml2",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_system.so.1.71.0",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX"
+	},
+	"name" : "NewNamingTest",
+	"nameOnDisk" : "NewNamingTest",
+	"paths" : 
+	{
+		"build" : "build_results/tests",
+		"source" : "tests"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "tests/NewNamingTest.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "EXECUTABLE"
+}
