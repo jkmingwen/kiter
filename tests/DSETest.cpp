@@ -209,6 +209,61 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal )
 
 }
 
+BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal_cc )
+{
+
+    parameters_list_t parameters;
+    models::Dataflow* g = generateSampleCycle(); 
+
+
+    // Get max thr of the graph
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    
+
+    parameters_list_t new_params(parameters);
+    new_params["MAX_SET"] = "t";
+
+    models::Dataflow* cc_g = getCCGraph(g, result);
+
+    
+    // Get all Storage Distributions with throughput <= new_params["THR"]
+    StorageDistributionSet sds = algorithms::compute_Kperiodic_throughput_dse_sd(cc_g, new_params);
+
+    int k = 0;
+    for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> sd_p : sds.getSet()){
+        for (StorageDistribution sd : sd_p.second){
+            std::vector<TOKEN_UNIT> channel_quantities;
+            for (Edge e : sd.getEdges()){
+                channel_quantities.push_back(sd.getChannelQuantity(e));
+            }
+            VERBOSE_WARNING("STORE DIST" << k << " : " << vec2string(channel_quantities));
+            k++;
+        }
+    }
+    
+    TIME_UNIT dse_thr = sds.getThrDist().second;
+    VERBOSE_INFO("result.throughput: " << result.throughput 
+                    << " | StoreDists.p_max: " << std::to_string(dse_thr));
+    // dse.thr should be equal to max throughput
+    VERBOSE_ASSERT_EQUALS(result.throughput, dse_thr); 
+    
+    // All SDs in set should have max throughput
+    int i = 0;
+    for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> sdp : sds.getSet()){
+        for (StorageDistribution sd : sdp.second){
+            VERBOSE_INFO("\tStorageDistribution" << std::to_string(i)
+                            << ": thr=" << std::to_string(sd.getThroughput()) 
+                            << ", DistSz=" << std::to_string(sd.getDistributionSize()));
+            VERBOSE_ASSERT_EQUALS(result.throughput, sd.getThroughput());
+            i++; 
+        }
+    }
+
+
+    VERBOSE_INFO("test_setting_throughput_maximal_cc #*&%" << std::endl << std::endl);  
+
+}
+
 BOOST_AUTO_TEST_CASE( test_setting_target_throughput )
 {
 
@@ -346,6 +401,7 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
     parameters_list_t parameters;
     parameters_list_t new_params(parameters);
     new_params["MAX_SET"] = "t";
+    new_params["INIT"] = "t";
 
     models::Dataflow* g = generateSampleCycle(); 
     // create new graph with modelled bounded channel quantities
@@ -364,9 +420,9 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
                                     dataflow_prime->getEdgeName(c) + "_prime");
         }}
     
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
 
-    models::Dataflow* cc_g = getCCGraph(dataflow_prime, result);
+    models::Dataflow* cc_g = getCCGraph(g, result);
 
     StorageDistributionSet sds_g = algorithms::compute_Kperiodic_throughput_dse_sd(g, parameters);
     StorageDistributionSet sds_cc = algorithms::compute_Kperiodic_throughput_dse_sd(cc_g, new_params);
@@ -378,22 +434,35 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
 
     StorageDistribution sd(sd_g); // making copy to update
 
+    for (Edge e_cc : sd_cc.getEdges()){
+        VERBOSE_INFO("(CC) Edge: " << cc_g->getEdgeName(e_cc)
+                            << " Id " << cc_g->getEdgeId(e_cc)
+                            << "ChnQty" << sd_cc.getChannelQuantity(e_cc));
 
-    for (Edge e_cc : result.critical_edges){
+    }
+
+    for (Edge e : sd.getEdges()){
+        VERBOSE_INFO("(G)  Edge: " << g->getEdgeName(e) << " Id " << g->getEdgeId(e));
+    }
+
+
+    for (Edge e_cc : sd_cc.getEdges()){
+
+        std::string name = cc_g->getEdgeName(e_cc);
+
+        VERBOSE_INFO(name.substr(name.length() - 6));
 
 
         // only increase channel quantity on "modelled" channels
-        if (dataflow_prime->getEdgeId(e_cc) > g->getEdgesCount()) {
-            VERBOSE_DSE("\tFound storage dependency in channel "
+        if (name.substr(name.length() - 6) == "_prime") {
+            VERBOSE_INFO("\tFound storage dependency in channel "
                         << dataflow_prime->getEdgeName(e_cc) << std::endl);
             // make new modelled storage distribution according to storage dependencies
-
-            sd.setChannelQuantity(e_cc, sd_cc.getChannelQuantity(e_cc));
-            VERBOSE_DSE("\t\tIncreasing channel size of "
+            Edge e_g = dataflow_prime->getEdgeByName(name);
+            sd.setChannelQuantity(e_g, sd_cc.getChannelQuantity(e_cc));
+            VERBOSE_INFO("\t\tIncreasing channel size of "
                         << dataflow_prime->getEdgeName(e_cc) << " to "
                         << sd_cc.getChannelQuantity(e_cc) << std::endl);
-            VERBOSE_DSE("\tUpdating checklist with new storage distribution..."
-                        << std::endl);
         }
 
     }

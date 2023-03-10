@@ -267,7 +267,6 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 	  bool isBaseMonoOpt = false;
 	  bool thrTargetSpecified = false;
     bool isMaxSet = false;
-    bool initPrev = false;
 	  std::string dirName = "./data/"; // default
 
 	  // parse parameters for KDSE
@@ -295,10 +294,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     if (parameters.find("MAX_SET") != parameters.end()) { // specify if only maximal SDs returned
 	    isMaxSet = true;
 	  }
-    if (parameters.find("INIT") != parameters.end()) { // specify if graph passed already initialized
-	    initPrev = true;
-	  }
-
+    
 
 
 
@@ -325,18 +321,22 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
   // create new graph with modelled bounded channel quantities
   models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
   dataflow_prime->reset_computation();
+
+
   // add feedback channels in new graph to model bounded channel quantities
   {ForEachEdge(dataflow, c) {
-      auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
-                                              dataflow_prime->getEdgeSource(c));
-      dataflow_prime->setEdgeInPhases(new_edge,
-                                      dataflow_prime->getEdgeOutVector(c));
-      dataflow_prime->setEdgeOutPhases(new_edge,
-                                       dataflow_prime->getEdgeInVector(c));
-      dataflow_prime->setPreload(new_edge, dataflow->getPreload(c));
-      dataflow_prime->setEdgeName(new_edge,
-                                  dataflow_prime->getEdgeName(c) + "_prime");
-    }}
+    auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
+                                            dataflow_prime->getEdgeSource(c));
+    dataflow_prime->setEdgeInPhases(new_edge,
+                                    dataflow_prime->getEdgeOutVector(c));
+    dataflow_prime->setEdgeOutPhases(new_edge,
+                                      dataflow_prime->getEdgeInVector(c));
+    dataflow_prime->setPreload(new_edge, dataflow->getPreload(c));
+    dataflow_prime->setEdgeName(new_edge,
+                                dataflow_prime->getEdgeName(c) + "_prime");
+  }}
+  
+
 
   // initialise search parameters
   std::map<Edge, TOKEN_UNIT> minStepSizes;
