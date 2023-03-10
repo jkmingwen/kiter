@@ -1,6 +1,0 @@
-# ninja log v5
-13	1544	1678174584022672937	build_results/src/libkiter/CMakeFiles/kiter_commons.dir/commons/verbose.cpp.o	d8047e06628da6f
-30	16644	1678174599047473798	build_results/src/libkiter/CMakeFiles/kiter_models.dir/models/NoC.cpp.o	7ae3f9c1faec44ec
-7	18075	1678174600463549572	build_results/src/libkiter/CMakeFiles/kiter_commons.dir/commons/commons.cpp.o	2a487f80275a8721
-18079	18818	1678174601239591117	lib/libkiter_commons.so	19bcb457484c3cf
-1546	20050	1678174602523659893	build_results/src/libkiter/CMakeFiles/kiter_models.dir/models/NoCGraph.cpp.o	d79ea6c60d001d7c
