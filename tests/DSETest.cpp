@@ -33,8 +33,39 @@ std::string vec2string(std::vector<T> v){
         });
 }
 
-models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
+void printEdgeSet(StorageDistribution sd, models::Dataflow* g, std::string prefix=""){
+    for (Edge e : sd.getEdges()){
+        VERBOSE_INFO(prefix << " Edge: " << g->getEdgeName(e)
+                            << " | Id: " << g->getEdgeId(e)
+                            << " | ChnQty: " << sd.getChannelQuantity(e));
 
+    }
+}
+
+models::Dataflow* genGraphWFeedbackEdges(models::Dataflow* g){
+    /* Generate dataflow_prime; for testing purposes */
+
+    models::Dataflow* dataflow_prime = new models::Dataflow(*g);
+    dataflow_prime->reset_computation();
+    // add feedback channels in new graph to model bounded channel quantities
+    {ForEachEdge(g, c) {
+        auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
+                                                dataflow_prime->getEdgeSource(c));
+        dataflow_prime->setEdgeInPhases(new_edge,
+                                        dataflow_prime->getEdgeOutVector(c));
+        dataflow_prime->setEdgeOutPhases(new_edge,
+                                        dataflow_prime->getEdgeInVector(c));
+        dataflow_prime->setPreload(new_edge, g->getPreload(c));
+        dataflow_prime->setEdgeName(new_edge,
+                                    dataflow_prime->getEdgeName(c) + "_prime");
+    }}
+
+    return dataflow_prime;
+
+}
+
+models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
+    /* get Dataflow* graph object from critical cycle edge set */
     models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
 
     std::set<std::string> visited_v;
@@ -89,6 +120,35 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
 
     return cc_g;
 
+}
+
+StorageDistribution updateStoreDist(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
+                                    models::Dataflow* cc_g, StorageDistribution sd_cc){
+    /* Update storage distribution with new critical cycle channel quantities */
+
+    StorageDistribution sd(sd_g); // making copy to update
+
+    for (Edge e_cc : sd_cc.getEdges()){
+
+        std::string name = cc_g->getEdgeName(e_cc);
+
+        // VERBOSE_INFO(name.substr(name.length() - 6));
+
+        // only increase channel quantity on "modelled" channels
+        if (name.substr(name.length() - 6) == "_prime") {
+            VERBOSE_INFO("\tFound storage dependency in channel "
+                        << dataflow_prime->getEdgeName(e_cc) << std::endl);
+            // make new modelled storage distribution according to storage dependencies
+            Edge e_g = dataflow_prime->getEdgeByName(name);
+            sd.setChannelQuantity(e_g, sd_cc.getChannelQuantity(e_cc));
+            VERBOSE_INFO("\t\tIncreasing channel size of "
+                        << dataflow_prime->getEdgeName(e_cc) << " to "
+                        << sd_cc.getChannelQuantity(e_cc) << std::endl);
+        }
+
+    }
+
+    return sd;
 }
 
 
@@ -163,7 +223,7 @@ BOOST_AUTO_TEST_CASE ( test_critical_cycle_throughput_equality )
 
     // CRITICAL CYCLE THR & GRAPH THR NOT EQUAL!
     VERBOSE_INFO("result.throughput = " << result.throughput << " | cc_res.throughput = " << cc_res.throughput);
-    // VERBOSE_ASSERT_EQUALS(result.throughput , cc_res.throughput);
+    VERBOSE_ASSERT_EQUALS(result.throughput , cc_res.throughput);
 
     VERBOSE_INFO("test_critical_cycle_throughput_equality #*&%" << std::endl << std::endl);
 
@@ -180,7 +240,7 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal )
     
 
     parameters_list_t new_params(parameters);
-    new_params["MAX_SET"] = "t";
+    new_params["MAX_SET"] = "";
 
     
     // Get all Storage Distributions with throughput <= new_params["THR"]
@@ -221,7 +281,7 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal_cc )
     
 
     parameters_list_t new_params(parameters);
-    new_params["MAX_SET"] = "t";
+    new_params["MAX_SET"] = "";
 
     models::Dataflow* cc_g = getCCGraph(g, result);
 
@@ -318,7 +378,7 @@ BOOST_AUTO_TEST_CASE( test_next_after_not_maximal )
 
     parameters_list_t new_paramsMAX(new_params);
     new_paramsMAX["THR"] = std::to_string(0.04+0.000001); //nextafter did not work
-    new_paramsMAX["MAX_SET"] = "t";
+    new_paramsMAX["MAX_SET"] = "";
     StorageDistributionSet sdsNxt = algorithms::compute_Kperiodic_throughput_dse_sd(g, new_paramsMAX);
 
 
@@ -367,7 +427,7 @@ BOOST_AUTO_TEST_CASE( test_next_after_maximal )
 
     parameters_list_t new_params(parameters);
     new_params["THR"] = std::to_string(std::min(result.throughput, result.throughput+0.000001));
-    new_params["MAX_SET"] = "t";
+    new_params["MAX_SET"] = "";
 
     
     // Get all Storage Distributions with throughput <= new_params["THR"]
@@ -399,78 +459,42 @@ BOOST_AUTO_TEST_CASE( test_next_after_maximal )
 BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
 
     parameters_list_t parameters;
-    parameters_list_t new_params(parameters);
-    new_params["MAX_SET"] = "t";
-    new_params["INIT"] = "t";
-
     models::Dataflow* g = generateSampleCycle(); 
-    // create new graph with modelled bounded channel quantities
-    models::Dataflow* dataflow_prime = new models::Dataflow(*g);
-    dataflow_prime->reset_computation();
-    // add feedback channels in new graph to model bounded channel quantities
-    {ForEachEdge(g, c) {
-        auto new_edge = dataflow_prime->addEdge(dataflow_prime->getEdgeTarget(c),
-                                                dataflow_prime->getEdgeSource(c));
-        dataflow_prime->setEdgeInPhases(new_edge,
-                                        dataflow_prime->getEdgeOutVector(c));
-        dataflow_prime->setEdgeOutPhases(new_edge,
-                                        dataflow_prime->getEdgeInVector(c));
-        dataflow_prime->setPreload(new_edge, g->getPreload(c));
-        dataflow_prime->setEdgeName(new_edge,
-                                    dataflow_prime->getEdgeName(c) + "_prime");
-        }}
-    
+    models::Dataflow* dataflow_prime = genGraphWFeedbackEdges(g);
     kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
 
-    models::Dataflow* cc_g = getCCGraph(g, result);
+    parameters_list_t new_params(parameters);
+    new_params["MAX_SET"] = "t";
+    models::Dataflow* cc_g = getCCGraph(dataflow_prime, result);
 
     StorageDistributionSet sds_g = algorithms::compute_Kperiodic_throughput_dse_sd(g, parameters);
     StorageDistributionSet sds_cc = algorithms::compute_Kperiodic_throughput_dse_sd(cc_g, new_params);
 
-    StorageDistribution sd_g = sds_g.getNextDistribution();
+    StorageDistribution sd_g = sds_g.getNextDistribution(); // get
     StorageDistribution sd_cc = sds_cc.getNextDistribution();
-    // sd_g.printInfo(dataflow_prime);
-    // sd_cc.printInfo(cc_g);
+    
+    printEdgeSet(sd_g, g, "(G) ");
+    printEdgeSet(sd_cc, cc_g, "(CC)");
 
-    StorageDistribution sd(sd_g); // making copy to update
+    StorageDistribution sd = updateStoreDist(dataflow_prime, sd_g, cc_g, sd_cc);
 
-    for (Edge e_cc : sd_cc.getEdges()){
-        VERBOSE_INFO("(CC) Edge: " << cc_g->getEdgeName(e_cc)
-                            << " Id " << cc_g->getEdgeId(e_cc)
-                            << "ChnQty" << sd_cc.getChannelQuantity(e_cc));
-
-    }
-
-    for (Edge e : sd.getEdges()){
-        VERBOSE_INFO("(G)  Edge: " << g->getEdgeName(e) << " Id " << g->getEdgeId(e));
-    }
-
-
-    for (Edge e_cc : sd_cc.getEdges()){
-
-        std::string name = cc_g->getEdgeName(e_cc);
-
-        VERBOSE_INFO(name.substr(name.length() - 6));
-
-
-        // only increase channel quantity on "modelled" channels
-        if (name.substr(name.length() - 6) == "_prime") {
-            VERBOSE_INFO("\tFound storage dependency in channel "
-                        << dataflow_prime->getEdgeName(e_cc) << std::endl);
-            // make new modelled storage distribution according to storage dependencies
-            Edge e_g = dataflow_prime->getEdgeByName(name);
-            sd.setChannelQuantity(e_g, sd_cc.getChannelQuantity(e_cc));
-            VERBOSE_INFO("\t\tIncreasing channel size of "
-                        << dataflow_prime->getEdgeName(e_cc) << " to "
-                        << sd_cc.getChannelQuantity(e_cc) << std::endl);
-        }
-
-    }
-
-    // sd.printInfo(dataflow_prime);
+    printEdgeSet(sd, g, "(SD)"); // Weird that this works because g should not have prime
 
 
     VERBOSE_INFO("append_graph_sd_with_new_cc_sd #*&%" << std::endl << std::endl);
+
+}
+
+BOOST_AUTO_TEST_CASE( full_dse_test ){
+
+    models::Dataflow* g = generateSampleCycle(); 
+    parameters_list_t parameters;
+    parameters["LOGDIR"] = "/home/sam/yalenus/Dataflow/2kiter/kiter/tests/data";
+    algorithms::compute_Kperiodic_throughput_dse(g, parameters);
+    VERBOSE_WARNING("FIRST DSE DONE");
+    models::Dataflow* g_ = generateSampleCycle();
+    parameters["LOGDIR"] = "/home/sam/yalenus/Dataflow/2kiter/kiter/tests/data2";
+    algorithms::mod_Kperiodic_throughput_dse(g_, parameters);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
