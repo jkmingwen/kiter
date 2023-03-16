@@ -34,7 +34,7 @@
 
 /* Dataflow defintion */
 
-enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE};
+enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, FEEDBACK_EDGE};
 //enum VERTEX_TYPE {NORMAL_VERTEX, PERIODIC_VERTEX};
 
 typedef  std::string VERTEX_TYPE;
@@ -595,6 +595,7 @@ public :
     	switch (et) {
     		case NORMAL_EDGE : return "NORMAL_EDGE";
     		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+    		case  FEEDBACK_EDGE : return "FEEDBACK_EDGE";
     		default : return "UNKNOWN";
     	}
     }
