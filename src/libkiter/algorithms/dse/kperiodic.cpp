@@ -23,8 +23,6 @@
 #include <chrono> // to take computation timings
 #include <boost/filesystem.hpp>
 
-// #define WRITE_GRAPHS // uncomment to write dot files of explored graphs
-
 template <class T>
 std::string vec2string(std::vector<T> v){
     return std::accumulate(v.begin(), v.end(), std::string{},
@@ -63,6 +61,7 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result, boo
 
     // VERBOSE_INFO("Critical edges found:");
     for (Edge e_g : result.critical_edges){
+        
         
         Vertex src_g = g->getEdgeSource(e_g);
         Vertex trg_g = g->getEdgeTarget(e_g);
@@ -113,7 +112,12 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result, boo
 
 }
 
-StorageDistribution updateStoreDist(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
+bool isFeedbackEdge(Edge e, models::Dataflow* g){
+  std::string name = g->getEdgeName(e);
+  return name.substr(name.length() - 6) == "_prime";
+}
+
+StorageDistribution updateStoreDistwCCSD(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
                                     models::Dataflow* cc_g, StorageDistribution sd_cc){
     /* Update storage distribution with new critical cycle channel quantities */
 
@@ -126,7 +130,7 @@ StorageDistribution updateStoreDist(models::Dataflow* dataflow_prime, StorageDis
         // VERBOSE_INFO(name.substr(name.length() - 6));
 
         // only increase channel quantity on "modelled" channels
-        if (name.substr(name.length() - 6) == "_prime") {
+        if (isFeedbackEdge(e_cc, cc_g)) {
             VERBOSE_INFO("\tFound storage dependency in channel "
                         << dataflow_prime->getEdgeName(e_cc) << std::endl);
             // make new modelled storage distribution according to storage dependencies
@@ -142,7 +146,22 @@ StorageDistribution updateStoreDist(models::Dataflow* dataflow_prime, StorageDis
     return sd;
 }
 
-
+StorageDistribution updateStoreDistwStepSz(Edge e, models::Dataflow* dataflow_prime, 
+                                            StorageDistribution checkDist, std::map<Edge, TOKEN_UNIT> minStepSizes){
+  StorageDistribution newDist(checkDist);
+  // only increase channel quantity on "modelled" channels
+  VERBOSE_DSE("\tFound storage dependency in channel "
+              << dataflow_prime->getEdgeName(e) << std::endl);
+  // make new modelled storage distribution according to storage dependencies
+  newDist.setChannelQuantity(e, (newDist.getChannelQuantity(e) +
+                                    minStepSizes[e]));
+  VERBOSE_DSE("\t\tIncreasing channel size of "
+              << dataflow_prime->getEdgeName(e) << " to "
+              << newDist.getChannelQuantity(e) << std::endl);
+  VERBOSE_DSE("\tUpdating checklist with new storage distribution..."
+              << std::endl);
+  return newDist;  
+}
 
 // Compute and return period and causal dependency cycles of given dataflow graph
 kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::Dataflow* const dataflow, parameters_list_t parameters) {
@@ -319,6 +338,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 	  bool isBaseMonoOpt = false;
 	  bool thrTargetSpecified = false;
     bool isMaxSet = false;
+    bool initializedWFeedback = false;
 	  std::string dirName = "./data/"; // default
 
 	  // parse parameters for KDSE
@@ -346,7 +366,10 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     if (parameters.find("MAX_SET") != parameters.end()) { // specify if only maximal SDs returned
 	    isMaxSet = true;
 	  }
-    
+    if (parameters.find("FEEDBACK") != parameters.end()) { // specify if only maximal SDs returned
+	    initializedWFeedback = true;
+	  }
+
 
 
   TIME_UNIT thrTarget;
@@ -370,8 +393,14 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
   #endif
 
   // create new graph with modelled bounded channel quantities
-  models::Dataflow* dataflow_prime = genGraphWFeedbackEdges(dataflow);
-
+  models::Dataflow* dataflow_prime;
+  if (!initializedWFeedback){
+    dataflow_prime = genGraphWFeedbackEdges(dataflow);
+  } else {
+    models::Dataflow* df(dataflow);
+    dataflow_prime = df;
+    dataflow_prime->reset_computation();
+  }
 
   // initialise search parameters
   std::map<Edge, TOKEN_UNIT> minStepSizes;
@@ -572,19 +601,8 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     // Create new storage distributions for every storage dependency found; add new storage distributions to checklist
     for (std::set<Edge>::iterator it = (result.critical_edges).begin();
          it != (result.critical_edges).end(); it++) {
-      StorageDistribution newDist(checkDist);
-      // only increase channel quantity on "modelled" channels
-      if (dataflow_prime->getEdgeId(*it) > dataflow->getEdgesCount()) {
-        VERBOSE_DSE("\tFound storage dependency in channel "
-                    << dataflow_prime->getEdgeName(*it) << std::endl);
-        // make new modelled storage distribution according to storage dependencies
-        newDist.setChannelQuantity(*it, (newDist.getChannelQuantity(*it) +
-                                         minStepSizes[*it]));
-        VERBOSE_DSE("\t\tIncreasing channel size of "
-                    << dataflow_prime->getEdgeName(*it) << " to "
-                    << newDist.getChannelQuantity(*it) << std::endl);
-        VERBOSE_DSE("\tUpdating checklist with new storage distribution..."
-                    << std::endl);
+      if (isFeedbackEdge(*it, dataflow_prime)){
+        StorageDistribution newDist = updateStoreDistwStepSz(*it, dataflow_prime, checkDist, minStepSizes);
         checklist.addStorageDistribution(newDist);
       }
     }
@@ -874,8 +892,9 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
 
     // Compute throughput and storage deps
     auto startTime = std::chrono::steady_clock::now();
-    // result = compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters); @@@@
-    result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);    
+    result = compute_Kperiodic_throughput_and_cycles(dataflow_prime, parameters); // @@@@
+    // result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);    
+    // how can I get result with current thr and CC without any modelled edges?
     auto endTime = std::chrono::steady_clock::now();
     std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
     cumulativeTime += execTime;
@@ -921,24 +940,44 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
     4. Add new StorageDist to search space
     */
    
-    models::Dataflow* cc_g = getCCGraph(dataflow, result, true); //1
+   // If current CC is simply chn->chn_prime, then just increase chnQty and add to checkDist
+  VERBOSE_INFO("CritEdgeSz = " << result.critical_edges.size());
+  for (Edge e : result.critical_edges){
+    VERBOSE_INFO("\t CritEdge: " << dataflow_prime->getEdgeName(e));
+  }
+  if (result.critical_edges.size() == 2){
 
-    kperiodic_result_t  cc_res = compute_Kperiodic_throughput_and_cycles(cc_g, parameters); //2.1
-    parameters_list_t new_params(parameters);
-    new_params["THR"] = std::to_string(std::min(cc_res.throughput+0.000001, thrTarget)); //2.2
-    new_params["MAX_SET"] = "";
-    StorageDistributionSet cc_new_sd = compute_Kperiodic_throughput_dse_sd(cc_g, new_params); //2.3
-    
-    for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_new_sd.getSet()){
-      for (StorageDistribution cc_sd : cc_pair.second){
-
-        StorageDistribution g_sd = updateStoreDist(dataflow_prime, checkDist, cc_g, cc_sd); //3
-                          
-        checklist.addStorageDistribution(g_sd); //4
-
-        }
+    for (Edge e : result.critical_edges) {
+      StorageDistribution newDist(checkDist);
+      // only increase channel quantity on "modelled" channels
+      if (isFeedbackEdge(e, dataflow_prime)) {
+        StorageDistribution newDist = updateStoreDistwStepSz(e, dataflow_prime, checkDist, minStepSizes);
+        checklist.addStorageDistribution(newDist);
       }
+    }
 
+   } else {
+
+      models::Dataflow* cc_g = getCCGraph(dataflow, result, true); //1
+
+      kperiodic_result_t  cc_res = compute_Kperiodic_throughput_and_cycles(cc_g, parameters); //2.1
+      parameters_list_t new_params(parameters);
+      new_params["THR"] = std::to_string(std::min(cc_res.throughput+0.000001, thrTarget)); //2.2
+      new_params["MAX_SET"] = "";
+      new_params["FEEDBACK"] = "";
+      new_params.erase("LOGDIR"); // TODO: make counter object to log different CC explorations
+      StorageDistributionSet cc_new_sd = compute_Kperiodic_throughput_dse_sd(cc_g, new_params); //2.3
+      
+      for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_new_sd.getSet()){
+        for (StorageDistribution cc_sd : cc_pair.second){
+
+          StorageDistribution g_sd = updateStoreDistwCCSD(dataflow_prime, checkDist, cc_g, cc_sd); //3
+                            
+          checklist.addStorageDistribution(g_sd); //4
+
+          }
+        }
+   }
 
     // // Create new storage distributions for every storage dependency found; add new storage distributions to checklist
     // for (std::set<Edge>::iterator it = (result.critical_edges).begin();
@@ -1010,5 +1049,4 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
               << std::endl;
   }
 }
-
 
