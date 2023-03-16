@@ -354,10 +354,10 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
  * @param dataflow_prime
  * @return
  */
-StorageDistributionSet perform_local_search(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
+std::pair<TIME_UNIT, std::vector<StorageDistribution>> perform_local_search(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
                                             std::map<Edge,Edge>& matching, std::map<Edge, TOKEN_UNIT> & minStepSizes) {
 
-    StorageDistributionSet new_distributions;
+    std::vector<StorageDistribution> new_distributions;
 
     // Update graph with storage distribution just removed from checklist
     VERBOSE_DSE("Update graph")
@@ -385,9 +385,11 @@ StorageDistributionSet perform_local_search(StorageDistribution checkDist, model
             auto original_edge = matching[c];
             StorageDistribution newDist(checkDist);
             newDist.setChannelQuantity(original_edge, (newDist.getChannelQuantity(original_edge) + minStepSizes[original_edge]));
-            new_distributions.addStorageDistribution(newDist);
+            new_distributions.push_back(newDist);
         }
     }
+
+    return std::pair<TIME_UNIT, std::vector<StorageDistribution>> (result.throughput, new_distributions);
 }
 
 StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(models::Dataflow *const dataflow) {
@@ -435,37 +437,10 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(model
         StorageDistribution checkDist(checklist.getNextDistribution());
         checklist.removeStorageDistribution(checklist.getNextDistribution());
 
-        // Update graph with storage distribution just removed from checklist
-        VERBOSE_DSE("Update graph")
-        dataflow_prime->reset_computation();
-        {ForEachEdge(dataflow_prime, c) {
-            if (dataflow_prime->getEdgeType(c) == FEEDBACK_EDGE) {
-                auto original_edge = matching[c];
-                dataflow_prime->setPreload(c, checkDist.getChannelQuantity(original_edge) -
-                                              checkDist.getInitialTokens(original_edge));
-            } else {
-                //dataflow_prime->setPreload(c, checkDist.getInitialTokens(matching.at(c)));
-            }
-        }}
-
-        // Compute throughput and storage deps
-        VERBOSE_DSE("Compute throughput and storage deps")
-        auto result = compute_Kperiodic_throughput_and_cycles(dataflow_prime);
-        checkDist.setThroughput(std::max(TIME_UNIT(0.0), result.throughput));
+        std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = perform_local_search(checkDist, dataflow_prime, matching, minStepSizes);
+        checklist.addStorageDistributions(new_points.second);
+        checkDist.setThroughput(std::max(TIME_UNIT(0.0), new_points.first));
         minStorageDist.addStorageDistribution(checkDist);
-
-        // Create new storage distributions for every storage dependency found; add new storage distributions to checklist
-        VERBOSE_DSE(" Create new storage distributions")
-        for (auto c : result.critical_edges) {
-            VERBOSE_DSE(" - Critical edge " << dataflow_prime->getEdgeName(c));
-            if (dataflow_prime->getEdgeType(c) == FEEDBACK_EDGE) {
-                VERBOSE_DSE("   Is interesting ");
-                auto original_edge = matching[c];
-                StorageDistribution newDist(checkDist);
-                newDist.setChannelQuantity(original_edge, (newDist.getChannelQuantity(original_edge) + minStepSizes[original_edge]));
-                checklist.addStorageDistribution(newDist);
-            }
-        }
 
         VERBOSE_DSE(" minimizeStorageDistributions")
         minStorageDist.minimizeStorageDistributions(checkDist);

@@ -61,6 +61,7 @@ public:
   StorageDistributionSet();
   StorageDistributionSet(StorageDistribution distribution);
   void addStorageDistribution(StorageDistribution new_distribution); // add storage distribution to set
+  void addStorageDistributions(std::vector<StorageDistribution>& new_distributions); // add storage distribution to set
   void removeStorageDistribution(StorageDistribution dist_to_rm); // remove storage distribution from set
   void removeDistributionSize(TOKEN_UNIT dist_sz); /* removes all storage distributions of
                                                       distribution size dist_sz */

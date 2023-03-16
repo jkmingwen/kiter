@@ -250,6 +250,14 @@ StorageDistributionSet::StorageDistributionSet(StorageDistribution distribution)
   this->p_max = std::make_pair(distribution.getDistributionSize(), distribution.getThroughput());
 }
 
+
+
+void StorageDistributionSet::addStorageDistributions(std::vector<StorageDistribution>& new_distributions) {
+    for (auto sd : new_distributions) {
+        this->addStorageDistribution(sd);
+    }
+}
+
 /*
  * Add a new storage distribution to the set of storage distributions
  * Will not add storage distribution if:
