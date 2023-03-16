@@ -465,7 +465,7 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(model
                                  minChannelSizes,
                                  minDistributionSize);
 
-    new_compute_Kperiodic_throughput_dse_sd_with_init_dist (dataflow, initDist);
+    return new_compute_Kperiodic_throughput_dse_sd_with_init_dist (dataflow, initDist);
 
 
 }
