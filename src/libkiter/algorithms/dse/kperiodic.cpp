@@ -354,7 +354,7 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
  * @param dataflow_prime
  * @return
  */
-std::pair<TIME_UNIT, std::vector<StorageDistribution>> perform_local_search(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
+std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribution_from_cc(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
                                             std::map<Edge,Edge>& matching, std::map<Edge, TOKEN_UNIT> & minStepSizes) {
 
     std::vector<StorageDistribution> new_distributions;
@@ -392,7 +392,7 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> perform_local_search(Stor
     return std::pair<TIME_UNIT, std::vector<StorageDistribution>> (result.throughput, new_distributions);
 }
 
-StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(models::Dataflow *const dataflow) {
+StorageDistributionSet new_compute_Kperiodic_throughput_dse_sd_with_init_dist(models::Dataflow *const dataflow, StorageDistribution initDist) {
 
     // Compute the minimal steps
     std::map<Edge, TOKEN_UNIT> minStepSizes;
@@ -409,22 +409,6 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(model
     models::Dataflow* dataflow_prime = dataflow_and_matching.first;
     std::map<Edge,Edge>& matching = dataflow_and_matching.second;
 
-
-    // Compute the initial distribution nd the minimal step -- TODO update minimal steps
-    std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
-    TOKEN_UNIT minDistributionSize;
-    {ForEachEdge(dataflow, c) {
-            minChannelSizes[c].first = dataflow->getPreload(c);
-            minChannelSizes[c].second = 0;
-        }}
-    minDistributionSize = 0;
-    StorageDistribution initDist(dataflow_prime->getEdgesCount(),
-                                 0,
-                                 minChannelSizes,
-                                 minDistributionSize);
-
-
-
     // Prepare the checklist of distribution to explore
     StorageDistributionSet checklist = StorageDistributionSet(initDist);
 
@@ -437,11 +421,13 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(model
         StorageDistribution checkDist(checklist.getNextDistribution());
         checklist.removeStorageDistribution(checklist.getNextDistribution());
 
-        std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = perform_local_search(checkDist, dataflow_prime, matching, minStepSizes);
+        // Compute the next distribution to explore
+        std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = get_next_storage_distribution_from_cc(checkDist, dataflow_prime, matching, minStepSizes);
         checklist.addStorageDistributions(new_points.second);
         checkDist.setThroughput(std::max(TIME_UNIT(0.0), new_points.first));
         minStorageDist.addStorageDistribution(checkDist);
 
+        // clean up distributions
         VERBOSE_DSE(" minimizeStorageDistributions")
         minStorageDist.minimizeStorageDistributions(checkDist);
 
@@ -460,6 +446,27 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(model
 
 
     return minStorageDist;
+
+}
+
+
+StorageDistributionSet algorithms::new_compute_Kperiodic_throughput_dse_sd(models::Dataflow *const dataflow) {
+
+    // Compute the initial distribution nd the minimal step
+    std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes;
+    TOKEN_UNIT minDistributionSize;
+    {ForEachEdge(dataflow, c) {
+            minChannelSizes[c].first = dataflow->getPreload(c);
+            minChannelSizes[c].second = 0;
+        }}
+    minDistributionSize = 0;
+    StorageDistribution initDist(dataflow->getEdgesCount(),
+                                 0,
+                                 minChannelSizes,
+                                 minDistributionSize);
+
+    new_compute_Kperiodic_throughput_dse_sd_with_init_dist (dataflow, initDist);
+
 
 }
 
