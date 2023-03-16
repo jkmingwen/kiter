@@ -50,8 +50,12 @@ void StorageDistribution::setThroughput(TIME_UNIT thr) {
 
 // Return channel quantity of edge
 TOKEN_UNIT StorageDistribution::getChannelQuantity(Edge e) const {
-  assert(channel_quantities.find(e) != channel_quantities.end()); // edge quantity not in map
-  return this->channel_quantities.at(e).second;
+    assert(channel_quantities.find(e) != channel_quantities.end()); // edge quantity not in map
+    return this->channel_quantities.at(e).second;
+}
+// Indicate if the Edge is set
+bool StorageDistribution::hasEdge(Edge e) const {
+    return (channel_quantities.find(e) != channel_quantities.end()); // edge in map
 }
 
 // Return initial token count of edge
@@ -137,23 +141,25 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
 
   sdInfo += "\tCurrent StorageDistribution info:\n";
   sdInfo += "\tNumber of edges: " + std::to_string(this->edge_count) + "\n";
-  sdInfo += "\tChannel quantities:\n";  
-  // for (auto it = this->channel_quantities.begin();
-  //      it != this->channel_quantities.end(); it++) {
-  //   if (!ch_count) {
-  //     sdInfo += "\t";
-  //   }
-  //   sdInfo += std::to_string(it->second.second) + " ";
-  //   ch_count++;
-  //   if (ch_count == (this->edge_count / 2)) {
-  //     sdInfo += "\n\t";
-  //   }
-  // }
-  {ForEachEdge(dataflow, c) {
+  sdInfo += "\tChannel quantities stored in the data structure:\n";
+   for (auto it = this->channel_quantities.begin();
+        it != this->channel_quantities.end(); it++) {
+     if (!ch_count) {
+       sdInfo += "\t";
+     }
+     sdInfo += std::to_string(it->second.second) + " ";
+     ch_count++;
+   }
+    sdInfo += "\n\tChannel quantities using the dataflow edges:\n";
+    {ForEachEdge(dataflow, c) {
       if (!ch_count) {
 	sdInfo += "\t";
       }
-      sdInfo += std::to_string(this->getChannelQuantity(c)) + " ";
+      if (this->hasEdge(c)) {
+          sdInfo += std::to_string(this->getChannelQuantity(c)) + " ";
+      } else {
+          sdInfo += "X ";
+      }
       ch_count++;
       if (ch_count == (this->edge_count / 2)) {
 	sdInfo += "\n\t";
@@ -237,12 +243,11 @@ StorageDistributionSet::StorageDistributionSet() {
   // TODO: Implement default constructor
 }
 
-StorageDistributionSet::StorageDistributionSet(TOKEN_UNIT dist_sz,
-                                               StorageDistribution distribution) {
+StorageDistributionSet::StorageDistributionSet(StorageDistribution distribution) {
   // FIXME: initialize map (using initializer_list?)// : set{{dist_sz, distribution}} {
-  this->set[dist_sz].push_back(distribution);
+  this->set[distribution.getDistributionSize()].push_back(distribution);
   // TODO: initialize p_max variable
-  this->p_max = std::make_pair(dist_sz, distribution.getThroughput());
+  this->p_max = std::make_pair(distribution.getDistributionSize(), distribution.getThroughput());
 }
 
 /*

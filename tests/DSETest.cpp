@@ -64,93 +64,6 @@ models::Dataflow* genGraphWFeedbackEdges(models::Dataflow* g){
 
 }
 
-models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result){
-    /* get Dataflow* graph object from critical cycle edge set */
-    models::Dataflow* cc_g = new models::Dataflow(); /***@@@*****/
-
-    std::set<std::string> visited_v;
-
-    VERBOSE_INFO("Critical edges found:");
-    for (Edge e_g : result.critical_edges){
-        
-        Vertex src_g = g->getEdgeSource(e_g);
-        Vertex trg_g = g->getEdgeTarget(e_g);
-        std::string src = g->getVertexName(src_g);
-        std::string trg = g->getVertexName(trg_g);
-        
-        Vertex src_cc;
-        Vertex trg_cc; 
-        if (visited_v.find(src) == std::end(visited_v)){
-            src_cc = cc_g->addVertex(g->getVertexName(src_g)); // Adds ID as name
-            visited_v.insert(src);
-        } else {
-            src_cc = cc_g->getVertexByName(src);
-        }
-        if (visited_v.find(trg) == std::end(visited_v)){
-            trg_cc = cc_g->addVertex(g->getVertexName(trg_g));
-            visited_v.insert(trg);
-        } else {
-            trg_cc = cc_g->getVertexByName(trg);
-        }
-
-        Edge e_cc = cc_g->addEdge(src_cc, trg_cc, g->getEdgeName(e_g));
-        cc_g->setPreload(e_cc, g->getPreload(e_g)); 
-        cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(e_g));
-        cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(e_g));
-        cc_g->setReentrancyFactor(src_cc, g->getReentrancyFactor(src_g));
-        cc_g->setVertexDuration(src_cc, g->getVertexPhaseDuration(src_g));
-        cc_g->setReentrancyFactor(trg_cc, g->getReentrancyFactor(trg_g));
-        cc_g->setVertexDuration(trg_cc, g->getVertexPhaseDuration(trg_g));
-
-        // Edge e = cc_g->addEdge(src, trg, g->getEdgeId(e_cc), g->getEdgeName(e_cc));
-        
-        VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
-                        << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
-                        << " | ChnQnt: " << cc_g->getPreload(e_cc));     
-        VERBOSE_INFO("\tEdge(In)Phases: " << vec2string(cc_g->getEdgeInVector(e_cc)));    
-        VERBOSE_INFO("\tEdge(Out)Phases: " << vec2string(cc_g->getEdgeOutVector(e_cc)));   
-        VERBOSE_INFO("\tSrc(Name): " << cc_g->getVertexName(src_cc) 
-                    << " -> Trg(Name): " << cc_g->getVertexName(trg_cc)); 
-        VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(src_cc) 
-                        << "): " << vec2string(cc_g->getVertexPhaseDuration(src_cc)));    
-        VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(trg_cc) 
-                        << "): " << vec2string(cc_g->getVertexPhaseDuration(trg_cc))); 
-
-    }
-
-    return cc_g;
-
-}
-
-StorageDistribution updateStoreDist(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
-                                    models::Dataflow* cc_g, StorageDistribution sd_cc){
-    /* Update storage distribution with new critical cycle channel quantities */
-
-    StorageDistribution sd(sd_g); // making copy to update
-
-    for (Edge e_cc : sd_cc.getEdges()){
-
-        std::string name = cc_g->getEdgeName(e_cc);
-
-        // VERBOSE_INFO(name.substr(name.length() - 6));
-
-        // only increase channel quantity on "modelled" channels
-        if (name.substr(name.length() - 6) == "_prime") {
-            VERBOSE_INFO("\tFound storage dependency in channel "
-                        << dataflow_prime->getEdgeName(e_cc) << std::endl);
-            // make new modelled storage distribution according to storage dependencies
-            Edge e_g = dataflow_prime->getEdgeByName(name);
-            sd.setChannelQuantity(e_g, sd_cc.getChannelQuantity(e_cc));
-            VERBOSE_INFO("\t\tIncreasing channel size of "
-                        << dataflow_prime->getEdgeName(e_cc) << " to "
-                        << sd_cc.getChannelQuantity(e_cc) << std::endl);
-        }
-
-    }
-
-    return sd;
-}
-
 
 
 BOOST_AUTO_TEST_CASE( test_critical_cycle_mapping_to_graph )
@@ -159,7 +72,7 @@ BOOST_AUTO_TEST_CASE( test_critical_cycle_mapping_to_graph )
     parameters_list_t parameters;
     models::Dataflow* g = generateSampleCycle(); // maxThr = 0.0434783
 
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
 
     models::Dataflow* cc_g = getCCGraph(g, result);
 
@@ -213,13 +126,13 @@ BOOST_AUTO_TEST_CASE ( test_critical_cycle_throughput_equality )
 
     models::Dataflow* g = generateSampleCycle(); // maxThr = 0.0434783
 
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
 
     models::Dataflow* cc_g = getCCGraph(g, result);
 
     VERBOSE_INFO("Critical cycle graph generated. Now computing CC throughput")
 
-    kperiodic_result_t cc_res = algorithms::compute_Kperiodic_throughput_and_cycles(cc_g, parameters);
+    kperiodic_result_t cc_res = algorithms::compute_Kperiodic_throughput_and_cycles(cc_g);
 
     // CRITICAL CYCLE THR & GRAPH THR NOT EQUAL!
     VERBOSE_INFO("result.throughput = " << result.throughput << " | cc_res.throughput = " << cc_res.throughput);
@@ -236,7 +149,7 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal )
     models::Dataflow* g = generateSampleCycle(); 
 
     // Get max thr of the graph
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
     
 
     parameters_list_t new_params(parameters);
@@ -277,7 +190,7 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal_cc )
 
 
     // Get max thr of the graph
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
     
 
     parameters_list_t new_params(parameters);
@@ -423,7 +336,7 @@ BOOST_AUTO_TEST_CASE( test_next_after_maximal )
     parameters_list_t parameters;
     models::Dataflow* g = generateSampleCycle(); 
 
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
 
     parameters_list_t new_params(parameters);
     new_params["THR"] = std::to_string(std::min(result.throughput, result.throughput+0.000001));
@@ -461,7 +374,7 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
     parameters_list_t parameters;
     models::Dataflow* g = generateSampleCycle(); 
     models::Dataflow* dataflow_prime = genGraphWFeedbackEdges(g);
-    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g, parameters);
+    kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(g);
 
     parameters_list_t new_params(parameters);
     new_params["MAX_SET"] = "t";
@@ -476,7 +389,7 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
     printEdgeSet(sd_g, g, "(G) ");
     printEdgeSet(sd_cc, cc_g, "(CC)");
 
-    StorageDistribution sd = updateStoreDist(dataflow_prime, sd_g, cc_g, sd_cc);
+    StorageDistribution sd = updateStoreDistwCCSD(dataflow_prime, sd_g, cc_g, sd_cc);
 
     printEdgeSet(sd, g, "(SD)"); // Weird that this works because g should not have prime
 

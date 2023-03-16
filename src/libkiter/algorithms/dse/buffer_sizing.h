@@ -10,6 +10,8 @@
 #include <commons/commons.h>
 #include <algorithms/throughput/kperiodic.h>
 
+#define VERBOSE_DSE(m)    if (VERBOSE_IS_INFO())    	std::cerr << PURPLE_COLOR  << "[DSE]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ;
+
 namespace models {
   class Dataflow;
 }
@@ -29,6 +31,7 @@ public:
   void setThroughput(TIME_UNIT thr);
   TOKEN_UNIT getChannelQuantity(Edge e) const;
   TOKEN_UNIT getInitialTokens(Edge e) const;
+  bool hasEdge(Edge e) const;
   TOKEN_UNIT getDistributionSize() const;
   TIME_UNIT getThroughput() const;
   ARRAY_INDEX getEdgeCount() const;
@@ -56,8 +59,7 @@ private:
 class StorageDistributionSet {
 public:
   StorageDistributionSet();
-  StorageDistributionSet(TOKEN_UNIT dist_sz,
-                         StorageDistribution distribution);
+  StorageDistributionSet(StorageDistribution distribution);
   void addStorageDistribution(StorageDistribution new_distribution); // add storage distribution to set
   void removeStorageDistribution(StorageDistribution dist_to_rm); // remove storage distribution from set
   void removeDistributionSize(TOKEN_UNIT dist_sz); /* removes all storage distributions of

@@ -100,7 +100,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
   // TIME_UNIT thrCurrent = initDist.getThroughput();
   TIME_UNIT thrCurrent;
   StorageDistribution newDist(initDist);
-  kperiodic_result_t result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+  kperiodic_result_t result = compute_Kperiodic_throughput_and_cycles(dataflow);
   computation_counter++;
   StorageDistributionSet infeasibleSet;
   StorageDistributionSet kneeSet;
@@ -150,7 +150,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
                                          newDist.getInitialTokens(c))); // always account for initial tokens in buffer
         }
       }}
-    result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+    result = compute_Kperiodic_throughput_and_cycles(dataflow);
     computation_counter++;
     if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
       newDist.setThroughput(0);
@@ -198,7 +198,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
                                          checkDist.getInitialTokens(c))); // always account for initial tokens in buffer
         }
       }}
-    result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+    result = compute_Kperiodic_throughput_and_cycles(dataflow);
     computation_counter++;
     if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
       checkDist.setThroughput(0);
@@ -239,7 +239,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
                                        currDist.getInitialTokens(c))); // always account for initial tokens in buffer
       }
     }}
-  result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+  result = compute_Kperiodic_throughput_and_cycles(dataflow);
   computation_counter++;
   if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
     currDist.setThroughput(0);
