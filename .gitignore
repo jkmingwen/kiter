@@ -78,3 +78,6 @@ __pycache__
 ## CLION
 /.idea/
 /cmake-build-debug/
+
+## VSCODE
+/.vscode/
