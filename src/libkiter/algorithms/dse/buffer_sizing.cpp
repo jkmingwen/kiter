@@ -43,9 +43,9 @@ void StorageDistribution::setDistributionSize(TOKEN_UNIT sz) {
   this->distribution_size = sz;
 }
 
-// Set throughput of storage distribution
+// Set throughput of storage distribution (0 lower bound)
 void StorageDistribution::setThroughput(TIME_UNIT thr) {
-  this->thr = thr;
+  this->thr = std::max(TIME_UNIT(0.0), thr);
 }
 
 // Return channel quantity of edge
@@ -833,6 +833,17 @@ void StorageDistributionSet::printGraphs(models::Dataflow* const dataflow,
     }
   }
 }
+
+void StorageDistribution::updateGraph(models::Dataflow *dataflow){
+  dataflow->reset_computation(); // make graph writeable to alter channel size
+    {ForEachEdge(dataflow, c) {
+        if (dataflow->getEdgeType(c) == FEEDBACK_EDGE) { // only modelled buffer preloads change
+          dataflow->setPreload(c, (this->getChannelQuantity(c) - this->getInitialTokens(c)));
+        }
+  }}
+}
+
+
 
 // Returns the minimum step size for each channel in the given dataflow graph
 void findMinimumStepSz(models::Dataflow *dataflow,

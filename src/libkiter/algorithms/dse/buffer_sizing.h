@@ -24,7 +24,6 @@ public:
                       std::map<Edge,
                       std::pair<TOKEN_UNIT, TOKEN_UNIT>> channel_quantities,
                       TOKEN_UNIT distribution_size);
-
   void setChannelQuantity(Edge e, TOKEN_UNIT quantity);
   void setInitialTokens(Edge e, TOKEN_UNIT token_count);
   void setDistributionSize(TOKEN_UNIT sz);
@@ -44,6 +43,7 @@ public:
   std::string print_dependency_mask(models::Dataflow* const dataflow,
                                     kperiodic_result_t const result);
   std::string printGraph(models::Dataflow* const dataflow);
+  void updateGraph(models::Dataflow* dataflow);
   // BASE MONOTONIC OPTIMISATION FUNCTIONS
   bool inBackConeOf(StorageDistribution checkDist);
   bool inForConeOf(StorageDistribution checkDist);
