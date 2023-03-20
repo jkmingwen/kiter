@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE ( test_critical_cycle_throughput_equality )
 
     models::Dataflow* cc_g = getCCGraph(g, result);
 
-    VERBOSE_INFO("Critical cycle graph generated. Now computing CC throughput")
+    VERBOSE_INFO("Critical cycle graph generated. Now computing CC throughput");
 
     kperiodic_result_t cc_res = algorithms::compute_Kperiodic_throughput_and_cycles(cc_g);
 

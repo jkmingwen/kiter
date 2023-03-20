@@ -23,7 +23,6 @@ namespace algorithms {
         StorageDistributionSet compute_Kperiodic_throughput_dse_sd(models::Dataflow *const dataflow, parameters_list_t parameters);
         void compute_Kperiodic_throughput_dse(models::Dataflow *const dataflow, parameters_list_t params);
 
-       // my addition
        StorageDistributionSet new_compute_Kperiodic_dse(models::Dataflow *const dataflow);
 }
 

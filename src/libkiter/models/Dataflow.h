@@ -12,6 +12,7 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/adjacency_list.hpp>

@@ -12,14 +12,22 @@
 
 
 StorageDistribution::StorageDistribution()
-  :edge_count{0}, thr{0}, channel_quantities(), distribution_size{0} {
-                          }
+        :dataflow{NULL}, thr{0}, channel_quantities(), distribution_size{0} {
+}
+StorageDistribution::StorageDistribution(const models::Dataflow* dataflow)
+        :dataflow{dataflow}, thr{0}, channel_quantities(), distribution_size{0} {
 
-StorageDistribution::StorageDistribution(ARRAY_INDEX edge_count,
+    {ForEachEdge(dataflow, c) {
+        channel_quantities[c].preload = dataflow->getPreload(c);
+        channel_quantities[c].buffer_size = 0;
+    }}
+}
+
+StorageDistribution::StorageDistribution(const models::Dataflow* dataflow,
                                          TIME_UNIT thr,
-                                         std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> channel_quantities,
+                                         std::map<Edge, BufferInfos> channel_quantities,
                                          TOKEN_UNIT distribution_size)
-  :edge_count{edge_count}, thr{thr}, channel_quantities{channel_quantities},
+  :dataflow{dataflow}, thr{thr}, channel_quantities{channel_quantities},
    distribution_size{distribution_size} {
      // NOTE: could replace distribution_size declaration with updateDistributionSize()
    }
@@ -27,14 +35,14 @@ StorageDistribution::StorageDistribution(ARRAY_INDEX edge_count,
 // Set edge to given quantity
 void StorageDistribution::setChannelQuantity(Edge e,
                                              TOKEN_UNIT quantity) {
-  this->channel_quantities[e].second = quantity;
+  this->channel_quantities[e].buffer_size = quantity;
   this->updateDistributionSize();
 }
 
 // Set initial token count of edge
 void StorageDistribution::setInitialTokens(Edge e,
                                            TOKEN_UNIT token_count) {
-  this->channel_quantities[e].first = token_count;
+  this->channel_quantities[e].preload = token_count;
 }
 
 
@@ -51,7 +59,7 @@ void StorageDistribution::setThroughput(TIME_UNIT thr) {
 // Return channel quantity of edge
 TOKEN_UNIT StorageDistribution::getChannelQuantity(Edge e) const {
     assert(channel_quantities.find(e) != channel_quantities.end()); // edge quantity not in map
-    return this->channel_quantities.at(e).second;
+    return this->channel_quantities.at(e).buffer_size;
 }
 // Indicate if the Edge is set
 bool StorageDistribution::hasEdge(Edge e) const {
@@ -61,7 +69,7 @@ bool StorageDistribution::hasEdge(Edge e) const {
 // Return initial token count of edge
 TOKEN_UNIT StorageDistribution::getInitialTokens(Edge e) const {
   assert(channel_quantities.find(e) != channel_quantities.end()); // edge quantity not in map
-  return this->channel_quantities.at(e).first;
+  return this->channel_quantities.at(e).preload;
 }
 
 // Return distribution size of storage distribution
@@ -76,7 +84,7 @@ TIME_UNIT StorageDistribution::getThroughput() const {
 
 // Return number of edges
 ARRAY_INDEX StorageDistribution::getEdgeCount() const {
-  return this->edge_count;
+  return this->dataflow->getEdgesCount();
 }
 
 // Return set of edges
@@ -127,7 +135,7 @@ void StorageDistribution::updateDistributionSize() {
   TOKEN_UNIT new_dist_sz = 0;
   for (auto it = this->channel_quantities.begin();
        it != this->channel_quantities.end(); it++) {
-    new_dist_sz += it->second.second;
+    new_dist_sz += it->second.buffer_size;
   }
   if (new_dist_sz != this->getDistributionSize()) {
     this->setDistributionSize(new_dist_sz);
@@ -140,14 +148,14 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
   ARRAY_INDEX ch_count = 0;
 
   sdInfo += "\tCurrent StorageDistribution info:\n";
-  sdInfo += "\tNumber of edges: " + std::to_string(this->edge_count) + "\n";
+  sdInfo += "\tNumber of edges: " + std::to_string(this->getEdgeCount()) + "\n";
   sdInfo += "\tChannel quantities stored in the data structure:\n";
    for (auto it = this->channel_quantities.begin();
         it != this->channel_quantities.end(); it++) {
      if (!ch_count) {
        sdInfo += "\t";
      }
-     sdInfo += std::to_string(it->second.second) + " ";
+     sdInfo += std::to_string(it->second.buffer_size) + " ";
      ch_count++;
    }
     sdInfo += "\n\tChannel quantities using the dataflow edges:\n";
@@ -161,7 +169,7 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
           sdInfo += "X ";
       }
       ch_count++;
-      if (ch_count == (this->edge_count / 2)) {
+      if (ch_count == (getEdgeCount() / 2)) {
 	sdInfo += "\n\t";
       }
     }}
@@ -186,7 +194,7 @@ std::string StorageDistribution::print_quantities_csv(models::Dataflow* const da
   // }
   // output += "\"";
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (this->edge_count / 2)) {
+      if (ch_count >= (getEdgeCount() / 2)) {
 	output += delim;
 	output += std::to_string(this->getChannelQuantity(c));
 	delim = ",";
@@ -206,7 +214,7 @@ std::string StorageDistribution::print_dependency_mask(models::Dataflow* const d
   ARRAY_INDEX ch_count = 0;
 
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (this->edge_count / 2)) {
+      if (ch_count >= (this->getEdgeCount() / 2)) {
 	output += delim;
         if (result.critical_edges.find(c) != result.critical_edges.end()) {
           output += "1";
@@ -264,23 +272,23 @@ void StorageDistributionSet::addStorageDistributions(std::vector<StorageDistribu
  * - An identical storage distribution already exists in the set
  */
 void StorageDistributionSet::addStorageDistribution(StorageDistribution new_distribution) {
-  VERBOSE_DSE("\t\tAttempting to add storage distribution of dist sz: "
+    VERBOSE_DEBUG_DSE("\t\tAttempting to add storage distribution of dist sz: "
               << new_distribution.getDistributionSize()
-              << " to set" << std::endl);
+              << " to set" );
   if (!hasDistribution(new_distribution.getDistributionSize())) { // first storage distribution of this distribution size
-    VERBOSE_DSE("\t\t\tFirst of this distribution size: adding new distribution" << std::endl);
+      VERBOSE_DEBUG_DSE("\t\t\tFirst of this distribution size: adding new distribution" );
     this->set[new_distribution.getDistributionSize()].push_back(new_distribution);
   } else { // there's already a storage distribution with the same distribution size
     for (auto &distribution : this->set[new_distribution.getDistributionSize()]) {
       // don't add storage distributions that are already in checklist
       if (new_distribution == distribution) {
-        VERBOSE_DSE("\t\t\tFound matching distribution: not adding new distribution" << std::endl);
+          VERBOSE_DEBUG_DSE("\t\t\tFound matching distribution: not adding new distribution" );
         return;
       }
     }
     // no matching storage distributions of equal distribution size
     this->set[new_distribution.getDistributionSize()].push_back(new_distribution);
-    VERBOSE_DSE("\t\t\tNew storage distribution added!" << std::endl);
+    VERBOSE_DSE("\t\t\tNew storage distribution added: " << new_distribution.getQuantitiesStr() );
   }
 
   // update maximum throughput and corresponding distribution size in set
@@ -364,7 +372,7 @@ void StorageDistributionSet::minimizeStorageDistributions(StorageDistribution ne
         VERBOSE_DSE("\t\tNew storage distribution of size "
                     << newDist.getDistributionSize()
                     << " found to be non-minimal: removing from set"
-                    << std::endl);
+                    );
         this->removeStorageDistribution(newDist);
         return; // no need to iterate through rest of set once newDist has been removed
       } else if (newDistSz == storage_dist.getDistributionSize() && // remove existing equal storage dist (size) with lower thr
@@ -372,7 +380,7 @@ void StorageDistributionSet::minimizeStorageDistributions(StorageDistribution ne
         VERBOSE_DSE("\t\tExisting storage distribution of size "
                     << storage_dist.getDistributionSize()
                     << " found to be non-minimal: removing from set"
-                    << std::endl);
+                    );
         this->removeStorageDistribution(storage_dist);
       }
     }
@@ -405,16 +413,12 @@ bool StorageDistributionSet::isSearchComplete(StorageDistributionSet checklist,
   /* search is complete when the max throughput has been found and there 
      isn't any more storage distributions of the same distribution size
      left to check */
-  VERBOSE_DSE("Checking if search is complete:" << std::endl);
-  VERBOSE_DSE("\tCurrent max throughput: " << this->p_max.second
-              << "\n\tTarget throughput: " << target_thr << std::endl);
-  VERBOSE_DSE("\t\tIs current max equal to target (yes:1/no:0)? "
-              << commons::AreSame(this->p_max.second, target_thr) << std::endl);
-  VERBOSE_DSE("\tIs there any other SD with same dist size (" << p_max.first
-              << ")? " << checklist.hasDistribution(this->p_max.first)
-              << std::endl);
-  VERBOSE_DSE("\tHow many SDs left in checklist? " << checklist.getSize()
-              << std::endl);
+  VERBOSE_DSE(" ** Checking if search is complete: (current/target throughput:" <<  this->p_max.second << "/" << target_thr << ")"
+                                               << " (current ds: "<<  this->p_max.first << ")"
+                                               << " (checklist size: "<<  checklist.getSize() << ")"
+                                               << " (same ds available: "<<  checklist.hasDistribution(this->p_max.first) << ")");
+
+
   return ((commons::AreSame(this->p_max.second, target_thr) &&
           (!checklist.hasDistribution(this->p_max.first))) ||
           (checklist.getSize() <= 0)); // also end when we're out of distributions to check
@@ -848,7 +852,7 @@ void StorageDistribution::updateGraph(models::Dataflow *dataflow){
 // Returns the minimum step size for each channel in the given dataflow graph
 void findMinimumStepSz(models::Dataflow *dataflow,
                        std::map<Edge, TOKEN_UNIT> &minStepSizes) {
-  VERBOSE_DSE("Calculating minimal channel step sizes..." << std::endl);
+    VERBOSE_DEBUG_DSE("Calculating minimal channel step sizes..." );
   {ForEachEdge(dataflow, c) { // get GCD of all possible combinations of rates of production and consumption in channel
       TOKEN_UNIT minStepSz;
       minStepSz = dataflow->getEdgeInVector(c)[0]; // initialise with first value
@@ -857,8 +861,8 @@ void findMinimumStepSz(models::Dataflow *dataflow,
       for (EXEC_COUNT i = 0; i < dataflow->getEdgeOutPhasesCount(c); i++)
         minStepSz = std::gcd(minStepSz, dataflow->getEdgeOutVector(c)[i]);
       minStepSizes[c] = minStepSz;
-      VERBOSE_DSE("Min. step size for channel " << dataflow->getEdgeName(c)
-                  << ": " << minStepSz << std::endl);
+          VERBOSE_DEBUG_DSE("Min. step size for channel " << dataflow->getEdgeName(c)
+                  << ": " << minStepSz );
     }}
 }
 
@@ -866,12 +870,13 @@ void findMinimumStepSz(models::Dataflow *dataflow,
    in the given dataflow graph */
 void findMinimumChannelSz(models::Dataflow *dataflow,
                           std::map<Edge,
-                          std::pair<TOKEN_UNIT, TOKEN_UNIT>> &minChannelSizes) {
-  VERBOSE_DSE("Calculating minimal channel sizes (for postive throughput)..." << std::endl);
+                                  BufferInfos> &minChannelSizes) {
+  VERBOSE_DSE("Calculating minimal channel sizes (for postive throughput)..." );
   
   {ForEachEdge(dataflow, c) {
       // initialise channel size to maximum int size
-      minChannelSizes[c].second = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
+          minChannelSizes[c].buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
+          minChannelSizes[c].buffer_size = dataflow->getPreload(c); // NOTE (should use ULONG_MAX but it's a really large value)
       TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
                                                             dataflow->getEdgeOutPhasesCount(c));
       
@@ -881,7 +886,7 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
         TOKEN_UNIT tokensConsumed = dataflow->getEdgeOutVector(c)[i % dataflow->getEdgeOutPhasesCount(c)];
         TOKEN_UNIT tokensInitial = dataflow->getPreload(c);
         VERBOSE_DSE("p, c, t: " << tokensProduced << ", "
-                    << tokensConsumed << ", " << tokensInitial << std::endl);
+                    << tokensConsumed << ", " << tokensInitial );
         TOKEN_UNIT lowerBound;
 
         if (std::gcd(tokensProduced, tokensConsumed)) {
@@ -895,12 +900,12 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
         lowerBound = (lowerBound > tokensInitial ? lowerBound : tokensInitial);
         
         // take the lowest bound amongst phases of prod/cons
-        if (lowerBound < minChannelSizes[c].second) {
-          minChannelSizes[c].second = lowerBound;
+        if (lowerBound < minChannelSizes[c].buffer_size) {
+          minChannelSizes[c].buffer_size = lowerBound;
         }
       }
       VERBOSE_DSE("Minimum channel size for " << dataflow->getEdgeName(c)
-                  << ": " << minChannelSizes[c].second << std::endl);
+                  << ": " << minChannelSizes[c].buffer_size );
     }}
 }
 
@@ -909,14 +914,14 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
  * on every channel
  */
 TOKEN_UNIT findMinimumDistributionSz(std::map<Edge,
-                                     std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes) {
+        BufferInfos> minChannelSizes) {
   TOKEN_UNIT minDistributionSize = 0;
   
   for (auto it = minChannelSizes.begin(); it != minChannelSizes.end(); it++) {
-    minDistributionSize += it->second.second;
+    minDistributionSize += it->second.buffer_size;
   }
   
-  VERBOSE_DSE("Lower bound distribution size: " << minDistributionSize << std::endl);
+  VERBOSE_DSE("Lower bound distribution size: " << minDistributionSize );
   return minDistributionSize;
 }
 
@@ -924,7 +929,7 @@ TOKEN_UNIT findMinimumDistributionSz(std::map<Edge,
 void initSearchParameters(models::Dataflow *dataflow,
                           std::map<Edge, TOKEN_UNIT> &minStepSizes,
                           std::map<Edge,
-                          std::pair<TOKEN_UNIT, TOKEN_UNIT>> &minChannelSizes) {
+                                  BufferInfos> &minChannelSizes) {
   findMinimumStepSz(dataflow, minStepSizes);
   findMinimumChannelSz(dataflow, minChannelSizes);
 }

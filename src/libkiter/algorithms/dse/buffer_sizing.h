@@ -10,19 +10,25 @@
 #include <commons/commons.h>
 #include <algorithms/throughput/kperiodic.h>
 
-#define VERBOSE_DSE(m)    if (VERBOSE_IS_INFO())    	std::cerr << PURPLE_COLOR  << "[DSE]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ;
+#define VERBOSE_DEBUG_DSE(m)    if (VERBOSE_IS_DEBUG())    	std::cerr << PURPLE_COLOR  << "[DSE]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"
+#define VERBOSE_DSE(m)    if (VERBOSE_IS_INFO())    	std::cerr << PURPLE_COLOR  << "[DSE]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"
 
 namespace models {
   class Dataflow;
 }
 
+struct BufferInfos {
+    TOKEN_UNIT preload;
+    TOKEN_UNIT buffer_size;
+};
 class StorageDistribution {
 public:
   StorageDistribution();
-  StorageDistribution(ARRAY_INDEX edge_count,
+  StorageDistribution(const models::Dataflow* dataflow);
+  StorageDistribution(const models::Dataflow* dataflow,
                       TIME_UNIT thr,
                       std::map<Edge,
-                      std::pair<TOKEN_UNIT, TOKEN_UNIT>> channel_quantities,
+                              BufferInfos> channel_quantities,
                       TOKEN_UNIT distribution_size);
   void setChannelQuantity(Edge e, TOKEN_UNIT quantity);
   void setInitialTokens(Edge e, TOKEN_UNIT token_count);
@@ -38,6 +44,20 @@ public:
   bool operator==(const StorageDistribution& distribution) const;
   bool operator!=(const StorageDistribution& distribution) const;
   void updateDistributionSize();
+
+  std::string getQuantitiesStr() {
+      std::string output("\"");
+      std::string delim("");
+
+      {ForEachEdge(this->dataflow, c) {
+          output += delim;
+          output += std::to_string(this->getChannelQuantity(c));
+          delim = ",";
+      }}
+      output += "\"";
+      return output;
+  }
+
   std::string printInfo(models::Dataflow* const dataflow);
   std::string print_quantities_csv(models::Dataflow* const dataflow);
   std::string print_dependency_mask(models::Dataflow* const dataflow,
@@ -49,10 +69,10 @@ public:
   bool inForConeOf(StorageDistribution checkDist);
 
 private:
-  ARRAY_INDEX edge_count;
+    const models::Dataflow* dataflow;
+  //ARRAY_INDEX edge_count;
   TIME_UNIT thr; // throughput of given storage distribution
-  std::map<Edge, std::pair<TOKEN_UNIT, // initial tokens
-                           TOKEN_UNIT>> channel_quantities; // amount of space (in tokens per channel)
+  std::map<Edge, BufferInfos> channel_quantities; // amount of space (in tokens per channel)
   TOKEN_UNIT distribution_size; // should be equal to sum of channel quantities
 };
 
@@ -117,13 +137,13 @@ void findMinimumStepSz(models::Dataflow *dataflow,
                        std::map<Edge, TOKEN_UNIT> &minStepSizes);
 void findMinimumChannelSz(models::Dataflow *dataflow,
                           std::map<Edge,
-                          std::pair<TOKEN_UNIT, TOKEN_UNIT>> &minChannelSizes); // initial tokens in first element of pair and channel quantity in second element of pair
+                                  BufferInfos> &minChannelSizes); // initial tokens in first element of pair and channel quantity in second element of pair
 TOKEN_UNIT findMinimumDistributionSz(std::map<Edge,
-                                     std::pair<TOKEN_UNIT, TOKEN_UNIT>> minChannelSizes);
+        BufferInfos> minChannelSizes);
 void initSearchParameters(models::Dataflow *dataflow,
                           std::map<Edge, TOKEN_UNIT> &minStepSizes,
                           std::map<Edge,
-                          std::pair<TOKEN_UNIT, TOKEN_UNIT>> &minChannelSizes);
+                                  BufferInfos> &minChannelSizes);
 std::string timeToString(TIME_UNIT t);
 StorageDistribution makeMinimalSD(StorageDistribution sd1,
                                   StorageDistribution sd2);
