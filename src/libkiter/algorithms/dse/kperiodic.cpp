@@ -292,17 +292,16 @@ StorageDistribution initialiseDist(models::Dataflow* dataflow){
 
 }
 
-void updateGraphwMatching(models::Dataflow* dataflow, std::map<Edge,Edge> matching, StorageDistribution checkDist){
+void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>& matching, StorageDistribution checkDist){
     dataflow->reset_computation();
     {ForEachEdge(dataflow, c) {
-            Edge original_edge = matching[c];
+            Edge original_edge = matching.at(c);
             if (dataflow->getEdgeType(c) == FEEDBACK_EDGE) {
                 dataflow->setPreload(c, checkDist.getChannelQuantity(original_edge) -
                                               checkDist.getInitialTokens(original_edge));
             } else {
                 //dataflow_prime->setPreload(c, checkDist.getInitialTokens(matching.at(c)));
 
-                VERBOSE_INFO(printers::generateSDF3XML(dataflow));
                 VERBOSE_ASSERT_EQUALS(checkDist.getInitialTokens(original_edge), dataflow->getPreload(c));
             }
     }}
@@ -626,7 +625,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     // initialise search parameters
     std::map<Edge, TOKEN_UNIT> minStepSizes;
     std::map<Edge, BufferInfos> minChannelSizes;
-    TOKEN_UNIT minDistributionSize;
+
 
     VERBOSE_DSE("INITIALISING SEARCH PARAMETERS:");
     initSearchParameters(dataflow_prime,

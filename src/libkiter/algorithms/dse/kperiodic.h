@@ -33,6 +33,11 @@ std::pair<models::Dataflow*, std::map<Edge,Edge> > genGraphWFeedbackEdgesWithPai
 StorageDistribution updateStoreDistwCCSD(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
                                          models::Dataflow* cc_g, StorageDistribution sd_cc);
 
+
+std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribution_from_cc(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
+                                                                                             std::map<Edge,Edge>& matching, std::map<Edge, TOKEN_UNIT> & minStepSizes);
+StorageDistribution initialiseDist(models::Dataflow* dataflow);
+void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>& matching, StorageDistribution checkDist);
 ADD_TRANSFORMATION(KPeriodicThroughputwithDSE,
 		transformation_t({"KPeriodicThroughputwithDSE", "Combine buffer space exploration with throughput evaluation of CSDF by K-periodic scheduling method", algorithms::compute_Kperiodic_throughput_dse}));
 

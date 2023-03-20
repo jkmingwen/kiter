@@ -28,11 +28,10 @@ StorageDistribution::StorageDistribution(const models::Dataflow* dataflow,
                                          std::map<Edge, BufferInfos> channel_quantities)
   :dataflow{dataflow}, thr{thr}, channel_quantities{channel_quantities},
    distribution_size{distribution_size} {
-     // NOTE: could replace distribution_size declaration with updateDistributionSize()
     {ForEachEdge(dataflow, c) {
             VERBOSE_ASSERT_EQUALS(channel_quantities[c].preload, dataflow->getPreload(c));
         }}
-
+    this->updateDistributionSize();
    }
 
 // Set edge to given quantity
