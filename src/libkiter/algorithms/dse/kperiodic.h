@@ -23,7 +23,10 @@ namespace algorithms {
         StorageDistributionSet compute_Kperiodic_throughput_dse_sd(models::Dataflow *const dataflow, parameters_list_t parameters);
         void compute_Kperiodic_throughput_dse(models::Dataflow *const dataflow, parameters_list_t params);
 
-       StorageDistributionSet new_compute_Kperiodic_dse(models::Dataflow *const dataflow);
+    StorageDistributionSet new_compute_Kperiodic_dse_with_init_dist(models::Dataflow *const dataflow,
+                                                                    StorageDistribution initDist,
+                                                                    TIME_UNIT target_thr=0);
+    StorageDistributionSet new_compute_Kperiodic_dse(models::Dataflow *const dataflow);
 }
 
 models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result, bool print=false);

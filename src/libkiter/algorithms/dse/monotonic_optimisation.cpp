@@ -118,11 +118,11 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
   // handleInfeasiblePoint(dataflow, infeasibleSet, feasibleSet, kneeSet, initDist, result, bufferLowerBounds);
   thrCurrent = newDist.getThroughput();
   while (thrCurrent < thrTarget) {
-    VERBOSE_DSE("SD sending to handleInfeasible:\n" << newDist.printInfo(dataflow) << std::endl);
+    VERBOSE_DSE("SD sending to handleInfeasible:\n" << newDist.printInfo() << std::endl);
     handleInfeasiblePoint(dataflow, infeasibleSet, feasibleSet, kneeSet, newDist, result, bufferLowerBounds);
-    VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions(dataflow)
+    VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions()
                 << std::endl);
-    VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions(dataflow)
+    VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions()
                 << std::endl);
     for (std::set<Edge>::iterator it = (result.critical_edges).begin();
          it != (result.critical_edges).end(); it++) {
@@ -157,20 +157,20 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
     } else {
       newDist.setThroughput(result.throughput);
     }
-    VERBOSE_DSE(newDist.printInfo(dataflow));
+    VERBOSE_DSE(newDist.printInfo());
     thrCurrent = newDist.getThroughput();
   }
-  VERBOSE_DSE("Found first feasible SD:\n" << newDist.printInfo(dataflow)
+  VERBOSE_DSE("Found first feasible SD:\n" << newDist.printInfo()
               << std::endl);
-  VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions(dataflow)
+  VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions()
               << std::endl);
-  VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions(dataflow)
+  VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions()
               << std::endl);
 
   // Optimization phase
   feasibleSet.updateFeasibleSet(newDist);
   VERBOSE_DSE("Current feasible set:\n"
-              << feasibleSet.printDistributions(dataflow) << std::endl);
+              << feasibleSet.printDistributions() << std::endl);
   StorageDistribution kMin;
   TOKEN_UNIT mult = 1;
   std::map<Edge, TOKEN_UNIT> step;
@@ -184,7 +184,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
                                               thrCurrent, thrTarget,
                                               mult, step, kMin,
                                               bufferLowerBounds);
-  VERBOSE_DSE("Next SD to check:\n" << checkDist.printInfo(dataflow)
+  VERBOSE_DSE("Next SD to check:\n" << checkDist.printInfo()
               << std::endl);
   if (foundPoint) { // first call of select function can't find a point between U and S
     currDist = checkDist;
@@ -205,7 +205,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
     } else {
       checkDist.setThroughput(result.throughput);
     }
-    VERBOSE_DSE(checkDist.printInfo(dataflow));
+    VERBOSE_DSE(checkDist.printInfo());
     thrCurrent = checkDist.getThroughput();
     // std::cout << "thrCurrent, thrTarget: " << thrCurrent << ", " << thrTarget << std::endl;
     if (thrCurrent < thrTarget) {
@@ -224,12 +224,12 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
     if (!foundPoint) {
       currDist = checkDist;
     }
-    VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions(dataflow)
+    VERBOSE_DSE("Current infeasible set:\n" << infeasibleSet.printDistributions()
                 << std::endl);
-    VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions(dataflow)
+    VERBOSE_DSE("Current knee set:\n" << kneeSet.printDistributions()
                 << std::endl);
     VERBOSE_DSE("Current feasible set:\n"
-                << feasibleSet.printDistributions(dataflow) << std::endl);
+                << feasibleSet.printDistributions() << std::endl);
   }
 
   dataflow->reset_computation(); // make graph writeable to alter channel size
@@ -246,7 +246,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
   } else {
     currDist.setThroughput(result.throughput);
   }
-  VERBOSE_DSE("Knee set to send to DSE:\n" << kneeSet.printDistributions(dataflow)
+  VERBOSE_DSE("Knee set to send to DSE:\n" << kneeSet.printDistributions()
               << std::endl);
   StorageDistributionSet augmentedKneeSet;
   for (auto &distSz : kneeSet.getSet()) {
@@ -260,7 +260,7 @@ StorageDistributionSet algorithms::monotonic_optimised_Kperiodic_throughput_dse(
       augmentedKneeSet.addStorageDistribution(tempSD);
     }
   }
-  VERBOSE_DSE("Augmented knee set:\n" << augmentedKneeSet.printDistributions(dataflow)
+  VERBOSE_DSE("Augmented knee set:\n" << augmentedKneeSet.printDistributions()
               << std::endl);
   // return augmentedKneeSet;
   std::cout << "M_OPT: no. computations: " << computation_counter << std::endl;

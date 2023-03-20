@@ -12,10 +12,10 @@
 
 
 StorageDistribution::StorageDistribution()
-        :dataflow{NULL}, thr{0}, channel_quantities(), distribution_size{0} {
+        :dataflow{NULL}, thr{0},cumulativeTime{0},executionTime{0}, channel_quantities(), distribution_size{0} {
 }
 StorageDistribution::StorageDistribution(const models::Dataflow* dataflow)
-        :dataflow{dataflow}, thr{0}, channel_quantities(), distribution_size{0} {
+        :dataflow{dataflow}, thr{0},cumulativeTime{0},executionTime{0}, channel_quantities(), distribution_size{0} {
 
     {ForEachEdge(dataflow, c) {
         channel_quantities[c].preload = dataflow->getPreload(c);
@@ -149,7 +149,7 @@ void StorageDistribution::updateDistributionSize() {
 }
 
 // Prints member data of StorageDistribution for debugging
-std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
+std::string StorageDistribution::printInfo() const {
   std::string sdInfo;
   ARRAY_INDEX ch_count = 0;
 
@@ -186,26 +186,14 @@ std::string StorageDistribution::printInfo(models::Dataflow* const dataflow) {
   return sdInfo;
 }
 
-std::string StorageDistribution::print_quantities_csv(models::Dataflow* const dataflow) {
+std::string StorageDistribution::print_quantities_csv() const{
   std::string output("\"");
   std::string delim("");
-  ARRAY_INDEX ch_count = 0;
-  // for (auto &it : this->channel_quantities) {
-  //   if (ch_count >= (this->edge_count / 2)) {
-  //     output += delim;
-  //     output += std::to_string(it.second.second);
-  //     delim = ",";
-  //   }
-  //   ch_count++;
-  // }
-  // output += "\"";
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (getEdgeCount() / 2)) {
 	output += delim;
 	output += std::to_string(this->getChannelQuantity(c));
 	delim = ",";
-      }
-      ch_count++;
+
     }}
   output += "\"";
   return output;
@@ -213,14 +201,11 @@ std::string StorageDistribution::print_quantities_csv(models::Dataflow* const da
 
 // prints mask of critical channels identified in storage distribution where 1 = channel
 // associated with critical cycle
-std::string StorageDistribution::print_dependency_mask(models::Dataflow* const dataflow,
-                                                       kperiodic_result_t const result) {
+std::string StorageDistribution::print_dependency_mask(kperiodic_result_t const result) const{
   std::string output("\"");
   std::string delim("");
-  ARRAY_INDEX ch_count = 0;
 
   {ForEachEdge(dataflow, c) {
-      if (ch_count >= (this->getEdgeCount() / 2)) {
 	output += delim;
         if (result.critical_edges.find(c) != result.critical_edges.end()) {
           output += "1";
@@ -228,29 +213,32 @@ std::string StorageDistribution::print_dependency_mask(models::Dataflow* const d
           output += "0";
         }
 	delim = ",";
-      }
-      ch_count++;
     }}
   output += "\"";
   return output;
 }
-
+std::ostream& operator<<(std::ostream& out, const StorageDistribution& f)
+{
+    return out << f.print_quantities_csv();
+}
 // Print a DOT file of the given graph modelled with a storage distribution
-std::string StorageDistribution::printGraph(models::Dataflow* const dataflow) {
+std::string StorageDistribution::printGraph() const{
   // copy graph to model
   /* NOTE doesn't work with a copy:
      can't find channel quantity for given edges  */
   // models::Dataflow* modelledGraph = new models::Dataflow(*dataflow);
-  dataflow->reset_computation();
-  {ForEachEdge(dataflow, c) {
-      // FIXME feels kinda hacky to be using half of the edge count to check for modelled edges
-      if (dataflow->getEdgeId(c) > (dataflow->getEdgesCount() / 2)) { /* don't deal with non-modelled edges
-                                                                         as those quantities don't change */
-        dataflow->setPreload(c, (this->getChannelQuantity(c) -
-                                 this->getInitialTokens(c))); // subtract initial tokens in buffer
-      }
-    }}
-  return printers::GenerateGraphDOT(dataflow);
+    //  dataflow->reset_computation();
+    //  {ForEachEdge(dataflow, c) {
+    //      // FIXME feels kinda hacky to be using half of the edge count to check for modelled edges
+    //      if (dataflow->getEdgeId(c) > (dataflow->getEdgesCount() / 2)) { /* don't deal with non-modelled edges
+    //                                                                         as those quantities don't change */
+    //        dataflow->setPreload(c, (this->getChannelQuantity(c) -
+    //                                 this->getInitialTokens(c))); // subtract initial tokens in buffer
+    //      }
+    //    }}
+    //  return printers::GenerateGraphDOT(dataflow);
+    // FIXME: This is wrong
+    VERBOSE_FAILURE();
 }
 
 StorageDistributionSet::StorageDistributionSet() {
@@ -786,24 +774,23 @@ void StorageDistributionSet::updateFeasibleSet(StorageDistribution newDist) {
 }
 
 // Print info of all storage distributions of a given distribution size in set
-std::string StorageDistributionSet::printDistributions(TOKEN_UNIT dist_sz,
-						       models::Dataflow* const dataflow) {
+std::string StorageDistributionSet::printDistributions(TOKEN_UNIT dist_sz) {
   assert(set.find(dist_sz) != set.end());
 
   std::string dInfo;
   dInfo += "Printing storage distributions of distribution size: "
     + std::to_string(dist_sz) + "\n";
   for (auto &i : set[dist_sz]) {
-    dInfo += i.printInfo(dataflow);
+    dInfo += i.printInfo();
   }
   return dInfo;
 }
 
 // Print info of all storage distributions in set
-std::string StorageDistributionSet::printDistributions(models::Dataflow* const dataflow) {
+std::string StorageDistributionSet::printDistributions() {
   std::string allInfo;
   for (auto &it : this->set) {
-    allInfo += printDistributions(it.first, dataflow);
+    allInfo += printDistributions(it.first);
   }
   return allInfo;
 }
@@ -811,15 +798,14 @@ std::string StorageDistributionSet::printDistributions(models::Dataflow* const d
 /* Writes storage distribution set info to a CSV file to plot data
    Takes in file name as argument --- explicitly state file 
    format (e.g. "example_filename.csv") */
-void StorageDistributionSet::writeCSV(std::string filename,
-				      models::Dataflow* const dataflow) {
+void StorageDistributionSet::writeCSV(std::string filename) {
   std::ofstream outputFile;
   outputFile.open(filename);
   outputFile << "storage distribution size,throughput,channel quantities" << std::endl; // initialise headers
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
       outputFile << it.first << "," << sd.getThroughput() << ","
-		 << sd.print_quantities_csv(dataflow) << std::endl;
+		 << sd.print_quantities_csv() << std::endl;
     }
   }
   outputFile.close();
@@ -827,17 +813,17 @@ void StorageDistributionSet::writeCSV(std::string filename,
 
 /* Iterate through storage distribution set and print graphs
    in DOT format */
-void StorageDistributionSet::printGraphs(models::Dataflow* const dataflow,
-                                         std::string pathName) {
+void StorageDistributionSet::printGraphs(std::string pathName) {
   std::ofstream outputFile;
   int graphCount = 0;
 
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
-      std::string fileName = pathName + dataflow->getGraphName() +
+
+      std::string fileName = pathName +sd.getGraphName() +
         "_" + std::to_string(graphCount) + ".dot";
       outputFile.open(fileName);
-      outputFile << sd.printGraph(dataflow);
+      outputFile << sd.printGraph();
       outputFile.close();
       graphCount++;
     }

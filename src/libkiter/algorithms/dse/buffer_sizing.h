@@ -32,10 +32,18 @@ public:
   void setChannelQuantity(Edge e, TOKEN_UNIT quantity);
   void setInitialTokens(Edge e, TOKEN_UNIT token_count);
   void setDistributionSize(TOKEN_UNIT sz);
-  void setThroughput(TIME_UNIT thr);
+    void setThroughput(TIME_UNIT thr);
+    void setCumulativeTime(double t) {this->cumulativeTime = t;};
+    void setExecutionTime(double t)  {this->executionTime = t;};
   TOKEN_UNIT getChannelQuantity(Edge e) const;
   TOKEN_UNIT getInitialTokens(Edge e) const;
+  const models::Dataflow * getDataflow() const {
+      return this->dataflow;
+  }
   bool hasEdge(Edge e) const;
+  std::string getGraphName() const {
+      return dataflow->getGraphName();
+  }
   TOKEN_UNIT getDistributionSize() const;
   TIME_UNIT getThroughput() const;
   ARRAY_INDEX getEdgeCount() const;
@@ -43,6 +51,21 @@ public:
   bool operator==(const StorageDistribution& distribution) const;
   bool operator!=(const StorageDistribution& distribution) const;
   void updateDistributionSize();
+
+    std::string get_csv_header() {
+        return "storage distribution size,throughput,channel quantities,computation duration,cumulative duration";
+    }
+    std::string get_csv_line() {
+        std::ostringstream stream;
+
+        stream << this->getDistributionSize() << ","
+                  << this->getThroughput() << ","
+                  << this->print_quantities_csv() << ","
+                  << this->executionTime << ","
+                  << this->cumulativeTime ;
+        return stream.str();
+    }
+
 
   std::string getQuantitiesStr() {
       std::string output("\"");
@@ -57,11 +80,10 @@ public:
       return output;
   }
 
-  std::string printInfo(models::Dataflow* const dataflow);
-  std::string print_quantities_csv(models::Dataflow* const dataflow);
-  std::string print_dependency_mask(models::Dataflow* const dataflow,
-                                    kperiodic_result_t const result);
-  std::string printGraph(models::Dataflow* const dataflow);
+  std::string printInfo() const;
+  std::string print_quantities_csv() const;
+  std::string print_dependency_mask(kperiodic_result_t const result) const;
+  std::string printGraph() const;
   void updateGraph(models::Dataflow* dataflow);
   // BASE MONOTONIC OPTIMISATION FUNCTIONS
   bool inBackConeOf(StorageDistribution checkDist);
@@ -71,10 +93,12 @@ private:
     const models::Dataflow* dataflow;
   //ARRAY_INDEX edge_count;
   TIME_UNIT thr; // throughput of given storage distribution
+  double cumulativeTime, executionTime;
   std::map<Edge, BufferInfos> channel_quantities; // amount of space (in tokens per channel)
   TOKEN_UNIT distribution_size; // should be equal to sum of channel quantities
 };
 
+std::ostream& operator<<(std::ostream& out, const StorageDistribution& f);
 class StorageDistributionSet {
 public:
   StorageDistributionSet();
@@ -109,12 +133,11 @@ public:
   void updateInfeasibleSet(StorageDistribution new_sd,
                            std::map<Edge, TOKEN_UNIT> bufferLb); // add new SD to infeasible set of SDs for monotonic optimisation
   void updateFeasibleSet(StorageDistribution new_sd); // add new SD to infeasible set of SDs for monotonic optimisation
-  std::string printDistributions(TOKEN_UNIT dist_sz,
-				 models::Dataflow* const dataflow); /* prints info of all storage distributions 
+  std::string printDistributions(TOKEN_UNIT dist_sz); /* prints info of all storage distributions
 								       of given distribution size */
-  std::string printDistributions(models::Dataflow* const dataflow); // prints info of all storage distributions in set
-  void writeCSV(std::string filename, models::Dataflow* const dataflow); // writes to a CSV file for plots
-  void printGraphs(models::Dataflow* const dataflow, std::string filename); // iterate through storage distribution set and print graphs
+  std::string printDistributions(); // prints info of all storage distributions in set
+  void writeCSV(std::string filename); // writes to a CSV file for plots
+  void printGraphs(std::string filename); // iterate through storage distribution set and print graphs
   // BASE MONOTONIC OPTIMISATION FUNCTIONS
   bool addToUnsat(StorageDistribution sd);
   void addToSat(StorageDistribution sd);

@@ -348,9 +348,9 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
 
 
 
-StorageDistributionSet new_compute_Kperiodic_dse_with_init_dist(models::Dataflow *const dataflow, 
+StorageDistributionSet algorithms::new_compute_Kperiodic_dse_with_init_dist(models::Dataflow *const dataflow,
                                                                 StorageDistribution initDist,
-                                                                TIME_UNIT target_thr=0) {
+                                                                TIME_UNIT target_thr) {
 
     // Compute the minimal steps
     std::map<Edge, TOKEN_UNIT> minStepSizes;
@@ -381,7 +381,6 @@ StorageDistributionSet new_compute_Kperiodic_dse_with_init_dist(models::Dataflow
     }}
     minStorageDist.addStorageDistribution(zeroDist);
 
-
     while (!minStorageDist.isSearchComplete(checklist, thrTarget)) {
 
         // Pop checkDist
@@ -404,12 +403,12 @@ StorageDistributionSet new_compute_Kperiodic_dse_with_init_dist(models::Dataflow
     }
 
     // The minimum storage distribution for a throughput of 0 is (0, 0,..., 0)
-    if (minStorageDist.getNextDistribution().getThroughput() == 0) {
-        StorageDistribution zeroDist(minStorageDist.getNextDistribution());
-        {ForEachEdge(dataflow_prime, c) { zeroDist.setChannelQuantity(c, 0); }}
-        minStorageDist.removeStorageDistribution(minStorageDist.getNextDistribution());
-        minStorageDist.addStorageDistribution(zeroDist);
-    }
+//    if (minStorageDist.getNextDistribution().getThroughput() == 0) {
+//        StorageDistribution zeroDist(minStorageDist.getNextDistribution());
+//        {ForEachEdge(dataflow_prime, c) { zeroDist.setChannelQuantity(c, 0); }}
+//        minStorageDist.removeStorageDistribution(minStorageDist.getNextDistribution());
+//        minStorageDist.addStorageDistribution(zeroDist);
+//    }
 
 
     return minStorageDist;
@@ -494,8 +493,8 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
     // write current storage distribution info to DSE log
     dseLog << checkDist.getDistributionSize() << ","
             << checkDist.getThroughput() << ","
-            << checkDist.print_quantities_csv(dataflow_prime) << ","
-            << checkDist.print_dependency_mask(dataflow_prime, result) << ","
+            << checkDist.print_quantities_csv() << ","
+            << checkDist.print_dependency_mask( result) << ","
             << execTime.count() << ","
             << cumulativeTime.count() << std::endl;
    
@@ -537,7 +536,7 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
   }
 
   VERBOSE_DSE("\nDSE RESULTS [START] (Target Throughput: " << thrTarget << "):");
-  VERBOSE_DSE("\n" << minStorageDist.printDistributions(dataflow_prime));
+  VERBOSE_DSE("\n" << minStorageDist.printDistributions());
   VERBOSE_DSE("DSE RESULTS [END]");
   VERBOSE_DSE("Number of pareto points: " << minStorageDist.getSize());
   dseLog.close();
@@ -551,7 +550,7 @@ void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
 StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::Dataflow* const dataflow,
                                                                         parameters_list_t  parameters) {
 
-
+    auto beginTime = std::chrono::steady_clock::now();
 
     bool writeLogFiles = false;
     bool isMonoOpt = false;
@@ -581,7 +580,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     if (parameters.find("THR") != parameters.end()) { // specify target throughput of DSE
         thrTargetSpecified = true;
     } else {
-        VERBOSE_WARNING("No target throughput specified (target throughput will be set to max throughput by default) --- specify target throughput with '-p THR=n' flag");
+        VERBOSE_INFO("No target throughput specified (target throughput will be set to max throughput by default) --- specify target throughput with '-p THR=n' flag");
     }
     if (parameters.find("MAX_SET") != parameters.end()) { // specify if only maximal SDs returned
         isMaxSet = true;
@@ -777,29 +776,19 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
         result = compute_Kperiodic_throughput_and_cycles(dataflow_prime);
         auto endTime = std::chrono::steady_clock::now();
         std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-        cumulativeTime += execTime;
+        std::chrono::duration<double, std::milli> cumulTime = endTime - beginTime; // duration in ms
+
         computation_counter++;
 
-        if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
-            checkDist.setThroughput(0);
-        } else {
-            checkDist.setThroughput(result.throughput);
-        }
 
+        checkDist.setThroughput(result.throughput);
+        checkDist.setExecutionTime(execTime.count());
+        checkDist.setCumulativeTime(cumulTime.count());
         // write current storage distribution info to DSE log
         if (writeLogFiles) {
-            dseLog << checkDist.getDistributionSize() << ","
-                   << checkDist.getThroughput() << ","
-                   << checkDist.print_quantities_csv(dataflow_prime) << ","
-                   << checkDist.print_dependency_mask(dataflow_prime, result) << ","
-                   << execTime.count() << ","
-                   << cumulativeTime.count() << std::endl;
+            dseLog << checkDist.get_csv_line() << std::endl;
         } else {
-            std::cout << checkDist.getDistributionSize() << ","
-                      << checkDist.getThroughput() << ","
-                      << checkDist.print_quantities_csv(dataflow_prime) << ","
-                      << execTime.count() << ","
-                      << cumulativeTime.count() << std::endl;
+            std::cout << checkDist.get_csv_line() << std::endl;
         }
 
         // Add storage distribution and computed throughput to set of minimal storage distributions
@@ -839,7 +828,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
         minStorageDist.addStorageDistribution(zeroDist);
     }
     VERBOSE_DEBUG_DSE("DSE RESULTS [START] (target throughput: " << thrTarget   << "):");
-    VERBOSE_DEBUG_DSE("\n" << minStorageDist.printDistributions(dataflow_prime));
+    VERBOSE_DEBUG_DSE("\n" << minStorageDist.printDistributions());
     VERBOSE_DEBUG_DSE("DSE RESULTS [END]");
     VERBOSE_DEBUG_DSE("Number of computations: " << computation_counter);
     VERBOSE_DEBUG_DSE("Number of pareto points: " << minStorageDist.getSize());
@@ -851,7 +840,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
                   << logDirName + dataflow_prime->getGraphName() + "_dselog" + methodName + ".csv"
                   << std::endl;
         minStorageDist.writeCSV(ppDirName + dataflow_prime->getGraphName() +
-                                "_pp" + methodName + ".csv", dataflow_prime);
+                                "_pp" + methodName + ".csv" );
         std::cout << "\nPareto points have been written to: "
                   << ppDirName + dataflow_prime->getGraphName() + "_pp" + methodName + ".csv"
                   << std::endl;
@@ -865,8 +854,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
               << std::endl;
 #endif
     } else {
-        std::cout << "\nNote that you can use flag '-p LOG=true' or '-p LOGDIR=/whereyougo/' to write logs of DSE"
-                  << std::endl;
+        VERBOSE_INFO("Note that you can use flag '-p LOG=true' or '-p LOGDIR=/whereyougo/' to write logs of DSE");
     }
 
     VERBOSE_DEBUG_DSE("End of The DSE function.");
