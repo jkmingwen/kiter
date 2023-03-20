@@ -29,7 +29,7 @@ architecture Behavioral of input_interface is
     signal r_sent : std_logic := '0';
 
 begin
-   
+
     store_data_l : process(ws, clk, rst)
     begin
         if (rst = '0') then
@@ -45,7 +45,7 @@ begin
             l_stored <= '0';
         end if;
     end process store_data_l;
-   
+
     store_data_r : process(ws, clk, rst)
     begin
         if (rst = '0') then -- TODO reset on high or low?
@@ -61,7 +61,7 @@ begin
             r_stored <= '0';
         end if;
     end process store_data_r;
-   
+
     send_data : process(clk, rst)
     begin
         if (rst = '0') then
@@ -76,7 +76,7 @@ begin
             r_data_out <= r_data_store;
         end if;
     end process send_data;
-   
+
     update_send_status : process (clk, rst)
     begin
         if (rst = '0') then
@@ -95,7 +95,7 @@ begin
             end if;
         end if;
     end process update_send_status;
-   
-   
+
+
 
 end Behavioral;

@@ -17,7 +17,7 @@
 --   Version History
 --   Version 1.0 03/29/2019 Scott Larson
 --     Initial Public Release
--- 
+--
 --------------------------------------------------------------------------------
 
 LIBRARY ieee;
@@ -49,14 +49,14 @@ ARCHITECTURE logic OF i2s_transceiver IS
   SIGNAL r_data_rx_int  :  STD_LOGIC_VECTOR(d_width-1 DOWNTO 0);  --internal right channel rx data buffer
   SIGNAL l_data_tx_int  :  STD_LOGIC_VECTOR(d_width-1 DOWNTO 0);  --internal left channel tx data buffer
   SIGNAL r_data_tx_int  :  STD_LOGIC_VECTOR(d_width-1 DOWNTO 0);  --internal right channel tx data buffer
-   
-BEGIN  
-  
+
+BEGIN
+
   PROCESS(mclk, reset_n)
     VARIABLE sclk_cnt  :  INTEGER := 0;  --counter of master clocks during half period of serial clock
     VARIABLE ws_cnt    :  INTEGER := 0;  --counter of serial clock toggles during half period of word select
   BEGIN
-    
+
     IF(reset_n = '0') THEN                                           --asynchronous reset
       sclk_cnt := 0;                                                   --clear mclk/sclk counter
       ws_cnt := 0;                                                     --clear sclk/ws counter
@@ -86,13 +86,13 @@ BEGIN
           END IF;
           IF(sclk_int = '1' AND ws_cnt < d_width*2+3) THEN                 --falling edge of sclk during data word
             IF(ws_int = '1') THEN                                            --right channel
-              sd_tx <= r_data_tx_int(d_width-1);                               --transmit serial data bit 
+              sd_tx <= r_data_tx_int(d_width-1);                               --transmit serial data bit
               r_data_tx_int <= r_data_tx_int(d_width-2 DOWNTO 0) & '0';        --shift data of right channel tx data buffer
             ELSE                                                             --left channel
               sd_tx <= l_data_tx_int(d_width-1);                               --transmit serial data bit
               l_data_tx_int <= l_data_tx_int(d_width-2 DOWNTO 0) & '0';        --shift data of left channel tx data buffer
             END IF;
-          END IF;        
+          END IF;
         ELSE                                                            --half period of ws
           ws_cnt := 0;                                                    --reset sclk/ws counter
           ws_int <= NOT ws_int;                                           --toggle word select
@@ -102,11 +102,10 @@ BEGIN
           l_data_tx_int <= l_data_tx;                                     --latch in left channel data to transmit
         END IF;
       END IF;
-    END IF;    
+    END IF;
   END PROCESS;
-  
+
   sclk <= sclk_int;  --output serial clock
   ws <= ws_int;      --output word select
-  
+
 END logic;
-    

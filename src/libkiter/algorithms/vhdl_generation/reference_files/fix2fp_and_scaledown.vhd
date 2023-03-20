@@ -40,7 +40,7 @@ i2s_to_fp_convertor : Fix2FP_0_23_S_8_23_F125_uid2
         I => i2s_in,
         O => i2s_to_fp
     );
-    
+
 fp_prod : FPMult_8_23_8_23_8_23_uid2_F125_uid3
     port map (
         clk => clk,

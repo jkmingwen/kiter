@@ -172,6 +172,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     }
   }
   generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
+  generateAudioInterfaceComponents(compDir, compRefDir);
 
 }
 
@@ -1173,6 +1174,37 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
 
         VERBOSE_ERROR( "Reference file for " << component
                 << " does not exist/not found!"); // TODO turn into assert
+
+    }
+  }
+}
+
+// Copy VHDL components necessary for interfacing with the audio codec from reference files to generated subdirectory
+void algorithms::generateAudioInterfaceComponents(std::string compDir,
+                                                  std::string referenceDir) {
+  std::ofstream vhdlOutput;
+  // names of reference files required to copy into project; add/remove as required
+  // TODO only produce the AXI component files if necessary; right now, we're just writing every file
+  std::vector<std::string> componentNames =
+    {"input_interface", "output_interface", // send audio data in accordance to handshake protocol
+     "i2s_to_fpc", "fpc_to_i2s",
+     "fix2fp_and_scaledown", "fp2fix_and_scaleup", // convert and scale data coming to and from the audio codec (fixed point to float)
+     "i2s_transceiver"}; // expose data from ADC/DAC to PL
+
+  for (const auto &component : componentNames) {
+    vhdlOutput.open(compDir + component + ".vhd");
+    std::ifstream compReference(referenceDir + component + ".vhd");
+    std::string fileContent;
+    if (compReference.is_open()) {
+      while (std::getline(compReference, fileContent)) {
+        vhdlOutput << fileContent << std::endl;
+      }
+      compReference.close();
+      vhdlOutput.close();
+    } else {
+
+      VERBOSE_ERROR( "Reference file for " << component
+                     << " does not exist/not found!"); // TODO turn into assert
 
     }
   }

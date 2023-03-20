@@ -24,23 +24,23 @@ architecture Behavioral of output_interface is
 
     signal l_data_store : std_logic_vector(i2s_bit_width - 1 downto 0) := (others => '0');
     signal r_data_store : std_logic_vector(i2s_bit_width - 1 downto 0) := (others => '0');
-   
+
     signal l_stored : std_logic := '0';
     signal r_stored : std_logic := '0';
-   
+
     signal l_sent : std_logic := '0';
     signal r_sent : std_logic := '0';
-   
+
     signal l_sent_status : std_logic := '0';
     signal r_sent_status : std_logic := '0';
-   
+
     signal l_is_ready : std_logic := '0';
     signal r_is_ready : std_logic := '0';
 
 begin
     l_ready <= l_is_ready;
     r_ready <= r_is_ready;
-   
+
     store_data : process(clk, rst)
     begin
         if (rst = '0') then
@@ -60,14 +60,14 @@ begin
                 r_is_ready <= '0';
             end if;
         end if;
-       
+
         if l_sent = '1' then
             l_stored <= '0';
         end if;
         if r_sent = '1' then
             r_stored <= '0';
         end if;
-       
+
         if l_stored = '0' then
             l_is_ready <= '1';
         end if;
@@ -75,39 +75,39 @@ begin
             r_is_ready <= '1';
         end if;
     end process store_data;
-   
+
 
     update_send_status_l : process(ws, clk, rst)
     begin
-   
+
        if r_stored = '0' then
             r_sent <= '0';
        end if;
-       
+
         if rising_edge(ws) then -- at falling edge, data on l_data_out will be latched to sd_rx
-           
+
             if r_stored = '1' then
                 r_sent <= '1';
             end if;
-           
+
             l_data_out <= l_data_store; -- for next falling edge
         end if;
     end process update_send_status_l;
-   
+
     update_send_status_r : process(ws, clk, rst)
     begin
-   
+
        if l_stored = '0' then
             l_sent <= '0';
        end if;
-           
-           
+
+
         if falling_edge(ws) then -- at rising edge, data on r_data_out will be latched to sd_rx
 
             if l_stored = '1' then
                 l_sent <= '1';
             end if;
-           
+
             r_data_out <= r_data_store; -- for next falling edge
         end if;
     end process update_send_status_r;

@@ -66,7 +66,7 @@ end component;
         i2s_in : in std_logic_vector(i2s_bit_width - 1 downto 0) := (others => '0');
         fp_out : out std_logic_vector(fp_bit_width - 1 downto 0) := (others => '0'));
   end component;
-  
+
     -- internal signals
   signal dly_in_ready, dly_in_valid, dly_trigger_store,
     ss_can_store : std_logic;
@@ -103,7 +103,7 @@ begin
                out_data      => op_out_data_0,
                can_store     => ss_can_store,
                reset         => rst );
-               
+
   in_audio : fix2fp_and_scaledown
     port map ( clk => clk,
                rst => rst,
