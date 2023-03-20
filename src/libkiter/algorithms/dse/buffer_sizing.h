@@ -28,8 +28,7 @@ public:
   StorageDistribution(const models::Dataflow* dataflow,
                       TIME_UNIT thr,
                       std::map<Edge,
-                              BufferInfos> channel_quantities,
-                      TOKEN_UNIT distribution_size);
+                              BufferInfos> channel_quantities);
   void setChannelQuantity(Edge e, TOKEN_UNIT quantity);
   void setInitialTokens(Edge e, TOKEN_UNIT token_count);
   void setDistributionSize(TOKEN_UNIT sz);

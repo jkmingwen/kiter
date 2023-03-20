@@ -25,11 +25,14 @@ StorageDistribution::StorageDistribution(const models::Dataflow* dataflow)
 
 StorageDistribution::StorageDistribution(const models::Dataflow* dataflow,
                                          TIME_UNIT thr,
-                                         std::map<Edge, BufferInfos> channel_quantities,
-                                         TOKEN_UNIT distribution_size)
+                                         std::map<Edge, BufferInfos> channel_quantities)
   :dataflow{dataflow}, thr{thr}, channel_quantities{channel_quantities},
    distribution_size{distribution_size} {
      // NOTE: could replace distribution_size declaration with updateDistributionSize()
+    {ForEachEdge(dataflow, c) {
+            VERBOSE_ASSERT_EQUALS(channel_quantities[c].preload, dataflow->getPreload(c));
+        }}
+
    }
 
 // Set edge to given quantity
@@ -42,12 +45,16 @@ void StorageDistribution::setChannelQuantity(Edge e,
 // Set initial token count of edge
 void StorageDistribution::setInitialTokens(Edge e,
                                            TOKEN_UNIT token_count) {
+    VERBOSE_ERROR("This should never be permitted");
+    VERBOSE_FAILURE();
   this->channel_quantities[e].preload = token_count;
 }
 
 
 // Set distribution size of storage distribution
 void StorageDistribution::setDistributionSize(TOKEN_UNIT sz) {
+    VERBOSE_ERROR("This should never be permitted");
+    VERBOSE_FAILURE();
   this->distribution_size = sz;
 }
 
@@ -138,7 +145,7 @@ void StorageDistribution::updateDistributionSize() {
     new_dist_sz += it->second.buffer_size;
   }
   if (new_dist_sz != this->getDistributionSize()) {
-    this->setDistributionSize(new_dist_sz);
+      this->distribution_size = new_dist_sz;
   }
 }
 
@@ -875,6 +882,7 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
   
   {ForEachEdge(dataflow, c) {
       // initialise channel size to maximum int size
+          minChannelSizes[c].preload = dataflow->getPreload(c);
           minChannelSizes[c].buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
       TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
                                                             dataflow->getEdgeOutPhasesCount(c));

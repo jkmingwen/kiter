@@ -287,14 +287,7 @@ StorageDistribution initialiseDist(models::Dataflow* dataflow){
 
   std::map<Edge, BufferInfos> minChnSz;
   findMinimumChannelSz(dataflow,minChnSz);
-    TOKEN_UNIT minDistSz = 0;
-    {ForEachEdge(dataflow, c) {
-    // ////// I REPLACE THAT BY JAIME's FUNCTION FOR FAIR COMPARISON
-          //minChnSz[c].preload = dataflow->getPreload(c);
-          //minChnSz[c].buffer_size = dataflow->getPreload(c);
-          minDistSz += dataflow->getPreload(c);
-      }}
-  StorageDistribution initDist(dataflow, 0, minChnSz, minDistSz);
+  StorageDistribution initDist(dataflow, 0, minChnSz);
   return initDist;
 
 }
@@ -302,12 +295,15 @@ StorageDistribution initialiseDist(models::Dataflow* dataflow){
 void updateGraphwMatching(models::Dataflow* dataflow, std::map<Edge,Edge> matching, StorageDistribution checkDist){
     dataflow->reset_computation();
     {ForEachEdge(dataflow, c) {
+            Edge original_edge = matching[c];
             if (dataflow->getEdgeType(c) == FEEDBACK_EDGE) {
-                Edge original_edge = matching[c];
                 dataflow->setPreload(c, checkDist.getChannelQuantity(original_edge) -
                                               checkDist.getInitialTokens(original_edge));
             } else {
                 //dataflow_prime->setPreload(c, checkDist.getInitialTokens(matching.at(c)));
+
+                VERBOSE_INFO(printers::generateSDF3XML(dataflow));
+                VERBOSE_ASSERT_EQUALS(checkDist.getInitialTokens(original_edge), dataflow->getPreload(c));
             }
     }}
 
@@ -653,13 +649,11 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
             minChannelSizes[c].preload = dataflow_prime->getPreload(c);
         }}
 
-    minDistributionSize = findMinimumDistributionSz(minChannelSizes);
 
     // initialise and store initial storage distribution state
     StorageDistribution initDist(dataflow_prime,
                                  0,
-                                 minChannelSizes,
-                                 minDistributionSize);
+                                 minChannelSizes);
 
     // initialise modelled graph with lower bound distribution
     {ForEachEdge(dataflow_prime, c) {
