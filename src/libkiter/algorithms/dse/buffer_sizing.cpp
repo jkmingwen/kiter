@@ -876,7 +876,6 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
   {ForEachEdge(dataflow, c) {
       // initialise channel size to maximum int size
           minChannelSizes[c].buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
-          minChannelSizes[c].buffer_size = dataflow->getPreload(c); // NOTE (should use ULONG_MAX but it's a really large value)
       TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
                                                             dataflow->getEdgeOutPhasesCount(c));
       

@@ -284,11 +284,14 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
 
 StorageDistribution initialiseDist(models::Dataflow* dataflow){
 
+
   std::map<Edge, BufferInfos> minChnSz;
+  findMinimumChannelSz(dataflow,minChnSz);
     TOKEN_UNIT minDistSz = 0;
     {ForEachEdge(dataflow, c) {
-          minChnSz[c].preload = dataflow->getPreload(c);
-          minChnSz[c].buffer_size = dataflow->getPreload(c);
+    // ////// I REPLACE THAT BY JAIME's FUNCTION FOR FAIR COMPARISON
+          //minChnSz[c].preload = dataflow->getPreload(c);
+          //minChnSz[c].buffer_size = dataflow->getPreload(c);
           minDistSz += dataflow->getPreload(c);
       }}
   StorageDistribution initDist(dataflow, 0, minChnSz, minDistSz);
