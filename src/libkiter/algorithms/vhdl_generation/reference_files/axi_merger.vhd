@@ -59,7 +59,7 @@ begin
         end if;
       end if;
       -- for resetting component
-      if (reset = '1') then
+      if (reset = '0') then
         is_stored_0 <= '0';
         is_stored_1 <= '0';
         is_in_ready_0 <= '1';

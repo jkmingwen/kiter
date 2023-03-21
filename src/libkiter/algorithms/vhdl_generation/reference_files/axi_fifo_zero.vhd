@@ -55,8 +55,8 @@ end axi_fifo_zero;
 architecture rtl of axi_fifo_zero is
 begin
 
-  buffer_in_ready <= buffer_out_ready and not buffer_rst;
-  buffer_out_valid <= buffer_in_valid and not buffer_rst;
+  buffer_in_ready <= buffer_out_ready and buffer_rst;
+  buffer_out_valid <= buffer_in_valid and buffer_rst;
   buffer_out_data <= buffer_in_data;
 
 end architecture;

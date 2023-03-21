@@ -92,9 +92,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // define location of VHDL generation reference files
   if (param_list.find("REFERENCE_DIR") != param_list.end()) {
     referenceDir = param_list["REFERENCE_DIR"] + "/";
-      VERBOSE_INFO("Update reference directory to " << referenceDir);
+    VERBOSE_INFO("Update reference directory to " << referenceDir);
   } else {
-      VERBOSE_INFO("Default reference in used, you can use -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory");
+    VERBOSE_INFO("Default reference in used, you can use -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory");
   }
 
 
@@ -134,6 +134,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         generateOperators(tmp, componentDir, referenceDir, bufferless);
         generateCircuit(tmp, topDir, bufferless);
         generateTopWrapper(tmp, topDir);
+        generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
     } else {
         VERBOSE_WARNING("No VHDL files created.");
@@ -936,6 +937,122 @@ void algorithms::generateTopWrapper(VHDLCircuit &circuit, std::string outputDir)
     vhdlOutput << "end behaviour;" << std::endl;
 
     vhdlOutput.close();
+}
+
+// Generate AXI interface for each FloPoCo operator
+void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
+                                               std::string outputDir) {
+  std::ofstream vhdlOutput;
+  std::string entityName = circuit.getName();
+  std::stringstream portListing;
+  std::stringstream entityMappingMono;
+  std::stringstream entityMappingStereo;
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$ENTITY_PORTS",
+                                  "$ENTITY_COMPONENT_MAPPING_MONO", "$ENTITY_COMPONENT_MAPPING_STEREO"};
+  int numInputPorts = circuit.getOperatorCount("INPUT");
+  int numOutputPorts = circuit.getOperatorCount("OUTPUT");
+
+  // Specify port listing according to number of inputs and outputs
+  portListing << "generic (\n"
+              << "    " << "ram_width : natural := 34;\n"
+              << "    " << "ram_depth : natural := 2);\n" // buffer size
+              << "port (\n"
+              << "    " << "clk : in std_logic;\n"
+              << "    " << "rst : in std_logic;\n"
+              << std::endl;
+  // Specify ready, valid, and data ports for each input port:
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    " + entityName + "_in";
+    portListing << portName + "_valid_" + std::to_string(i) + " : in std_logic;"
+                << std::endl;
+    portListing << portName + "_ready_" + std::to_string(i) + " : out std_logic;"
+                << std::endl;
+    portListing << portName + "_data_" + std::to_string(i) + " : in std_logic_vector(ram_width - 1 downto 0) := (others => '0');\n"
+                << std::endl;
+  }
+  // Specify ready, valid, and data ports for each output port:
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    " + entityName + "_out";
+    portListing << portName + "_ready_" + std::to_string(i) + " : in std_logic;"
+                << std::endl;
+    portListing << portName + "_valid_" + std::to_string(i) + " : out std_logic;"
+                << std::endl;
+    if (i + 1 == numOutputPorts) {
+      portListing << portName + "_data_" + std::to_string(i) + " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0')\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      portListing << portName + "_data_" + std::to_string(i) + " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0');\n" << std::endl; // last line of port declaration has no terminating semicolon
+    }
+  }
+  portListing << ");\n " << std::endl;
+
+  if (numInputPorts == 1 && numOutputPorts == 1) { // MONO
+    entityMappingMono << entityName + "_mono_l : " + entityName + "\n"
+                      << "port map (\n"
+                      << "    " << "clk => sys_clk_1,\n"
+                      << "    " << "rst => rst_1,\n"
+                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_0_op_out_valid_0,\n"
+                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_0_op_in_ready_0,\n"
+                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_0_op_out_data_0,\n"
+                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_l_out_valid,\n"
+                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_l_in_ready,\n"
+                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_l_out_data\n"
+                      << "    );" << std::endl;
+    entityMappingMono << entityName + "_mono_r : " + entityName + "\n"
+                      << "port map (\n"
+                      << "    " << "clk => sys_clk_1,\n"
+                      << "    " << "rst => rst_1,\n"
+                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_1_op_out_valid_0,\n"
+                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_1_op_in_ready_0,\n"
+                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_1_op_out_data_0,\n"
+                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_r_out_valid,\n"
+                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_r_in_ready,\n"
+                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_r_out_data\n"
+                      << "    );" << std::endl;
+  } else if (numInputPorts == 2 && numOutputPorts == 2) { // STEREO
+    entityMappingMono << entityName + "_stereo : " + entityName + "\n"
+                      << "port map (\n"
+                      << "    " << "clk => sys_clk_1,\n"
+                      << "    " << "rst => rst_1,\n"
+                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_0_op_out_valid_0,\n"
+                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_0_op_in_ready_0,\n"
+                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_0_op_out_data_0\n"
+                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_l_out_valid,\n"
+                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_l_in_ready,\n"
+                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_l_out_data\n"
+                      << "    " << entityName << "_in_valid_1" << " => i2s_to_fpc_1_op_out_valid_0,\n"
+                      << "    " << entityName << "_out_ready_1" << " => fpc_to_i2s_1_op_in_ready_0,\n"
+                      << "    " << entityName << "_in_data_1" << " => i2s_to_fpc_1_op_out_data_0\n"
+                      << "    " << entityName << "_out_valid_1" << " => " << entityName << "_r_out_valid,\n"
+                      << "    " << entityName << "_in_ready_1" << " => " << entityName << "_r_in_ready,\n"
+                      << "    " << entityName << "_out_data_1" << " => " << entityName << "_r_out_data\n"
+                      << "    );" << std::endl;
+  } else {
+    // TODO support VHDL designs with multiple combinations of inputs and outputs
+    VERBOSE_ERROR("Only mono (1 input/output) and stereo (2 inputs/outputs) currently supported");
+  }
+
+  // generate flopoco operators
+  vhdlOutput.open(outputDir + entityName + "_top.vhd"); // instantiate VHDL file
+  std::ifstream operatorRef(referenceDir + "audio_interface_wrapper.vhd");
+  std::string fileContent;
+  std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
+                                                         {"$ENTITY_PORTS", portListing.str()},
+                                                         {"$ENTITY_COMPONENT_MAPPING_MONO", entityMappingMono.str()},
+                                                         {"$ENTITY_COMPONENT_MAPPING_STEREO", entityMappingStereo.str()}};
+  if (operatorRef.is_open()) {
+    while (std::getline(operatorRef, fileContent)) {
+      for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+        size_t pos = fileContent.find(word);
+        if (pos != std::string::npos) {
+          fileContent.replace(pos, word.length(),
+                              replacementWords[word]);
+        }
+      }
+      vhdlOutput << fileContent << std::endl;
+    }
+    operatorRef.close();
+    vhdlOutput.close();
+  }
 }
 
 // Generate port mapping for each operator in the circuit
