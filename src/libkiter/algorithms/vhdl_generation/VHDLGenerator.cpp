@@ -133,7 +133,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
         generateOperators(tmp, componentDir, referenceDir, bufferless);
         generateCircuit(tmp, topDir, bufferless);
-        generateTopWrapper(tmp, topDir);
         generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
     } else {
@@ -755,190 +754,6 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   }
 }
 
-// generate wrapper to include serialisers/deserialisers
-void algorithms::generateTopWrapper(VHDLCircuit &circuit, std::string outputDir) {
-  std::ofstream vhdlOutput;
-  std::string fileName = circuit.getName() + "_top";
-  int numInputPorts = circuit.getOperatorCount("INPUT");
-  int numOutputPorts = circuit.getOperatorCount("OUTPUT");
-  std::map<std::string, int> operatorMap = circuit.getOperatorMap();
-  bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") && operatorMap.count("OUTPUT"); // edge case where Faust program has no operators (only inputs/outputs)
-  std::vector<std::string> dataSignals;
-  std::vector<std::string> validReadySignals;
-
-  vhdlOutput.open(outputDir + fileName + ".vhd"); // instantiate VHDL file
-  // 1. Define libraries used
-  vhdlOutput << "library ieee;\n"
-             << "use ieee.std_logic_1164.all;\n"
-             << "use ieee.numeric_std.all;\n" << std::endl;
-  // 2. Port declarations
-  vhdlOutput << "entity " << fileName << " is\n"
-             << "generic (\n"
-             << "    " << "ram_width : natural := 34;\n"
-             << "    " << "ram_depth : natural := 2);\n" // buffer size
-             << "port (\n"
-             << "    " << "clk : in std_logic;\n"
-             << "    " << "rst : in std_logic;\n"
-             << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    // TODO define portName variable outside of loop to minimize unnecessary repetition
-    //      (also, for loop should be outside if loop)
-    std::string portName = "    " + fileName + "_in";
-    vhdlOutput << portName + "_data_" + std::to_string(i) + " : in std_logic;\n"
-               << std::endl;
-  }
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    " + fileName + "_out";
-    if (i + 1 == numOutputPorts) {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic\n"
-                 << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic;\n"
-                 << std::endl;
-    }
-  }
-  vhdlOutput << ");\nend " << fileName << ";\n" << std::endl;
-
-  // 3. Specify architecture (behaviour) of operator type
-  // component declaration + internal signal generation
-  vhdlOutput << "architecture behaviour of " << fileName << " is\n" << std::endl;
-  vhdlOutput << "component " << circuit.getName() << " is\n"
-             << "generic (\n"
-             << "    " << "ram_width : natural := 34;\n"
-             << "    " << "ram_depth : natural := 2);\n" // buffer size
-             << "port (\n"
-             << "    " << "clk : in std_logic;\n"
-             << "    " << "rst : in std_logic;\n"
-             << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    std::string portName = "    " + circuit.getName() + "_in";
-    vhdlOutput << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-               << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-               << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-               << "ram_width - 1 downto 0) := (others => '0');\n"
-               << std::endl;
-    std::string internalDataSig = "data_in_" + std::to_string(i);
-    std::string internalValidSig = "data_in_valid_" + std::to_string(i);
-    std::string internalReadySig = "data_in_ready_" + std::to_string(i);
-    dataSignals.push_back(internalDataSig);
-    validReadySignals.push_back(internalValidSig);
-    validReadySignals.push_back(internalReadySig);
-  }
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    " + circuit.getName() + "_out";
-    vhdlOutput << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-               << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-    if (i + 1 == numOutputPorts) {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                 << "ram_width - 1 downto 0) := (others => '0')\n"
-                 << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                 << "ram_width - 1 downto 0) := (others => '0');\n"
-                 << std::endl;
-    }
-    std::string internalDataSig = "data_out_" + std::to_string(i);
-    std::string internalValidSig = "data_out_valid_" + std::to_string(i);
-    std::string internalReadySig = "data_out_ready_" + std::to_string(i);
-    dataSignals.push_back(internalDataSig);
-    validReadySignals.push_back(internalValidSig);
-    validReadySignals.push_back(internalReadySig);
-  }
-  vhdlOutput << ");\nend component;\n" << std::endl;
-
-  if (numInputPorts) {
-    vhdlOutput << "component deserializer is\n"
-               << "generic (\n"
-               << "    " << "ram_width : natural := 34;\n"
-               << "    " << "ram_depth : natural := 2);\n" // buffer size
-               << "port (\n"
-               << "    " << "clk : in std_logic;\n"
-               << "    " << "rst : in std_logic;\n"
-               << "    " << "out_valid : out std_logic;\n"
-               << "    " << "in_data : in std_logic;\n"
-               << "    " << "out_data : out std_logic_vector(ram_width-1 downto 0)\n"
-               << "); end component;\n"
-               << std::endl;
-  }
-
-    if (numOutputPorts) {
-    vhdlOutput << "component serializer is\n"
-               << "generic (\n"
-               << "    " << "ram_width : natural := 34;\n"
-               << "    " << "ram_depth : natural := 2);\n" // buffer size
-               << "port (\n"
-               << "    " << "clk : in std_logic;\n"
-               << "    " << "rst : in std_logic;\n"
-               << "    " << "in_valid : in std_logic;\n"
-               << "    " << "in_data : in std_logic_vector(ram_width-1 downto 0);\n"
-               << "    " << "out_data : out std_logic\n"
-               << "); end component;\n"
-               << std::endl;
-  }
-
-    // generate data signals
-    vhdlOutput << "signal ";
-    std::string delim = ",";
-    int counter = 0;
-    for (auto &signal : dataSignals) {
-      counter++;
-      if (counter == dataSignals.size()) {
-        delim = "";
-      }
-      vhdlOutput << signal << delim << std::endl;
-    }
-    vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
-               << std::endl;
-    // valid and ready signals
-    vhdlOutput << "signal ";
-    delim = ",";
-    counter = 0;
-    for (auto &signal : validReadySignals) {
-      counter++;
-      if (counter == validReadySignals.size()) {
-        delim = "";
-      }
-      vhdlOutput << signal << delim << std::endl;
-    }
-    vhdlOutput << " : std_logic;\n" << std::endl;
-    vhdlOutput << generateTopPortMapping(circuit) << std::endl;
-    // generate port mapping for circuit component
-    vhdlOutput << circuit.getName() << "_0 : " << circuit.getName() << "\n"
-               << "port map (\n"
-               << "clk => clk,\n"
-               << "rst => rst,\n"
-               << std::endl;
-    std::string delimiter = ",\n";
-    int maxPorts = numInputPorts + numOutputPorts; // a quick workaround
-    int currentPortCnt = 0;
-    for (auto i = 0; i < numInputPorts; i++) {
-      currentPortCnt++;
-      if (currentPortCnt == maxPorts) {
-        delimiter = "";
-      }
-      vhdlOutput << circuit.getName() << "_in_ready_" << std::to_string(i) << " => data_in_ready_" << std::to_string(i) << ",\n"
-                 << circuit.getName() << "_in_valid_" << std::to_string(i) << " => data_in_valid_" << std::to_string(i) << ",\n"
-                 << circuit.getName() << "_in_data_" << std::to_string(i) << " => data_in_" << std::to_string(i) << delimiter;
-    }
-    for (auto i = 0; i < numOutputPorts; i++) {
-      currentPortCnt++;
-      if (currentPortCnt == maxPorts) {
-        delimiter = "";
-      }
-      vhdlOutput << circuit.getName() << "_out_ready_" << std::to_string(i) << " => data_out_ready_" << std::to_string(i) << ",\n"
-                 << circuit.getName() << "_out_valid_" << std::to_string(i) << " => data_out_valid_" << std::to_string(i) << ",\n"
-                 << circuit.getName() << "_out_data_" << std::to_string(i) << " => data_out_" << std::to_string(i) << delimiter;
-    }
-    vhdlOutput << "\n);" << std::endl;
-    vhdlOutput << "end behaviour;" << std::endl;
-
-    vhdlOutput.close();
-}
-
 // Generate AXI interface for each FloPoCo operator
 void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
                                                std::string outputDir) {
@@ -1054,41 +869,6 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
     vhdlOutput.close();
   }
 }
-
-// Generate port mapping for each operator in the circuit
-std::string algorithms::generateTopPortMapping(VHDLCircuit circuit) {
-  std::stringstream outputStream;
-  int numInputPorts = circuit.getOperatorCount("INPUT");
-  int numOutputPorts = circuit.getOperatorCount("OUTPUT");
-
-  outputStream << "begin\n" << std::endl;
-  for (auto i = 0; i < numInputPorts; i++) {
-    outputStream << "deserializer_" << std::to_string(i) << ": deserializer\n"
-                 << "port map (\n"
-                 << "clk => clk,\n"
-                 << "rst => rst,\n"
-                 << "out_valid => data_in_valid_" << std::to_string(i) << ",\n"
-                 << "in_data => " << circuit.getName() << "_top_in_data_" << std::to_string(i) << ",\n"
-                 << "out_data => data_in_" << std::to_string(i) << "\n"
-                 << ");"
-                 << std::endl;
-  }
-
-  for (auto i = 0; i < numOutputPorts; i++) {
-    outputStream << "serializer_" << std::to_string(i) << ": serializer\n"
-                 << "port map (\n"
-                 << "clk => clk,\n"
-                 << "rst => rst,\n"
-                 << "in_valid => data_out_valid_" << std::to_string(i) << ",\n"
-                 << "in_data => data_out_" << std::to_string(i) << ",\n"
-                 << "out_data => " << circuit.getName() << "_top_out_data_" << std::to_string(i) << "\n"
-                 << ");"
-                 << std::endl;
-  }
-
-  return outputStream.str();
-}
-
 
 std::string algorithms::generateComponent(VHDLComponent comp) {
   std::stringstream outputStream;
@@ -1268,8 +1048,7 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   // TODO only produce the AXI component files if necessary; right now, we're just writing every file
   std::vector<std::string> componentNames = {"axi_merger", "delay",
                                              "store_send", "axi_merger_negate",
-                                             "axi_merger_one", "axi_merger_three",
-                                             "deserializer", "serializer"};
+                                             "axi_merger_one", "axi_merger_three"};
   if (!isBufferless) {
     componentNames.push_back("axi_fifo");
     componentNames.push_back("axi_fifo_n");

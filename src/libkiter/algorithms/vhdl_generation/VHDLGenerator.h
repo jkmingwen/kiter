@@ -38,10 +38,8 @@ namespace algorithms {
                         std::string referenceDir);
   void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
                        bool isBufferless);
-  void generateTopWrapper(VHDLCircuit &circuit, std::string outputDirectory);
   void generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
                                      std::string outputDir);
-  std::string generateTopPortMapping(VHDLCircuit circuit);
   std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);
