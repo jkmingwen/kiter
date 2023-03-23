@@ -1307,22 +1307,36 @@ void algorithms::generateAudioInterfaceComponents(std::string compDir,
      "i2s_to_fpc", "fpc_to_i2s",
      "fix2fp_and_scaledown", "fp2fix_and_scaleup", // convert and scale data coming to and from the audio codec (fixed point to float)
      "i2s_transceiver"}; // expose data from ADC/DAC to PL
-
-  for (const auto &component : componentNames) {
-    vhdlOutput.open(compDir + component + ".vhd");
-    std::ifstream compReference(referenceDir + component + ".vhd");
+  std::vector<std::string> operatorNames = // need separate path for FloPoCo operators as they're stored in different subdirectory
+    {"fix2fp_flopoco", "fp2fix_flopoco"};
+    for (const auto &component : componentNames) {
+      vhdlOutput.open(compDir + component + ".vhd");
+      std::ifstream compReference(referenceDir + component + ".vhd");
+      std::string fileContent;
+      if (compReference.is_open()) {
+        while (std::getline(compReference, fileContent)) {
+          vhdlOutput << fileContent << std::endl;
+        }
+        compReference.close();
+        vhdlOutput.close();
+      } else {
+        VERBOSE_ERROR( "Reference file for " << component
+                       << " does not exist/not found!"); // TODO turn into assert
+      }
+    }
+  for (const auto &op : operatorNames) {
+    vhdlOutput.open(compDir + op + ".vhd");
+    std::ifstream opReference(referenceDir + "/operators/" + op + ".vhdl");
     std::string fileContent;
-    if (compReference.is_open()) {
-      while (std::getline(compReference, fileContent)) {
+    if (opReference.is_open()) {
+      while (std::getline(opReference, fileContent)) {
         vhdlOutput << fileContent << std::endl;
       }
-      compReference.close();
+      opReference.close();
       vhdlOutput.close();
     } else {
-
-      VERBOSE_ERROR( "Reference file for " << component
+      VERBOSE_ERROR( "Reference file for " << op
                      << " does not exist/not found!"); // TODO turn into assert
-
     }
   }
 }
