@@ -6,18 +6,12 @@
 #include <map>
 #include <vector>
 #include <string>
-#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
 #include <commons/commons.h>
 #include <models/Dataflow.h>
-#include <models/EventGraph.h>
-#include <algorithms/normalization.h>
-#include <models/repetition_vector.h>
 #include "buffer_sizing.h"
 #include "kperiodic.h"
-#include "monotonic_optimisation.h"
-#include "base_monotonic_optimisation.h"
 #include <chrono> // to take computation timings
 #include <boost/filesystem.hpp>
 #include <algorithms/dse/deep_dse.h>
@@ -90,18 +84,40 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
     // TODO: There is no stopping condition here, this could be improved, but the stopping condition is not trivial!
     StorageDistributionSet cc_sds = algorithms::new_compute_Kperiodic_dse_with_init_dist(cc_g, local_dist);
 
-    VERBOSE_INFO("Local search result is  " << cc_sds.printDistributions());
+    VERBOSE_INFO("Local search result is :" );
+    VERBOSE_INFO(cc_sds.printDistributions());
+
     std::vector<StorageDistribution> new_distributions;
     for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_sds.getSet()){
         if (cc_pair.first > local_dist.getDistributionSize()) {
             for (StorageDistribution cc_sd : cc_pair.second) {
                 // The distribution size of the point is bigger than the origial, must be interesting.
                 StorageDistribution new_sd = update_storage_distribution_from_cc(checkDist, cc_sd);
-                new_distributions.push_back(new_sd);
+
+                int reachable = 0;
+                for (StorageDistribution sd : new_distributions) { // for every storage distribution avaible
+                                                                   // if it cannot reach new_sd, then new_sd interesting
+                    bool reached = true;
+                    for (auto &e : sd.getEdges()) {
+                        if (sd.getChannelQuantity(e) > new_sd.getChannelQuantity(e)) {
+                            reached = false;
+                        }
+                    }
+
+                    if (reached) {
+                        reachable += 1;
+                    }
+                }
+                if (reachable == 0 or reachable < new_distributions.size()) new_distributions.push_back(new_sd);
+                // // Instead of
+                //new_distributions.push_back(new_sd);
+
+
+
             }
             // TODO: If you break here, you can miss important configuration
             // TODO: Careful about it in the proof.
-            // break;
+
         }
     }
 

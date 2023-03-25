@@ -12,7 +12,9 @@ namespace algorithms {
     StorageDistributionSet deep_dse(models::Dataflow *const dataflow) ;
 
     inline void deep_dse_user(models::Dataflow *const dataflow, parameters_list_t params) {
-        deep_dse(dataflow);
+        StorageDistributionSet res = deep_dse(dataflow);
+        if (params.count("output"))
+           res.writeCSV(params["output"]);
     }
 }
 

@@ -827,6 +827,10 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
         minStorageDist.removeStorageDistribution(minStorageDist.getNextDistribution());
         minStorageDist.addStorageDistribution(zeroDist);
     }
+
+    if (parameters.count("output"))
+        minStorageDist.writeCSV(parameters["output"]);
+
     VERBOSE_DEBUG_DSE("DSE RESULTS [START] (target throughput: " << thrTarget   << "):");
     VERBOSE_DEBUG_DSE("\n" << minStorageDist.printDistributions());
     VERBOSE_DEBUG_DSE("DSE RESULTS [END]");
