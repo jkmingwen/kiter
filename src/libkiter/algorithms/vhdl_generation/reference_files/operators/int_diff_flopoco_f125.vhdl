@@ -1,5 +1,6 @@
 --------------------------------------------------------------------------------
---                           IntAdder_34_F125_uid2
+--                            int_diff_flopoco_f125
+--                          (IntAdder_34_F125_uid2)
 -- VHDL generated for Zynq7000 @ 125MHz
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
@@ -19,16 +20,17 @@ library std;
 use std.textio.all;
 library work;
 
-entity IntAdder_34_F125_uid2 is
+entity int_diff_flopoco_f125 is
     port (clk : in std_logic;
           X : in  std_logic_vector(33 downto 0);
           Y : in  std_logic_vector(33 downto 0);
           R : out  std_logic_vector(33 downto 0)   );
 end entity;
 
-architecture arch of IntAdder_34_F125_uid2 is
+architecture arch of int_diff_flopoco_f125 is
 signal Rtmp :  std_logic_vector(33 downto 0);
 begin
    Rtmp <= X - Y;
    R <= Rtmp;
 end architecture;
+

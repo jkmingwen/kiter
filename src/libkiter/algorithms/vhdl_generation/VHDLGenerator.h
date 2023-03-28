@@ -23,7 +23,8 @@ namespace algorithms {
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
-                         std::string refDirectory, bool isBufferless);
+                         std::string refDirectory, bool isBufferless,
+                         int operatorFreq);
   void generateConstOperator(std::string compDir, std::string referenceDir,
                              std::map<int, int> outputCounts);
   void generateConversionOperators(VHDLComponent comp, std::string compDir,
@@ -33,9 +34,9 @@ namespace algorithms {
   void generateRoutingOperators(VHDLComponent comp, std::string compDir,
                                 std::string referenceDir);
   void generateFPCOperator(VHDLComponent comp, std::string compDir,
-                           std::string referenceDir);
+                           std::string referenceDir, int operatorFreq);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
-                        std::string referenceDir);
+                        std::string referenceDir, int operatorFreq);
   void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
                        bool isBufferless);
   void generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
@@ -48,7 +49,8 @@ namespace algorithms {
                                       std::string referenceDir,
                                       bool isBufferless);
   void generateAudioInterfaceComponents(std::string componentDir,
-                                        std::string referenceDir);
+                                        std::string referenceDir,
+                                        int operatorFreq);
   std::vector<std::string> generateSendSigNames(std::string srcPort,
                                                 VHDLCircuit circuit);
   std::vector<std::string> generateReceiveSigNames(std::string dstPort,

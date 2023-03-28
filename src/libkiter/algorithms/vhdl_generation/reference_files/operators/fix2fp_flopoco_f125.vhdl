@@ -282,7 +282,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                        Fix2FP_0_23_S_8_23_F125_uid2
+--                            fix2fp_flopoco_f125
+--                       (Fix2FP_0_23_S_8_23_F125_uid2)
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
 -- Authors: Radu Tudoran, Bogdan Pasca (2009)
@@ -297,13 +298,13 @@ library std;
 use std.textio.all;
 library work;
 
-entity Fix2FP_0_23_S_8_23_F125_uid2 is
+entity fix2fp_flopoco_f125 is
    port ( clk, rst : in std_logic;
           I : in  std_logic_vector(23 downto 0);
           O : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of Fix2FP_0_23_S_8_23_F125_uid2 is
+architecture arch of fix2fp_flopoco_f125 is
    component Fix2FP_0_23_S_8_23_F125_uid2_LZOCS is
       port ( clk, rst : in std_logic;
              I : in  std_logic_vector(22 downto 0);
@@ -516,3 +517,4 @@ begin
    specialBits <= Selection;
    O<= specialBits & signSignal & convertedExponentAfterRounding & convertedFractionAfterRounding;
 end architecture;
+

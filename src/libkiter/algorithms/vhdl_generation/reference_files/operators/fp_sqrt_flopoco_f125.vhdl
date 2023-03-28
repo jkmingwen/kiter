@@ -1,5 +1,6 @@
 --------------------------------------------------------------------------------
---                                FPSqrt_8_23
+--                            fp_sqrt_flopoco_f125
+--                               (FPSqrt_8_23)
 -- VHDL generated for Zynq7000 @ 125MHz
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
@@ -19,13 +20,13 @@ library std;
 use std.textio.all;
 library work;
 
-entity FPSqrt_8_23 is
+entity fp_sqrt_flopoco_f125 is
     port (clk : in std_logic;
           X : in  std_logic_vector(8+23+2 downto 0);
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of FPSqrt_8_23 is
+architecture arch of fp_sqrt_flopoco_f125 is
 signal fracX :  std_logic_vector(22 downto 0);
 signal eRn0 :  std_logic_vector(7 downto 0);
 signal xsX :  std_logic_vector(2 downto 0);
@@ -515,3 +516,4 @@ begin
              "110"  when others; -- return NaN
    R <= xsR_d5 & Rn2;
 end architecture;
+

@@ -16162,7 +16162,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                           FPPowr_8_23_F125_uid2
+--                            fp_pow_flopoco_f125
+--                          (FPPowr_8_23_F125_uid2)
 -- VHDL generated for Zynq7000 @ 125MHz
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
@@ -16182,14 +16183,14 @@ library std;
 use std.textio.all;
 library work;
 
-entity FPPowr_8_23_F125_uid2 is
+entity fp_pow_flopoco_f125 is
     port (clk : in std_logic;
           X : in  std_logic_vector(8+23+2 downto 0);
           Y : in  std_logic_vector(8+23+2 downto 0);
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of FPPowr_8_23_F125_uid2 is
+architecture arch of fp_pow_flopoco_f125 is
    component IntAdder_32_F125_uid5 is
       port ( clk : in std_logic;
              X : in  std_logic_vector(31 downto 0);
@@ -16385,3 +16386,4 @@ begin
        else E(30 downto 0);
    R <= flagR & signR_d8 & R_expfrac;
 end architecture;
+

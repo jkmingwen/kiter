@@ -398,7 +398,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                    FPMult_8_23_8_23_8_23_uid2_F125_uid3
+--                            fp_prod_flopoco_f125
+--                   (FPMult_8_23_8_23_8_23_uid2_F125_uid3)
 -- VHDL generated for Zynq7000 @ 125MHz
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
@@ -418,14 +419,14 @@ library std;
 use std.textio.all;
 library work;
 
-entity FPMult_8_23_8_23_8_23_uid2_F125_uid3 is
+entity fp_prod_flopoco_f125 is
     port (clk : in std_logic;
           X : in  std_logic_vector(8+23+2 downto 0);
           Y : in  std_logic_vector(8+23+2 downto 0);
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of FPMult_8_23_8_23_8_23_uid2_F125_uid3 is
+architecture arch of fp_prod_flopoco_f125 is
    component IntMultiplier_F125_uid5 is
       port ( clk : in std_logic;
              X : in  std_logic_vector(23 downto 0);
@@ -508,3 +509,4 @@ begin
                        excPostNorm when others;
    R <= finalExc & sign & expSigPostRound(30 downto 0);
 end architecture;
+

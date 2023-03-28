@@ -210,6 +210,11 @@ std::string VHDLComponent::getType() const{
   return this->componentType;
 }
 
+/* NOTE this function is redundant now that the FloPoCo operators are named
+   according to their file name and frequency, however, in the future, if we
+   intend to implement setting different frequencies for each operator,
+   generating their component names based on compType and operatorFreq
+   would be one way of going about it */
 std::string VHDLComponent::getFPCName() const{
   return this->FPCName;
 }

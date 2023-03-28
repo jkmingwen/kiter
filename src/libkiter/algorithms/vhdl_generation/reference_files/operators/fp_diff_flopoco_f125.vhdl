@@ -229,7 +229,8 @@ begin
 end architecture;
 
 --------------------------------------------------------------------------------
---                            FPAdd_8_23_F125_uid2
+--                            fp_diff_flopoco_f125
+--                           (FPSub_8_23_F125_uid2)
 -- VHDL generated for Zynq7000 @ 125MHz
 -- This operator is part of the Infinite Virtual Library FloPoCoLib
 -- All rights reserved
@@ -249,14 +250,14 @@ library std;
 use std.textio.all;
 library work;
 
-entity FPAdd_8_23_F125_uid2 is
+entity fp_diff_flopoco_f125 is
     port (clk : in std_logic;
           X : in  std_logic_vector(8+23+2 downto 0);
           Y : in  std_logic_vector(8+23+2 downto 0);
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of FPAdd_8_23_F125_uid2 is
+architecture arch of fp_diff_flopoco_f125 is
    component RightShifterSticky24_by_max_26_F125_uid4 is
       port ( clk : in std_logic;
              X : in  std_logic_vector(23 downto 0);
@@ -294,6 +295,7 @@ signal swap :  std_logic;
 signal eXmeY :  std_logic_vector(7 downto 0);
 signal eYmeX :  std_logic_vector(7 downto 0);
 signal expDiff :  std_logic_vector(7 downto 0);
+signal mY :  std_logic_vector(33 downto 0);
 signal newX :  std_logic_vector(33 downto 0);
 signal newY :  std_logic_vector(33 downto 0);
 signal expX :  std_logic_vector(7 downto 0);
@@ -365,9 +367,10 @@ begin
    eXmeY <= (X(30 downto 23)) - (Y(30 downto 23));
    eYmeX <= (Y(30 downto 23)) - (X(30 downto 23));
    expDiff <= eXmeY when swap = '0' else eYmeX;
+   mY <= Y(33 downto 32) & not(Y(31)) & Y(30 downto 0);
    -- input swap so that |X|>|Y|
-   newX <= X when swap = '0' else Y;
-   newY <= Y when swap = '0' else X;
+   newX <= X when swap = '0' else mY;
+   newY <= mY when swap = '0' else X;
    -- now we decompose the inputs into their sign, exponent, fraction
    expX<= newX(30 downto 23);
    excX<= newX(33 downto 32);
@@ -440,3 +443,4 @@ begin
    computedR <= excR & signR2_d1 & expR_d1 & fracR_d1;
    R <= computedR;
 end architecture;
+

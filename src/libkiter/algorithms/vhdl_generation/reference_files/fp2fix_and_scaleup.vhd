@@ -16,13 +16,13 @@ end fp2fix_and_scaleup;
 
 architecture Behavioral of fp2fix_and_scaleup is
 
-component FP2Fix_8_23_0_23_S_T_F125_uid2 is
+component fp2fix_flopoco_f$OP_FREQ is
     port  (clk : in std_logic;
            I : in  std_logic_vector(8+23+2 downto 0);
            O : out  std_logic_vector(23 downto 0)   );
 end component;
 
-component FPMult_8_23_8_23_8_23_uid2_F125_uid3 is
+component fp_prod_flopoco_f$OP_FREQ is
     port (clk : in std_logic;
           X : in  std_logic_vector(8+23+2 downto 0);
           Y : in  std_logic_vector(8+23+2 downto 0);
@@ -33,14 +33,14 @@ signal fp_to_i2s : std_logic_vector(fp_bit_width - 1 downto 0);
 
 begin
 
-fp_to_i2s_convertor : FP2Fix_8_23_0_23_S_T_F125_uid2
+fp_to_i2s_convertor : fp2fix_flopoco_f$OP_FREQ
     port map (
         clk => clk,
         I => fp_to_i2s,
         O => i2s_out
     );
 
-fp_prod : FPMult_8_23_8_23_8_23_uid2_F125_uid3
+fp_prod : fp_prod_flopoco_f$OP_FREQ
     port map (
         clk => clk,
         X => fp_in,

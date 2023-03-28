@@ -66,12 +66,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   std::string topDir      = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
   std::string componentDir = topDir + "/components/";
   std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
+  int operatorFreq = 125; // default target operator frequency is 125MHz
 
   // check for specified directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
 
     outputDirSpecified = true;
-      topDir = param_list["OUTPUT_DIR"] + "/";
+    topDir = param_list["OUTPUT_DIR"] + "/";
     componentDir = topDir + "/components/";
     VERBOSE_INFO("Update output directory to " << topDir);
 
@@ -87,6 +88,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       bufferless = true;
   } else {
       VERBOSE_INFO("Please use '-p BUFFERLESS=t'  to generate VHDL without FIFO buffers");
+  }
+
+  // check if operator frequencies have been specified
+  if (param_list.find("FREQUENCY") != param_list.end()) {
+    VERBOSE_INFO("Operator frequency set to " << param_list["FREQUENCY"]);
+    operatorFreq = std::stoi(param_list["FREQUENCY"]);
+  } else {
+    VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
 
   // define location of VHDL generation reference files
@@ -131,7 +140,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
 
     if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-        generateOperators(tmp, componentDir, referenceDir, bufferless);
+        generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
         generateCircuit(tmp, topDir, bufferless);
         generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
@@ -144,11 +153,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 }
 
 void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
-                                   std::string compRefDir, bool isBufferless) {
+                                   std::string compRefDir, bool isBufferless,
+                                   int operatorFreq) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
-      VERBOSE_DEBUG( "Generate VHDL component file for " << op.first );
+    VERBOSE_DEBUG( "Generate VHDL component file for " << op.first );
     // track number of outputs for cases where operator can have different number of outputs
     std::map<int, int> outputCounts;
     outputCounts = circuit.getNumOutputs(op.first);
@@ -161,7 +171,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
                                compDir, compRefDir);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
-                       compDir, compRefDir);
+                       compDir, compRefDir, operatorFreq);
     }
 
   }
@@ -172,7 +182,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     }
   }
   generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
-  generateAudioInterfaceComponents(compDir, compRefDir);
+  generateAudioInterfaceComponents(compDir, compRefDir, operatorFreq);
 
 }
 
@@ -346,10 +356,10 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
 
 // Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
-                                     std::string referenceDir) {
+                                     std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
-  std::string operatorFileName = comp.getType() + "_flopoco";
+  std::string operatorFileName = comp.getType() + "_flopoco" + "_f" + std::to_string(operatorFreq);
 
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
   std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
@@ -369,7 +379,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
 
 // Generate AXI interface for each FloPoCo operator
 void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
-                                  std::string referenceDir) {
+                                  std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
   std::string componentName = entityName + "_flopoco";
@@ -380,12 +390,13 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
-    generateFPCOperator(comp, compDir, referenceDir); // generate FloPoCo operator
+    generateFPCOperator(comp, compDir, referenceDir, operatorFreq); // generate FloPoCo operator
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
                               + "_" + opInputCount + ".vhd");
     std::string fileContent;
-    std::string operatorName = comp.getFPCName();
+    // std::string operatorName = comp.getFPCName() + "_f" + std::to_string(operatorFreq);
+    std::string operatorName = componentName + "_f" + std::to_string(operatorFreq);
     std::string axmType = "";
     if (comp.getInputPorts().size() == 1) {
       axmType = "_one";
@@ -862,6 +873,9 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
     }
     operatorRef.close();
     vhdlOutput.close();
+  } else {
+    VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhd"
+                   << " does not exist/not found!"); // TODO turn into assert
   }
 }
 
@@ -1072,10 +1086,10 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
 
 // Copy VHDL components necessary for interfacing with the audio codec from reference files to generated subdirectory
 void algorithms::generateAudioInterfaceComponents(std::string compDir,
-                                                  std::string referenceDir) {
+                                                  std::string referenceDir,
+                                                  int operatorFreq) {
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
-  // TODO only produce the AXI component files if necessary; right now, we're just writing every file
   std::vector<std::string> componentNames =
     {"input_interface", "output_interface", // send audio data in accordance to handshake protocol
      "i2s_to_fpc", "fpc_to_i2s",
@@ -1083,12 +1097,22 @@ void algorithms::generateAudioInterfaceComponents(std::string compDir,
      "i2s_transceiver"}; // expose data from ADC/DAC to PL
   std::vector<std::string> operatorNames = // need separate path for FloPoCo operators as they're stored in different subdirectory
     {"fix2fp_flopoco", "fp2fix_flopoco"};
+  std::string wordsToReplace[] = {"$OP_FREQ"};
+  std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
+                                                            std::to_string(operatorFreq)}}; // name component according to operator frequency
     for (const auto &component : componentNames) {
       vhdlOutput.open(compDir + component + ".vhd");
       std::ifstream compReference(referenceDir + component + ".vhd");
       std::string fileContent;
       if (compReference.is_open()) {
         while (std::getline(compReference, fileContent)) {
+          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+            size_t pos = fileContent.find(word);
+            if (pos != std::string::npos) {
+              fileContent.replace(pos, word.length(),
+                                  replacementWords[word]);
+            }
+          }
           vhdlOutput << fileContent << std::endl;
         }
         compReference.close();
@@ -1099,8 +1123,9 @@ void algorithms::generateAudioInterfaceComponents(std::string compDir,
       }
     }
   for (const auto &op : operatorNames) {
-    vhdlOutput.open(compDir + op + ".vhd");
-    std::ifstream opReference(referenceDir + "/operators/" + op + ".vhdl");
+    vhdlOutput.open(compDir + op + "_f" + std::to_string(operatorFreq) + ".vhd");
+    std::ifstream opReference(referenceDir + "/operators/" + op +
+                              "_f" + std::to_string(operatorFreq) + ".vhdl");
     std::string fileContent;
     if (opReference.is_open()) {
       while (std::getline(opReference, fileContent)) {
