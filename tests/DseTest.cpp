@@ -6,7 +6,7 @@
 #include "helpers/test_classes.h"
 #include "helpers/sample.h"
 #include "helpers/random_generator.h"
-#include "algorithms/transformation/singleOutput.h"
+#include "algorithms/dse/dse.h"
 
 
 BOOST_FIXTURE_TEST_SUITE( dse_test , WITH_SAMPLE)
@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE( sample_dse_test )
 
 #define MAX_PHASE_COUNT 5
 
-BOOST_AUTO_TEST_CASE( random_remove_reentrancy_test )
+BOOST_AUTO_TEST_CASE( random_dse_test )
 {
     std::vector<models::Dataflow *> graphs;
     parameters_list_t params;
@@ -37,9 +37,9 @@ BOOST_AUTO_TEST_CASE( random_remove_reentrancy_test )
         graphs.push_back(g);
     }
 
-    VERBOSE_INFO("Running reentrancy");
+    VERBOSE_INFO("Running dse");
     for(auto graph : graphs) {
-    algorithms::throughput_buffering_tradeoff_dse(graph, params);
+        algorithms::throughput_buffering_tradeoff_dse(graph, params);
     }
 }
 
