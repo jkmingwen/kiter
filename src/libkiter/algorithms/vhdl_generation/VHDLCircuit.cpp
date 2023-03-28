@@ -177,7 +177,17 @@ void VHDLCircuit::setName(std::string newName) {
 }
 
 void VHDLCircuit::setOperatorFreq(int freq) {
-  this->operatorFreq = freq;
+  if (this->operatorLifespans.count(freq)) {
+    this->operatorFreq = freq;
+  } else {
+    std::string supportedFrequencies;
+    for (auto i : this->operatorLifespans) {
+      supportedFrequencies += std::to_string(i.first) + "  ";
+    }
+    VERBOSE_ERROR("The selected operator frequency (" << freq
+                  << ") is not supported. Supported frequencies: "
+                  << supportedFrequencies);
+  }
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
