@@ -19,7 +19,8 @@
 #define READY 1
 #define DATA 2
 
-VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferless) {
+VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferless,
+                                  int operatorFreq) {
 
     VHDLCircuit circuit;
     std::string circuitName = dataflow->getGraphName();
@@ -27,6 +28,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
     std::replace(circuitName.begin(), circuitName.end(), '-', '_');
     std::replace(circuitName.begin(), circuitName.end(), '.', '_');
     circuit.setName(circuitName);
+    circuit.setOperatorFreq(operatorFreq);
     VERBOSE_DEBUG( "circuit name: " << circuitName );
 
 
@@ -114,7 +116,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       VERBOSE_FAILURE();
   }
 
-    VHDLCircuit tmp = generateCircuitObject(dataflow, bufferless);
+    VHDLCircuit tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
     while (tmp.getMultiOutActors().size() > 0) {
 
         VERBOSE_INFO("getMultiOutActors is not empty");
@@ -132,7 +134,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         }
 
         VERBOSE_INFO("Regenerate Circuit");
-        tmp = generateCircuitObject(dataflow, bufferless);
+        tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
     }
 
     VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;

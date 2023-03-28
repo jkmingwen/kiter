@@ -71,8 +71,8 @@ std::string VHDLCircuit::getName() {
 }
 
 int VHDLCircuit::getOperatorLifespan(std::string opType) {
-  if (this->operatorLifespans.count(opType)) {
-    return this->operatorLifespans[opType];
+  if (this->operatorLifespans[this->operatorFreq].count(opType)) {
+    return this->operatorLifespans[this->operatorFreq][opType];
   } else {
     // NOTE default to 0 if lifespan not specified
     return 0;
@@ -174,6 +174,10 @@ std::string VHDLCircuit::getComponentFullName(std::string partialName) {
 
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
+}
+
+void VHDLCircuit::setOperatorFreq(int freq) {
+  this->operatorFreq = freq;
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
