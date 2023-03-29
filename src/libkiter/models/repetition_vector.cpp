@@ -110,7 +110,7 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
 
 
     // Find greatest common divisor (gcd)
-    EXEC_COUNT g = repetitionVector.begin()->second;
+    unsigned long long int g = repetitionVector.begin()->second;
 
     {ForEachVertex(from,v) {
     	g = std::gcd(g, repetitionVector[v]);

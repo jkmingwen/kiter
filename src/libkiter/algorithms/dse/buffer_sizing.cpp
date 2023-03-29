@@ -801,11 +801,11 @@ std::string StorageDistributionSet::printDistributions() {
 void StorageDistributionSet::writeCSV(std::string filename) {
   std::ofstream outputFile;
   outputFile.open(filename);
-  outputFile << "storage distribution size,throughput,channel quantities" << std::endl; // initialise headers
+
+  outputFile << StorageDistribution::get_csv_header() << std::endl; // initialise headers
   for (auto &it : this->set) {
     for (auto &sd : this->set[it.first]) {
-      outputFile << it.first << "," << sd.getThroughput() << ","
-		 << sd.print_quantities_csv() << std::endl;
+      outputFile << sd.get_csv_line() << std::endl;
     }
   }
   outputFile.close();

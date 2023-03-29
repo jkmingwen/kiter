@@ -52,7 +52,7 @@ public:
   bool operator!=(const StorageDistribution& distribution) const;
   void updateDistributionSize();
 
-    std::string get_csv_header() {
+    static std::string get_csv_header() {
         return "storage distribution size,throughput,channel quantities,computation duration,cumulative duration";
     }
     std::string get_csv_line() {
