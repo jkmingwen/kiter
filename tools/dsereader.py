@@ -13,6 +13,7 @@ import seaborn as sns
 sns.set_theme()
 
 methods = {"KDSE": "red", "DKDSE": "purple"}
+method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE"}
 
 
 def load_app_dse(
@@ -130,7 +131,7 @@ def plot_app_dse(logdir, appname):
         start_time = time.time()
         print("Plot", appname, method)
         
-        cxmax,cymax = plot_dse(df, method, color)
+        cxmax,cymax = plot_dse(df, method_name[method], color)
         xmax = max(xmax, cxmax)
         ymax = max(ymax, cymax)
         
@@ -168,7 +169,7 @@ def plot_app_pareto(logdir, appname):
 
         start_time = time.time()
         print("Plot", appname, method)
-        cxmax,cymax = plot_pareto(df, method, color)
+        cxmax,cymax = plot_pareto(df, method_name[method], color)
         xmax = max(xmax, cxmax)
         ymax = max(ymax, cymax)
         print("Plotted after", time.time() - start_time, "sec.")
@@ -227,13 +228,11 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
             res[m].append(v)
 
             
-    df = pd.DataFrame(res)[["name","speriodic","periodic"]]    
-    df["overhead"] = 100 - 100 * (df["periodic"] /  df["speriodic"]) 
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE"]]    
+    df["overhead"] = 100 - 100 * (df["KDSE"] /  df["DKDSE"]) 
     df = df.rename (columns = {
         "overhead":"Overhead(%)",
-        "name" : "Graph",
-        "speriodic" : "S-Periodic",
-        "periodic" : "1-Periodic",
+        "name" : "Graph"
     })
     colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
                
