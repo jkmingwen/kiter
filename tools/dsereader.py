@@ -12,7 +12,7 @@ import seaborn as sns
 
 sns.set_theme()
 
-methods = {"kiter": "red", "speriodic": "purple", "periodic": "green", "sdf3": "black"}
+methods = {"KDSE": "red", "DKDSE": "purple"}
 
 
 def load_app_dse(
@@ -22,15 +22,10 @@ def load_app_dse(
     cols=["throughput", "cumulative duration", "storage distribution size"],
 ):
 
-    filename = f"{logdir}/{appname}_dselog_{method}.csv"
+    filename = f"{logdir}/{appname}_{method}.txt"
 
-    try:
-        df = pd.read_csv(filename, usecols=cols)
-        return df
-    except pd.errors.EmptyDataError:
-        return pd.DataFrame()
-    except FileNotFoundError:
-        return pd.DataFrame()
+    df = pd.read_csv(filename, usecols=cols)
+    return df
 
 
 def extract_pareto(df):
