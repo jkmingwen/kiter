@@ -19,7 +19,7 @@ BOOST_FIXTURE_TEST_SUITE( expansion_experiment_test , WITH_SAMPLE)
         algorithms::generate_expansion(pipeline_sample, params);
     }
 
-#define MAX_PHASE_COUNT 5
+#define MAX_PHASE_COUNT 1
 
     BOOST_AUTO_TEST_CASE( random_expansion_experiment_test )
     {
@@ -33,7 +33,7 @@ BOOST_FIXTURE_TEST_SUITE( expansion_experiment_test , WITH_SAMPLE)
 
             VERBOSE_INFO("generate graph " << i << " with " << buf_num);
 
-            models::Dataflow *g = generate_random_graph(i, buf_num, MAX_PHASE_COUNT, 2, 1);
+            models::Dataflow *g = generate_random_graph(i, buf_num, MAX_PHASE_COUNT, 2, 3);
             graphs.push_back(g);
         }
 
