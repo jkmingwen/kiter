@@ -12,8 +12,8 @@ import seaborn as sns
 
 sns.set_theme()
 
-methods = {"KDSE": "red", "DKDSE": "purple"} # , "PDSE" : "black"}
-method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE"}
+methods = {"KDSE": "red", "DKDSE": "purple"  , "ADKDSE" : "black"  , "PDSE" : "green"}
+method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE", "ADKDSE": "Approx K2DSE"}
 
 
 def load_app_dse(
@@ -228,10 +228,8 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
             res[m].append(v)
 
             
-    df = pd.DataFrame(res)[["name","KDSE","DKDSE"]]    
-    df["overhead"] = 100 - 100 * (df["KDSE"] /  df["DKDSE"]) 
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
     df = df.rename (columns = {
-        "overhead":"Overhead(%)",
         "name" : "Graph"
     })
     colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
@@ -257,7 +255,7 @@ def gen_dsetable(logdir, graphs, outputname="/dev/stdout"):
             res[m].append(v)
 
             
-    df = pd.DataFrame(res)[["name","KDSE","DKDSE"]]    
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
     df = df.rename (columns = {
         "name" : "Graph"
     })

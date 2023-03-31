@@ -23,6 +23,7 @@ bool local_stop_condition(StorageDistributionSet& minStorageDist, StorageDistrib
 }
 StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow, StorageDistribution initDist) {
 
+    char *AD = getenv("APPROX_DSE");
     // Compute the minimal steps
     std::map<Edge, TOKEN_UNIT> minStepSizes;
     findMinimumStepSz(dataflow, minStepSizes);
@@ -69,8 +70,8 @@ StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow
           also, checklist storagedistributions incorrect? */
 
         // clean up distributions
+        if (AD)
         minStorageDist.minimizeStorageDistributions(checkDist);
-
 
     }
 
