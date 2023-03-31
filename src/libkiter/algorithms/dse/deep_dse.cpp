@@ -15,6 +15,68 @@
 #include <chrono> // to take computation timings
 #include <boost/filesystem.hpp>
 #include <algorithms/dse/deep_dse.h>
+#include "StorageDistributionTree.h"
+
+// Check if local DSE completion conditions have been met
+bool local_stop_condition(StorageDistributionSet& minStorageDist, StorageDistributionSet& checklist, TIME_UNIT target_thr) {
+    return minStorageDist.isSearchComplete(checklist, target_thr);
+}
+StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow, StorageDistribution initDist) {
+
+    // Compute the minimal steps
+    std::map<Edge, TOKEN_UNIT> minStepSizes;
+    findMinimumStepSz(dataflow, minStepSizes);
+
+    // Compute the throughput target
+    kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow);
+
+    TIME_UNIT thrTarget =  result_max.throughput;
+
+
+    // Produce the feedback buffers
+    std::pair<models::Dataflow*, std::map<Edge,Edge> > dataflow_and_matching = genGraphWFeedbackEdgesWithPairs(dataflow);
+    models::Dataflow* dataflow_prime = dataflow_and_matching.first;
+    std::map<Edge,Edge>& matching = dataflow_and_matching.second;
+
+    updateGraphwMatching(dataflow_prime, matching, initDist);
+    kperiodic_result_t result_min = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow_prime);
+    VERBOSE_INFO("    result_min " <<result_min.throughput <<"    result_max " <<result_max.throughput );
+
+    // Prepare the checklist of distribution to explore
+    StorageDistributionSet checklist = StorageDistributionSet(initDist);
+
+    // Start the exploration loop
+    StorageDistributionSet minStorageDist;
+
+
+    while (!local_stop_condition(minStorageDist, checklist, thrTarget)) {
+
+        // Pop checkDist
+        StorageDistribution checkDist(checklist.getNextDistribution());
+        checklist.removeStorageDistribution(checklist.getNextDistribution());
+        VERBOSE_DEBUG_DSE("    Pop SD = " << checkDist.getQuantitiesStr());
+
+        // Compute the next distribution to explore
+        std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = get_next_storage_distribution_from_cc(checkDist, dataflow_prime, matching, minStepSizes);
+        checkDist.setThroughput(new_points.first);
+        minStorageDist.addStorageDistribution(checkDist);
+
+        if (new_points.first == result_min.throughput) { // This data point doesnt improve the throughput, we dig in
+            checklist.addStorageDistributions(new_points.second);
+        }
+
+        /*NOTE: check if pareto? minStorageDist should only hold pareto
+          also, checklist storagedistributions incorrect? */
+
+        // clean up distributions
+        minStorageDist.minimizeStorageDistributions(checkDist);
+
+
+    }
+
+    return minStorageDist;
+
+}
 
 models::Dataflow* get_critical_cycle_original_edges_from_prime (const models::Dataflow* g,
                                                                 const std::map<Edge,Edge>& matching ,
@@ -23,6 +85,8 @@ models::Dataflow* get_critical_cycle_original_edges_from_prime (const models::Da
     models::Dataflow* cc_g = new models::Dataflow();
     std::set<std::string> visited_v;
     std::set<std::string> visited_e;
+
+    VERBOSE_ASSERT(result.critical_edges.size() > 0, "Empty Critical cycle");
 
     for (Edge prime_edge : result.critical_edges) {
 
@@ -64,14 +128,21 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
                                                                                                          const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes) {
 
 
-    VERBOSE_INFO("Update the dataflow_prime with");
+    VERBOSE_DEBUG_DSE("Update the dataflow_prime with");
     updateGraphwMatching(dataflow_prime, matching, checkDist);
 
     // Compute throughput and storage deps
-    VERBOSE_INFO("Compute throughput to get a critical cycle, and explore solutions using the CC");
+    VERBOSE_DEBUG_DSE("Compute throughput to get a critical cycle, and explore solutions using the CC");
     kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow_prime);
-    models::Dataflow* cc_g = get_critical_cycle_original_edges_from_prime (dataflow_prime, matching , result);
 
+    if (result.critical_edges.size() == 0) {
+        // Reach the end.
+        return std::pair<TIME_UNIT, std::vector<StorageDistribution>> (result.throughput, {});
+    }
+
+    VERBOSE_ASSERT(result.critical_edges.size() > 0, "compute_Kperiodic_throughput_and_cycles  returns empty cycle");
+    models::Dataflow* cc_g = get_critical_cycle_original_edges_from_prime (dataflow_prime, matching , result);
+    VERBOSE_ASSERT (cc_g->getVerticesCount() > 0, "Empty Critical cycle");
     auto local_dist = initialiseDist(cc_g);
     for (Edge c: local_dist.getEdges()) { // FIXME: This is a workaround
         std::string cc_edge_name = cc_g->getEdgeName(c);
@@ -79,21 +150,21 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
         local_dist.setChannelQuantity(c, checkDist.getChannelQuantity(matching.at(prime_edge)));
     }
 
-    VERBOSE_INFO("Old distribution is " << commons::toString(local_dist));
+    VERBOSE_INFO("Local search result from " << local_dist );
 
     // TODO: There is no stopping condition here, this could be improved, but the stopping condition is not trivial!
-    StorageDistributionSet cc_sds = algorithms::new_compute_Kperiodic_dse_with_init_dist(cc_g, local_dist);
+    StorageDistributionSet cc_sds = local_dse_with_init_dist(cc_g, local_dist);
 
-    VERBOSE_INFO("Local search result is :" );
-    VERBOSE_INFO(cc_sds.printDistributions());
 
+    //StorageDistributionTree tree;
     std::vector<StorageDistribution> new_distributions;
     for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_sds.getSet()){
         if (cc_pair.first > local_dist.getDistributionSize()) {
             for (StorageDistribution cc_sd : cc_pair.second) {
                 // The distribution size of the point is bigger than the origial, must be interesting.
                 StorageDistribution new_sd = update_storage_distribution_from_cc(checkDist, cc_sd);
-
+                //tree.addDistribution(cc_sd);
+                VERBOSE_INFO("     Check " << commons::toString(cc_sd) << " : " << commons::toString(new_sd));
                 int reachable = 0;
                 for (StorageDistribution sd : new_distributions) { // for every storage distribution avaible
                                                                    // if it cannot reach new_sd, then new_sd interesting
@@ -107,22 +178,25 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
                     if (reached) {
                         reachable += 1;
                     }
+
+                    VERBOSE_INFO("           Compare " << commons::toString(new_sd) << " : " << commons::toString(sd) << " reached is " << reached);
                 }
-                if (reachable == 0 or reachable < new_distributions.size()) new_distributions.push_back(new_sd);
-                // // Instead of
-                //new_distributions.push_back(new_sd);
 
+                VERBOSE_INFO("     reachable count " << reachable);
 
-
+                if (reachable == 0) new_distributions.push_back(new_sd);
             }
             // TODO: If you break here, you can miss important configuration
             // TODO: Careful about it in the proof.
-
         }
+
+
     }
 
+    //VERBOSE_INFO("StorageDistributionTree \n" << tree.print());
     VERBOSE_INFO("New distributions are \n" << commons::toString(new_distributions));
 
+    //std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = get_next_storage_distribution_from_cc(checkDist, dataflow_prime, matching, minStepSizes);
 
 
     return std::pair<TIME_UNIT, std::vector<StorageDistribution>> (result.throughput, new_distributions);

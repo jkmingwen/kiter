@@ -88,6 +88,7 @@ bool calcFractionsConnectedActors(const models::Dataflow *from, std::map<Vertex,
 
 bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRACT>& fractions, EXEC_COUNT ratePeriod) {
 
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
 	std::map<Vertex,EXEC_COUNT> repetitionVector;
 	EXEC_COUNT l = 1;
 
@@ -116,6 +117,11 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
     	g = std::gcd(g, repetitionVector[v]);
     }}
 
+    if (g <= 0) {
+        VERBOSE_ERROR("g = " << g);
+        VERBOSE_ERROR("repetitionVectorSize = " << commons::toString(repetitionVector.size()));
+        VERBOSE_ERROR("repetitionVector = " << commons::toString(repetitionVector));
+    }
     VERBOSE_ASSERT(g > 0, TXT_NEVER_HAPPEND);
 
     // Minimize the repetition vector using the gcd
@@ -156,6 +162,7 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
  *
  */
 bool computeRepetitionVector(models::Dataflow *from) {
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
 	if (from->has_repetition_vector()) return true;
 	from->set_read_only();
     std::map<Vertex,EXEC_COUNT_FRACT> fractions;

@@ -160,7 +160,8 @@ StorageDistribution updateStoreDistwStepSz(Edge e, models::Dataflow* dataflow_pr
 
 // Compute and return period and causal dependency cycles of given dataflow graph
 kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::Dataflow* const dataflow) {
-  
+
+    VERBOSE_ASSERT(dataflow->getVerticesCount() > 0, "Empty graph not supported");
     VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
 
     EXEC_COUNT sumNi = 0;
@@ -319,7 +320,7 @@ void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>&
  * @return
  */
 std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribution_from_cc(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
-                                            std::map<Edge,Edge>& matching, std::map<Edge, TOKEN_UNIT> & minStepSizes) {
+                                            const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes) {
 
     std::vector<StorageDistribution> new_distributions;
 
@@ -336,9 +337,9 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
         VERBOSE_DEBUG_DSE(" - Critical Edge " << dataflow_prime->getEdgeName(c));
         if (dataflow_prime->getEdgeType(c) == FEEDBACK_EDGE) {
             VERBOSE_DEBUG_DSE("   is interesting ");
-            Edge original_edge = matching[c];
+            Edge original_edge = matching.at(c);
             StorageDistribution newDist(checkDist);
-            newDist.setChannelQuantity(original_edge, (newDist.getChannelQuantity(original_edge) + minStepSizes[original_edge]));
+            newDist.setChannelQuantity(original_edge, (newDist.getChannelQuantity(original_edge) + minStepSizes.at(original_edge)));
             new_distributions.push_back(newDist);
         }
     }

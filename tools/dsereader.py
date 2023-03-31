@@ -12,8 +12,8 @@ import seaborn as sns
 
 sns.set_theme()
 
-methods = {"KDSE": "red", "DKDSE": "purple"}
-method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE"}
+methods = {"KDSE": "red", "DKDSE": "purple"} # , "PDSE" : "black"}
+method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE"}
 
 
 def load_app_dse(
@@ -245,6 +245,33 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
     fd.close()
 
    
+def gen_dsetable(logdir, graphs, outputname="/dev/stdout"):
+    res = { "name" : [] }
+    for m in methods:
+        res[m] = []
+    for i, name in zip(range(1, len(graphs) + 1), graphs):
+        res["name"].append(name)
+        for m in methods:
+            df = load_app_dse(logdir, name, m, cols = ["throughput", "storage distribution size"])
+            v = df["storage distribution size"].count() if "throughput" in df else "-"
+            res[m].append(v)
+
+            
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE"]]    
+    df = df.rename (columns = {
+        "name" : "Graph"
+    })
+    colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
+               
+    latex = df.to_latex(
+        float_format="{:0.1f}".format, column_format=colformat, index=False
+    )
+    latex = latex.replace("NAN","-")
+    fd = open(outputname, 'w')
+    fd.write(latex)
+    fd.close()
+
+   
 def plot_all_pareto(logdir, graphs, outputname=None):
     plot_all(logdir, graphs, plotfunc=plot_app_pareto, outputname=outputname)
 
@@ -278,7 +305,7 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        "--tminsize",
+        "--dsetable",
         type=str,
         help="location of the output minimal buffersize table file",
         required=False,
@@ -309,9 +336,9 @@ if __name__ == "__main__":
 
         
 
-    if args.tminsize:
+    if args.dsetable:
         print("Generate minimal size table")
-        gen_minsize(logdir=logdir, graphs=graphs, outputname=args.tminsize)
+        gen_dsetable(logdir=logdir, graphs=graphs, outputname=args.dsetable)
         
     endmem = process.memory_info().rss
     print(
