@@ -1098,7 +1098,7 @@ void algorithms::generateAudioInterfaceComponents(std::string compDir,
      "fix2fp_and_scaledown", "fp2fix_and_scaleup", // convert and scale data coming to and from the audio codec (fixed point to float)
      "i2s_transceiver"}; // expose data from ADC/DAC to PL
   std::vector<std::string> operatorNames = // need separate path for FloPoCo operators as they're stored in different subdirectory
-    {"fix2fp_flopoco", "fp2fix_flopoco"};
+    {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
   std::string wordsToReplace[] = {"$OP_FREQ"};
   std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
                                                             std::to_string(operatorFreq)}}; // name component according to operator frequency
