@@ -30,7 +30,7 @@
 #include <boost/functional/hash.hpp>
 #include <boost/graph/detail/edge.hpp>
 #include <commons/basic_types.h>
-
+#include <array>
 
 namespace boost {struct bidirectional_tag;}
 namespace std {
