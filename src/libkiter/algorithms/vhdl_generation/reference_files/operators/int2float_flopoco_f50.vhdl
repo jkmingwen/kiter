@@ -305,8 +305,8 @@ library work;
 
 entity int2float_flopoco_f50 is
    port ( clk, rst : in std_logic;
-          I : in  std_logic_vector(33 downto 0);
-          O : out  std_logic_vector(8+23+2 downto 0)   );
+          X : in  std_logic_vector(33 downto 0);
+          R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
 architecture arch of int2float_flopoco_f50 is
@@ -423,7 +423,7 @@ begin
          if clk'event and clk = '1' then
          end if;
       end process;
-   input <= I;
+   input <= X;
    signSignal<=input(33);
    passedInput<=input(33 downto 0);
    input2LZOC<=passedInput(32 downto 0);
@@ -520,5 +520,5 @@ begin
    LSBSelection<= not(underflowSignal and not(zeroInput));
    Selection<= MSBSelection & LSBSelection when zeroInput='0' else "00";
    specialBits <= Selection;
-   O<= specialBits & signSignal & convertedExponentAfterRounding & convertedFractionAfterRounding;
+   R<= specialBits & signSignal & convertedExponentAfterRounding & convertedFractionAfterRounding;
 end architecture;

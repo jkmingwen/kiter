@@ -78,8 +78,8 @@ library work;
 
 entity float2int_flopoco_f250 is
     port (clk : in std_logic;
-          I : in  std_logic_vector(8+23+2 downto 0);
-          O : out  std_logic_vector(33 downto 0)   );
+          X : in  std_logic_vector(8+23+2 downto 0);
+          R : out  std_logic_vector(33 downto 0)   );
 end entity;
 
 architecture arch of float2int_flopoco_f250 is
@@ -109,12 +109,12 @@ begin
             fA4_d1 <=  fA4;
             overFl0_d1 <=  overFl0;
             overFl0_d2 <=  overFl0_d1;
-            I_d1 <=  I;
+            I_d1 <=  X;
             I_d2 <=  I_d1;
          end if;
       end process;
-   eA0 <= I(30 downto 23);
-   fA0 <= "1" & I(22 downto 0);
+   eA0 <= X(30 downto 23);
+   fA0 <= "1" & X(22 downto 0);
    eA1 <= eA0 - conv_std_logic_vector(126, 8);
    shiftedby <= eA1(5 downto 0) when eA1(7) = '0' else (5 downto 0 => '0');
    FXP_shifter: LeftShifter24_by_max_36_F250_uid4
@@ -124,10 +124,10 @@ begin
                  R => fA1);
    fA2<= fA1(57 downto 24);
    fA4<= fA2 when I_d1(31) = '0' else -signed(fA2);
-   overFl0<= '1' when I(30 downto 23) > conv_std_logic_vector(160,8) else I(33);
+   overFl0<= '1' when X(30 downto 23) > conv_std_logic_vector(160,8) else X(33);
    notZeroTest <= '1' when fA4_d1 /= conv_std_logic_vector(0,34) else '0';
    overFl1 <= (fA4_d1(33) xor I_d2(31)) and notZeroTest;
    eTest <= (overFl0_d2 or overFl1);
-   O <= fA4_d1 when eTest = '0' else
+   R <= fA4_d1 when eTest = '0' else
       I_d2(31) & (32 downto 0 => not I_d2(31));
 end architecture;

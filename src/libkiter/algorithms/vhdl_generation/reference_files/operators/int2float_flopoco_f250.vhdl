@@ -318,8 +318,8 @@ library work;
 
 entity int2float_flopoco_f250 is
    port ( clk, rst : in std_logic;
-          I : in  std_logic_vector(33 downto 0);
-          O : out  std_logic_vector(8+23+2 downto 0)   );
+          X : in  std_logic_vector(33 downto 0);
+          R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
 architecture arch of int2float_flopoco_f250 is
@@ -450,7 +450,7 @@ begin
             zeroRemainder_d1 <=  zeroRemainder;
          end if;
       end process;
-   input <= I;
+   input <= X;
    signSignal<=input(33);
    passedInput<=input(33 downto 0);
    input2LZOC<=passedInput(32 downto 0);
@@ -549,5 +549,5 @@ begin
    LSBSelection<= not(underflowSignal_d1 and not(zeroInput_d3));
    Selection<= MSBSelection & LSBSelection when zeroInput_d3='0' else "00";
    specialBits <= Selection;
-   O<= specialBits & signSignal_d3 & convertedExponentAfterRounding & convertedFractionAfterRounding;
+   R<= specialBits & signSignal_d3 & convertedExponentAfterRounding & convertedFractionAfterRounding;
 end architecture;
