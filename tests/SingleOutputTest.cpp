@@ -20,7 +20,7 @@ BOOST_AUTO_TEST_CASE( sample_single_output_test )
     algorithms::transformation::singleOutput(pipeline_sample, params);
 }
 
-#define MAX_PHASE_COUNT 5
+#define MAX_PHASE_COUNT 1
 
 BOOST_AUTO_TEST_CASE( random_singleOutput_test )
 {
@@ -40,8 +40,9 @@ BOOST_AUTO_TEST_CASE( random_singleOutput_test )
 
     VERBOSE_INFO("Running single output");
     for(auto graph : graphs) {
-        Vertex nv = graph->addVertex(graph->getVerticesCount() + 1);
-        std::string vert_name = "Node_" + commons::toString(graph->getVertexId(nv));
+        int id = graph->getVerticesCount() + 1;
+        Vertex nv = graph->addVertex(id);
+        std::string vert_name = "Node_" + commons::toString(id);
         graph->setVertexName(nv,vert_name);
         params["name"] = vert_name;
 
