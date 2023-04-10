@@ -40,12 +40,12 @@ BOOST_AUTO_TEST_CASE( random_singleOutput_test )
 
     VERBOSE_INFO("Running single output");
     for(auto graph : graphs) {
+        graph->reset_computation();
         int id = graph->getVerticesCount() + 1;
         Vertex nv = graph->addVertex(id);
         std::string vert_name = "Node_" + commons::toString(id);
         graph->setVertexName(nv,vert_name);
         params["name"] = vert_name;
-
         algorithms::transformation::singleOutput(graph, params);
     }
 }

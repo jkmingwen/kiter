@@ -49,6 +49,7 @@ BOOST_AUTO_TEST_CASE( random_remove_reentrancy_test )
 
     VERBOSE_INFO("Running reentrancy");
     for(auto graph : graphs) {
+        graph->reset_computation();
         algorithms::transformation::remove_reentrancy(graph, params);
     }
 }
