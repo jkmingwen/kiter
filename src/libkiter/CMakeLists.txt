@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.12)
  
 FIND_PACKAGE( GLPK   REQUIRED)
 FIND_PACKAGE( GUROBI)
+FIND_PACKAGE( cppflow REQUIRED)
 
 #
 #  ######### COMPILE FLAGS ##########
@@ -16,6 +17,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wconversion -Wno-float-equal -Wno-switc
 INCLUDE_DIRECTORIES(${KITER_INCLUDE_DIR})
 INCLUDE_DIRECTORIES (${LIBXML2_INCLUDE_DIR})
 INCLUDE_DIRECTORIES (${Boost_INCLUDE_DIR})
+INCLUDE_DIRECTORIES (${CPPFLOW_INCLUDE_DIR})
 
 #
 #  ######### GENERAL SOURCES ##########
@@ -84,7 +86,8 @@ endif(GLPK_FOUND)
 ADD_LIBRARY			   (kiter_algorithms SHARED  ${algorithms_sources} algorithms/mapping/modelCommunications.h)
 TARGET_LINK_LIBRARIES  (kiter_algorithms PUBLIC kiter_commons kiter_models kiter_printers kiter_lp 
 							${Boost_FILESYSTEM_LIBRARY} 
- 							${Boost_SYSTEM_LIBRARY})
+ 							${Boost_SYSTEM_LIBRARY}
+						      cppflow::cppflow)
 
 ADD_LIBRARY			   (kiter_generators SHARED ${generators_sources})
 TARGET_LINK_LIBRARIES  (kiter_generators PUBLIC kiter_commons  kiter_models kiter_algorithms)
