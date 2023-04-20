@@ -5,24 +5,22 @@
 #include "minimizing_prediction.h"
 #include <cppflow/raw_ops.h>
 #include <cppflow/cppflow.h>
+#include <commons/verbose.h>
 #include <vector>
 
-#ifndef MODEL_PATH
-#define MODEL_PATH "tf_model"
-#endif
 
-int algorithms::predict_num_tokens(const std::vector<int>& weights) {
+int algorithms::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
     // Load the model
-    cppflow::model model(MODEL_PATH);
+    if(!parameters.count("MODEL_DIR")) {
+        VERBOSE_ERROR("predict_num_tokens: Model path not found!")
+        return -1;
+    }
 
-    // Get model operations
-    // for( auto op : model.get_operations()) {
-    //   std::cout << op << "\n";
-    // }
-    //
-
+    long input_size = static_cast<long>(weights.size());
+    std::string model_dir = parameters["MODEL_DIR"];
+    cppflow::model model(model_dir);
     std::vector<float> tensor_data(weights.begin(), weights.end());
-    auto vec = cppflow::tensor(tensor_data, {1,2});
+    auto vec = cppflow::tensor(tensor_data, {1,input_size});
 
     // Run
     auto output = model({{"serving_default_dense_input:0",vec}}, {"StatefulPartitionedCall:0"});
