@@ -13,7 +13,10 @@ models::Dataflow*  generators::new_normalized_cycle(size_t node_count , const st
     VERBOSE_ASSERT_EQUALS(node_count, node_duration.size());
     VERBOSE_ASSERT_GreaterEqualThan(preload, 0);
 
-    VERBOSE_DEBUG("Generate a graph with " << node_count << " nodes");
+    VERBOSE_DEBUG("Generate a graph with "  << node_count << " nodes, "
+                                            << commons::toString(node_duration) << " durations, "
+                                            << commons::toString(node_weights) << " weights, "
+                                            << preload << " preload.");
 
     // Empty graph case
     if (node_count == 0) return to;
@@ -35,6 +38,7 @@ models::Dataflow*  generators::new_normalized_cycle(size_t node_count , const st
         auto dst = to->getVertexById( temp_vertex_list[i+1] );
 
         auto e1 = to->addEdge(src, dst);
+        to->setEdgeName(e1, "Edge_" + commons::toString(i));
         to->setEdgeInPhases(e1,{node_weights.at(i % node_count)});
         to->setEdgeOutPhases(e1,{node_weights.at((i + 1) % node_count)});
         to->setPreload(e1,0);
