@@ -88,8 +88,9 @@ bool calcFractionsConnectedActors(const models::Dataflow *from, std::map<Vertex,
 
 bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRACT>& fractions, EXEC_COUNT ratePeriod) {
 
-    std::map<Vertex,EXEC_COUNT> repetitionVector;
-    EXEC_COUNT l = 1;
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
+	std::map<Vertex,EXEC_COUNT> repetitionVector;
+	EXEC_COUNT l = 1;
 
     // Find lowest common multiple (lcm) of all denominators
     {ForEachVertex(from,v) {
@@ -110,12 +111,17 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
 
 
     // Find greatest common divisor (gcd)
-    EXEC_COUNT g = repetitionVector.begin()->second;
+    unsigned long long int g = repetitionVector.begin()->second;
 
     {ForEachVertex(from,v) {
             g = std::gcd(g, repetitionVector[v]);
         }}
 
+    if (g <= 0) {
+        VERBOSE_ERROR("g = " << g);
+        VERBOSE_ERROR("repetitionVectorSize = " << commons::toString(repetitionVector.size()));
+        VERBOSE_ERROR("repetitionVector = " << commons::toString(repetitionVector));
+    }
     VERBOSE_ASSERT(g > 0, TXT_NEVER_HAPPEND);
 
     // Minimize the repetition vector using the gcd
@@ -131,9 +137,9 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
     // Workaround for repetition vector issues
     EXEC_COUNT subrate = ratePeriod;
     {ForEachVertex(from,v) {
-            subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
-        }}
-    VERBOSE_INFO("SubRate = " << subrate);
+    	subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
+    }}
+    VERBOSE_DEBUG("SubRate = " << subrate);
 
     {ForEachVertex(from,v) {
             repetitionVector[v] = repetitionVector[v] / subrate;
@@ -290,6 +296,7 @@ std::map<models::vertex_id_t ,EXEC_COUNT> generic_calc_repetition_vector(models:
  *
  */
 bool computeRepetitionVector(models::Dataflow *from) {
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
 	if (from->has_repetition_vector()) return true;
 	from->set_read_only();
     std::map<Vertex,EXEC_COUNT_FRACT> fractions;
@@ -304,7 +311,7 @@ bool computeRepetitionVector(models::Dataflow *from) {
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }}
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_INFO("Rate Period = " << ratePeriod);
+    VERBOSE_DEBUG("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor

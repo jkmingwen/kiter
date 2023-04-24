@@ -15,7 +15,7 @@ ENDIF(NOT CMAKE_GENERATOR)
 #  ######### BUILDTYPE PART ##########
 #
 
-# Only Debug, or Release mode by default !
+# Only Debug, or Release mode by default !
 IF(NOT CMAKE_BUILD_TYPE MATCHES Debug)
     SET (CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -40,7 +40,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/modules/")
 #
 
 
-# clear all flags 
+# Clear all flags
 SET(CMAKE_CXX_FLAGS "")
 SET(CMAKE_CXX_FLAGS_DEBUG "")
 SET(CMAKE_CXX_FLAGS_RELEASE "")
@@ -74,7 +74,7 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
   # don't add profiling helper
   #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DGLIBCXX_FORCE_NEW")
   
-  # DON'TTRAP OVERFLOW
+  # DON'TRAP OVERFLOW
   # SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftrapv")
   
 endif()

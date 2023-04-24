@@ -114,7 +114,7 @@ StorageDistributionSet algorithms::base_monotonic_optimised_Kperiodic_throughput
     infeasibleSet.add(tempDist, kneeSet);
   }
 
-  result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+  result = compute_Kperiodic_throughput_and_cycles(dataflow);
   computation_counter++;
   thrCurrent = result.throughput;
   while (thrCurrent < thrTarget) {
@@ -134,14 +134,14 @@ StorageDistributionSet algorithms::base_monotonic_optimised_Kperiodic_throughput
                                    newDist.getInitialTokens(c))); // always account for initial tokens in buffer
         }
       }}
-    result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+    result = compute_Kperiodic_throughput_and_cycles(dataflow);
     computation_counter++;
     if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
       newDist.setThroughput(0);
     } else {
       newDist.setThroughput(result.throughput);
     }
-    // VERBOSE_DSE(newDist.printInfo(dataflow)); TODO fix later
+    // VERBOSE_DSE(newDist.printInfo(dataflow)); // TODO fix later
     thrCurrent = newDist.getThroughput();
   }
   feasibleSet.addStorageDistribution(newDist);
@@ -165,14 +165,14 @@ StorageDistributionSet algorithms::base_monotonic_optimised_Kperiodic_throughput
                                    checkDist.getInitialTokens(c))); // always account for initial tokens in buffer
         }
       }}
-    result = compute_Kperiodic_throughput_and_cycles(dataflow, parameters);
+    result = compute_Kperiodic_throughput_and_cycles(dataflow);
     computation_counter++;
     if (result.throughput < 0) { // all deadlocked graphs are equal in terms of throughput
       checkDist.setThroughput(0);
     } else {
       checkDist.setThroughput(result.throughput);
     }
-    // VERBOSE_DSE(checkDist.printInfo(dataflow)); TODO fix later
+    // VERBOSE_DSE(checkDist.printInfo(dataflow)); //TODO fix later
     thrCurrent = checkDist.getThroughput();
     isSat = thrCurrent >= thrTarget;
     if (!isSat) {

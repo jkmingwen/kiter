@@ -12,6 +12,7 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -34,7 +35,7 @@
 
 /* Dataflow defintion */
 
-enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, VIRTUAL_EDGE};
+enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, FEEDBACK_EDGE, VIRTUAL_EDGE};
 //enum VERTEX_TYPE {NORMAL_VERTEX, PERIODIC_VERTEX};
 
 typedef  std::string VERTEX_TYPE;
@@ -597,6 +598,7 @@ public :
             case VIRTUAL_EDGE : return "VIRTUAL_EDGE";
     		case NORMAL_EDGE : return "NORMAL_EDGE";
     		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+    		case  FEEDBACK_EDGE : return "FEEDBACK_EDGE";
     		default : return "UNKNOWN";
     	}
     }
