@@ -73,7 +73,10 @@ __pycache__
 /ascent_pictures/
 /*.tex
 
+## CLION related
+/.idea/
+/cmake-build-debug/
+/cmake-build-release/
 
-#  CLion related
-.idea/
-cmake-build-debug/
+## VSCODE
+/.vscode/
