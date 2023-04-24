@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+#include <printers/stdout.h>
 #include <commons/verbose.h>
 #include <commons/commons.h>
 #include <models/Dataflow.h>
@@ -18,8 +19,6 @@
 #include "actor.h"
 #include "state.h"
 #include "../scc.h"
-#include "../dse/buffer_sizing.h"
-#include "../dse/abstract_dep_graph.h"
 
 void algorithms::compute_asap_throughput_wrapper(models::Dataflow* const dataflow,
                                                  parameters_list_t param_list) {
@@ -97,7 +96,7 @@ TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   minThroughput = computeComponentThroughput(dataflow, actorInfo);
-
+  std::cout << "Throughput of graph: " << minThroughput << std::endl;
   return minThroughput;
 }
 
@@ -133,17 +132,16 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
     VERBOSE_WARNING("No test storage distribution specified --- specify storage distribution using '-p SD=c1,c2,c3,...' where 'cN' refers to the maximum token capacity of the channel");
     return;
   }
-  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> channelQuants;
+  std::map<Edge, BufferInfos> channelQuants;
   TOKEN_UNIT distSz = 0;
   {ForEachEdge(dataflow, e) {
-      channelQuants[e].first = dataflow->getPreload(e); // assume initial tokesn specified by dataflow graph
-      channelQuants[e].second = specifiedCaps[dataflow->getEdgeId(e)];
+      channelQuants[e].buffer_size = dataflow->getPreload(e); // assume initial tokesn specified by dataflow graph
+      channelQuants[e].preload = specifiedCaps[dataflow->getEdgeId(e)];
       distSz += specifiedCaps[dataflow->getEdgeId(e)];
     }}
-  StorageDistribution testSD(dataflow->getEdgesCount(),
+  StorageDistribution testSD(dataflow,
                              0,
-                             channelQuants,
-                             distSz);
+                             channelQuants);
   VERBOSE_DSE("Graph name:" << dataflow->getGraphName() << std::endl);
   VERBOSE_DSE("Actor info:" << std::endl);
   {ForEachVertex(dataflow, v) {
@@ -627,9 +625,6 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   while (true) {
     {ForEachEdge(dataflow, e) {
         prevState.setTokens(e, currState.getTokens(e));
-        if (currState.hasBoundedBuffers()) {
-          prevState.setBufferSpace(e, currState.getBufferSpace(e));
-        }
       }}
     // end actor firing
     {ForEachTask(dataflow, t) {

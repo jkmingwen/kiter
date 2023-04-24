@@ -12,7 +12,7 @@
 int algorithms::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
     // Load the model
     if(!parameters.count("MODEL_DIR")) {
-        VERBOSE_ERROR("predict_num_tokens: Model path not found!")
+        VERBOSE_ERROR("predict_num_tokens: Model path not found!");
         return -1;
     }
 

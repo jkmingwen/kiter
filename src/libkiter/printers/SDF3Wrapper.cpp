@@ -26,37 +26,6 @@ using std::vector;
 #define TXT_XML_ERROR "TXT_XML_ERROR"
 static const char INIT_PERIODIC_SEPARATOR = ';';
 
-template<typename T>
-std::string vectorAsStr(const std::vector<T>& t)
-{
-	 std::stringstream s;
-		for (typename std::vector<T>::size_type idx = 0 ; idx < t.size() ; idx++) {
-			if (idx > 0) {
-				 s << ",";
-			}
-			s << commons::toString(t[idx]);
-		}
-		return s.str();
-}
-
-template<>
-std::string vectorAsStr(const std::vector<TIME_UNIT>& t)
-{
-	 std::stringstream s;
-		for (typename std::vector<TIME_UNIT>::size_type idx = 0 ; idx < t.size() ; idx++) {
-			if (idx > 0) {
-				 s << ",";
-			}
-			TIME_UNIT v = t[idx];
-			if ((std::floor(v)==std::ceil(v))) {
-				s << (unsigned long) (v) ;
-			} else {
-				s << commons::toString(v);
-			}
-		}
-		return s.str();
-}
-
 
 namespace printers {
 
@@ -708,8 +677,8 @@ void writeLoopbackPorts (xmlTextWriterPtr writer, const models::Dataflow* datafl
             static_cast<unsigned long>(dataflow->getPhasesQuantity(t)), 1) ;
 	const std::vector<TOKEN_UNIT> init_rates        =    std::vector<TOKEN_UNIT> (
             static_cast<unsigned long>(dataflow->getInitPhasesQuantity(t)), 1) ;
-	std::string rates = vectorAsStr(periodic_rates);
-	if (!init_rates.empty()) rates = vectorAsStr(init_rates) + INIT_PERIODIC_SEPARATOR +   rates ;
+	std::string rates = commons::join(periodic_rates, ",");
+	if (!init_rates.empty()) rates = commons::join(init_rates,",") + INIT_PERIODIC_SEPARATOR +   rates ;
 
 	xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
@@ -808,10 +777,10 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) out_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "in");
-									std::string rates_str = vectorAsStr(in_rates);
+									std::string rates_str = commons::join(in_rates, ",");
 									if (not in_init_rates.empty()) {
                                         // Recent change here: insert the string in from of it, should be more efficient
-                                        rates_str.insert(0, vectorAsStr(in_init_rates) + INIT_PERIODIC_SEPARATOR);
+                                        rates_str.insert(0,  commons::join(in_init_rates, ",") + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -828,10 +797,10 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "out");
-									std::string rates_str = vectorAsStr(out_rates);
+									std::string rates_str = commons::join(out_rates, ",");
 									if (not out_init_rates.empty()) {
                                         // Recent change here: insert the string in from of it, should be more efficient
-                                        rates_str.insert(0, vectorAsStr(out_init_rates) + INIT_PERIODIC_SEPARATOR);
+                                        rates_str.insert(0,commons::join(out_init_rates, ",") + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -871,9 +840,9 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 									const auto& periodicExecutionTime = dataflow->getVertexPhaseDuration(t);
 									const auto& initExecutionTime = dataflow->getVertexInitPhaseDuration(t);
-									std::string times_str = vectorAsStr(periodicExecutionTime);
+									std::string times_str = commons::join(periodicExecutionTime, ",");
 									if (!initExecutionTime.empty()) {
-                                        times_str.insert(0, vectorAsStr(initExecutionTime) + INIT_PERIODIC_SEPARATOR);
+                                        times_str.insert(0, commons::join(initExecutionTime, ",")  + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "executionTime");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"time", (const xmlChar*)  times_str.c_str());

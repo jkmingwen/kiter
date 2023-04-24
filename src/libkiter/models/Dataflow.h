@@ -595,10 +595,10 @@ public :
     inline std::string           getEdgeTypeStr (const Edge e )    const     {
     	EDGE_TYPE et = this->getEdgeType(e);
     	switch (et) {
-            case VIRTUAL_EDGE : return "VIRTUAL_EDGE";
-    		case NORMAL_EDGE : return "NORMAL_EDGE";
-    		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
-    		case  FEEDBACK_EDGE : return "FEEDBACK_EDGE";
+            case EDGE_TYPE::NORMAL_EDGE : return "NORMAL_EDGE";
+            case EDGE_TYPE::BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+            case EDGE_TYPE::FEEDBACK_EDGE : return "FEEDBACK_EDGE";
+            case EDGE_TYPE::VIRTUAL_EDGE : return "VIRTUAL_EDGE";
     		default : return "UNKNOWN";
     	}
     }
@@ -675,18 +675,18 @@ public :
     }
     inline  EXEC_COUNT          getEdgeInPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does ot match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does not match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
     	return tmp;
     }
 
     inline  EXEC_COUNT          getEdgeOutInitPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does ot match task init spec");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does not match task init spec");
         return tmp;
     }
     inline  EXEC_COUNT          getEdgeInInitPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does ot match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
         return tmp;
     }
 
@@ -694,20 +694,20 @@ public :
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeOutVector   (const Edge c) const   {
     	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does ot match task spec");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does not match task spec");
     	return tmp;
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInVector   (const Edge c)  const  {
     	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does ot match task spec");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does not match task spec");
     	return tmp;
     }
 
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeInitOutVector   (const Edge c) const   {
     	const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does ot match task init spec");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does not match task init spec");
         return tmp;
     }
 

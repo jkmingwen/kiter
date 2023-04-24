@@ -316,6 +316,8 @@ template<class Type>
 	for (Type it = IteratingContain->begin(); it != IteratingContain->end() ; it++) {delete (*it).second;};
 }
 
+
+
 // from http://stackoverflow.com/questions/4442658/c-parse-int-from-string
 template<class T>
     T fromString(const std::string& s)
@@ -325,6 +327,25 @@ template<class T>
      stream >> t;
      return t;
 }
+
+
+template<typename T>
+std::vector<T> split(const std::string &s, const char &delim) {
+    std::vector<T> elems;
+    std::stringstream ss(s);
+    std::string item;
+    while(std::getline(ss, item, delim)) {
+        elems.push_back(commons::fromString<T>(item));
+    }
+    return elems;
+}
+
+//// This cannot be done easily without breaking calls
+//template< typename T >
+//std::vector<T> fromString(const std::string& s)
+//{
+//    return commons::split<T> (s, ',');
+//}
 
 template<>
 char *fromString<char*>(const std::string& str);
@@ -382,6 +403,7 @@ template<typename T, typename Q>
         return stream.str();
     }
 
+
     template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) ;
 template<>
@@ -432,6 +454,43 @@ Str join(It begin, const It end, const Str &sep)
   return result.str();
 }
 
+template <class T>
+std::string  join(const std::vector<T>& vec, const std::string  &sep) {
+    return join(vec.begin(),vec.end(), sep);
+}
+
+// // This should not be necessary
+//
+//    template<typename T>
+//    std::string vectorAsStr(const std::vector<T>& t)
+//    {
+//        std::stringstream s;
+//        for (typename std::vector<T>::size_type idx = 0 ; idx < t.size() ; idx++) {
+//            if (idx > 0) {
+//                s << ",";
+//            }
+//            s << commons::toString(t[idx]);
+//        }
+//        return s.str();
+//    }
+//
+//    template<>
+//    std::string vectorAsStr(const std::vector<TIME_UNIT>& t)
+//    {
+//        std::stringstream s;
+//        for (typename std::vector<TIME_UNIT>::size_type idx = 0 ; idx < t.size() ; idx++) {
+//            if (idx > 0) {
+//                s << ",";
+//            }
+//            TIME_UNIT v = t[idx];
+//            if ((std::floor(v)==std::ceil(v))) {
+//                s << (unsigned long) (v) ;
+//            } else {
+//                s << commons::toString(v);
+//            }
+//        }
+//        return s.str();
+//    }
 
 
 inline bool isInteger(TIME_UNIT v){
@@ -506,16 +565,6 @@ inline std::string ConvertRGBtoHex(int r, int g, int b) {
 TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p);
 //
 
-template<typename T>
- std::vector<T> split(const std::string &s, const char &delim) {
-	 std::vector<T> elems;
-	 std::stringstream ss(s);
-	 std::string item;
-	 while(std::getline(ss, item, delim)) {
-		 elems.push_back(commons::fromString<T>(item));
-	 }
-	 return elems;
- }
 std::vector<std::string> splitSDF3List(const std::string &s);
 
 int fibo (int index);

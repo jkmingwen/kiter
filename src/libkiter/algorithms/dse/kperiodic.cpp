@@ -18,18 +18,8 @@
 #include <models/repetition_vector.h>
 #include "buffer_sizing.h"
 #include "kperiodic.h"
-#include "monotonic_optimisation.h"
-#include "base_monotonic_optimisation.h"
 #include <chrono> // to take computation timings
 #include <boost/filesystem.hpp>
-
-template <class T>
-std::string vec2string(std::vector<T> v){
-    return std::accumulate(v.begin(), v.end(), std::string{},
-        [](const std::string& a, int b) {
-            return a + (a.empty() ? "" : ", ") + std::to_string(b);
-        });
-}
 
 std::pair<models::Dataflow*, std::map<Edge,Edge> > genGraphWFeedbackEdgesWithPairs(models::Dataflow* g){
     /* Generate dataflow_prime */
@@ -105,14 +95,14 @@ models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result, boo
           VERBOSE_INFO("EdgeID: " << cc_g->getEdgeId(e_cc) 
                           << " | EdgeName: " << cc_g->getEdgeName(e_cc) 
                           << " | ChnQnt: " << cc_g->getPreload(e_cc));     
-          VERBOSE_INFO("\tEdge(In)Phases: " << vec2string(cc_g->getEdgeInVector(e_cc)));    
-          VERBOSE_INFO("\tEdge(Out)Phases: " << vec2string(cc_g->getEdgeOutVector(e_cc)));   
+          VERBOSE_INFO("\tEdge(In)Phases: " << commons::toString(cc_g->getEdgeInVector(e_cc)));
+          VERBOSE_INFO("\tEdge(Out)Phases: " << commons::toString(cc_g->getEdgeOutVector(e_cc)));
           VERBOSE_INFO("\tSrc(Name): " << cc_g->getVertexName(src_cc) 
                       << " -> Trg(Name): " << cc_g->getVertexName(trg_cc)); 
           VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(src_cc) 
-                          << "): " << vec2string(cc_g->getVertexPhaseDuration(src_cc)));    
+                          << "): " << commons::toString(cc_g->getVertexPhaseDuration(src_cc)));
           VERBOSE_INFO("\tPhaseDurations(" << cc_g->getVertexName(trg_cc) 
-                          << "): " << vec2string(cc_g->getVertexPhaseDuration(trg_cc))); 
+                          << "): " << commons::toString(cc_g->getVertexPhaseDuration(trg_cc)));
         }
 
     }
@@ -554,8 +544,6 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     auto beginTime = std::chrono::steady_clock::now();
 
     bool writeLogFiles = false;
-    bool isMonoOpt = false;
-    bool isBaseMonoOpt = false;
     bool thrTargetSpecified = false;
     bool isMaxSet = false;
     bool initializedWFeedback = false;
@@ -572,12 +560,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     if (parameters.find("LOG") != parameters.end()) { // log output of DSE (includes pareto points and all search points) NOTE: parent directories need to be created beforehand
         writeLogFiles = true;
     }
-    if (parameters.find("M_OPT") != parameters.end()) { // use monotonic optimisation
-        isMonoOpt = true;
-    }
-    if (parameters.find("B_M_OPT") != parameters.end()) { // use base monotonic optimisation
-        isBaseMonoOpt = true;
-    }
+
     if (parameters.find("THR") != parameters.end()) { // specify target throughput of DSE
         thrTargetSpecified = true;
     } else {
@@ -703,31 +686,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
     // add initial distribution to list of storage distributions
     StorageDistributionSet checklist;
     std::chrono::duration<double, std::milli> cumulativeTime; // store timings
-    if (isMonoOpt) {
-        methodName = "_m_opt";
-        auto startTime = std::chrono::steady_clock::now();
-        checklist = algorithms::monotonic_optimised_Kperiodic_throughput_dse(dataflow_prime,
-                                                                             initDist,
-                                                                             thrTarget,
-                                                                             computation_counter,
-                                                                             parameters);
-        auto endTime = std::chrono::steady_clock::now();
-        std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-        cumulativeTime += execTime;
-        std::cout << "M_OPT: time taken: " << cumulativeTime.count() << std::endl;
-    } else if (isBaseMonoOpt) {
-        methodName = "_base_m_opt";
-        auto startTime = std::chrono::steady_clock::now();
-        checklist = algorithms::base_monotonic_optimised_Kperiodic_throughput_dse(dataflow_prime,
-                                                                                  initDist,
-                                                                                  thrTarget,
-                                                                                  computation_counter,
-                                                                                  parameters);
-        auto endTime = std::chrono::steady_clock::now();
-        std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-        cumulativeTime += execTime;
-        std::cout << "B_M_OPT: time taken: " << cumulativeTime.count() << std::endl;
-    } else {
+      {
         methodName = "_kiter";
         checklist = StorageDistributionSet(initDist);
     }
