@@ -405,14 +405,14 @@ models::EventGraph* algorithms::updateEventGraph(const models::Dataflow * const 
 
 	bool changed = updateVectorWithLocalNi(dataflow,&kvector,cc);
 
-    VERBOSE_DEBUG("Update event graph -  New KVector = " << commons::toString(kvector) );
+    VERBOSE_KPERIODIC_DEBUG("Update event graph -  New KVector = " << commons::toString(kvector) );
 	if (!changed) {
-        VERBOSE_DEBUG("Unchanged ...");
+        VERBOSE_KPERIODIC_DEBUG("Unchanged ...");
 		return NULL;
 	}
 
 
-    VERBOSE_DEBUG("Update event graph - Step 1 - Delete edges and add task");
+    VERBOSE_KPERIODIC_DEBUG("Update event graph - Step 1 - Delete edges and add task");
 	// STEP 1
 	//remove all connected edges
 	EXEC_COUNT current = 0;
@@ -440,7 +440,7 @@ models::EventGraph* algorithms::updateEventGraph(const models::Dataflow * const 
 		}
 	}
 
-    VERBOSE_DEBUG("Update event graph - Step 2 - Reentrancy");
+    VERBOSE_KPERIODIC_DEBUG("Update event graph - Step 2 - Reentrancy");
 
 	current = 0;
 
@@ -460,7 +460,7 @@ models::EventGraph* algorithms::updateEventGraph(const models::Dataflow * const 
 		generateKperiodicSelfloop(dataflow,start_count,g,t);
 	}
 
-    VERBOSE_DEBUG("Update event graph - Step 3 - add " << addconstraint << " constraints.");
+    VERBOSE_KPERIODIC_DEBUG("Update event graph - Step 3 - add " << addconstraint << " constraints.");
 
 	// STEP 3
 	// add all edges
@@ -695,7 +695,7 @@ bool algorithms::updateVectorWithLocalNi(const models::Dataflow *  const dataflo
 		gcdNi = std::gcd<EXEC_COUNT>(gcdNi,dataflow->getNi(source)  / dataflow->getPhasesQuantity(source) );
 	}
 
-    VERBOSE_DEBUG("      updateVectorWithLocalNi -  gcdNi = " << commons::toString(gcdNi) );
+    VERBOSE_KPERIODIC_DEBUG("      updateVectorWithLocalNi -  gcdNi = " << commons::toString(gcdNi) );
 
 	for (critical_circuit_t::iterator it = cc->begin() ; it != cc->end(); it++ ) {
 		Vertex source = dataflow->getEdgeSource(*it);
@@ -708,7 +708,7 @@ bool algorithms::updateVectorWithLocalNi(const models::Dataflow *  const dataflo
 
 		if (newki != kvector->at(source) ) changed = true;
 
-		VERBOSE_DEBUG("      updateVectorWithLocalNi - "
+        VERBOSE_KPERIODIC_DEBUG("      updateVectorWithLocalNi - "
 				<< " Source = " << dataflow->getVertexName(source)
 				<< " Ni = " << Ni
 				<< " ki = "  <<  kvector->at(source)

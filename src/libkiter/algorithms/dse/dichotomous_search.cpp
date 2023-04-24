@@ -5,7 +5,7 @@
  *      Author: toky
  */
 
-#include "periodic.h"
+#include "dichotomous_search.h"
 #include <map>
 #include <chrono> // to take computation timings
 #include <queue>

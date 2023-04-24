@@ -170,42 +170,42 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
 
     kperiodic_result_t result;
 
-    VERBOSE_DEBUG("KPeriodic EventGraph generation");
+    VERBOSE_KPERIODIC_DEBUG("KPeriodic EventGraph generation");
 
     //STEP 1 - Generate Event Graph
     models::EventGraph* eg = generateKPeriodicEventGraph(dataflow,&kvector);
 
-    VERBOSE_DEBUG("KPeriodic EventGraph generation Done");
+    VERBOSE_KPERIODIC_DEBUG("KPeriodic EventGraph generation Done");
 
     //STEP 2 - resolve the MCRP on this Event Graph
     std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res = eg->MinCycleRatio();
     std::vector<models::EventGraphEdge> * critical_circuit = &(howard_res.second);
 
     //STEP 3 - convert CC(eg) => CC(graph)
-    VERBOSE_DEBUG("Critical circuit is about " << critical_circuit->size() << " edges.");
+    VERBOSE_KPERIODIC_DEBUG("Critical circuit is about " << critical_circuit->size() << " edges.");
     for (std::vector<models::EventGraphEdge>::iterator it = critical_circuit->begin() ; it != critical_circuit->end() ; it++ ) {
-        VERBOSE_DEBUG("   -> " << eg->getChannelId(*it) << " : " << eg->getSchedulingEvent(eg->getSource(*it)).toString() << " to " <<  eg->getSchedulingEvent(eg->getTarget(*it)).toString() <<  " = (" << eg->getConstraint(*it)._w << "," << eg->getConstraint(*it)._d << ")" );
+        VERBOSE_KPERIODIC_DEBUG("   -> " << eg->getChannelId(*it) << " : " << eg->getSchedulingEvent(eg->getSource(*it)).toString() << " to " <<  eg->getSchedulingEvent(eg->getTarget(*it)).toString() <<  " = (" << eg->getConstraint(*it)._w << "," << eg->getConstraint(*it)._d << ")" );
         ARRAY_INDEX channel_id = eg->getChannelId(*it);
         try {
             Edge        channel    = dataflow->getEdgeById(channel_id);
             result.critical_edges.insert(channel);
         } catch(...) {
-            VERBOSE_DEBUG("      is loopback");
+            VERBOSE_KPERIODIC_DEBUG("      is loopback");
         }
     }
 
     TIME_UNIT frequency = howard_res.first;
 
-    VERBOSE_DEBUG("KSchedule function get " << frequency << " from MCRP." );
-    VERBOSE_DEBUG("  ->  then omega =  " <<  1 / frequency );
+    VERBOSE_KPERIODIC_DEBUG("KSchedule function get " << frequency << " from MCRP." );
+    VERBOSE_KPERIODIC_DEBUG("  ->  then omega =  " <<  1 / frequency );
 
     result.throughput = frequency;
 
     ////////////// SCHEDULE CALL // END
     if (result.critical_edges.size() != 0) {
 
-        VERBOSE_DEBUG("1-periodic throughput (" << result.throughput <<  ") is not enough.");
-        VERBOSE_DEBUG("   Critical circuit is " << cc2string(dataflow,&(result.critical_edges)) <<  "");
+        VERBOSE_KPERIODIC_DEBUG("1-periodic throughput (" << result.throughput <<  ") is not enough.");
+        VERBOSE_KPERIODIC_DEBUG("   Critical circuit is " << cc2string(dataflow,&(result.critical_edges)) <<  "");
 
         while (true) {
 
@@ -215,12 +215,12 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
             kperiodic_result_t resultprime;
 
             //VERBOSE_ASSERT( algorithms::normalize(dataflow),"inconsistent graph");
-            VERBOSE_DEBUG("KPeriodic EventGraph generation");
+            VERBOSE_KPERIODIC_DEBUG("KPeriodic EventGraph generation");
 
             //STEP 1 - Generate Event Graph and update vector
             if (!updateEventGraph( dataflow ,  &kvector, &(result.critical_edges), eg)) break ;
 
-            VERBOSE_DEBUG("KPeriodic EventGraph generation Done");
+            VERBOSE_KPERIODIC_DEBUG("KPeriodic EventGraph generation Done");
 
             //STEP 2 - resolve the MCRP on this Event Graph
             std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res_bis = eg->MinCycleRatio();
@@ -228,47 +228,47 @@ kperiodic_result_t algorithms::compute_Kperiodic_throughput_and_cycles(models::D
             std::vector<models::EventGraphEdge> * critical_circuit = &(howard_res_bis.second);
 
             //STEP 3 - convert CC(eg) => CC(graph)
-            VERBOSE_DEBUG("Critical circuit is about " << critical_circuit->size() << " edges.");
+            VERBOSE_KPERIODIC_DEBUG("Critical circuit is about " << critical_circuit->size() << " edges.");
             for (std::vector<models::EventGraphEdge>::iterator it = critical_circuit->begin() ; it != critical_circuit->end() ; it++ ) {
-                VERBOSE_DEBUG("   -> " << eg->getChannelId(*it) << " : " << eg->getSchedulingEvent(eg->getSource(*it)).toString() << " to " <<  eg->getSchedulingEvent(eg->getTarget(*it)).toString() <<  " = (" << eg->getConstraint(*it)._w << "," << eg->getConstraint(*it)._d << ")" );
+                VERBOSE_KPERIODIC_DEBUG("   -> " << eg->getChannelId(*it) << " : " << eg->getSchedulingEvent(eg->getSource(*it)).toString() << " to " <<  eg->getSchedulingEvent(eg->getTarget(*it)).toString() <<  " = (" << eg->getConstraint(*it)._w << "," << eg->getConstraint(*it)._d << ")" );
                 ARRAY_INDEX channel_id = eg->getChannelId(*it);
                 try {
                     Edge        channel    = dataflow->getEdgeById(channel_id);
                     resultprime.critical_edges.insert(channel);
                 } catch(...) {
-                    VERBOSE_DEBUG("      is loopback");
+                    VERBOSE_KPERIODIC_DEBUG("      is loopback");
                 }
             }
 
             TIME_UNIT frequency = howard_res_bis.first;
 
-            VERBOSE_DEBUG("KSchedule function get " << frequency << " from MCRP." );
-            VERBOSE_DEBUG("  ->  then omega =  " <<  1 / frequency );
+            VERBOSE_KPERIODIC_DEBUG("KSchedule function get " << frequency << " from MCRP." );
+            VERBOSE_KPERIODIC_DEBUG("  ->  then omega =  " <<  1 / frequency );
 
             resultprime.throughput = frequency;
 
             ////////////// SCHEDULE CALL // END
             if (sameset(dataflow,&(resultprime.critical_edges),&(result.critical_edges)))  {
-                VERBOSE_DEBUG("Critical circuit is the same");
+                VERBOSE_KPERIODIC_DEBUG("Critical circuit is the same");
                 result = resultprime;
 
                 break;
             }
             result = resultprime;
-            VERBOSE_DEBUG("Current K-periodic throughput (" << result.throughput <<  ") is not enough.");
-            VERBOSE_DEBUG("   Critical circuit is " << cc2string(dataflow,&(result.critical_edges)) <<  "");
+            VERBOSE_KPERIODIC_DEBUG("Current K-periodic throughput (" << result.throughput <<  ") is not enough.");
+            VERBOSE_KPERIODIC_DEBUG("   Critical circuit is " << cc2string(dataflow,&(result.critical_edges)) <<  "");
 
         }
     }
 
 
-    VERBOSE_DEBUG( "K-periodic schedule: iterations count is " << iteration_count << "  final size is " << eg->getEventCount() << " events and " << eg->getConstraintsCount() << " constraints.");
+    VERBOSE_KPERIODIC_DEBUG( "K-periodic schedule: iterations count is " << iteration_count << "  final size is " << eg->getEventCount() << " events and " << eg->getConstraintsCount() << " constraints.");
     delete eg;
 
     EXEC_COUNT total_ki = 0;
     {ForEachVertex(dataflow,t) { total_ki += kvector[t]; }}
 
-    VERBOSE_DEBUG("K-periodic schedule: total_ki=" << sumKi << " total_ni=" << sumNi );
+    VERBOSE_KPERIODIC_DEBUG("K-periodic schedule: total_ki=" << sumKi << " total_ni=" << sumNi );
 
     return result;
 }
@@ -418,121 +418,6 @@ StorageDistributionSet algorithms::new_compute_Kperiodic_dse(models::Dataflow *c
 
 
 
-/***********************************************************************************/
-
-void algorithms::mod_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
-                                                   parameters_list_t  params) {
-
-  std::string dirName = (params.find("LOGDIR") != params.end()) ? params["LOGDIR"] : "./data/";
-  std::string ppDirName = dirName + "/pp_logs/"; // logs of pareto points
-  std::string logDirName = dirName + "/dse_logs/";
-	boost::filesystem::create_directory(ppDirName);
-	boost::filesystem::create_directory(logDirName);
-  // initialise data logging file
-  std::ofstream dseLog;
-  dseLog.open(logDirName + dataflow->getGraphName() + "_dselog" + "_kiter" + ".csv");
-  dseLog << "storage distribution size,throughput,channel quantities,dependency mask,computation duration,cumulative duration" << std::endl;
-  std::chrono::duration<double, std::milli> cumulativeTime;
-
-
-  StorageDistribution initDist = initialiseDist(dataflow);
-
-  // Compute the minimal steps
-  std::map<Edge, TOKEN_UNIT> minStepSizes;
-  findMinimumStepSz(dataflow, minStepSizes);
-
-  // Compute the throughput target
-  kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow);
-  
-  TIME_UNIT thrTarget = result_max.throughput;
-  VERBOSE_DSE("Target Throughput: " << thrTarget);
-
-  // Produce the feedback buffers
-  std::pair<models::Dataflow*, std::map<Edge,Edge> > dataflow_and_matching = genGraphWFeedbackEdgesWithPairs(dataflow);
-  models::Dataflow* dataflow_prime = dataflow_and_matching.first;
-  std::map<Edge,Edge>& matching = dataflow_and_matching.second;
-
-  kperiodic_result_t result = compute_Kperiodic_throughput_and_cycles(dataflow_prime);
-  initDist.setThroughput(result.throughput);
-
-  StorageDistributionSet checklist = StorageDistributionSet(initDist);
-  StorageDistributionSet minStorageDist; /* dse pareto results */
-
-
-  // Start DSE search
-  VERBOSE_DSE("DSE BEGIN:");
-  while (!minStorageDist.isSearchComplete(checklist, thrTarget)) {
-
-    VERBOSE_DSE("Checking next distribution (checklist size=" << checklist.getSize() << ")\n");
-    StorageDistribution checkDist(checklist.getNextDistribution()); // copy distribution for checking (first in checklist)
-    checklist.removeStorageDistribution(checklist.getNextDistribution()); // remove said storage distribution from checklist
-    
-    // Update dataflow_prime
-    updateGraphwMatching(dataflow_prime, matching, checkDist);
-
-    // Compute throughput and storage deps
-    auto startTime = std::chrono::steady_clock::now();
-    result = compute_Kperiodic_throughput_and_cycles(dataflow_prime); // @@@@
-    auto endTime = std::chrono::steady_clock::now();
-    auto execTime = endTime - startTime; // duration in ms
-    cumulativeTime += execTime;
-
-    checkDist.setThroughput(result.throughput);
-    
-    minStorageDist.addStorageDistribution(checkDist);
-
-    // write current storage distribution info to DSE log
-    dseLog << checkDist.getDistributionSize() << ","
-            << checkDist.getThroughput() << ","
-            << checkDist.print_quantities_csv() << ","
-            << checkDist.print_dependency_mask( result) << ","
-            << execTime.count() << ","
-            << cumulativeTime.count() << std::endl;
-   
-
-    /* MODIFICATIONS
-    1. Generate new dataflow of critical cycle
-    2. Compute new buffer sizings for cc which exhibits local improvement
-        2.1. Find current throughput given buffer constraints
-        2.2. Set throughput target to be next after (or thrTarget)
-        2.3. Get StorageDistributionSet of all SDs which exhibit this marginal improvement
-    3. For each SD, update current graph SD with new Channel quantities from 2
-    4. Add new StorageDist to search space
-    */
-    models::Dataflow* cc_g = getCCGraph(dataflow, result, true); //1
-    kperiodic_result_t  cc_res = compute_Kperiodic_throughput_and_cycles(cc_g); //2.1
-    TIME_UNIT nxt_thr = std::min(thrTarget, cc_res.throughput+0.000001); //2.2
-    StorageDistributionSet cc_new_sd = new_compute_Kperiodic_dse_with_init_dist(cc_g, checkDist, nxt_thr); //2.3
-    
-    for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_new_sd.getSet()){
-      for (StorageDistribution cc_sd : cc_pair.second){
-        if (cc_sd.getThroughput() >= nxt_thr){ //NOTE: Can be source of bugs!
-          StorageDistribution g_sd = updateStoreDistwCCSD(dataflow_prime, checkDist, cc_g, cc_sd); //3
-          checklist.addStorageDistribution(g_sd); //4
-        }
-      }
-    }
-    
-    minStorageDist.minimizeStorageDistributions(checkDist);
-  
-  }
-
-
-  // The minimum storage distribution for a throughput of 0 is (0, 0,..., 0)
-  if (minStorageDist.getNextDistribution().getThroughput() == 0) {
-    StorageDistribution zeroDist(minStorageDist.getNextDistribution());
-    {ForEachEdge(dataflow_prime, c) { zeroDist.setChannelQuantity(c, 0); }}
-    minStorageDist.removeStorageDistribution(minStorageDist.getNextDistribution());
-    minStorageDist.addStorageDistribution(zeroDist);
-  }
-
-  VERBOSE_DSE("\nDSE RESULTS [START] (Target Throughput: " << thrTarget << "):");
-  VERBOSE_DSE("\n" << minStorageDist.printDistributions());
-  VERBOSE_DSE("DSE RESULTS [END]");
-  VERBOSE_DSE("Number of pareto points: " << minStorageDist.getSize());
-  dseLog.close();
-
-}
 
 
 

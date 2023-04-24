@@ -513,7 +513,7 @@ public :
 
         cc.clear();
         TIME_UNIT max_cr = boost::minimum_cycle_ratio(this->getG(), vim, ew1, ew2, &cc,TIME_UNIT_LIMITS());
-        VERBOSE_DEBUG("minimum cycle ratio is " << max_cr);
+        VERBOSE_EVENTGRAPH_DEBUG("minimum cycle ratio is " << max_cr);
         std::pair<TIME_UNIT, TIME_UNIT> cr(.0,.0);
         for (std::vector<models::EventGraphEdge>::iterator itr = cc.begin(); itr != cc.end(); ++itr)
         {

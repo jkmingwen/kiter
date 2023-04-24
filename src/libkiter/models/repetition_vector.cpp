@@ -139,17 +139,17 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
     {ForEachVertex(from,v) {
     	subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
     }}
-    VERBOSE_DEBUG("SubRate = " << subrate);
+    VERBOSE_EXTRA_DEBUG("SubRate = " << subrate);
 
     {ForEachVertex(from,v) {
             repetitionVector[v] = repetitionVector[v] / subrate;
         }}
 #endif
 
-    VERBOSE_DEBUG("Repetition Vector :");
+    VERBOSE_EXTRA_DEBUG("Repetition Vector :");
     {ForEachVertex(from,v) {
             from->setNi(v,repetitionVector[v]);
-            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+            VERBOSE_EXTRA_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
         }}
 
     return true;
@@ -311,7 +311,7 @@ bool computeRepetitionVector(models::Dataflow *from) {
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }}
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_DEBUG("Rate Period = " << ratePeriod);
+    VERBOSE_EXTRA_DEBUG("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor

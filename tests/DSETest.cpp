@@ -398,17 +398,6 @@ BOOST_AUTO_TEST_CASE( append_graph_sd_with_new_cc_sd ){
 
 }
 
-BOOST_AUTO_TEST_CASE( full_dse_test ){
-
-    models::Dataflow* g = generateSampleCycle(); 
-    parameters_list_t parameters;
-    parameters["LOGDIR"] = "/home/sam/yalenus/Dataflow/2kiter/kiter/tests/data";
-    algorithms::compute_Kperiodic_throughput_dse(g, parameters);
-    VERBOSE_WARNING("FIRST DSE DONE");
-    models::Dataflow* g_ = generateSampleCycle();
-    parameters["LOGDIR"] = "/home/sam/yalenus/Dataflow/2kiter/kiter/tests/data2";
-    algorithms::mod_Kperiodic_throughput_dse(g_, parameters);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
 

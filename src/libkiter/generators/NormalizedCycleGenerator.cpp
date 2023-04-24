@@ -13,6 +13,8 @@ models::Dataflow*  generators::new_normalized_cycle(size_t node_count , const st
     VERBOSE_ASSERT_EQUALS(node_count, node_duration.size());
     VERBOSE_ASSERT_GreaterEqualThan(preload, 0);
 
+    VERBOSE_DEBUG("Generate a graph with " << node_count << " nodes");
+
     // Empty graph case
     if (node_count == 0) return to;
 
