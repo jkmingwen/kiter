@@ -58,7 +58,7 @@ BOOST_FIXTURE_TEST_SUITE( normalized_cycle_generator_test, WITH_SAMPLE)
         params["size"] = commons::toString(node_count);
         params["weights"] = commons::join(node_weights, ",");
         params["durations"] = commons::join(node_durations, ",");
-        params["preloads"] = commons::join(edge_preloads, ","); 
+        params["preloads"] = commons::join(edge_preloads, ",");
 
         VERBOSE_INFO("params are " << commons::toString(params));
         models::Dataflow* df2 = generators::generate_normalized_cycle(params);
