@@ -16,8 +16,8 @@ namespace models {
 namespace generators {
     models::Dataflow*  new_normalized_cycle(size_t node_count ,
                                             const std::vector<TOKEN_UNIT>& node_weights,
-                                            const std::vector<TIME_UNIT>& node_duration,
-                                            TOKEN_UNIT preload);
+                                            const std::vector<TIME_UNIT>&  node_durations,
+                                            const std::vector<TOKEN_UNIT>& edge_preloads) ;
 
     models::Dataflow*  generate_normalized_cycle(parameters_list_t   param_list);
 
