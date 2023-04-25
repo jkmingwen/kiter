@@ -312,13 +312,17 @@ public :
 	void set_normalize() { normalization_is_done = true;}
 	void set_repetition_vector() { repetition_vector_is_done = true;}
 
-	void reset_computation() { repetition_vector_is_done = false; normalization_is_done = false; readonly = false; }
+	void reset_computation() {
+        repetition_vector_is_done = false;
+        normalization_is_done = false;
+        readonly = false;
+        channelGCDA.clear();
+    }
 
 	bool is_read_only() const {return readonly;}
 	bool is_normalized() const {return normalization_is_done ;}
-	bool has_repetition_vector() const {
-		return repetition_vector_is_done ;
-	}
+	bool has_repetition_vector() const {return repetition_vector_is_done ;}
+
 	bool is_consistent()  {
 		if (!repetition_vector_is_done) computeRepetitionVector(this);
 		return repetition_vector_is_done ;
@@ -936,28 +940,19 @@ public :
     return channelGCD;
 
     }
+    inline void precomputeFineGCD()  {
+        { ForEachEdge(this,c) {
+                channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), computeFineGCD(c)));
+        }}
+        this->set_read_only(); // Once precomputed cannot change the graph.
+    }
+
+
     inline   TOKEN_UNIT getFineGCD(Edge c) const {
     	 std::map<ARRAY_INDEX,TOKEN_UNIT >::const_iterator res = channelGCDA.find(this->getEdgeId(c));
     	 if (res != channelGCDA.end()) return res->second;
     	 return computeFineGCD(c);
     }
-
-    inline   TOKEN_UNIT getFineGCD(Edge c)  {
-
-    	//return computeFineGCD(c);
-	       // search in cache
-	       std::map<ARRAY_INDEX,TOKEN_UNIT >::iterator res = channelGCDA.find(this->getEdgeId(c));
-	       if (res != channelGCDA.end()) return res->second;
-
-	       //Compute GCDA
-	       TOKEN_UNIT gcda = computeFineGCD(c);
-	       // add in cache
-	       channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), gcda));
-
-	       return gcda;
-
-	   }
-
 
 /**
  * Normalized access
