@@ -24,6 +24,7 @@ namespace algorithms {
 
             using PerformanceFunc = std::function<PerformanceUnit(const TokenConfiguration&)>;
 
+            TokenConfiguration(const models::Dataflow* dataflow, std::vector<TOKEN_UNIT> configuration);
             TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration);
 
             bool hasPerformance() const;

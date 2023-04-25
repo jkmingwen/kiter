@@ -10,9 +10,9 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_TokenConfigurationSet , WITH_SAMPLE)
     BOOST_AUTO_TEST_CASE(add_non_dominated_configurations) {
         algorithms::dse::TokenConfigurationSet config_set;
         cycle_sample->setEdgeType(cycle_sample->getFirstEdge(), EDGE_TYPE::FEEDBACK_EDGE);
-        algorithms::dse::TokenConfiguration config1(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 1}});
-        algorithms::dse::TokenConfiguration config2(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 2}});
-        algorithms::dse::TokenConfiguration config3(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 3}});
+        algorithms::dse::TokenConfiguration config1(cycle_sample, {1});
+        algorithms::dse::TokenConfiguration config2(cycle_sample, {2});
+        algorithms::dse::TokenConfiguration config3(cycle_sample, {3});
 
         config_set.add(config1);
         config_set.add(config2);
@@ -25,9 +25,9 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_TokenConfigurationSet , WITH_SAMPLE)
         algorithms::dse::TokenConfigurationSet config_set;
 
         cycle_sample->setEdgeType(cycle_sample->getFirstEdge(), EDGE_TYPE::FEEDBACK_EDGE);
-        algorithms::dse::TokenConfiguration config1(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 1}});
-        algorithms::dse::TokenConfiguration config2(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 1}});
-        algorithms::dse::TokenConfiguration config3(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 1}});
+        algorithms::dse::TokenConfiguration config1(cycle_sample, {1});
+        algorithms::dse::TokenConfiguration config2(cycle_sample, {1});
+        algorithms::dse::TokenConfiguration config3(cycle_sample, {1});
 
         config_set.add(config1);
         config_set.add(config2);
@@ -40,9 +40,9 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_TokenConfigurationSet , WITH_SAMPLE)
         algorithms::dse::TokenConfigurationSet config_set;
 
         cycle_sample->setEdgeType(cycle_sample->getFirstEdge(), EDGE_TYPE::FEEDBACK_EDGE);
-        algorithms::dse::TokenConfiguration config1(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 1}});
-        algorithms::dse::TokenConfiguration config2(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 2}});
-        algorithms::dse::TokenConfiguration config3(cycle_sample, {{cycle_sample->getEdgeId(cycle_sample->getFirstEdge()), 3}});
+        algorithms::dse::TokenConfiguration config1(cycle_sample, {1});
+        algorithms::dse::TokenConfiguration config2(cycle_sample, {2});
+        algorithms::dse::TokenConfiguration config3(cycle_sample, {3});
 
         config_set.add(config3);
         config_set.add(config1);

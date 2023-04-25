@@ -13,7 +13,7 @@ namespace algorithms {
                     best_point = &(*insert_res.first);
                 } else if (best_point->getThroughput() < new_config.getThroughput()) {
                     best_point = &(*insert_res.first);
-                } 
+                }
            }
         }
 

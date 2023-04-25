@@ -124,7 +124,8 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
 
     int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
     int timeout      = (params.count("timeout") > 0) ? commons::fromString<int>(params.at("timeout")) : 0;
-
+    algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : dummy_initial_func(dataflow);
+    VERBOSE_INFO("initial state of the search is going to be " << tc);
 
     dataflow->precomputeFineGCD();
     algorithms::dse::ModularDSE dse(dataflow,
@@ -134,7 +135,6 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
                                     dummy_stop_condition,
                                     thread_count);
 
-    algorithms::dse::TokenConfiguration tc = dummy_initial_func(dataflow);
     dse.add_initial_job(tc);
 
     // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
