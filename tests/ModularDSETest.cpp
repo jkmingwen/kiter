@@ -74,10 +74,10 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
     BOOST_AUTO_TEST_CASE(token_configuration_test) {
 
         size_t node_count = 4;
-        std::vector<TOKEN_UNIT> node_weights {2,2,2,2};
-        std::vector<TIME_UNIT> node_duration {1,1,1,1};
-        TOKEN_UNIT preload = 1;
-        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_duration, preload);
+        std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
+        std::vector<TIME_UNIT> node_durations {1,1,1,1};
+        std::vector<TOKEN_UNIT> edge_preloads  {0,0,0,0};
+        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_durations, edge_preloads);
 
         {ForEachEdge(df,c) {
                 df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
@@ -94,10 +94,10 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
 
         size_t node_count = 4;
-        std::vector<TOKEN_UNIT> node_weights {2,2,2,2};
-        std::vector<TIME_UNIT> node_duration {1,1,1,1};
-        TOKEN_UNIT preload = 1;
-        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_duration, preload);
+        std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
+        std::vector<TIME_UNIT> node_durations {1,1,1,1};
+        std::vector<TOKEN_UNIT> edge_preloads  {0,0,0,0};
+        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_durations, edge_preloads);
 
         {ForEachEdge(df,c) {
                 df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);

@@ -2,8 +2,8 @@
 // Created by toky on 24/4/23.
 //
 
-#ifndef KITER_TOKENCONFIGURATION_H
-#define KITER_TOKENCONFIGURATION_H
+#ifndef KITER_TOKEN_CONFIGURATION_H
+#define KITER_TOKEN_CONFIGURATION_H
 
 #include <models/Dataflow.h>
 #include <commons/commons.h>
@@ -13,16 +13,24 @@ namespace algorithms {
     namespace dse {
 
         class TokenConfiguration {
+
         public:
 
-            using PerformanceFunc = std::function<TIME_UNIT(const TokenConfiguration&)>;
+            using PerformanceUnit = TIME_UNIT;
+            using CostUnit = TOKEN_UNIT;
+
+        public:
+
+            using PerformanceFunc = std::function<PerformanceUnit(const TokenConfiguration&)>;
 
             TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration);
-            TIME_UNIT getThroughput() const {
+
+            PerformanceUnit getThroughput() const {
                 VERBOSE_ASSERT(computed, "Please run compute()");
                 return thr;
             };
-            TOKEN_UNIT getCost() const {
+
+            CostUnit getCost() const {
                 return cost;
             };
 
@@ -30,6 +38,8 @@ namespace algorithms {
                 if (!computed) {
                     thr = performance_func(*this);
                     computed = true;
+                } else {
+                    FAILED("This should never happen");
                 }
             }
 
@@ -46,9 +56,9 @@ namespace algorithms {
             std::map<ARRAY_INDEX, TOKEN_UNIT> configuration;
 
             // fitness data
-            bool      computed = false;
-            TIME_UNIT   thr  = 0.0;
-            TOKEN_UNIT  cost = 0;
+            bool              computed = false;
+            PerformanceUnit   thr  = 0.0;
+            CostUnit          cost = 0;
 
             // Performance information
             // double cumulativeTime, executionTime;
@@ -60,4 +70,4 @@ namespace algorithms {
 } // dse
 
 
-#endif //KITER_TOKENCONFIGURATION_H
+#endif //KITER_TOKEN_CONFIGURATION_H

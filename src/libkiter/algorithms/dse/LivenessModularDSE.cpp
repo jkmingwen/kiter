@@ -6,11 +6,60 @@
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/dse/LivenessModularDSE.h>
 
+// This is getFineGCD
+TOKEN_UNIT getStepSize(models::Dataflow *dataflow, Edge c) {
+    TOKEN_UNIT stepSize;
+    stepSize = dataflow->getEdgeInVector(c)[0]; // initialise with first value
+    for (EXEC_COUNT i = 0; i < dataflow->getEdgeInPhasesCount(c); i++)
+        stepSize = std::gcd(stepSize, dataflow->getEdgeInVector(c)[i]);
+    for (EXEC_COUNT i = 0; i < dataflow->getEdgeOutPhasesCount(c); i++)
+        stepSize = std::gcd(stepSize, dataflow->getEdgeOutVector(c)[i]);
+    return stepSize;
+}
+
+TOKEN_UNIT getMinBufferSize(models::Dataflow *dataflow, Edge c) {
+
+    TOKEN_UNIT buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
+
+    //TODO: This is not the correct value I believe this is an artefact from previous algorithm implementation (Jaime?)
+    TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
+                                                  dataflow->getEdgeOutPhasesCount(c));
+
+    for (TOKEN_UNIT i = 0; i < ratePeriod; i++) {
+        // might want to change variables to p, c, and t for legibility
+        TOKEN_UNIT tokensProduced = dataflow->getEdgeInVector(c)[i % dataflow->getEdgeInPhasesCount(c)];
+        TOKEN_UNIT tokensConsumed = dataflow->getEdgeOutVector(c)[i % dataflow->getEdgeOutPhasesCount(c)];
+        TOKEN_UNIT tokensInitial = dataflow->getPreload(c);
+        VERBOSE_DEBUG_DSE("p, c, t: " << tokensProduced << ", "
+                                      << tokensConsumed << ", " << tokensInitial );
+        TOKEN_UNIT lowerBound;
+
+        if (std::gcd(tokensProduced, tokensConsumed)) {
+            lowerBound = tokensProduced + tokensConsumed -
+                         std::gcd(tokensProduced, tokensConsumed) +
+                         tokensInitial % std::gcd(tokensProduced, tokensConsumed);
+        } else {
+            lowerBound = tokensProduced + tokensConsumed -
+                         std::gcd(tokensProduced, tokensConsumed);
+        }
+        lowerBound = (lowerBound > tokensInitial ? lowerBound : tokensInitial);
+
+        // take the lowest bound amongst phases of prod/cons
+        if (lowerBound < buffer_size) {
+            buffer_size = lowerBound;
+        }
+    }
+    return buffer_size;
+}
+
+
+
 // TODO: The copy of the graph is atrocious
 // TODO: the kperiodic_results should be stored somewhere
 TIME_UNIT dummy_performance_func(const algorithms::dse::TokenConfiguration& config) {
     //VERBOSE_INFO("Copy graph");
     models::Dataflow g = *config.getDataflow();
+    g.reset_computation(); // TODO: So wasteful. Needed because setPreload, makes me hope to have a Kperiodic with preloads as parameters.
     //VERBOSE_INFO("Prepare graph with config " << commons::toString(config));
     {ForEachEdge(&g,e) {
             if (g.getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
@@ -47,12 +96,14 @@ std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithm
         return  {};
     }
 
+    const models::Dataflow* df =  current.getDataflow();
     std::vector<algorithms::dse::TokenConfiguration> next_configurations;
     const auto& current_configuration = current.getConfiguration();
 
     for (const auto& edge_buffer_pair : current_configuration) {
         auto new_configuration = current_configuration; // Make a copy of the current configuration
-        new_configuration[edge_buffer_pair.first] = edge_buffer_pair.second + 1; // Increment the buffer size for the current edge by 1
+        Edge c = df->getEdgeById(edge_buffer_pair.first);
+        new_configuration[edge_buffer_pair.first] = edge_buffer_pair.second + df->getFineGCD(c); // Increment the buffer size for the current edge by 1
 
         // Create a new TokenConfiguration with the updated buffer size for the current edge
         algorithms::dse::TokenConfiguration new_token_configuration(current.getDataflow(), new_configuration);
@@ -65,11 +116,10 @@ std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithm
 void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
     int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
+    int timeout      = (params.count("timeout") > 0) ? commons::fromString<int>(params.at("timeout")) : 0;
 
-    {ForEachEdge(dataflow,e) {
-            dataflow->setEdgeType(e,EDGE_TYPE::FEEDBACK_EDGE);
-    }}
 
+    dataflow->precomputeFineGCD();
     algorithms::dse::ModularDSE dse(dataflow,
                                     dummy_performance_func,
                                     dummy_initial_func,
@@ -80,8 +130,12 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
 
     // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
     std::future<void> exploration_future = std::async(std::launch::async, [&dse] { dse.explore(); });
-    //std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-    //dse.stop();
+
+    if (timeout > 0) {
+        std::this_thread::sleep_for(std::chrono::seconds (timeout));
+        dse.stop();
+    }
+
     exploration_future.wait();
 
     std::cout << dse.print_space();

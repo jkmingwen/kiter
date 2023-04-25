@@ -22,8 +22,9 @@ namespace algorithms {
 
         class ModularDSE {
         public:
-            using PerformanceFunc = TokenConfiguration::PerformanceFunc;
+            // TODO: decide if they are declared here or in the TokenConfiguration
             using InitialConfigurationFunc = std::function<TokenConfiguration(const models::Dataflow*)>;
+            using PerformanceFunc = TokenConfiguration::PerformanceFunc;
             using NextConfigurationFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
 
             ModularDSE(const models::Dataflow* dataflow,
@@ -57,7 +58,26 @@ namespace algorithms {
                 }
             };
 
-            std::priority_queue<TokenConfiguration, std::vector<TokenConfiguration>, TokenConfigurationCostComparator> job_pool;
+            struct TokenConfigurationValuesComparator {
+                bool operator()(const TokenConfiguration& lhs, const TokenConfiguration& rhs) const {
+                    auto lhs_config = lhs.getConfiguration();
+                    auto rhs_config = rhs.getConfiguration();
+
+                    for (auto lhs_it = lhs_config.begin(), rhs_it = rhs_config.begin(); lhs_it != lhs_config.end() && rhs_it != rhs_config.end(); ++lhs_it, ++rhs_it) {
+                        if (lhs_it->first != rhs_it->first) {
+                            return lhs_it->first < rhs_it->first;
+                        }
+                        if (lhs_it->second != rhs_it->second) {
+                            return lhs_it->second < rhs_it->second;
+                        }
+                    }
+
+                    return false;
+                }
+            };
+
+            TokenConfigurationSet job_pool;
+            // std::priority_queue<TokenConfiguration, std::vector<TokenConfiguration>, TokenConfigurationCostComparator> job_pool;
 
             bool stop_exploration = false;
 
