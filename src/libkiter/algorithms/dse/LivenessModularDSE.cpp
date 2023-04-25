@@ -113,6 +113,13 @@ std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithm
     return next_configurations;
 }
 
+bool dummy_stop_condition(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) {
+
+    const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
+    if (best) return ((best->getCost() < new_config.getCost()) && (best->getThroughput() > 0));
+    return false;
+}
+
 void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
     int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
@@ -123,7 +130,9 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
     algorithms::dse::ModularDSE dse(dataflow,
                                     dummy_performance_func,
                                     dummy_initial_func,
-                                    dummy_next_func, thread_count);
+                                    dummy_next_func,
+                                    dummy_stop_condition,
+                                    thread_count);
 
     algorithms::dse::TokenConfiguration tc = dummy_initial_func(dataflow);
     dse.add_initial_job(tc);

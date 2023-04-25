@@ -26,16 +26,19 @@ namespace algorithms {
             using InitialConfigurationFunc = std::function<TokenConfiguration(const models::Dataflow*)>;
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
             using NextConfigurationFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
+            using StopConditionFunc = std::function<bool(const TokenConfiguration&,const TokenConfigurationSet&)>;
 
             ModularDSE(const models::Dataflow* dataflow,
                        PerformanceFunc performance_func,
                        InitialConfigurationFunc initial_func,
                        NextConfigurationFunc next_func,
+                       StopConditionFunc stop_func,
                        unsigned int num_threads = std::thread::hardware_concurrency())
                     : dataflow(dataflow),
                       performance_func(performance_func),
                       initial_func(initial_func),
                       next_func(next_func),
+                      stop_func(stop_func),
                       num_threads(num_threads) {}
 
             void explore() ;
@@ -47,6 +50,7 @@ namespace algorithms {
             PerformanceFunc performance_func;
             InitialConfigurationFunc initial_func;
             NextConfigurationFunc next_func;
+            StopConditionFunc stop_func;
             unsigned int num_threads;
 
             std::mutex mtx;

@@ -7,7 +7,14 @@
 namespace algorithms {
     namespace dse {
         void TokenConfigurationSet::add(const TokenConfiguration& new_config) {
-            this->configurations_by_cost[new_config.getCost()].insert(new_config);
+            auto insert_res = this->configurations_by_cost[new_config.getCost()].insert(new_config);
+            if (new_config.hasPerformance() and insert_res.second) {
+                if (best_point == nullptr) {
+                    best_point = &(*insert_res.first);
+                } else if (best_point->getThroughput() < new_config.getThroughput()) {
+                    best_point = &(*insert_res.first);
+                } 
+           }
         }
 
         void TokenConfigurationSet::remove(const TokenConfiguration& config) {
@@ -61,6 +68,7 @@ namespace algorithms {
         bool TokenConfigurationSet::hasConfigWithCost(TokenConfiguration::CostUnit cost) {
             return (this->configurations_by_cost.find(cost) != this->configurations_by_cost.end());
         }
+
 
     } // algorithms
 } // dse

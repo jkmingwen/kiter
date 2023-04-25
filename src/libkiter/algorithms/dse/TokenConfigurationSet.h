@@ -49,6 +49,12 @@ namespace algorithms {
                 }
                 return sum;
             }
+
+            const TokenConfiguration *getBestPerformancePoint() const {
+                return this->best_point;
+            }
+
+
         private:
 
             struct TokenConfigurationCostComparator {
@@ -77,6 +83,7 @@ namespace algorithms {
 
             std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> > configurations_by_cost;
 
+            const TokenConfiguration *best_point = nullptr;
         };
 
 

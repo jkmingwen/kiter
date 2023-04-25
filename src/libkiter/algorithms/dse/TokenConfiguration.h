@@ -19,12 +19,14 @@ namespace algorithms {
             using PerformanceUnit = TIME_UNIT;
             using CostUnit = TOKEN_UNIT;
 
+
         public:
 
             using PerformanceFunc = std::function<PerformanceUnit(const TokenConfiguration&)>;
 
             TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration);
 
+            bool hasPerformance() const;
             PerformanceUnit getThroughput() const {
                 VERBOSE_ASSERT(computed, "Please run compute()");
                 return thr;

@@ -49,6 +49,11 @@ namespace algorithms {
         const models::Dataflow *TokenConfiguration::getDataflow() const {
             return dataflow;
         }
+
+        bool TokenConfiguration::hasPerformance()  const {
+            return this->computed;
+        }
+
         std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration& f)
         {
             return out << f.to_csv_line();
