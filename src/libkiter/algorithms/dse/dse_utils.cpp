@@ -5,7 +5,7 @@
 #include "dse_utils.h"
 #include <models/Dataflow.h>
 
-void generateInplaceFeedbackBuffers(models::Dataflow* g){
+void algorithms::generateInplaceFeedbackBuffers(models::Dataflow* g){
 /* Generate dataflow_prime */
 
     g->reset_computation();
@@ -76,5 +76,5 @@ return std::pair<models::Dataflow*, std::map<Edge,Edge>>(dataflow_prime, matchin
 
 
 void algorithms::add_feedback_buffers(models::Dataflow *const dataflow, parameters_list_t ) {
-    generateInplaceFeedbackBuffers(dataflow);
+    algorithms::generateInplaceFeedbackBuffers(dataflow);
 }

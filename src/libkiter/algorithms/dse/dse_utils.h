@@ -9,6 +9,7 @@
 
 namespace algorithms {
 
+    void generateInplaceFeedbackBuffers(models::Dataflow* g);
     void add_feedback_buffers(models::Dataflow *const dataflow, parameters_list_t params);
 
 }

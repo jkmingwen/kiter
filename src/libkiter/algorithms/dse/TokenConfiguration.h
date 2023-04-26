@@ -79,7 +79,7 @@ namespace algorithms {
                     FAILED("This should never happen");
                 }
             }
-
+            static std::string csv_header();
             std::string to_csv_line() const;
             bool dominates(const TokenConfiguration& other) const;
             const std::map<ARRAY_INDEX, TOKEN_UNIT>&  getConfiguration() const;

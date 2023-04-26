@@ -20,6 +20,10 @@ namespace algorithms {
         const std::map<ARRAY_INDEX, TOKEN_UNIT>&  TokenConfiguration::getConfiguration() const {
             return this->configuration;
         }
+
+        std::string TokenConfiguration::csv_header() {
+            return "storage distribution size,throughput,critical channels,channel quantities";
+        }
         std::string TokenConfiguration::to_csv_line() const{
             std::string output("");
             output += this->performance_computed? commons::toString(this->getCost()) : "-";

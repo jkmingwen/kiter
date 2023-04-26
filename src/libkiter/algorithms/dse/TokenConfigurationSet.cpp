@@ -54,7 +54,7 @@ namespace algorithms {
         // Print info of all storage distributions of a given distribution size in set
         std::string TokenConfigurationSet::toString() {
 
-            std::string res = "";
+            std::string res = TokenConfiguration::csv_header() + "\n";
 
             for (auto cost_items : this->configurations_by_cost) {
                 for (auto v  : cost_items.second) {
