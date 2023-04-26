@@ -45,8 +45,8 @@ namespace algorithms {
                         //VERBOSE_INFO("Start to compute throughput.");
                         bool stop_decision = stop_func(*current_configuration,results);
                         if (stop_decision) continue;
-                        current_configuration->computeThroughput(this->performance_func);
-                        VERBOSE_INFO("computeThroughput: " << current_configuration->getThroughput());
+                        current_configuration->computePerformance(this->performance_func);
+                        VERBOSE_INFO("computePerformance: " << current_configuration->getPerformance());
                         results.add(*current_configuration);
                         auto next_configurations = next_func(*current_configuration);
                         VERBOSE_INFO("Next are " << commons::toString(next_configurations));

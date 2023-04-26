@@ -26,10 +26,12 @@ namespace algorithms {
                                                                     StorageDistribution initDist,
                                                                     TIME_UNIT target_thr=0);
     StorageDistributionSet new_compute_Kperiodic_dse(models::Dataflow *const dataflow);
+
+
+
 }
 
 models::Dataflow* getCCGraph(models::Dataflow* g, kperiodic_result_t result, bool print=false);
-models::Dataflow* genGraphWFeedbackEdges(models::Dataflow* g);
 std::pair<models::Dataflow*, std::map<Edge,Edge> > genGraphWFeedbackEdgesWithPairs(models::Dataflow* g);
 
 StorageDistribution updateStoreDistwCCSD(models::Dataflow* dataflow_prime, StorageDistribution sd_g,
@@ -40,7 +42,11 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
                                                                                              const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes);
 StorageDistribution initialiseDist(models::Dataflow* dataflow);
 void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>& matching, StorageDistribution checkDist);
+
+
+
 ADD_TRANSFORMATION(KPeriodicThroughputwithDSE,
 		transformation_t({"KPeriodicThroughputwithDSE", "Combine buffer space exploration with throughput evaluation of CSDF by K-periodic scheduling method", algorithms::compute_Kperiodic_throughput_dse}));
+
 
 #endif /* SRC_LIBKITER_ALGORITHMS_DSE_KPERIODIC_H_ */

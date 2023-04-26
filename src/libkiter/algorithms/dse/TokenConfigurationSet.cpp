@@ -11,7 +11,7 @@ namespace algorithms {
             if (new_config.hasPerformance() and insert_res.second) {
                 if (best_point == nullptr) {
                     best_point = &(*insert_res.first);
-                } else if (best_point->getThroughput() < new_config.getThroughput()) {
+                } else if (best_point->getPerformance() < new_config.getPerformance()) {
                     best_point = &(*insert_res.first);
                 }
            }

@@ -12,35 +12,69 @@
 namespace algorithms {
     namespace dse {
 
+
+
         class TokenConfiguration {
 
         public:
 
-            using PerformanceUnit = TIME_UNIT;
+            using EdgeIdentifier = ARRAY_INDEX;
+
+            struct PerformanceResult {
+                PerformanceResult(TIME_UNIT d, const std::set<EdgeIdentifier>& ce)
+                        : throughput(d), critical_edges(ce) {
+                }
+
+                TIME_UNIT throughput;
+                std::set<EdgeIdentifier> critical_edges;
+
+                bool operator<(const PerformanceResult& other) const {
+                    return throughput < other.throughput;
+                }
+            };
+
+
+            using PerformanceUnit = PerformanceResult;
             using CostUnit = TOKEN_UNIT;
+
+
+
+        private :
+
+
+                void refresh_cost(const models::Dataflow* dataflow);
+        static std::map<EdgeIdentifier, TOKEN_UNIT> vectorToMap(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT>& config_vec);
+
 
 
         public:
 
-            using PerformanceFunc = std::function<PerformanceUnit(const TokenConfiguration&)>;
+            using PerformanceFunc = std::function<PerformanceResult(const TokenConfiguration&)>;
 
-            TokenConfiguration(const models::Dataflow* dataflow, std::vector<TOKEN_UNIT> configuration);
-            TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration);
+            TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration)
+                    : dataflow{dataflow}, configuration{configuration}, performance{0,{}} {
+                refresh_cost(dataflow);
+            }
+
+            TokenConfiguration(const models::Dataflow* dataflow, std::vector<TOKEN_UNIT> config_vec)
+                    : TokenConfiguration(dataflow, vectorToMap(dataflow, config_vec)) {
+            }
 
             bool hasPerformance() const;
-            PerformanceUnit getThroughput() const {
-                VERBOSE_ASSERT(computed, "Please run compute()");
-                return thr;
+            const PerformanceUnit &getPerformance() const {
+                VERBOSE_ASSERT(performance_computed, "Please run compute()");
+                return performance;
             };
 
             CostUnit getCost() const {
                 return cost;
             };
 
-            void computeThroughput(PerformanceFunc performance_func) {
-                if (!computed) {
-                    thr = performance_func(*this);
-                    computed = true;
+            void computePerformance(PerformanceFunc performance_func) {
+                if (!performance_computed) {
+                    PerformanceResult res = performance_func(*this);
+                    performance = res;
+                    performance_computed = true;
                 } else {
                     FAILED("This should never happen");
                 }
@@ -59,9 +93,9 @@ namespace algorithms {
             std::map<ARRAY_INDEX, TOKEN_UNIT> configuration;
 
             // fitness data
-            bool              computed = false;
-            PerformanceUnit   thr  = 0.0;
-            CostUnit          cost = 0;
+            bool              performance_computed = false;
+            PerformanceUnit   performance;
+            CostUnit          cost;
 
             // Performance information
             // double cumulativeTime, executionTime;
@@ -69,6 +103,7 @@ namespace algorithms {
         };
 
         std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration& f) ;
+        std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration::PerformanceResult& pr);
     } // algorithms
 } // dse
 

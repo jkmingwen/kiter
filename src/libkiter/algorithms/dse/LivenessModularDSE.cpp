@@ -5,6 +5,8 @@
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/dse/LivenessModularDSE.h>
+namespace algorithms {
+    namespace dse {
 
 // This is getFineGCD
 TOKEN_UNIT getStepSize(models::Dataflow *dataflow, Edge c) {
@@ -55,8 +57,7 @@ TOKEN_UNIT getMinBufferSize(models::Dataflow *dataflow, Edge c) {
 
 
 // TODO: The copy of the graph is atrocious
-// TODO: the kperiodic_results should be stored somewhere
-TIME_UNIT dummy_performance_func(const algorithms::dse::TokenConfiguration& config) {
+algorithms::dse::TokenConfiguration::PerformanceResult liveness_performance_func(const algorithms::dse::TokenConfiguration& config) {
     //VERBOSE_INFO("Copy graph");
     models::Dataflow g = *config.getDataflow();
     g.reset_computation(); // TODO: So wasteful. Needed because setPreload, makes me hope to have a Kperiodic with preloads as parameters.
@@ -71,11 +72,14 @@ TIME_UNIT dummy_performance_func(const algorithms::dse::TokenConfiguration& conf
     //VERBOSE_INFO("compute_Kperiodic_throughput_and_cycles");
     kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(&g);
     //VERBOSE_INFO("Done");
-    return result_max.throughput;
+    algorithms::dse::TokenConfiguration::PerformanceResult res (0, {});
+    res.throughput = result_max.throughput;
+    for (Edge e : result_max.critical_edges) res.critical_edges.insert(g.getEdgeId(e));
+    return res;
 }
 
 // TODO: for the liveness problem it might make sense, but for buffer sizing it is so dumb.
-algorithms::dse::TokenConfiguration dummy_initial_func(const models::Dataflow* dataflow) {
+algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow* dataflow) {
     std::map<ARRAY_INDEX , TOKEN_UNIT> configuration; // Replace Edge with the correct type for your implementation
     { ForEachEdge(dataflow,e) {
             ARRAY_INDEX tid = dataflow->getEdgeId(e);
@@ -88,10 +92,10 @@ algorithms::dse::TokenConfiguration dummy_initial_func(const models::Dataflow* d
 
 // TODO : the kperiodic results is missing here
 // TODO : also the step size is not there
-std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithms::dse::TokenConfiguration& current) {
+std::vector<algorithms::dse::TokenConfiguration> liveness_next_func(const algorithms::dse::TokenConfiguration& current) {
 
     // stopping condition
-    if (current.getThroughput() > 0) {
+    if (current.getPerformance().throughput > 0) {
         //VERBOSE_INFO("Stopping condition reached");
         return  {};
     }
@@ -99,11 +103,11 @@ std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithm
     const models::Dataflow* df =  current.getDataflow();
     std::vector<algorithms::dse::TokenConfiguration> next_configurations;
     const auto& current_configuration = current.getConfiguration();
-
-    for (const auto& edge_buffer_pair : current_configuration) {
+    for (algorithms::dse::TokenConfiguration::EdgeIdentifier edgeId : current.getPerformance().critical_edges) {
+        Edge c = df->getEdgeById(edgeId);
+        if (df->getEdgeType(c) != EDGE_TYPE::FEEDBACK_EDGE) continue; // Skip non feedback buffers.
         auto new_configuration = current_configuration; // Make a copy of the current configuration
-        Edge c = df->getEdgeById(edge_buffer_pair.first);
-        new_configuration[edge_buffer_pair.first] = edge_buffer_pair.second + df->getFineGCD(c); // Increment the buffer size for the current edge by 1
+        new_configuration[edgeId] = new_configuration[edgeId] + df->getFineGCD(c); // Increment the buffer size for the current edge by 1
 
         // Create a new TokenConfiguration with the updated buffer size for the current edge
         algorithms::dse::TokenConfiguration new_token_configuration(current.getDataflow(), new_configuration);
@@ -113,10 +117,10 @@ std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithm
     return next_configurations;
 }
 
-bool dummy_stop_condition(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) {
+bool liveness_stop_condition(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) {
 
     const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
-    if (best) return ((best->getCost() < new_config.getCost()) && (best->getThroughput() > 0));
+    if (best) return ((best->getCost() < new_config.getCost()) && (best->getPerformance().throughput > 0));
     return false;
 }
 
@@ -124,15 +128,15 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
 
     int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
     int timeout      = (params.count("timeout") > 0) ? commons::fromString<int>(params.at("timeout")) : 0;
-    algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : dummy_initial_func(dataflow);
+    algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : liveness_initial_func(dataflow);
     VERBOSE_INFO("initial state of the search is going to be " << tc);
 
     dataflow->precomputeFineGCD();
     algorithms::dse::ModularDSE dse(dataflow,
-                                    dummy_performance_func,
-                                    dummy_initial_func,
-                                    dummy_next_func,
-                                    dummy_stop_condition,
+                                    liveness_performance_func,
+                                    liveness_initial_func,
+                                    liveness_next_func,
+                                    liveness_stop_condition,
                                     thread_count);
 
     dse.add_initial_job(tc);
@@ -150,4 +154,6 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
     std::cout << dse.print_space();
 
 }
+    } // end of dse namespace
+} // end of algorithms namespace
 

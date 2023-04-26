@@ -9,10 +9,23 @@
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 
-void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) ;
+namespace algorithms {
+    namespace dse {
+        TokenConfiguration::PerformanceResult liveness_performance_func(const TokenConfiguration& config);
+        TokenConfiguration liveness_initial_func(const models::Dataflow* dataflow);
+        std::vector<TokenConfiguration> liveness_next_func(const TokenConfiguration& );
+        bool liveness_stop_condition(const TokenConfiguration& , const TokenConfigurationSet&);
+        void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params);
+    }
+}
+
 
 ADD_TRANSFORMATION(LivenessDSE,
-                   transformation_t({ "LivenessDSE" , "DSE that solve the liveness problem for a graph with \"feedback\" buffers", solve_liveness}));
+                   transformation_t({
+                       "LivenessDSE" ,
+                       "DSE that solve the liveness problem for a graph with \"feedback\" buffers",
+                       algorithms::dse::solve_liveness}
+                       ));
 
 
 #endif //KITER_LIVENESSMODULARDSE_H

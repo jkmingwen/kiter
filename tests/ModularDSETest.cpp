@@ -11,68 +11,34 @@
 #include <algorithms/dse/ModularDSE.h>
 #include <future>
 
-// TODO: The copy of the graph is atrocious
-// TODO: the kperiodic_results should be stored somewhere
-TIME_UNIT dummy_performance_func(const algorithms::dse::TokenConfiguration& config) {
-    VERBOSE_INFO("Copy graph");
-    models::Dataflow g = *config.getDataflow();
-    VERBOSE_INFO("Prepare graph with config " << commons::toString(config));
-    {ForEachEdge(&g,e) {
-            if (g.getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-                TOKEN_UNIT v = config.getConfiguration().at(g.getEdgeId(e));
-                g.setPreload(e,  v );
-            }
-    }}
 
-    VERBOSE_INFO("compute_Kperiodic_throughput_and_cycles");
-    kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(&g);
-    VERBOSE_INFO("Done");
-    return result_max.throughput;
+using namespace algorithms::dse;
+
+
+
+TokenConfiguration::PerformanceResult dummy_pc(const TokenConfiguration& config) {
+    return TokenConfiguration::PerformanceResult(config.getCost(), {});
 }
 
-// TODO: for the liveness problem it might make sense, but for buffer sizing it is so dumb.
-algorithms::dse::TokenConfiguration dummy_initial_func(const models::Dataflow* dataflow) {
-    std::map<ARRAY_INDEX , TOKEN_UNIT> configuration; // Replace Edge with the correct type for your implementation
+TokenConfiguration dummy_if(const models::Dataflow* dataflow) {
+    std::map<ARRAY_INDEX , TOKEN_UNIT> configuration;
     { ForEachEdge(dataflow,e) {
-        ARRAY_INDEX tid = dataflow->getEdgeId(e);
-        if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-            configuration[tid] = 0;
-        }
-    }}
+            ARRAY_INDEX tid = dataflow->getEdgeId(e);
+            if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                configuration[tid] = 0;
+            }
+        }}
     return algorithms::dse::TokenConfiguration(dataflow, configuration);
 }
 
-// TODO : the kperiodic results is missing here
-// TODO : also the step size is not there
-std::vector<algorithms::dse::TokenConfiguration> dummy_next_func(const algorithms::dse::TokenConfiguration& current) {
-
-    // stopping condition
-    if (current.getThroughput() > 0) {
-        VERBOSE_INFO("Stopping condition reached");
-        return  {};
-    }
-
-    std::vector<algorithms::dse::TokenConfiguration> next_configurations;
-    const auto& current_configuration = current.getConfiguration();
-
-    for (const auto& edge_buffer_pair : current_configuration) {
-        auto new_configuration = current_configuration; // Make a copy of the current configuration
-        new_configuration[edge_buffer_pair.first] = edge_buffer_pair.second + 1; // Increment the buffer size for the current edge by 1
-
-        // Create a new TokenConfiguration with the updated buffer size for the current edge
-        algorithms::dse::TokenConfiguration new_token_configuration(current.getDataflow(), new_configuration);
-        next_configurations.push_back(new_token_configuration);
-    }
-
-    return next_configurations;
+std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& ) {
+    return {};
 }
 
-bool dummy_stop_condition(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) {
-
-    const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
-    if (best) return ((best->getCost() < new_config.getCost()) && (best->getThroughput() > 0));
+bool dummy_sc(const TokenConfiguration& , const TokenConfigurationSet& ) {
     return false;
 }
+
 
 BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
@@ -89,8 +55,8 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         }}
 
-        algorithms::dse::TokenConfiguration tc1 = dummy_initial_func(df);
-        algorithms::dse::TokenConfiguration tc2 = dummy_initial_func(df);
+        algorithms::dse::TokenConfiguration tc1 = dummy_if(df);
+        algorithms::dse::TokenConfiguration tc2 = dummy_if(df);
 
         BOOST_REQUIRE(tc1.dominates(tc2));
         BOOST_REQUIRE(tc2.dominates(tc1));
@@ -111,12 +77,12 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         commons::set_verbose_mode(commons::DEBUG_LEVEL);
 
         algorithms::dse::ModularDSE dse(df,
-                                        dummy_performance_func,
-                                        dummy_initial_func,
-                                        dummy_next_func,
-                                        dummy_stop_condition, 1);
+                                        dummy_pc,
+                                        dummy_if,
+                                        dummy_nf,
+                                        dummy_sc, 1);
 
-        algorithms::dse::TokenConfiguration tc = dummy_initial_func(df);
+        algorithms::dse::TokenConfiguration tc = dummy_if(df);
         dse.add_initial_job(tc);
 
         // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
