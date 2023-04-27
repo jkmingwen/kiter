@@ -52,7 +52,6 @@ namespace algorithms {
                 return *this;
             }
 
-            void explore(size_t limit = 0, bool realtime_output = false) ;
             void import_results(std::istream& input);
             void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
@@ -60,6 +59,14 @@ namespace algorithms {
             size_t results_size () const {return results.size();};
             size_t job_pool_size () const {return job_pool.size();};
             std::string print_space(bool no_timing = false);
+
+
+            void explore(size_t limit = 0, bool realtime_output = false) ;
+
+        private:
+            bool should_stop(size_t idle_threads, size_t explored, size_t limit);
+            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit, bool realtime_output);
+
         private:
             const models::Dataflow* dataflow;
             PerformanceFunc performance_func;
