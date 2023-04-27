@@ -9,16 +9,6 @@
 #include <commons/verbose.h>
 #include <tuple>
 
-
-
-// REALLY STRANGE BUGFIX : For Andrea config (old boost version in fc10)
-namespace std {
-bool operator<(const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& lh, const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& rh)
-{
-  if (lh.m_source == rh.m_source) {return lh.m_target < rh.m_target;} else
-	  {return lh.m_source < rh.m_source;}
-}
-}
 namespace commons {
 
 

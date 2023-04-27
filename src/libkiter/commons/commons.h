@@ -27,15 +27,8 @@
 #include <map>
 #include <vector>
 #include <cstdlib>
-#include <boost/functional/hash.hpp>
-#include <boost/graph/detail/edge.hpp>
 #include <commons/basic_types.h>
 
-
-namespace boost {struct bidirectional_tag;}
-namespace std {
-bool operator<(const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& lh, const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& rh);
-}
 
 
 // Naively inspired from https://en.cppreference.com/w/cpp/language/operators
@@ -152,7 +145,7 @@ public:
        	const V zero = 0;
 
        	// Break value into mixed-fraction form, w/ always-nonnegative remainder
-       	BOOST_ASSERT(this->d > zero);
+        VERBOSE_ASSERT(this->d > zero, "always-nonnegative remainder");
        	V  q = this->n / this->d, r = this->n % this->d;
        	while(r < zero)  { r += this->d; --q; }
 
