@@ -8,6 +8,40 @@
 namespace algorithms {
     namespace dse {
 
+        void ModularDSE::import_results(const std::string& filename) {
+            std::ifstream infile(filename);
+
+            if (!infile.is_open()) {
+                VERBOSE_ERROR("Error opening file: " << filename);
+                return;
+            }
+
+            std::string line;
+            std::getline(infile, line); // Skip header line
+
+            int lineNumber = 1;
+            while (std::getline(infile, line)) {
+                lineNumber++;
+
+                try {
+                    TokenConfiguration new_config = TokenConfiguration::from_csv_line(dataflow, line);
+                    if (new_config.hasPerformance()) {
+                        results.add(new_config);
+                    } else {
+                        job_pool.add(new_config);
+                    }
+
+                } catch (const std::exception& e) {
+                    VERBOSE_ERROR("Error parsing token configuration on line " << lineNumber << ": " << e.what());
+                }
+            }
+
+            infile.close();
+        }
+
+
+
+
         void ModularDSE::explore() {
 
             VERBOSE_INFO("Start to explore");

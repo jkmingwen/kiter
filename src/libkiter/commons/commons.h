@@ -403,6 +403,8 @@ template<typename T, typename Q>
         return stream.str();
     }
 
+    template<>
+    std::string toString(const std::vector<std::string>& t);
 
     template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) ;

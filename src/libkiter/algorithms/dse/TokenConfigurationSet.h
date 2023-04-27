@@ -84,6 +84,69 @@ namespace algorithms {
             std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> > configurations_by_cost;
 
             const TokenConfiguration *best_point = nullptr;
+            friend class ModularDSE;
+
+
+             // Iterator for the FullSet
+            class iterator {
+            public:
+                using iterator_category = std::forward_iterator_tag;
+                using difference_type = std::ptrdiff_t;
+                using value_type = TokenConfiguration;
+                using pointer = TokenConfiguration*;
+                using reference = TokenConfiguration&;
+
+                iterator() = default;
+
+                iterator(std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_it, std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator set_it)
+                        : map_it(map_it), set_it(set_it) {}
+
+                reference operator*() const {
+                    return const_cast<reference>(*set_it);
+                }
+
+                pointer operator->() {
+                    return const_cast<pointer>(std::addressof(*set_it));
+                }
+
+                iterator& operator++() {
+                    ++set_it;
+                    if (set_it == map_it->second.end()) {
+                        ++map_it;
+                        if (map_it != map_end_it) {
+                            set_it = map_it->second.begin();
+                        }
+                    }
+                    return *this;
+                }
+
+                iterator operator++(int) {
+                    iterator temp = *this;
+                    ++(*this);
+                    return temp;
+                }
+
+                bool operator==(const iterator& other) const {
+                    return map_it == other.map_it && (map_it == map_end_it || set_it == other.set_it);
+                }
+
+                bool operator!=(const iterator& other) const {
+                    return !(*this == other);
+                }
+
+            private:
+                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_it;
+                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_end_it;
+                std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator set_it;
+            };
+
+            iterator begin() const {
+                return iterator(configurations_by_cost.begin(), configurations_by_cost.empty() ? std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator() : configurations_by_cost.begin()->second.begin());
+            }
+
+            iterator end() const {
+                return iterator(configurations_by_cost.end(), std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator());
+            }
         };
 
 

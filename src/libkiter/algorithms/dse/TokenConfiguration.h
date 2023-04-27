@@ -8,6 +8,7 @@
 #include <models/Dataflow.h>
 #include <commons/commons.h>
 #include <vector>
+#include <chrono>
 
 namespace algorithms {
     namespace dse {
@@ -19,6 +20,7 @@ namespace algorithms {
         public:
 
             using EdgeIdentifier = ARRAY_INDEX;
+
 
             struct PerformanceResult {
                 PerformanceResult(TIME_UNIT d, const std::set<EdgeIdentifier>& ce)
@@ -37,7 +39,11 @@ namespace algorithms {
             using PerformanceUnit = PerformanceResult;
             using CostUnit = TOKEN_UNIT;
 
+            static std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration <double> > beginTime;
 
+            static void setBeginTime (std::chrono::duration<double, std::milli> shift) {
+                beginTime = std::chrono::steady_clock::now() - shift;
+            }
 
         private :
 
@@ -50,6 +56,12 @@ namespace algorithms {
         public:
 
             using PerformanceFunc = std::function<PerformanceResult(const TokenConfiguration&)>;
+
+            TokenConfiguration(const models::Dataflow *dataflow,
+                               const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration,
+                               const PerformanceResult &result,
+                               TIME_UNIT execTime,
+                               TIME_UNIT cumulTime);
 
             TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration)
                     : dataflow{dataflow}, configuration{configuration}, performance{0,{}} {
@@ -72,7 +84,14 @@ namespace algorithms {
 
             void computePerformance(PerformanceFunc performance_func) {
                 if (!performance_computed) {
+                    auto startTime = std::chrono::steady_clock::now();
                     PerformanceResult res = performance_func(*this);
+                    auto endTime = std::chrono::steady_clock::now();
+                    std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
+                    std::chrono::duration<double, std::milli> cumulTime = endTime - TokenConfiguration::beginTime;
+                    executionTime = execTime.count();
+                    cumulativeTime = cumulTime.count();
+
                     performance = res;
                     performance_computed = true;
                 } else {
@@ -80,6 +99,8 @@ namespace algorithms {
                 }
             }
             static std::string csv_header();
+            static TokenConfiguration from_csv_line(const models::Dataflow* dataflow, const std::string &line);
+
             std::string to_csv_line() const;
             bool dominates(const TokenConfiguration& other) const;
             const std::map<ARRAY_INDEX, TOKEN_UNIT>&  getConfiguration() const;
@@ -98,8 +119,7 @@ namespace algorithms {
             CostUnit          cost;
 
             // Performance information
-            // double cumulativeTime, executionTime;
-
+            double cumulativeTime, executionTime;
         };
 
         std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration& f) ;

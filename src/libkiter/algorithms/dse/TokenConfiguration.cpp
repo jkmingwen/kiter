@@ -4,8 +4,42 @@
 
 #include "TokenConfiguration.h"
 
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration <double> > algorithms::dse::TokenConfiguration::beginTime;
+
 namespace algorithms {
     namespace dse {
+        std::vector<std::string> parseCsvLine(const std::string& line) {
+            VERBOSE_DEBUG("Read a CSV line: " << line);
+            std::vector<std::string> cells;
+            std::string cell;
+            std::istringstream lineStream(line);
+            bool inQuotes = false;
+
+            for(char c : line) {
+                switch(c) {
+                    case ',':
+                        if(inQuotes) {
+                            cell += c;
+                        } else {
+                            cells.push_back(cell);
+                            cell = "";
+                        }
+                        break;
+
+                    case '\"':
+                        inQuotes = !inQuotes;
+                        break;
+
+                    default:
+                        cell += c;
+                        break;
+                }
+            }
+            // Add the last cell
+            cells.push_back(cell);
+            VERBOSE_DEBUG("Obtain a cell list: " << commons::toString<>(cells));
+            return cells;
+        }
 
         bool TokenConfiguration::dominates(const TokenConfiguration& other) const {
             for ( auto edge_token_item : configuration) {
@@ -22,22 +56,85 @@ namespace algorithms {
         }
 
         std::string TokenConfiguration::csv_header() {
-            return "storage distribution size,throughput,critical channels,channel quantities";
+            return "storage distribution size,throughput,channel quantities,critical channels,execution time,cumulative time";
+        }
+        TokenConfiguration TokenConfiguration::from_csv_line(const models::Dataflow* dataflow, const std::string &line)  {
+            std::vector<std::string> cells = parseCsvLine(line);
+
+            if (cells.size() != 6) {
+                throw std::runtime_error("Wrong number of cell in this line.");
+            }
+
+            std::vector<TOKEN_UNIT> configVec = commons::split<TOKEN_UNIT>(cells[2], ',');
+            std::vector<TOKEN_UNIT> criticalVec = cells[3] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[3], ',');
+            std::map<ARRAY_INDEX,TOKEN_UNIT> config;
+            std::set<ARRAY_INDEX> criticals;
+
+                {
+                    size_t index = 0;
+                    ForEachEdge(dataflow, e) {
+                        if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                            ARRAY_INDEX edge_id = dataflow->getEdgeId(e);
+                            config[edge_id] = configVec[index];
+                            if (std::find(criticalVec.begin(), criticalVec.end(), index) != criticalVec.end()) {
+                                criticals.insert(edge_id);
+                            }
+                            index++;
+                        }
+                    }
+                }
+
+            if (cells[1] != "-") {
+                TIME_UNIT throughput = std::stod(cells[1]);
+                TIME_UNIT execTime = std::stod(cells[4]);
+                TIME_UNIT cumulTime = std::stod(cells[5]);
+                TokenConfiguration::PerformanceResult performance(throughput, criticals);
+                TokenConfiguration res(dataflow, config, performance, execTime, cumulTime);
+                return res;
+            } else {
+                TokenConfiguration res(dataflow, config);
+                return res;
+            }
         }
         std::string TokenConfiguration::to_csv_line() const{
-            std::string output("");
-            output += this->performance_computed? commons::toString(this->getCost()) : "-";
-            output += ",";
-            output += this->performance_computed? commons::toString(this->getPerformance()) : "-";
-            output += ",";
-            output += "\"";
-            std::string delim("");
-            for (auto item : this->configuration){
-                output += delim;
-                output += std::to_string(item.second);
-                delim = ",";
+
+            std::string configuration_string  = "";
+            std::string configuration_delim("");
+            std::string critical_edges_string = "";
+            std::string critical_edges_delim("");
+
+            std::set<ARRAY_INDEX> critical_edges = this->performance_computed? this->getPerformance().critical_edges : std::set<ARRAY_INDEX >();
+
+            configuration_string += "\"";
+            critical_edges_string += "\"";
+
+            int index = 0;
+            for (auto item: this->configuration) {
+                if (critical_edges.find(item.first) != critical_edges.end()) {
+                    critical_edges_string += critical_edges_delim;
+                    critical_edges_string += std::to_string(index);
+                    critical_edges_delim = ",";
+                }
+                configuration_string += configuration_delim;
+                configuration_string += std::to_string(item.second);
+                configuration_delim = ",";
+                index++;
             }
-            output += "\"";
+            configuration_string += "\"";
+            critical_edges_string += "\"";
+
+            std::string output("");
+            output += commons::toString(this->getCost());
+            output += ",";
+            output += this->performance_computed? commons::toString(this->getPerformance().throughput) : "-";
+            output += ",";
+            output += configuration_string;
+            output += ",";
+            output += this->performance_computed? critical_edges_string: "-";
+            output += ",";
+            output += this->performance_computed? commons::toString(this->executionTime): "-";
+            output += ",";
+            output += this->performance_computed? commons::toString(this->cumulativeTime): "-";
             return output;
         }
 
@@ -110,6 +207,18 @@ namespace algorithms {
             return temp_config;
         }
 
+        TokenConfiguration::TokenConfiguration(const models::Dataflow *dataflow,
+                                               const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration,
+                                               const PerformanceResult &result,
+                                               TIME_UNIT execTime,
+                                               TIME_UNIT cumulTime) :
+                                               TokenConfiguration(dataflow, configuration)
+                                               {
+            performance = result;
+            executionTime = execTime;
+            cumulativeTime = cumulTime;
+            this->performance_computed = true;
+        }
 
 
     } // dse

@@ -35,7 +35,20 @@ std::string toString< std::vector<TOKEN_UNIT> >(const std::vector<TOKEN_UNIT>& v
 {
         return commons::join(v.begin(),v.end(),std::string(","));
 }
+template<>
+std::string toString(const std::vector<std::string>& t) {
 
+        std::stringstream s;
+        s << "{";
+        bool first = true;
+        for (auto myt : t) {
+            if (!first) s << ",";
+            s << "\"" << commons::toString(myt) << "\"";
+            first = false;
+        }
+        s << "}";
+        return s.str();
+    }
 
 template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) {

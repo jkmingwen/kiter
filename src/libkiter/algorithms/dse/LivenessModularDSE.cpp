@@ -128,9 +128,10 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
 
     int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
     int timeout      = (params.count("timeout") > 0) ? commons::fromString<int>(params.at("timeout")) : 0;
+    std::string  filename = (params.count("import") > 0) ? params.at("import") : "";
     algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : liveness_initial_func(dataflow);
-    VERBOSE_INFO("initial state of the search is going to be " << tc);
 
+    VERBOSE_ASSERT(params.count("init")  + params.count("import")  != 2, "Please pass your init inside the import file");
     dataflow->precomputeFineGCD();
     algorithms::dse::ModularDSE dse(dataflow,
                                     liveness_performance_func,
@@ -139,7 +140,14 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
                                     liveness_stop_condition,
                                     thread_count);
 
-    dse.add_initial_job(tc);
+
+    if(filename != "") {
+        VERBOSE_INFO("Load previous search points from " << filename);
+        dse.import_results(filename);
+    } else {
+        VERBOSE_INFO("Initial state of the search is going to be " << tc);
+        dse.add_initial_job(tc);
+    }
 
     // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
     std::future<void> exploration_future = std::async(std::launch::async, [&dse] { dse.explore(); });

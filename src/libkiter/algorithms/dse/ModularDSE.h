@@ -39,9 +39,13 @@ namespace algorithms {
                       initial_func(initial_func),
                       next_func(next_func),
                       stop_func(stop_func),
-                      num_threads(num_threads) {}
+                      num_threads(num_threads) {
+                TokenConfiguration::setBeginTime(std::chrono::duration<double, std::milli>::zero());
+            }
+
 
             void explore() ;
+            void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
             void stop() ;
             std::string print_space();
@@ -81,7 +85,6 @@ namespace algorithms {
             };
 
             TokenConfigurationSet job_pool;
-            // std::priority_queue<TokenConfiguration, std::vector<TokenConfiguration>, TokenConfigurationCostComparator> job_pool;
 
             bool stop_exploration = false;
 

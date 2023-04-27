@@ -146,3 +146,27 @@ based on the symbolic execution and details of TDMA tables,
 generates a valid mapping of the application.
 
 [Source code](https://github.com/katwinkl3/Scheduling-CP)
+
+
+## Experiments
+
+I am currently writting a Modular version of the DSE to do both liveness and throughput-buffering.
+
+### Examples
+
+This command generate a random cycle and run a liveness search with an initial value.
+
+```
+./Release/bin/kiter -psize=4 -ppreloads=0,0,0,0 -pweights=6,20,3,2 -pdurations=1,1,1,1 -gGenerateNormalizedCycle -pinit=1,1,1,2   -aLivenessDSE
+```
+
+This command add FeedbackEdges so the liveness problem become a minimal buffer sizing:
+```
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE
+```
+
+This command is the usual throughput-buffering:
+
+```
+./Release/bin/kiter -f ./benchmarks/IB5CSDF/BlackScholes.xml -athroughputbufferingDSE
+```
