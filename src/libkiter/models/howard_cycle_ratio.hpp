@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <limits>
 
-#include <commons/verbose.h>
+#include "commons/verbose.h"
 
 
 #include <boost/bind.hpp>
@@ -183,7 +183,7 @@ namespace boost {
         while (try_improve_policy(mcr) && k < MAX_ITERATION); //To avoid infinite loop
 
         if ( k >= MAX_ITERATION) {
-        	VERBOSE_INFO("MCRP : Precision is out" );
+        	VERBOSE_INFO("MCRP : Precision is out k is "<< k << " over " << MAX_ITERATION );
         } else {
             VERBOSE_EXTRA_DEBUG("HOWARD FINSH at iteration " << k << " / " << MAX_ITERATION);
         }

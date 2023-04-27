@@ -25,7 +25,7 @@
 #include <boost/version.hpp>
 #include <stdexcept>
 
-#include <commons/howard_cycle_ratio.hpp>
+#include "howard_cycle_ratio.hpp"
 //#include <boost/graph/howard_cycle_ratio.hpp>
 
 #include <commons/commons.h>
