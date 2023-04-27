@@ -170,3 +170,10 @@ This command is the usual throughput-buffering:
 ```
 ./Release/bin/kiter -f ./benchmarks/IB5CSDF/BlackScholes.xml -athroughputbufferingDSE
 ```
+
+It is also possible to store and reuse past exploration now:
+```
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE -plimit=5  > past.txt
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE -pimport=past.txt -plimit=1
+
+```

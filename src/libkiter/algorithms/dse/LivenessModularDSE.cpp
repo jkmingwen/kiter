@@ -126,8 +126,9 @@ bool liveness_stop_condition(const algorithms::dse::TokenConfiguration& new_conf
 
 void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
-    int thread_count = (params.count("thread") > 0) ? commons::fromString<int>(params.at("thread")) : 1;
-    int timeout      = (params.count("timeout") > 0) ? commons::fromString<int>(params.at("timeout")) : 0;
+    size_t thread_count = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
+    size_t timeout      = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
+    size_t limit        = (params.count("limit") > 0) ? commons::fromString<size_t>(params.at("limit")) : 0;
     std::string  filename = (params.count("import") > 0) ? params.at("import") : "";
     algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : liveness_initial_func(dataflow);
 
@@ -150,7 +151,7 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
     }
 
     // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-    std::future<void> exploration_future = std::async(std::launch::async, [&dse] { dse.explore(); });
+    std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit] { dse.explore(limit); });
 
     if (timeout > 0) {
         std::this_thread::sleep_for(std::chrono::seconds (timeout));
