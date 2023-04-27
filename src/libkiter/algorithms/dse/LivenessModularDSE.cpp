@@ -8,75 +8,27 @@
 namespace algorithms {
     namespace dse {
 
-// This is getFineGCD
-TOKEN_UNIT getStepSize(models::Dataflow *dataflow, Edge c) {
-    TOKEN_UNIT stepSize;
-    stepSize = dataflow->getEdgeInVector(c)[0]; // initialise with first value
-    for (EXEC_COUNT i = 0; i < dataflow->getEdgeInPhasesCount(c); i++)
-        stepSize = std::gcd(stepSize, dataflow->getEdgeInVector(c)[i]);
-    for (EXEC_COUNT i = 0; i < dataflow->getEdgeOutPhasesCount(c); i++)
-        stepSize = std::gcd(stepSize, dataflow->getEdgeOutVector(c)[i]);
-    return stepSize;
-}
 
-TOKEN_UNIT getMinBufferSize(models::Dataflow *dataflow, Edge c) {
+algorithms::dse::TokenConfiguration::PerformanceResult liveness_performance_func(models::Dataflow* g, const algorithms::dse::TokenConfiguration& config) {
 
-    TOKEN_UNIT buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
-
-    //TODO: This is not the correct value I believe this is an artefact from previous algorithm implementation (Jaime?)
-    TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
-                                                  dataflow->getEdgeOutPhasesCount(c));
-
-    for (TOKEN_UNIT i = 0; i < ratePeriod; i++) {
-        // might want to change variables to p, c, and t for legibility
-        TOKEN_UNIT tokensProduced = dataflow->getEdgeInVector(c)[i % dataflow->getEdgeInPhasesCount(c)];
-        TOKEN_UNIT tokensConsumed = dataflow->getEdgeOutVector(c)[i % dataflow->getEdgeOutPhasesCount(c)];
-        TOKEN_UNIT tokensInitial = dataflow->getPreload(c);
-        VERBOSE_DEBUG_DSE("p, c, t: " << tokensProduced << ", "
-                                      << tokensConsumed << ", " << tokensInitial );
-        TOKEN_UNIT lowerBound;
-
-        if (std::gcd(tokensProduced, tokensConsumed)) {
-            lowerBound = tokensProduced + tokensConsumed -
-                         std::gcd(tokensProduced, tokensConsumed) +
-                         tokensInitial % std::gcd(tokensProduced, tokensConsumed);
-        } else {
-            lowerBound = tokensProduced + tokensConsumed -
-                         std::gcd(tokensProduced, tokensConsumed);
-        }
-        lowerBound = (lowerBound > tokensInitial ? lowerBound : tokensInitial);
-
-        // take the lowest bound amongst phases of prod/cons
-        if (lowerBound < buffer_size) {
-            buffer_size = lowerBound;
-        }
-    }
-    return buffer_size;
-}
-
-
-
-// TODO: The copy of the graph is atrocious
-algorithms::dse::TokenConfiguration::PerformanceResult liveness_performance_func(const algorithms::dse::TokenConfiguration& config) {
-    //VERBOSE_INFO("Copy graph");
-    models::Dataflow g = *config.getDataflow();
-    g.reset_computation(); // TODO: So wasteful. Needed because setPreload, makes me hope to have a Kperiodic with preloads as parameters.
-    //VERBOSE_INFO("Prepare graph with config " << commons::toString(config));
-    {ForEachEdge(&g,e) {
-            if (g.getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-                TOKEN_UNIT v = config.getConfiguration().at(g.getEdgeId(e));
-                g.setPreload(e,  v );
+    {ForEachEdge(g,e) {
+            if (g->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                TOKEN_UNIT v = config.getConfiguration().at(g->getEdgeId(e));
+                g->setPreload(e,  v );
             }
         }}
 
     //VERBOSE_INFO("compute_Kperiodic_throughput_and_cycles");
-    kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(&g);
+    kperiodic_result_t result_max = algorithms::compute_Kperiodic_throughput_and_cycles(g);
     //VERBOSE_INFO("Done");
     algorithms::dse::TokenConfiguration::PerformanceResult res (0, {});
     res.throughput = result_max.throughput;
-    for (Edge e : result_max.critical_edges) res.critical_edges.insert(g.getEdgeId(e));
+    for (Edge e : result_max.critical_edges) res.critical_edges.insert(g->getEdgeId(e));
     return res;
 }
+
+
+
 
 // TODO: for the liveness problem it might make sense, but for buffer sizing it is so dumb.
 algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow* dataflow) {
@@ -89,6 +41,9 @@ algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow
         }}
     return algorithms::dse::TokenConfiguration(dataflow, configuration);
 }
+
+
+
 
 // TODO : the kperiodic results is missing here
 // TODO : also the step size is not there
@@ -117,12 +72,28 @@ std::vector<algorithms::dse::TokenConfiguration> liveness_next_func(const algori
     return next_configurations;
 }
 
+
+
+
+
 bool liveness_stop_condition(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) {
 
     const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
     if (best) return ((best->getCost() < new_config.getCost()) && (best->getPerformance().throughput > 0));
     return false;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
@@ -151,7 +122,7 @@ void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t para
     }
 
     // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-    std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit] { dse.explore(limit); });
+    std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit] { dse.explore(limit, true); });
 
     if (timeout > 0) {
         std::this_thread::sleep_for(std::chrono::seconds (timeout));

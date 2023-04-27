@@ -41,7 +41,7 @@ namespace algorithms {
 
             static std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration <double> > beginTime;
 
-            static void setBeginTime (std::chrono::duration<double, std::milli> shift) {
+            static void setBeginTime (const std::chrono::duration<double, std::milli>& shift) {
                 beginTime = std::chrono::steady_clock::now() - shift;
             }
 
@@ -49,13 +49,13 @@ namespace algorithms {
 
 
                 void refresh_cost(const models::Dataflow* dataflow);
-        static std::map<EdgeIdentifier, TOKEN_UNIT> vectorToMap(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT>& config_vec);
+                static std::map<EdgeIdentifier, TOKEN_UNIT> vectorToMap(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT>& config_vec);
 
 
 
         public:
 
-            using PerformanceFunc = std::function<PerformanceResult(const TokenConfiguration&)>;
+            using PerformanceFunc = std::function<PerformanceResult(models::Dataflow*, const TokenConfiguration&)>;
 
             TokenConfiguration(const models::Dataflow *dataflow,
                                const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration,
@@ -63,12 +63,12 @@ namespace algorithms {
                                TIME_UNIT execTime,
                                TIME_UNIT cumulTime);
 
-            TokenConfiguration(const models::Dataflow* dataflow, std::map<ARRAY_INDEX, TOKEN_UNIT> configuration)
+            TokenConfiguration(const models::Dataflow* dataflow, const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration)
                     : dataflow{dataflow}, configuration{configuration}, performance{0,{}} {
                 refresh_cost(dataflow);
             }
 
-            TokenConfiguration(const models::Dataflow* dataflow, std::vector<TOKEN_UNIT> config_vec)
+            TokenConfiguration(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT> &config_vec)
                     : TokenConfiguration(dataflow, vectorToMap(dataflow, config_vec)) {
             }
 
@@ -82,10 +82,10 @@ namespace algorithms {
                 return cost;
             };
 
-            void computePerformance(PerformanceFunc performance_func) {
+            void computePerformance(models::Dataflow* sandbox, PerformanceFunc performance_func) {
                 if (!performance_computed) {
                     auto startTime = std::chrono::steady_clock::now();
-                    PerformanceResult res = performance_func(*this);
+                    PerformanceResult res = performance_func(sandbox, *this);
                     auto endTime = std::chrono::steady_clock::now();
                     std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
                     std::chrono::duration<double, std::milli> cumulTime = endTime - TokenConfiguration::beginTime;
@@ -119,7 +119,7 @@ namespace algorithms {
             CostUnit          cost;
 
             // Performance information
-            double cumulativeTime, executionTime;
+            TIME_UNIT cumulativeTime, executionTime;
         };
 
         std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration& f) ;

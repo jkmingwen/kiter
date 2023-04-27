@@ -7,6 +7,7 @@
 
 #include <commons/verbose.h>
 #include <printers/SDF3Wrapper.h>
+#include <memory>
 #include "SDF3Wrapper.h"
 
 

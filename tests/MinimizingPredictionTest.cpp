@@ -6,7 +6,7 @@
 
 #include "helpers/test_classes.h"
 #include "helpers/random_generator.h"
-#include "algorithms/ml/minimizing_prediction.h"
+#include <ml/minimizing_prediction.h>
 
 BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
 
@@ -15,7 +15,7 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
         parameters_list_t params;
         std::vector<int> weights = {1,3,2,6};
 
-        int num_tokens = algorithms::predict_num_tokens(weights, params);
+        int num_tokens = ml::predict_num_tokens(weights, params);
         BOOST_ASSERT(num_tokens == -1);
     }
 
@@ -25,7 +25,7 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
 //        params["MODEL_DIR"] = "";
         std::vector<int> weights = {1,3,2,6};
 
-        int num_tokens = algorithms::predict_num_tokens(weights, params);
+        int num_tokens = ml::predict_num_tokens(weights, params);
         VERBOSE_DEBUG("Number of tokens = " << num_tokens);
         BOOST_ASSERT(num_tokens != -1);
     }

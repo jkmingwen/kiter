@@ -16,7 +16,7 @@ using namespace algorithms::dse;
 
 
 
-TokenConfiguration::PerformanceResult dummy_pc(const TokenConfiguration& config) {
+TokenConfiguration::PerformanceResult dummy_pc(models::Dataflow*, const TokenConfiguration& config) {
     return TokenConfiguration::PerformanceResult(config.getCost(), {});
 }
 

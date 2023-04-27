@@ -897,4 +897,3 @@ std::string printers::Scheduling2Tikz    (const models::Scheduling& scheduling) 
 	  return returnStream.str();
 
 }
-

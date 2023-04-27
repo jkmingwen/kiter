@@ -33,7 +33,7 @@ namespace algorithms {
                        InitialConfigurationFunc initial_func,
                        NextConfigurationFunc next_func,
                        StopConditionFunc stop_func,
-                       unsigned int num_threads = std::thread::hardware_concurrency())
+                       size_t num_threads = std::thread::hardware_concurrency())
                     : dataflow(dataflow),
                       performance_func(performance_func),
                       initial_func(initial_func),
@@ -52,7 +52,7 @@ namespace algorithms {
                 return *this;
             }
 
-            void explore(size_t limit = 0) ;
+            void explore(size_t limit = 0, bool realtime_output = false) ;
             void import_results(std::istream& input);
             void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
@@ -66,7 +66,7 @@ namespace algorithms {
             InitialConfigurationFunc initial_func;
             NextConfigurationFunc next_func;
             StopConditionFunc stop_func;
-            unsigned int num_threads;
+            size_t num_threads;
 
             std::mutex mtx;
             std::condition_variable cv;

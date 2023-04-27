@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE( test_setting_target_throughput )
     VERBOSE_INFO("StoreDists.p_max: " << std::to_string(dse_thr));
     
     bool minDistSzFound = false; // mindistSz that yields trgThr
-    int minDistSz;
+    int minDistSz = 0;
     int i = 0;
     for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> sdp : sds.getSet()){
         for (StorageDistribution sd : sdp.second){

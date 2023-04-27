@@ -8,7 +8,7 @@
 #include <commons/KiterRegistry.h>
 #include <vector>
 
-namespace algorithms {
+namespace ml {
     int predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters);
 }
 

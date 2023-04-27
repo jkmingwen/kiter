@@ -99,11 +99,12 @@ set(INCLUDE_OUTPUT_PATH    ${PROJECT_BINARY_DIR}/include/)
 #
 #  ######### SUBDIR PART ##########
 #
-SET(KITER_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/)
-SET(KITER_TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/)
 
 SET(KITER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/libkiter)
+#SET(KITER_LIBRARIES kiter_generators kiter_algorithms kiter_models kiter_ml kiter_lp kiter_printers kiter_commons)
+SET(KITER_LIBRARIES libkiter)
 
-ADD_SUBDIRECTORY(${KITER_SRC_DIR} build_results/src)
-ADD_SUBDIRECTORY(${KITER_TESTS_DIR} build_results/tests)
+
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/src/ build_results/src)
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/tests/ build_results/tests)
 

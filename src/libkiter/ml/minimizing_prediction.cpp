@@ -3,13 +3,15 @@
 //
 
 #include "minimizing_prediction.h"
-#include <cppflow/raw_ops.h>
-#include <cppflow/cppflow.h>
 #include <commons/verbose.h>
 #include <vector>
 
+#ifdef CPPFLOW_FOUND
+#include <cppflow/raw_ops.h>
+#include <cppflow/cppflow.h>
 
-int algorithms::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
+
+int ml::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
     // Load the model
     if(!parameters.count("MODEL_DIR")) {
         VERBOSE_ERROR("predict_num_tokens: Model path not found!");
@@ -30,3 +32,8 @@ int algorithms::predict_num_tokens(const std::vector<int>& weights, parameters_l
 
     return res;
 }
+#else
+int ml::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
+    VERBOSE_ERROR("CPPFLOW must be installed at compiled-time for this to work.");
+}
+#endif

@@ -43,18 +43,24 @@ namespace algorithms {
 
 
 
-        void ModularDSE::explore(const size_t limit) {
+        void ModularDSE::explore(const size_t limit, bool realtime_output) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
             std::atomic<unsigned int> idle_threads(0);
             std::atomic<size_t> explored(0);
 
+            if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
+
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, [this, &idle_threads, &explored, &limit] {
+                futures.emplace_back(std::async(std::launch::async, [this, &idle_threads, &explored, limit, realtime_output] {
 
-                    VERBOSE_INFO("Start Thread...");
+                    VERBOSE_INFO("Init Thread...");
+                    // Here, computing performance implies the need or a sandbox dataflow to make some changes
+                    // each thread will have a sandbox dataflow, and will pass it to performance func.
+                    models::Dataflow sandbox = *this->dataflow;
 
+                    VERBOSE_INFO("Start Thread loop ...");
                     while (true) {
                         ++idle_threads;
                         std::unique_ptr<TokenConfiguration> current_configuration;
@@ -86,8 +92,14 @@ namespace algorithms {
                         //VERBOSE_INFO("Start to compute throughput.");
                         bool stop_decision = stop_func(*current_configuration,results);
                         if (stop_decision) continue;
-                        current_configuration->computePerformance(this->performance_func);
+
+                        sandbox.reset_computation();
+                        VERBOSE_ASSERT(!current_configuration->hasPerformance(), "job_pool config should not be computed.");
+                        current_configuration->computePerformance(&sandbox, this->performance_func);
+                        VERBOSE_ASSERT(current_configuration->hasPerformance(), "result config should be computed.");
+
                         VERBOSE_INFO("computePerformance: " << current_configuration->getPerformance());
+                        if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                         results.add(*current_configuration);
                         auto next_configurations = next_func(*current_configuration);
                         VERBOSE_INFO("Next are " << commons::toString(next_configurations));
