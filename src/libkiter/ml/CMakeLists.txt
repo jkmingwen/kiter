@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-#FIND_PACKAGE( cppflow )
+## FIXME: Removed temporarily...
+#FIND_PACKAGE( cppflow)
 
 FILE(GLOB_RECURSE ml_cpp *.cpp */*.cpp)
 FILE(GLOB_RECURSE ml_h   *.h )
