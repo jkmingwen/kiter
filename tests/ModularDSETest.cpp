@@ -31,14 +31,57 @@ TokenConfiguration dummy_if(const models::Dataflow* dataflow) {
     return algorithms::dse::TokenConfiguration(dataflow, configuration);
 }
 
-std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& ) {
-    return {};
+std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& current ) {
+    const models::Dataflow* df =  current.getDataflow();
+    std::vector<algorithms::dse::TokenConfiguration> next_configurations;
+    const auto& current_configuration = current.getConfiguration();
+    for (auto edgeId_items : current.getConfiguration()) {
+        Edge c = df->getEdgeById(edgeId_items.first);
+        if (df->getEdgeType(c) != EDGE_TYPE::FEEDBACK_EDGE) continue; // Skip non feedback buffers.
+        auto new_configuration = current_configuration;
+        new_configuration[edgeId_items.first] = new_configuration[edgeId_items.first] + 1;
+        algorithms::dse::TokenConfiguration new_token_configuration(current.getDataflow(), new_configuration);
+        next_configurations.push_back(new_token_configuration);
+    }
+
+    return next_configurations;
 }
 
 bool dummy_sc(const TokenConfiguration& , const TokenConfigurationSet& ) {
     return false;
 }
 
+static const std::string csv_file_content =
+        "storage distribution size,throughput,channel quantities,critical channels,execution time,cumulative time\n"
+        "0,0,\"0,0,0,0\",\"\",-,-\n"
+        "1,1,\"0,0,0,1\",\"\",-,-\n"
+        "1,1,\"0,0,1,0\",\"\",-,-\n"
+        "1,1,\"0,1,0,0\",\"\",-,-\n"
+        "1,1,\"1,0,0,0\",\"\",-,-\n"
+        "2,2,\"0,0,0,2\",\"\",-,-\n"
+        "2,2,\"0,0,1,1\",\"\",-,-\n"
+        "2,2,\"0,0,2,0\",\"\",-,-\n"
+        "2,2,\"0,1,0,1\",\"\",-,-\n"
+        "2,2,\"0,1,1,0\",\"\",-,-\n"
+        "2,-,\"0,2,0,0\",-,-,-\n"
+        "2,-,\"1,0,0,1\",-,-,-\n"
+        "2,-,\"1,0,1,0\",-,-,-\n"
+        "2,-,\"1,1,0,0\",-,-,-\n"
+        "2,-,\"2,0,0,0\",-,-,-\n"
+        "3,-,\"0,0,0,3\",-,-,-\n"
+        "3,-,\"0,0,1,2\",-,-,-\n"
+        "3,-,\"0,0,2,1\",-,-,-\n"
+        "3,-,\"0,0,3,0\",-,-,-\n"
+        "3,-,\"0,1,0,2\",-,-,-\n"
+        "3,-,\"0,1,1,1\",-,-,-\n"
+        "3,-,\"0,1,2,0\",-,-,-\n"
+        "3,-,\"0,2,0,1\",-,-,-\n"
+        "3,-,\"0,2,1,0\",-,-,-\n"
+        "3,-,\"1,0,0,2\",-,-,-\n"
+        "3,-,\"1,0,1,1\",-,-,-\n"
+        "3,-,\"1,0,2,0\",-,-,-\n"
+        "3,-,\"1,1,0,1\",-,-,-\n"
+        "3,-,\"1,1,1,0\",-,-,-\n";
 
 BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
@@ -74,7 +117,6 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
                 df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
         }}
 
-        commons::set_verbose_mode(commons::DEBUG_LEVEL);
 
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,
@@ -84,16 +126,47 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         algorithms::dse::TokenConfiguration tc = dummy_if(df);
         dse.add_initial_job(tc);
-
-        // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-        std::future<void> exploration_future = std::async(std::launch::async, [&dse] { dse.explore(); });
-        //std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-        //dse.stop();
-        exploration_future.wait();
+        dse.explore(10);
 
         // Test the results
-        // Replace with the correct test assertions for your implementation
-        BOOST_CHECK(true); // Replace with a proper test assertion based on your specific requirements
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 19);
+        std::string output = dse.print_space(true);
+        std::cout << output << std::endl;
+        BOOST_REQUIRE_EQUAL(output, csv_file_content);
+
+    }
+
+    BOOST_AUTO_TEST_CASE(modular_dse_import_test) {
+
+        size_t node_count = 4;
+        std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
+        std::vector<TIME_UNIT> node_durations {1,1,1,1};
+        std::vector<TOKEN_UNIT> edge_preloads  {0,0,0,0};
+        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_durations, edge_preloads);
+
+        {ForEachEdge(df,c) {
+                df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
+            }}
+
+
+        algorithms::dse::ModularDSE dse(df,
+                                        dummy_pc,
+                                        dummy_if,
+                                        dummy_nf,
+                                        dummy_sc, 1);
+
+        algorithms::dse::TokenConfiguration tc = dummy_if(df);
+
+        std::istringstream input(csv_file_content);
+        dse.import_results(input);
+        dse.explore(1);
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 11);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 20);
+
+        std::cout << dse.print_space();
     }
 
 

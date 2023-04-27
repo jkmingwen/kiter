@@ -8,19 +8,12 @@
 namespace algorithms {
     namespace dse {
 
-        void ModularDSE::import_results(const std::string& filename) {
-            std::ifstream infile(filename);
-
-            if (!infile.is_open()) {
-                VERBOSE_ERROR("Error opening file: " << filename);
-                return;
-            }
-
+        void ModularDSE::import_results(std::istream& input) {
             std::string line;
-            std::getline(infile, line); // Skip header line
+            std::getline(input, line); // Skip header line
 
             int lineNumber = 1;
-            while (std::getline(infile, line)) {
+            while (std::getline(input, line)) {
                 lineNumber++;
 
                 try {
@@ -35,21 +28,30 @@ namespace algorithms {
                     VERBOSE_ERROR("Error parsing token configuration on line " << lineNumber << ": " << e.what());
                 }
             }
+        }
 
+        void ModularDSE::import_results(const std::string& filename) {
+            std::ifstream infile(filename);
+            if (infile.is_open()) {
+                import_results(infile);
+            } else {
+                VERBOSE_ERROR("Error opening file: " << filename);
+            }
             infile.close();
         }
 
 
 
 
-        void ModularDSE::explore() {
+        void ModularDSE::explore(const size_t limit) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
             std::atomic<unsigned int> idle_threads(0);
+            std::atomic<size_t> explored(0);
 
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, [this, &idle_threads] {
+                futures.emplace_back(std::async(std::launch::async, [this, &idle_threads, &explored, &limit] {
 
                     VERBOSE_INFO("Start Thread...");
 
@@ -69,12 +71,17 @@ namespace algorithms {
                                 }
                                 continue;
                             }
+
+                            if (limit != 0 and explored >= limit) {
+                                stop_exploration = true;
+                                continue;
+                            }
+
                             --idle_threads;
                             current_configuration = std::make_unique<TokenConfiguration>(job_pool.top());
                             job_pool.pop();
-
-                            VERBOSE_INFO("Pop " << *current_configuration << " out of " << job_pool.size() << " left.");
-
+                            VERBOSE_INFO( "Pop " << *current_configuration << " out of " << job_pool.size() << " left.");
+                            explored++;
                         }
                         //VERBOSE_INFO("Start to compute throughput.");
                         bool stop_decision = stop_func(*current_configuration,results);
@@ -121,8 +128,15 @@ namespace algorithms {
             cv.notify_all();
         }
 
-        std::string ModularDSE::print_space() {
-            return this->results.toString();
+        std::string ModularDSE::print_space(bool no_timing) {
+            std::string res = TokenConfiguration::csv_header() + "\n";
+            for (auto c : this->results) {
+                res += c.to_csv_line(no_timing) + "\n";
+            }
+            for (auto c : this->job_pool) {
+                res += c.to_csv_line(no_timing) + "\n";
+            }
+            return res;
         }
 
 

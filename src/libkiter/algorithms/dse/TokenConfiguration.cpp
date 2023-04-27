@@ -86,8 +86,8 @@ namespace algorithms {
 
             if (cells[1] != "-") {
                 TIME_UNIT throughput = std::stod(cells[1]);
-                TIME_UNIT execTime = std::stod(cells[4]);
-                TIME_UNIT cumulTime = std::stod(cells[5]);
+                TIME_UNIT execTime = cells[4] != "-" ? std::stod(cells[4]) : 0;
+                TIME_UNIT cumulTime =  cells[5] != "-" ? std::stod(cells[5]) : 0;
                 TokenConfiguration::PerformanceResult performance(throughput, criticals);
                 TokenConfiguration res(dataflow, config, performance, execTime, cumulTime);
                 return res;
@@ -96,7 +96,7 @@ namespace algorithms {
                 return res;
             }
         }
-        std::string TokenConfiguration::to_csv_line() const{
+        std::string TokenConfiguration::to_csv_line(bool no_timing) const{
 
             std::string configuration_string  = "";
             std::string configuration_delim("");
@@ -132,9 +132,9 @@ namespace algorithms {
             output += ",";
             output += this->performance_computed? critical_edges_string: "-";
             output += ",";
-            output += this->performance_computed? commons::toString(this->executionTime): "-";
+            output += this->performance_computed and !no_timing? commons::toString(this->executionTime): "-";
             output += ",";
-            output += this->performance_computed? commons::toString(this->cumulativeTime): "-";
+            output += this->performance_computed and !no_timing? commons::toString(this->cumulativeTime): "-";
             return output;
         }
 

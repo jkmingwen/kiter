@@ -43,12 +43,23 @@ namespace algorithms {
                 TokenConfiguration::setBeginTime(std::chrono::duration<double, std::milli>::zero());
             }
 
+            ModularDSE& operator<<(const TokenConfiguration& config) {
+                if (config.hasPerformance()) {
+                    this->results.add(config);
+                } else {
+                    this->job_pool.add(config);
+                }
+                return *this;
+            }
 
-            void explore() ;
+            void explore(size_t limit = 0) ;
+            void import_results(std::istream& input);
             void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
             void stop() ;
-            std::string print_space();
+            size_t results_size () const {return results.size();};
+            size_t job_pool_size () const {return job_pool.size();};
+            std::string print_space(bool no_timing = false);
         private:
             const models::Dataflow* dataflow;
             PerformanceFunc performance_func;

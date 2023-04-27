@@ -48,6 +48,7 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal )
     StorageDistributionSet sds = algorithms::compute_Kperiodic_throughput_dse_sd(g, parameters);
     VERBOSE_INFO("Storage distributions are \n" << sds.printDistributions());
     BOOST_REQUIRE_EQUAL(4, sds.getSet().size()); // The correct pareto should be 4 points with the zero.
+    // TODO : Check if 0, 19, 20 ,21 is the correct answer., it has to do with preload.
     BOOST_REQUIRE_EQUAL(1, sds.getSet().find(0)->second.size());
     BOOST_REQUIRE_EQUAL(1, sds.getSet().find(21)->second.size());
     BOOST_REQUIRE_EQUAL(1, sds.getSet().find(22)->second.size());

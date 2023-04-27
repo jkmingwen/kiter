@@ -42,7 +42,7 @@ namespace algorithms {
                 this->add(config);
             }
             // TODO: make this a cached value.
-            size_t size() {
+            size_t size() const {
                 size_t sum = 0;
                 for (auto cost_items : this->configurations_by_cost) {
                     sum += cost_items.second.size();
@@ -87,66 +87,72 @@ namespace algorithms {
             friend class ModularDSE;
 
 
-             // Iterator for the FullSet
             class iterator {
             public:
                 using iterator_category = std::forward_iterator_tag;
-                using difference_type = std::ptrdiff_t;
                 using value_type = TokenConfiguration;
+                using difference_type = std::ptrdiff_t;
                 using pointer = TokenConfiguration*;
                 using reference = TokenConfiguration&;
 
                 iterator() = default;
 
-                iterator(std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_it, std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator set_it)
-                        : map_it(map_it), set_it(set_it) {}
-
-                reference operator*() const {
-                    return const_cast<reference>(*set_it);
+                explicit iterator(std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> >::iterator cost_it,
+                                  std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> >::iterator cost_end,
+                                  std::set<TokenConfiguration, TokenConfigurationValuesComparator>::iterator config_it = {}) :
+                        cost_it_(cost_it), cost_end_(cost_end), config_it_(config_it) {
+                    if (cost_it != cost_end && config_it == cost_it_->second.end()) {
+                        ++(*this);
+                    }
                 }
 
-                pointer operator->() {
-                    return const_cast<pointer>(std::addressof(*set_it));
-                }
+                const TokenConfiguration& operator*() const { return *config_it_; }
+                const TokenConfiguration* operator->() const { return &(*config_it_); }
 
+                // Prefix increment
                 iterator& operator++() {
-                    ++set_it;
-                    if (set_it == map_it->second.end()) {
-                        ++map_it;
-                        if (map_it != map_end_it) {
-                            set_it = map_it->second.begin();
+                    ++config_it_;
+                    if (config_it_ == cost_it_->second.end()) {
+                        ++cost_it_;
+                        if (cost_it_ != cost_end_) {
+                            config_it_ = cost_it_->second.begin();
                         }
                     }
                     return *this;
                 }
 
+                // Postfix increment
                 iterator operator++(int) {
-                    iterator temp = *this;
+                    iterator tmp = *this;
                     ++(*this);
-                    return temp;
+                    return tmp;
                 }
 
-                bool operator==(const iterator& other) const {
-                    return map_it == other.map_it && (map_it == map_end_it || set_it == other.set_it);
-                }
+                friend bool operator== (const iterator& a, const iterator& b) {
+                    return a.cost_it_ == b.cost_it_ && (a.cost_it_ == a.cost_end_ || a.config_it_ == b.config_it_);
+                };
 
-                bool operator!=(const iterator& other) const {
-                    return !(*this == other);
-                }
+                friend bool operator!= (const iterator& a, const iterator& b) { return !(a == b); }
 
             private:
-                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_it;
-                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator>>::const_iterator map_end_it;
-                std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator set_it;
+                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> >::iterator cost_it_;
+                std::map<TokenConfiguration::CostUnit, std::set<TokenConfiguration, TokenConfigurationValuesComparator> >::iterator cost_end_;
+                std::set<TokenConfiguration, TokenConfigurationValuesComparator>::iterator config_it_;
             };
 
-            iterator begin() const {
-                return iterator(configurations_by_cost.begin(), configurations_by_cost.empty() ? std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator() : configurations_by_cost.begin()->second.begin());
+            iterator begin() {
+                if (configurations_by_cost.empty()) {
+                    return end();
+                } else {
+                    auto cost_it = configurations_by_cost.begin();
+                    return iterator(cost_it, configurations_by_cost.end(), cost_it->second.begin());
+                }
             }
 
-            iterator end() const {
-                return iterator(configurations_by_cost.end(), std::set<TokenConfiguration, TokenConfigurationValuesComparator>::const_iterator());
+            iterator end() {
+                return iterator(configurations_by_cost.end(), configurations_by_cost.end());
             }
+
         };
 
 

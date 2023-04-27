@@ -101,7 +101,7 @@ namespace algorithms {
             static std::string csv_header();
             static TokenConfiguration from_csv_line(const models::Dataflow* dataflow, const std::string &line);
 
-            std::string to_csv_line() const;
+            std::string to_csv_line(bool no_timing = false) const;
             bool dominates(const TokenConfiguration& other) const;
             const std::map<ARRAY_INDEX, TOKEN_UNIT>&  getConfiguration() const;
 
