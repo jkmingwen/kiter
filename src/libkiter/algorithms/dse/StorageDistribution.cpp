@@ -21,7 +21,7 @@ StorageDistribution::StorageDistribution(const models::Dataflow* dataflow,
                                          TIME_UNIT thr,
                                          std::map<Edge, BufferInfos> channel_quantities)
         :dataflow{dataflow}, thr{thr}, channel_quantities{channel_quantities},
-         distribution_size{distribution_size} {
+         distribution_size{0} {
     {ForEachEdge(dataflow, c) {
             VERBOSE_ASSERT_EQUALS(channel_quantities[c].preload, dataflow->getPreload(c));
         }}
