@@ -48,10 +48,10 @@ SET(CMAKE_CXX_FLAGS_RELEASE "")
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
   # errors checking in all mode
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic-errors -ansi  -Wextra     -Wunused  -Wno-error=unused-result")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic-errors -ansi  -Wextra    -Wno-deprecated -Wno-deprecated-declarations   ")
 
   # some errors checking in debug mode
-  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -pedantic-errors -ansi  -Wextra ")
+  SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -pedantic-errors -ansi  -Wextra   -Wunused  -Wno-error=unused-result -Wno-unused-but-set-variable ")
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wformat=2 -Winit-self -Wmissing-include-dirs -Wswitch-default    -Wswitch-enum       -Wno-endif-labels ")
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wcast-qual    -Wcast-align      -Wno-packed   -Wmissing-format-attribute -Wredundant-decls")
 
@@ -60,20 +60,12 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 
   # not work with Qt
   #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wconversion -Wfloat-equal ")
-
   # not work on CentOS
   #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}   -Wlogical-op    -Wundef  ")
-
   # not work in fc10
   #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wlarger-than=1024   -Wsync-nand ")
-
-  if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
-    # BugFix fc10:boost
-    SET(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS}       -Wno-deprecated -Wno-deprecated-declarations -Wno-unused-but-set-variable") 
-  endif()
   # don't add profiling helper
   #SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DGLIBCXX_FORCE_NEW")
-  
   # DON'TRAP OVERFLOW
   # SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ftrapv")
   
