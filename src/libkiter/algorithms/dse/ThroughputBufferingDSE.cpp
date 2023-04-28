@@ -14,7 +14,7 @@ namespace algorithms {
 
                     // initialise channel size to maximum int size
                     TOKEN_UNIT feedback_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
-                    TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
+                    TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::lcm(dataflow->getEdgeInPhasesCount(c),
                                                                   dataflow->getEdgeOutPhasesCount(c));
 
                     TOKEN_UNIT tokensInitial = dataflow->getPreload(c);
@@ -40,7 +40,7 @@ namespace algorithms {
                             feedback_size = lowerBound;
                         }
                     }
-            return feedback_size;
+            return feedback_size - commons::floor(dataflow->getPreload(c), dataflow->getFineGCD(c));
         }
 
         algorithms::dse::TokenConfiguration::PerformanceResult throughputbuffering_performance_func(models::Dataflow* g, const algorithms::dse::TokenConfiguration& config) {
@@ -123,7 +123,7 @@ namespace algorithms {
                 const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
 
                 if (best) {
-                    return ((best->getCost() < new_config.getCost()) && (best->getPerformance().throughput > target_th));
+                    return ((best->getCost() < new_config.getCost()) && (best->getPerformance().throughput >= target_th));
                 }
 
                 return false;
