@@ -188,6 +188,7 @@ namespace algorithms {
             output += ",";
             // cell[4] - channel critical
             output += this->performance_computed? "\"" + normal_critical_string + "\"" : "-";
+                       output += ",";
             // cell[5] - feedback critical
             output += this->performance_computed? "\"" + feedback_critical_string + "\"" : "-";
             output += ",";
