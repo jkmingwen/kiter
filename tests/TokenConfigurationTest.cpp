@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE(compute_throughput) {
     TokenConfiguration config(cycle_sample, config_values);
 
     BOOST_CHECK(!config.hasPerformance());
-    config.computePerformance(cycle_sample, dummy_performance_func);
+    config.computePerformance(dummy_performance_func);
     BOOST_CHECK(config.hasPerformance());
     BOOST_CHECK_EQUAL(config.getPerformance().throughput, 1.0);
 }
@@ -43,9 +43,9 @@ BOOST_AUTO_TEST_CASE(dominates) {
     TokenConfiguration config2(cycle_sample, config_values2);
     TokenConfiguration config3(cycle_sample, config_values3);
 
-    config1.computePerformance(cycle_sample, dummy_performance_func);
-    config2.computePerformance(cycle_sample, dummy_performance_func);
-    config3.computePerformance(cycle_sample, dummy_performance_func);
+    config1.computePerformance(dummy_performance_func);
+    config2.computePerformance(dummy_performance_func);
+    config3.computePerformance(dummy_performance_func);
 
     BOOST_CHECK(!config1.dominates(config2));
     BOOST_CHECK(config1.dominates(config3));
@@ -74,8 +74,7 @@ BOOST_AUTO_TEST_CASE(to_csv_line) {
     TokenConfiguration config(cycle_sample, config_values);
 
     BOOST_CHECK_EQUAL(config.to_csv_line(), "6,-,\"1,2,3\",-,-,-");
-    TokenConfiguration::setBeginTime(std::chrono::duration<double, std::milli>::zero());
-    config.computePerformance(cycle_sample, dummy_performance_func);
+    config.computePerformance(dummy_performance_func);
     BOOST_CHECK_EQUAL(config.to_csv_line().substr(0,14),  "6,1,\"1,2,3\",\"\"");
     std::cout << config.to_csv_line();
 }

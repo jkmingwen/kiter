@@ -11,9 +11,40 @@
 
 namespace commons {
 
+    std::vector<std::string> parseCsvLine(const std::string& line) {
+        std::vector<std::string> cells;
+        std::string cell;
+        std::istringstream lineStream(line);
+        bool inQuotes = false;
+
+        for(char c : line) {
+            switch(c) {
+                case ',':
+                    if(inQuotes) {
+                        cell += c;
+                    } else {
+                        cells.push_back(cell);
+                        cell = "";
+                    }
+                    break;
+
+                case '\"':
+                    inQuotes = !inQuotes;
+                    break;
+
+                default:
+                    cell += c;
+                    break;
+            }
+        }
+        // Add the last cell
+        cells.push_back(cell);
+        return cells;
+    }
 
 
-TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p) {
+
+    TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p) {
   std::stringstream s;
   s<<std::setprecision((int)p)<<std::setiosflags(std::ios_base::fixed)<<val;
    s>>val;

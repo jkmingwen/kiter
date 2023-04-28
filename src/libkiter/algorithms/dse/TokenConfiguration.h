@@ -68,7 +68,17 @@ namespace algorithms {
                     : TokenConfiguration(dataflow, vectorToMap(dataflow, config_vec)) {
             }
 
-            bool hasPerformance() const;
+        public:
+
+
+            bool hasPerformance()  const {
+                return this->performance_computed;
+            }
+
+            const models::Dataflow *getDataflow() const {
+                return dataflow;
+            }
+
             const PerformanceUnit &getPerformance() const {
                 VERBOSE_ASSERT(performance_computed, "Please run compute()");
                 return performance;
@@ -81,7 +91,14 @@ namespace algorithms {
             TIME_UNIT getCumulExecutionTimeMs() const {
                 return cumulativeTime;
             }
-            void computePerformance(PerformanceFunc performance_func, const std::chrono::steady_clock::time_point beginTime, models::Dataflow* sandbox = nullptr) {
+
+
+            const std::map<ARRAY_INDEX, TOKEN_UNIT>&  getConfiguration() const {
+                return this->configuration;
+            }
+
+
+            void computePerformance(PerformanceFunc performance_func, const std::chrono::steady_clock::time_point beginTime = std::chrono::steady_clock::now(), models::Dataflow* sandbox = nullptr) {
                 if (!performance_computed) {
 
                     // Create the sandbox if it doesn't exist. A sandbox is a dataflow that the perf. func. can modify.
@@ -103,14 +120,13 @@ namespace algorithms {
                     FAILED("This should never happen");
                 }
             }
-            static std::string csv_header();
+            static const std::string csv_header();
+            static size_t csv_header_size();
             static TokenConfiguration from_csv_line(const models::Dataflow* dataflow, const std::string &line);
-
             std::string to_csv_line(bool no_timing = false) const;
-            bool dominates(const TokenConfiguration& other) const;
-            const std::map<ARRAY_INDEX, TOKEN_UNIT>&  getConfiguration() const;
 
-            const models::Dataflow *getDataflow() const;
+            bool dominates(const TokenConfiguration& other) const;
+
 
         private:
 

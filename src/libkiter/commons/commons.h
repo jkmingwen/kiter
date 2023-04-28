@@ -631,6 +631,12 @@ VALUE_TYPE get_parameter ( parameters_list_t params , std::string name , VALUE_T
 	 return value;
 }
 
+
+
+    std::vector<std::string> parseCsvLine(const std::string& line) ;
+
+
+
 }// end of commons namespace
 
 #endif /* COMMONS_H_ */

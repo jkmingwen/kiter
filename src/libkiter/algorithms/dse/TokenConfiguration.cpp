@@ -6,38 +6,21 @@
 
 namespace algorithms {
     namespace dse {
-        std::vector<std::string> parseCsvLine(const std::string& line) {
-            VERBOSE_DEBUG("Read a CSV line: " << line);
-            std::vector<std::string> cells;
-            std::string cell;
-            std::istringstream lineStream(line);
-            bool inQuotes = false;
 
-            for(char c : line) {
-                switch(c) {
-                    case ',':
-                        if(inQuotes) {
-                            cell += c;
-                        } else {
-                            cells.push_back(cell);
-                            cell = "";
-                        }
-                        break;
-
-                    case '\"':
-                        inQuotes = !inQuotes;
-                        break;
-
-                    default:
-                        cell += c;
-                        break;
-                }
-            }
-            // Add the last cell
-            cells.push_back(cell);
-            VERBOSE_DEBUG("Obtain a cell list: " << commons::toString<>(cells));
-            return cells;
+        TokenConfiguration::TokenConfiguration(const models::Dataflow *dataflow,
+                                               const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration,
+                                               const PerformanceResult &result,
+                                               TIME_UNIT execTime,
+                                               TIME_UNIT cumulTime) :
+                TokenConfiguration(dataflow, configuration)
+        {
+            performance = result;
+            executionTime = execTime;
+            cumulativeTime = cumulTime;
+            this->performance_computed = true;
         }
+
+
 
         bool TokenConfiguration::dominates(const TokenConfiguration& other) const {
             for ( auto edge_token_item : configuration) {
@@ -49,43 +32,99 @@ namespace algorithms {
             return true;
         }
 
-        const std::map<ARRAY_INDEX, TOKEN_UNIT>&  TokenConfiguration::getConfiguration() const {
-            return this->configuration;
+
+        void TokenConfiguration::refresh_cost(const models::Dataflow* dataflow) {
+            cost = 0;
+            for (auto edge_token_item : configuration) {
+                cost += edge_token_item.second;
+                Edge e = dataflow->getEdgeById(edge_token_item.first);
+                VERBOSE_ASSERT_EQUALS(dataflow->getEdgeType(e), EDGE_TYPE::FEEDBACK_EDGE);
+            }
         }
 
-        std::string TokenConfiguration::csv_header() {
-            return "storage distribution size,throughput,channel quantities,critical channels,execution time,cumulative time";
+        std::map<ARRAY_INDEX, TOKEN_UNIT> TokenConfiguration::vectorToMap(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT>& config_vec) {
+            std::map<ARRAY_INDEX, TOKEN_UNIT> temp_config;
+            size_t i = 0;
+            ForEachEdge(dataflow, c) {
+                if (dataflow->getEdgeType(c) == EDGE_TYPE::FEEDBACK_EDGE) {
+                    VERBOSE_ASSERT(i < config_vec.size(), "Configuration too small to be stored");
+                    temp_config[dataflow->getEdgeId(c)] = config_vec[i];
+                    i++;
+                }
+            }
+            VERBOSE_ASSERT(i == config_vec.size(), "Configuration too big to be stored");
+            return temp_config;
         }
+
+
+
+        /*
+         *
+         *  CSV PART
+         *
+         */
+
+
+        const std::string TokenConfiguration::csv_header() {
+            return "storage distribution size,"
+                   "throughput,"
+                   "channel quantities,"
+                   "feedback quantities,"
+                   "critical channels,"
+                   "critical feedback,"
+                   "execution time,"
+                   "cumulative time";
+        }
+
+        size_t TokenConfiguration::csv_header_size() {
+            static auto size =  commons::split<std::string>(csv_header(), ',').size() ;
+            return size;
+        }
+
         TokenConfiguration TokenConfiguration::from_csv_line(const models::Dataflow* dataflow, const std::string &line)  {
-            std::vector<std::string> cells = parseCsvLine(line);
+            std::vector<std::string> cells = commons::parseCsvLine(line);
 
-            if (cells.size() != 6) {
+            if (cells.size() != csv_header_size() ) {
                 throw std::runtime_error("Wrong number of cell in this line.");
             }
 
-            std::vector<TOKEN_UNIT> configVec = commons::split<TOKEN_UNIT>(cells[2], ',');
-            std::vector<TOKEN_UNIT> criticalVec = cells[3] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[3], ',');
+
             std::map<ARRAY_INDEX,TOKEN_UNIT> config;
             std::set<ARRAY_INDEX> criticals;
 
-                {
-                    size_t index = 0;
-                    ForEachEdge(dataflow, e) {
-                        if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-                            ARRAY_INDEX edge_id = dataflow->getEdgeId(e);
-                            config[edge_id] = configVec[index];
-                            if (std::find(criticalVec.begin(), criticalVec.end(), index) != criticalVec.end()) {
-                                criticals.insert(edge_id);
-                            }
-                            index++;
+            // cell[0] - Cost
+            // cell[1] - Throughput
+            bool has_performance =  (cells[1] != "-");
+            TIME_UNIT throughput = cells[1] != "-" ? std::stod(cells[1]) : 0;
+            // cell[2] - channel quantities
+            std::vector<TOKEN_UNIT> edgeVec = commons::split<TOKEN_UNIT>(cells[2], ',');
+            // cell[3] - feedback quantities
+            std::vector<TOKEN_UNIT> feedbackVec = commons::split<TOKEN_UNIT>(cells[3], ',');
+            // cell[4] - channel critical
+            std::vector<TOKEN_UNIT> criticalEdgeVec = cells[4] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[4], ',');
+            // cell[5] - feedback critical
+            std::vector<TOKEN_UNIT> criticalFeedbackVec = cells[5] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[5], ',');
+            // cell[6] - execution time
+            TIME_UNIT execTime = cells[6] != "-" ? std::stod(cells[6]) : 0;
+            // cell[7] - cumulative time
+            TIME_UNIT cumulTime =  cells[7] != "-" ? std::stod(cells[7]) : 0;
+
+
+            {
+                size_t index = 0;
+                ForEachEdge(dataflow, e) {
+                    if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                        ARRAY_INDEX edge_id = dataflow->getEdgeId(e);
+                        config[edge_id] = feedbackVec[index];
+                        if (std::find(criticalEdgeVec.begin(), criticalEdgeVec.end(), index) != criticalEdgeVec.end()) {
+                            criticals.insert(edge_id);
                         }
+                        index++;
                     }
                 }
+            }
 
-            if (cells[1] != "-") {
-                TIME_UNIT throughput = std::stod(cells[1]);
-                TIME_UNIT execTime = cells[4] != "-" ? std::stod(cells[4]) : 0;
-                TIME_UNIT cumulTime =  cells[5] != "-" ? std::stod(cells[5]) : 0;
+            if (has_performance) {
                 TokenConfiguration::PerformanceResult performance(throughput, criticals);
                 TokenConfiguration res(dataflow, config, performance, execTime, cumulTime);
                 return res;
@@ -96,53 +135,75 @@ namespace algorithms {
         }
         std::string TokenConfiguration::to_csv_line(bool no_timing) const{
 
-            std::string configuration_string  = "";
-            std::string configuration_delim("");
-            std::string critical_edges_string = "";
-            std::string critical_edges_delim("");
-
             std::set<ARRAY_INDEX> critical_edges = this->performance_computed? this->getPerformance().critical_edges : std::set<ARRAY_INDEX >();
 
-            configuration_string += "\"";
-            critical_edges_string += "\"";
+            std::string  normal_configuration_string;
+            std::string  feedback_configuration_string;
+            std::string  normal_critical_string;
+            std::string  feedback_critical_string;
 
-            int index = 0;
-            for (auto item: this->configuration) {
-                if (critical_edges.find(item.first) != critical_edges.end()) {
-                    critical_edges_string += critical_edges_delim;
-                    critical_edges_string += std::to_string(index);
-                    critical_edges_delim = ",";
+            int normal_index = 0;
+            int feedback_index = 0;
+
+            { ForEachEdge(this->getDataflow(),e){
+
+                auto edge_id = this->getDataflow()->getEdgeId(e);
+
+                // keep track of index and store their preload/configuration
+                if (this->getDataflow()->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                    if (!feedback_configuration_string.empty()) feedback_configuration_string += ",";
+                    feedback_configuration_string  += std::to_string(this->configuration.at(edge_id));
+                    feedback_index++;
+                } else {
+                    if  (!normal_configuration_string.empty()) normal_configuration_string += ",";
+                    normal_configuration_string  += std::to_string(this->getDataflow()->getPreload(e));
+                    normal_index++;
                 }
-                configuration_string += configuration_delim;
-                configuration_string += std::to_string(item.second);
-                configuration_delim = ",";
-                index++;
-            }
-            configuration_string += "\"";
-            critical_edges_string += "\"";
+
+                // When one edge is critical, it's csv index is stored in the corresponding list.
+                if (critical_edges.find(edge_id) != critical_edges.end()) {
+                    if (this->getDataflow()->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                        if (!feedback_critical_string.empty()) feedback_critical_string += ",";
+                        feedback_critical_string += std::to_string(feedback_index);
+                    } else {
+                        if (!normal_critical_string.empty()) normal_critical_string += ",";
+                        normal_critical_string += std::to_string(normal_index);
+                    }
+                }
+
+            }}
 
             std::string output("");
+            // cell[0] - Cost
             output += commons::toString(this->getCost());
             output += ",";
+            // cell[1] - Throughput
             output += this->performance_computed? commons::toString(this->getPerformance().throughput) : "-";
             output += ",";
-            output += configuration_string;
+            // cell[2] - channel quantities
+            output += "\"" + normal_configuration_string + "\"" ;
             output += ",";
-            output += this->performance_computed? critical_edges_string: "-";
+            // cell[3] - feedback quantities
+            output += "\"" + feedback_configuration_string + "\"" ;
             output += ",";
+            // cell[4] - channel critical
+            output += this->performance_computed? "\"" + normal_critical_string + "\"" : "-";
+            // cell[5] - feedback critical
+            output += this->performance_computed? "\"" + feedback_critical_string + "\"" : "-";
+            output += ",";
+            // cell[6] - execution time
             output += this->performance_computed and !no_timing? commons::toString(this->executionTime): "-";
             output += ",";
+            // cell[7] - cumulative time
             output += this->performance_computed and !no_timing? commons::toString(this->cumulativeTime): "-";
+
+
             return output;
         }
 
-        const models::Dataflow *TokenConfiguration::getDataflow() const {
-            return dataflow;
-        }
 
-        bool TokenConfiguration::hasPerformance()  const {
-            return this->performance_computed;
-        }
+
+
 
         std::ostream& operator<<(std::ostream& out, const algorithms::dse::TokenConfiguration& f) {
             return out << f.to_csv_line();
@@ -181,42 +242,6 @@ namespace algorithms {
             return is;
         }
 
-
-        void TokenConfiguration::refresh_cost(const models::Dataflow* dataflow) {
-            cost = 0;
-            for (auto edge_token_item : configuration) {
-                cost += edge_token_item.second;
-                Edge e = dataflow->getEdgeById(edge_token_item.first);
-                VERBOSE_ASSERT_EQUALS(dataflow->getEdgeType(e), EDGE_TYPE::FEEDBACK_EDGE);
-            }
-        }
-
-        std::map<ARRAY_INDEX, TOKEN_UNIT> TokenConfiguration::vectorToMap(const models::Dataflow* dataflow, const std::vector<TOKEN_UNIT>& config_vec) {
-            std::map<ARRAY_INDEX, TOKEN_UNIT> temp_config;
-            size_t i = 0;
-            ForEachEdge(dataflow, c) {
-                if (dataflow->getEdgeType(c) == EDGE_TYPE::FEEDBACK_EDGE) {
-                    VERBOSE_ASSERT(i < config_vec.size(), "Configuration too small to be stored");
-                    temp_config[dataflow->getEdgeId(c)] = config_vec[i];
-                    i++;
-                }
-            }
-            VERBOSE_ASSERT(i == config_vec.size(), "Configuration too big to be stored");
-            return temp_config;
-        }
-
-        TokenConfiguration::TokenConfiguration(const models::Dataflow *dataflow,
-                                               const std::map<ARRAY_INDEX, TOKEN_UNIT> &configuration,
-                                               const PerformanceResult &result,
-                                               TIME_UNIT execTime,
-                                               TIME_UNIT cumulTime) :
-                                               TokenConfiguration(dataflow, configuration)
-                                               {
-            performance = result;
-            executionTime = execTime;
-            cumulativeTime = cumulTime;
-            this->performance_computed = true;
-        }
 
 
 
