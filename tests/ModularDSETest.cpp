@@ -83,6 +83,39 @@ static const std::string csv_file_content =
         "3,-,\"1,1,0,1\",-,-,-\n"
         "3,-,\"1,1,1,0\",-,-,-\n";
 
+
+static const std::string csv_file_content_with_timings =
+        "storage distribution size,throughput,channel quantities,critical channels,execution time,cumulative time\n"
+        "0,0,\"0,0,0,0\",\"\",0.001835,0.545401\n"
+        "1,1,\"0,0,0,1\",\"\",0.000393,0.644924\n"
+        "1,1,\"0,0,1,0\",\"\",0.000294,0.705254\n"
+        "1,1,\"0,1,0,0\",\"\",0.00028,0.779911\n"
+        "1,1,\"1,0,0,0\",\"\",0.000378,0.858076\n"
+        "2,2,\"0,0,0,2\",\"\",0.00026,0.938773\n"
+        "2,2,\"0,0,1,1\",\"\",0.000293,0.98937\n"
+        "2,2,\"0,0,2,0\",\"\",0.000266,1.05367\n"
+        "2,2,\"0,1,0,1\",\"\",0.000237,1.1284\n"
+        "2,2,\"0,1,1,0\",\"\",0.000226,1.20212\n"
+        "2,-,\"0,2,0,0\",-,-,-\n"
+        "2,-,\"1,0,0,1\",-,-,-\n"
+        "2,-,\"1,0,1,0\",-,-,-\n"
+        "2,-,\"1,1,0,0\",-,-,-\n"
+        "2,-,\"2,0,0,0\",-,-,-\n"
+        "3,-,\"0,0,0,3\",-,-,-\n"
+        "3,-,\"0,0,1,2\",-,-,-\n"
+        "3,-,\"0,0,2,1\",-,-,-\n"
+        "3,-,\"0,0,3,0\",-,-,-\n"
+        "3,-,\"0,1,0,2\",-,-,-\n"
+        "3,-,\"0,1,1,1\",-,-,-\n"
+        "3,-,\"0,1,2,0\",-,-,-\n"
+        "3,-,\"0,2,0,1\",-,-,-\n"
+        "3,-,\"0,2,1,0\",-,-,-\n"
+        "3,-,\"1,0,0,2\",-,-,-\n"
+        "3,-,\"1,0,1,1\",-,-,-\n"
+        "3,-,\"1,0,2,0\",-,-,-\n"
+        "3,-,\"1,1,0,1\",-,-,-\n"
+        "3,-,\"1,1,1,0\",-,-,-\n";
+
 BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
     BOOST_AUTO_TEST_CASE(token_configuration_test) {
@@ -105,7 +138,6 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         BOOST_REQUIRE(tc2.dominates(tc1));
     }
     BOOST_AUTO_TEST_CASE(modular_dse_test) {
-
 
         size_t node_count = 4;
         std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
@@ -131,8 +163,8 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         // Test the results
         BOOST_REQUIRE_EQUAL(dse.results_size(), 10);
         BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 19);
+        std::cout << dse.print_space(false) << std::endl;
         std::string output = dse.print_space(true);
-        std::cout << output << std::endl;
         BOOST_REQUIRE_EQUAL(output, csv_file_content);
 
     }
@@ -158,7 +190,7 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         algorithms::dse::TokenConfiguration tc = dummy_if(df);
 
-        std::istringstream input(csv_file_content);
+        std::istringstream input(csv_file_content_with_timings);
         dse.import_results(input);
         dse.explore(1);
 

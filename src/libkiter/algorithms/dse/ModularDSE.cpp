@@ -122,7 +122,7 @@ namespace algorithms {
             std::atomic<size_t> explored(0);
 
             auto beginTime =  std::chrono::steady_clock::now()
-                    + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>((this->results.getTotalProcessTimeMs())));
+                    - std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>((this->results.getTotalProcessTimeMs())));
 
 
 
