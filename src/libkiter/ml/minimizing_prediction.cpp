@@ -33,7 +33,7 @@ int ml::predict_num_tokens(const std::vector<int>& weights, parameters_list_t pa
     return res;
 }
 #else
-int ml::predict_num_tokens(const std::vector<int>& weights, parameters_list_t parameters) {
+int ml::predict_num_tokens(const std::vector<int>& , parameters_list_t ) {
     VERBOSE_ERROR("CPPFLOW must be installed at compiled-time for this to work.");
 }
 #endif
