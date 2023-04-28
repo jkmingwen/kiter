@@ -552,7 +552,7 @@ public :
 
     inline  Vertex              getVertexByName (const std::string s) const {
     	// TODO: FIXME PLEASE!
-    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(TXT_TASK_NOT_FOUND + s);
+    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(std::string(TXT_TASK_NOT_FOUND) + ": " + s);
     }
 
     inline 	const std::string 	getEdgeName	    (const Edge c)		const	{

@@ -3,12 +3,41 @@
 //
 
 #include "ThroughputBufferingDSE.h"
+#include "algorithms/transformation/subgraph.h"
 #include <algorithms/dse/dse_utils.h>
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 
 namespace algorithms {
     namespace dse {
+
+
+        class ThroughputBufferingStopCondition {
+        public:
+            ThroughputBufferingStopCondition(TIME_UNIT target_th, bool lteq = true) : lteq(lteq), target_th(target_th) {}
+
+            bool operator()(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) const {
+                const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
+
+                if (best) {
+                    if (lteq) {
+                        return ((best->getCost() < new_config.getCost()) &&
+                                (best->getPerformance().throughput >= target_th));
+                    } else {
+
+                        return ((best->getCost() < new_config.getCost()) &&
+                                (best->getPerformance().throughput > target_th));
+                    }
+                }
+
+                return false;
+            }
+
+        private:
+            bool      lteq;
+            TIME_UNIT target_th;
+        };
+
 
         TOKEN_UNIT computeMinimalFeedbackSize(const models::Dataflow *dataflow, const Edge c) {
 
@@ -96,6 +125,38 @@ namespace algorithms {
             return algorithms::dse::TokenConfiguration(dataflow, configuration);
         }
 
+
+
+        std::vector<algorithms::dse::TokenConfiguration> throughputbuffering_next_func_deepmode(const algorithms::dse::TokenConfiguration& current) {
+
+            const models::Dataflow* df =  current.getDataflow();
+            const auto target_th = current.getPerformance().throughput;
+
+            // 1. build a minimal graph with the critical edges only.
+            models::Dataflow* cc_g = algorithms::build_subgraph(df, current.getPerformance().critical_edges);
+
+            // 2. run a dse with target throughout to beat.
+            ThroughputBufferingStopCondition throughputbuffering_stop_condition(target_th, false);
+            algorithms::dse::ModularDSE dse(cc_g,
+                                            throughputbuffering_performance_func,
+                                            throughputbuffering_initial_func,
+                                            throughputbuffering_next_func,
+                                            throughputbuffering_stop_condition,
+                                            1);
+            dse.explore();
+            auto cc_sds = dse.getResults();
+            
+            // 3. any solutions that beat the target are considered.
+            std::vector<algorithms::dse::TokenConfiguration> next_configurations;
+            for (auto solution : cc_sds) {
+                if (solution.getPerformance().throughput > target_th)
+                    next_configurations.push_back(solution);
+            }
+
+            return next_configurations;
+        }
+
+
         std::vector<algorithms::dse::TokenConfiguration> throughputbuffering_next_func(const algorithms::dse::TokenConfiguration& current) {
 
             const models::Dataflow* df =  current.getDataflow();
@@ -115,37 +176,18 @@ namespace algorithms {
             return next_configurations;
         }
 
-        class ThroughputBufferingStopCondition {
-        public:
-            ThroughputBufferingStopCondition(TIME_UNIT target_th) : target_th(target_th) {}
-
-            bool operator()(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) const {
-                const algorithms::dse::TokenConfiguration* best = searched_configs.getBestPerformancePoint();
-
-                if (best) {
-                    return ((best->getCost() < new_config.getCost()) && (best->getPerformance().throughput >= target_th));
-                }
-
-                return false;
-            }
-
-        private:
-            TIME_UNIT target_th;
-        };
 
 
+        TokenConfigurationSet solve_throughputbuffering   (models::Dataflow* const  dataflow,
+                                                           bool deep_mode,
+                                                           bool realtime_output,
+                                                size_t thread_count,
+                                                size_t timeout,
+                                                size_t limit,
+                                                std::string  filename,
+                                                algorithms::dse::TokenConfiguration* tc
+        ) {
 
-
-
-
-        void solve_throughputbuffering   (models::Dataflow* const  dataflow, parameters_list_t params) {
-
-            size_t thread_count = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
-            size_t timeout      = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
-            size_t limit        = (params.count("limit") > 0) ? commons::fromString<size_t>(params.at("limit")) : 0;
-            std::string  filename = (params.count("import") > 0) ? params.at("import") : "";
-
-            VERBOSE_ASSERT(params.count("init")  + params.count("import")  != 2, "Please pass your init inside the import file");
 
             // Ensure dataflow has no feedbackbuffers.
             // Create feedbackbuffers with correct initial configuration (taking into account useful preload).
@@ -157,25 +199,27 @@ namespace algorithms {
             algorithms::generateInplaceFeedbackBuffers(dataflow_prime);
             dataflow_prime->precomputeFineGCD();
             ThroughputBufferingStopCondition throughputbuffering_stop_condition(target_throughput);
-            algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : throughputbuffering_initial_func(dataflow_prime);
 
             algorithms::dse::ModularDSE dse(dataflow_prime,
                                             throughputbuffering_performance_func,
                                             throughputbuffering_initial_func,
-                                            throughputbuffering_next_func,
+                                            deep_mode?throughputbuffering_next_func_deepmode:throughputbuffering_next_func,
                                             throughputbuffering_stop_condition,
                                             thread_count);
 
             if(filename != "") {
                 VERBOSE_INFO("Load previous search points from " << filename);
                 dse.import_results(filename);
+            } else if (tc) {
+                VERBOSE_INFO("Initial state of the search is forced to " << *tc);
+                dse.add_initial_job(*tc);
             } else {
-                VERBOSE_INFO("Initial state of the search is going to be " << tc);
-                dse.add_initial_job(tc);
+                dse.add_initial_job(throughputbuffering_initial_func(dataflow_prime));
             }
 
+
             // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit] { dse.explore(limit, true); });
+            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit,realtime_output] { dse.explore(limit, realtime_output); });
 
             if (timeout > 0) {
                 std::this_thread::sleep_for(std::chrono::seconds (timeout));
@@ -184,8 +228,25 @@ namespace algorithms {
 
             exploration_future.wait();
 
-            std::cout << dse.print_space();
+            return dse.getResults();
 
+        }
+
+
+        void throughputbuffering_dse   (models::Dataflow* const  dataflow, parameters_list_t params) {
+            bool deep_mode      = (params.count("deep_mode") > 0) ? commons::fromString<bool>(params.at("deep_mode")) : false;
+            size_t realtime_output = (params.count("realtime") > 0) ? commons::fromString<bool>(params.at("realtime")) : false;
+            size_t thread_count    = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
+            size_t timeout         = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
+            size_t limit           = (params.count("limit") > 0) ? commons::fromString<size_t>(params.at("limit")) : 0;
+            std::string  filename  = (params.count("import") > 0) ? params.at("import") : "";
+            algorithms::dse::TokenConfiguration* tc = (params.count("init") > 0) ? new algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : nullptr;
+
+            VERBOSE_ASSERT(params.count("init")  + params.count("import")  != 2, "Please pass your init inside the import file");
+
+            TokenConfigurationSet result = solve_throughputbuffering   (dataflow, deep_mode, realtime_output, thread_count, timeout, limit, filename, tc);
+
+            delete tc;
         }
     } // end of dse namespace
 } // end of algorithms namespace

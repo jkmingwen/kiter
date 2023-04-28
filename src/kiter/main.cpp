@@ -1,20 +1,14 @@
 /*
  * This program is a Dataflow Analysis Tool : Kiter
- * TODO : remove all these deps, dataflow should not be required
- *
  *
  * */
 
 #include <string>
 #include <iostream>
-#include <unistd.h>
-#include <stdlib.h>
 #include <commons/KiterRegistry.h>
 #include <commons/verbose.h>
-
 #include <printers/printers.h>
-#include <algorithms/algorithms.h>
-#include <generators/generators.h>
+#include <commons/commons.h>
 
 
 

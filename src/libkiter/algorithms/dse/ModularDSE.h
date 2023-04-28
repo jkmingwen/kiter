@@ -55,6 +55,7 @@ namespace algorithms {
             void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
             void stop() ;
+            const TokenConfigurationSet & getResults () const {return results;} ;
             size_t results_size () const {return results.size();};
             size_t job_pool_size () const {return job_pool.size();};
             std::string print_space(bool no_timing = false);

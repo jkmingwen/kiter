@@ -15,7 +15,17 @@ namespace algorithms {
         TokenConfiguration liveness_initial_func(const models::Dataflow* dataflow);
         std::vector<TokenConfiguration> liveness_next_func(const TokenConfiguration& );
         bool liveness_stop_condition(const TokenConfiguration& , const TokenConfigurationSet&);
-        void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params);
+
+
+        TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
+                                                bool realtime_output = false,
+                                                size_t thread_count = 1,
+                                                size_t timeout = 0,
+                                                size_t limit = 0,
+                                                std::string  filename = "",
+                                                algorithms::dse::TokenConfiguration* tc = nullptr) ;
+
+        void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
     }
 }
 
@@ -24,7 +34,7 @@ ADD_TRANSFORMATION(LivenessDSE,
                    transformation_t({
                        "LivenessDSE" ,
                        "DSE that solve the liveness problem for a graph with \"feedback\" buffers",
-                       algorithms::dse::solve_liveness}
+                       algorithms::dse::liveness_dse}
                        ));
 
 

@@ -83,56 +83,62 @@ bool liveness_stop_condition(const algorithms::dse::TokenConfiguration& new_conf
     return false;
 }
 
+TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
+                                        bool realtime_output,
+                                        size_t thread_count,
+                                        size_t timeout,
+                                        size_t limit,
+                                        std::string  filename,
+                                        algorithms::dse::TokenConfiguration* tc
+) {
+
+            dataflow->precomputeFineGCD();
+            algorithms::dse::ModularDSE dse(dataflow,
+                                            liveness_performance_func,
+                                            liveness_initial_func,
+                                            liveness_next_func,
+                                            liveness_stop_condition,
+                                            thread_count);
+
+
+            if(filename != "") {
+                VERBOSE_INFO("Load previous search points from " << filename);
+                dse.import_results(filename);
+            } else if (tc) {
+                    VERBOSE_INFO("Initial state of the search is forced to " << *tc);
+                    dse.add_initial_job(*tc);
+            } else {
+                    dse.add_initial_job(liveness_initial_func(dataflow));
+            }
+
+            // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
+            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit, realtime_output] { dse.explore(limit, realtime_output); });
+
+            if (timeout > 0) {
+                std::this_thread::sleep_for(std::chrono::seconds (timeout));
+                dse.stop();
+            }
+
+            exploration_future.wait();
+            return dse.getResults();
+        }
 
 
 
+void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
-
-
-
-
-
-
-
-
-void solve_liveness   (models::Dataflow* const  dataflow, parameters_list_t params) {
-
-    size_t thread_count = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
-    size_t timeout      = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
-    size_t limit        = (params.count("limit") > 0) ? commons::fromString<size_t>(params.at("limit")) : 0;
-    std::string  filename = (params.count("import") > 0) ? params.at("import") : "";
-    algorithms::dse::TokenConfiguration tc = (params.count("init") > 0) ? algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : liveness_initial_func(dataflow);
+    size_t realtime_output = (params.count("realtime") > 0) ? commons::fromString<bool>(params.at("realtime")) : false;
+    size_t thread_count    = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
+    size_t timeout         = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
+    size_t limit           = (params.count("limit") > 0) ? commons::fromString<size_t>(params.at("limit")) : 0;
+    std::string  filename  = (params.count("import") > 0) ? params.at("import") : "";
+    algorithms::dse::TokenConfiguration* tc = (params.count("init") > 0) ? new algorithms::dse::TokenConfiguration(dataflow, commons::split<TOKEN_UNIT>(params.at("init"), ',')) : nullptr;
 
     VERBOSE_ASSERT(params.count("init")  + params.count("import")  != 2, "Please pass your init inside the import file");
-    dataflow->precomputeFineGCD();
-    algorithms::dse::ModularDSE dse(dataflow,
-                                    liveness_performance_func,
-                                    liveness_initial_func,
-                                    liveness_next_func,
-                                    liveness_stop_condition,
-                                    thread_count);
 
+    TokenConfigurationSet result = solve_liveness   (dataflow, realtime_output, thread_count, timeout, limit, filename, tc);
 
-    if(filename != "") {
-        VERBOSE_INFO("Load previous search points from " << filename);
-        dse.import_results(filename);
-    } else {
-        VERBOSE_INFO("Initial state of the search is going to be " << tc);
-        dse.add_initial_job(tc);
-    }
-
-    // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-    std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit] { dse.explore(limit, true); });
-
-    if (timeout > 0) {
-        std::this_thread::sleep_for(std::chrono::seconds (timeout));
-        dse.stop();
-    }
-
-    exploration_future.wait();
-
-    std::cout << dse.print_space();
-
+    delete tc;
 }
     } // end of dse namespace
 } // end of algorithms namespace

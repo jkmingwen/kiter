@@ -148,6 +148,9 @@ namespace algorithms {
                 std::set<TokenConfiguration, TokenConfigurationValuesComparator>::iterator config_it_;
             };
 
+            const TokenConfiguration *last_added = nullptr;
+
+        public:
             iterator begin() {
                 if (configurations_by_cost.empty()) {
                     return end();
@@ -161,7 +164,6 @@ namespace algorithms {
                 return iterator(configurations_by_cost.end(), configurations_by_cost.end());
             }
 
-            const TokenConfiguration *last_added = nullptr;
         };
 
 
