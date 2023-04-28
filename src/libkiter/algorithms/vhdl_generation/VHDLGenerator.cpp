@@ -765,93 +765,172 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
 // Generate AXI interface for each FloPoCo operator
 void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
                                                std::string outputDir) {
+  int i2sBitWidth = 24;
+  int fpcBitWidth = 34;
   std::ofstream vhdlOutput;
   std::string entityName = circuit.getName();
+  std::stringstream componentDeclaration;
   std::stringstream portListing;
-  std::stringstream entityMappingMono;
-  std::stringstream entityMappingStereo;
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$ENTITY_PORTS",
-                                  "$ENTITY_COMPONENT_MAPPING_MONO", "$ENTITY_COMPONENT_MAPPING_STEREO"};
+  std::stringstream entityMapping;
+  std::stringstream audioInterfacePortListing;
+  std::stringstream audioInterfaceMapping;
+  std::stringstream i2sTransceiverMapping;
+  std::stringstream inputInterfaceMapping;
+  std::stringstream outputInterfaceMapping;
+  std::stringstream entitySignals;
+  std::stringstream i2sTransceiverSignals;
+  std::stringstream inputInterfaceSignals;
+  std::stringstream outputInterfaceSignals;
+  std::stringstream I2SToFPCInstantiation;
+  std::stringstream FPCToI2SInstantiation;
+  std::stringstream I2SToFPCSignals;
+  std::stringstream FPCToI2SSignals;
+  // TODO merge words to replace (signals, mapping)
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$ENTITY_PORTS", "$COMPONENT_DECLARATION",
+                                  "$AUDIO_INTERFACE_WRAPPER_PORTS",
+                                  "$ENTITY_SIGNALS", "$I2STOFPC_SIGNALS", "$FPCTOI2S_SIGNALS",
+                                  "$I2S_TRANSCEIVER_SIGNALS", "$INPUT_INTERFACE_SIGNALS",
+                                  "$OUTPUT_INTERFACE_SIGNALS",
+                                  "$AUDIO_INTERFACE_WRAPPER_MAPPING",
+                                  "$INPUT_INTERFACE_MAPPING",
+                                  "$OUTPUT_INTERFACE_MAPPING",
+                                  "$I2S_TRANSCEIVER_MAPPING",
+                                  "$ENTITY_MAPPING",
+                                  "$I2STOFPC_COMPONENTS", "$FPC2I2S_COMPONENTS"};
   int numInputPorts = circuit.getOperatorCount("INPUT");
   int numOutputPorts = circuit.getOperatorCount("OUTPUT");
+  int numInputInterfaces = 0;
+  int numOutputInterfaces = 0;
+  int numAudioCodecs = 0;
+  // one input/output interface for each pair of input/output ports; round up if odd counts
+  if (numInputPorts % 2) {
+    numInputInterfaces = (numInputPorts + 1) / 2;
+  } else {
+    numInputInterfaces = numInputPorts / 2;
+  }
+  if (numOutputPorts % 2) {
+    numOutputInterfaces = (numOutputPorts + 1) / 2;
+  } else {
+    numOutputInterfaces = numOutputPorts / 2;
+  }
+  if (numInputPorts >= numOutputPorts) { // match number of audio codecs to input/output interfaces
+    numAudioCodecs = numInputInterfaces;
+  } else {
+    numAudioCodecs = numOutputInterfaces;
+  }
+  VERBOSE_ASSERT (numAudioCodecs > 0, "At least 1 audio codec required");
+
+  /* NOTE I2S transceiver declaration is already in audio interface wrapper by default as
+     it's necessary to interface with the audio codec */
+  for (auto i = 0; i < numAudioCodecs; i++) {
+    audioInterfacePortListing << generateAudioInterfaceWrapperPorts(i);
+    audioInterfaceMapping << generateAudioInterfaceWrapperMapping(i);
+    if (i + 1 == numAudioCodecs) {
+      audioInterfacePortListing << "sys_clk : in std_logic;\n"
+                                << "reset : in std_logic;\n"
+                                << "mclk : in std_logic\n";
+      audioInterfaceMapping << "sys_clk_sig <= sys_clk;\n"
+                            << "mclk_sig <= mclk;\n"
+                            << "rst_sig <= reset;";
+    }
+    i2sTransceiverSignals << generateI2STransceiverSignalNames(i, i2sBitWidth);
+    i2sTransceiverMapping << generateI2STransceiverMapping(i, i2sBitWidth);
+  }
+  if (numInputPorts) {
+    componentDeclaration << generateInputInterfaceComponent(i2sBitWidth) << std::endl;
+    componentDeclaration << generateI2SToFPCComponent(i2sBitWidth, fpcBitWidth) << std::endl;
+    // Generate mappings for input/output interfaces and I2S transceivers
+    for (auto i = 0; i < numInputInterfaces; i++) {
+      inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
+      inputInterfaceMapping << generateInputInterfaceMapping(i, i2sBitWidth);
+      // need to generate these intermediate signals here as there are sometimes less less input ports
+      // in the Faust component than there are input ports in the input interfaces
+      I2SToFPCSignals << generateI2SToFPCSignalNames(i);
+      I2SToFPCSignals << generateI2SToFPCSignalNames(i + 1);
+    }
+  }
+  if (numOutputPorts) {
+    componentDeclaration << generateOutputInterfaceComponent(i2sBitWidth) << std::endl;
+    componentDeclaration << generateFPCToI2SComponent(fpcBitWidth, i2sBitWidth) << std::endl;
+    for (auto i = 0; i < numOutputInterfaces; i++) {
+      outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
+      outputInterfaceMapping << generateOutputInterfaceMapping(i, i2sBitWidth);
+      // need to generate these intermediate signals here as there are sometimes less less output ports
+      // in the Faust component than there are output ports in the output interfaces
+      FPCToI2SSignals << generateFPCToI2SSignalNames(i);
+      FPCToI2SSignals << generateFPCToI2SSignalNames(i + 1);
+    }
+  }
 
   // Specify port listing according to number of inputs and outputs
   portListing << "generic (\n"
-              << "    " << "ram_width : natural := 34;\n"
+              << "    " << "ram_width : natural := " << std::to_string(fpcBitWidth) << ";\n"
               << "    " << "ram_depth : natural := 2);\n" // buffer size
               << "port (\n"
               << "    " << "clk : in std_logic;\n"
               << "    " << "rst : in std_logic;\n"
               << std::endl;
+  entityMapping << entityName << "_0 : component " << entityName << "\n" // default to just a single component
+                << "port map (\n"
+                << "clk => sys_clk_sig,\n"
+                << "rst => rst_sig," << std::endl;
   // Specify ready, valid, and data ports for each input port:
   for (auto i = 0; i < numInputPorts; i++) {
-    std::string portName = "    " + entityName + "_in";
-    portListing << portName + "_valid_" + std::to_string(i) + " : in std_logic;"
-                << std::endl;
-    portListing << portName + "_ready_" + std::to_string(i) + " : out std_logic;"
-                << std::endl;
-    portListing << portName + "_data_" + std::to_string(i) + " : in std_logic_vector(ram_width - 1 downto 0) := (others => '0');\n"
-                << std::endl;
+    std::string readyInPort = "    " + entityName + "_in" + "_ready_" + std::to_string(i);
+    std::string validInPort = "    " + entityName + "_in" + "_valid_" + std::to_string(i);
+    std::string dataInPort = "    " + entityName + "_in" + "_data_" + std::to_string(i);
+    std::string portListingDelimiter = ";\n";
+    std::string mappingDelimiter = ",\n";
+    portListing << readyInPort << " : out std_logic" << portListingDelimiter
+                << validInPort << " : in std_logic" << portListingDelimiter;
+    entityMapping << readyInPort << " => " << entityName << "_in_ready_" << std::to_string(i)
+                  << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0" << mappingDelimiter
+                  << validInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_valid_0" << mappingDelimiter;
+    if ((i + 1 == numInputPorts) && (numOutputPorts == 0)) { // if dsp component only has inputs
+      portListingDelimiter = "\n);";
+      mappingDelimiter = "\n);"; // last line in port mapping should close bracket
+    }
+    portListing << dataInPort << " : in std_logic_vector(ram_width - 1 downto 0) := (others => '0')"
+                << portListingDelimiter << std::endl;
+    entityMapping << dataInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_data_0"
+                  << mappingDelimiter << std::endl;
+    // generate separate I2S to FPC component for each input port
+    I2SToFPCInstantiation << generateI2SToFPCMapping(i, entityName);
+    entitySignals << "signal " << entityName << "_in_ready_" << std::to_string(i)
+                  << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0 : std_logic;\n";
   }
   // Specify ready, valid, and data ports for each output port:
   for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    " + entityName + "_out";
-    portListing << portName + "_ready_" + std::to_string(i) + " : in std_logic;"
-                << std::endl;
-    portListing << portName + "_valid_" + std::to_string(i) + " : out std_logic;"
-                << std::endl;
-    if (i + 1 == numOutputPorts) {
-      portListing << portName + "_data_" + std::to_string(i) + " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0')\n" << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      portListing << portName + "_data_" + std::to_string(i) + " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0');\n" << std::endl; // last line of port declaration has no terminating semicolon
+    std::string readyOutPort = "    " + entityName + "_out" + "_ready_" + std::to_string(i);
+    std::string validOutPort = "    " + entityName + "_out" + "_valid_" + std::to_string(i);
+    std::string dataOutPort = "    " + entityName + "_out" + "_data_" + std::to_string(i);
+    std::string portListingDelimiter = ";\n";
+    std::string mappingDelimiter = ",\n";
+    std::vector<std::string> entitySignalNames(3);
+    entitySignalNames[VALID] = entityName + "_out_valid_" + std::to_string(i) +
+      "_fpc_to_i2s_" + std::to_string(i) + "_op_in_valid_0";
+    entitySignalNames[READY] = entityName + "_in_ready_" + std::to_string(i) +
+      "_i2s_to_fpc_" + std::to_string(i) + "_op_out_ready_0";
+    entitySignalNames[DATA] = entityName + "_out_data_" + std::to_string(i) +
+      "_fpc_to_i2s_" + std::to_string(i) + "_op_in_data_0";
+    portListing << readyOutPort << " : in std_logic" << portListingDelimiter
+                << validOutPort << " : out std_logic" << portListingDelimiter;
+    entityMapping << readyOutPort << " => " << "fpc_to_i2s_" << std::to_string(i) << "_op_in_ready_0" << mappingDelimiter
+                  << validOutPort << " => " << entitySignalNames[VALID] << mappingDelimiter;
+    if ((i + 1 == numOutputPorts)) {
+      portListingDelimiter = "\n);";
+      mappingDelimiter = "\n);"; // last line in port mapping should close bracket
     }
-  }
-  portListing << ");\n " << std::endl;
-
-  if (numInputPorts == 1 && numOutputPorts == 1) { // MONO
-    entityMappingMono << entityName + "_mono_l : " + entityName + "\n"
-                      << "port map (\n"
-                      << "    " << "clk => sys_clk_1,\n"
-                      << "    " << "rst => rst_1,\n"
-                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_0_op_out_valid_0,\n"
-                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_0_op_in_ready_0,\n"
-                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_0_op_out_data_0,\n"
-                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_l_out_valid,\n"
-                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_l_in_ready,\n"
-                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_l_out_data\n"
-                      << "    );" << std::endl;
-    entityMappingMono << entityName + "_mono_r : " + entityName + "\n"
-                      << "port map (\n"
-                      << "    " << "clk => sys_clk_1,\n"
-                      << "    " << "rst => rst_1,\n"
-                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_1_op_out_valid_0,\n"
-                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_1_op_in_ready_0,\n"
-                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_1_op_out_data_0,\n"
-                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_r_out_valid,\n"
-                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_r_in_ready,\n"
-                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_r_out_data\n"
-                      << "    );" << std::endl;
-  } else if (numInputPorts == 2 && numOutputPorts == 2) { // STEREO
-    entityMappingMono << entityName + "_stereo : " + entityName + "\n"
-                      << "port map (\n"
-                      << "    " << "clk => sys_clk_1,\n"
-                      << "    " << "rst => rst_1,\n"
-                      << "    " << entityName << "_in_valid_0" << " => i2s_to_fpc_0_op_out_valid_0,\n"
-                      << "    " << entityName << "_out_ready_0" << " => fpc_to_i2s_0_op_in_ready_0,\n"
-                      << "    " << entityName << "_in_data_0" << " => i2s_to_fpc_0_op_out_data_0,\n"
-                      << "    " << entityName << "_out_valid_0" << " => " << entityName << "_l_out_valid,\n"
-                      << "    " << entityName << "_in_ready_0" << " => " << entityName << "_l_in_ready,\n"
-                      << "    " << entityName << "_out_data_0" << " => " << entityName << "_l_out_data,\n"
-                      << "    " << entityName << "_in_valid_1" << " => i2s_to_fpc_1_op_out_valid_0,\n"
-                      << "    " << entityName << "_out_ready_1" << " => fpc_to_i2s_1_op_in_ready_0,\n"
-                      << "    " << entityName << "_in_data_1" << " => i2s_to_fpc_1_op_out_data_0,\n"
-                      << "    " << entityName << "_out_valid_1" << " => " << entityName << "_r_out_valid,\n"
-                      << "    " << entityName << "_in_ready_1" << " => " << entityName << "_r_in_ready,\n"
-                      << "    " << entityName << "_out_data_1" << " => " << entityName << "_r_out_data\n"
-                      << "    );" << std::endl;
-  } else {
-    // TODO support VHDL designs with multiple combinations of inputs and outputs
-    VERBOSE_ERROR("Only mono (1 input/output) and stereo (2 inputs/outputs) currently supported");
+    portListing << dataOutPort << " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0')"
+                << portListingDelimiter << std::endl;
+    entityMapping << dataOutPort << " => " << entitySignalNames[DATA]
+                  << mappingDelimiter << std::endl;
+    // generate separate FPC to I2S component for each output port
+    FPCToI2SInstantiation << generateFPCToI2SMapping(i, entityName);
+    // intermediate signals are named after a component's output ports
+    entitySignals << "signal " << entitySignalNames[VALID] << " : std_logic;\n"
+                  << "signal " << entitySignalNames[DATA] << " : std_logic_vector( 33 downto 0 );"
+                  << std::endl;
   }
 
   // generate flopoco operators
@@ -860,8 +939,21 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
   std::string fileContent;
   std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                          {"$ENTITY_PORTS", portListing.str()},
-                                                         {"$ENTITY_COMPONENT_MAPPING_MONO", entityMappingMono.str()},
-                                                         {"$ENTITY_COMPONENT_MAPPING_STEREO", entityMappingStereo.str()}};
+                                                         {"$AUDIO_INTERFACE_WRAPPER_PORTS", audioInterfacePortListing.str()},
+                                                         {"$AUDIO_INTERFACE_WRAPPER_MAPPING", audioInterfaceMapping.str()},
+                                                         {"$I2S_TRANSCEIVER_MAPPING", i2sTransceiverMapping.str()},
+                                                         {"$INPUT_INTERFACE_MAPPING", inputInterfaceMapping.str()},
+                                                         {"$OUTPUT_INTERFACE_MAPPING", outputInterfaceMapping.str()},
+                                                         {"$COMPONENT_DECLARATION", componentDeclaration.str()},
+                                                         {"$I2S_TRANSCEIVER_SIGNALS", i2sTransceiverSignals.str()},
+                                                         {"$INPUT_INTERFACE_SIGNALS", inputInterfaceSignals.str()},
+                                                         {"$OUTPUT_INTERFACE_SIGNALS", outputInterfaceSignals.str()},
+                                                         {"$ENTITY_SIGNALS", entitySignals.str()},
+                                                         {"$ENTITY_MAPPING", entityMapping.str()},
+                                                         {"$I2STOFPC_SIGNALS", I2SToFPCSignals.str()},
+                                                         {"$FPCTOI2S_SIGNALS", FPCToI2SSignals.str()},
+                                                         {"$I2STOFPC_COMPONENTS", I2SToFPCInstantiation.str()},
+                                                         {"$FPC2I2S_COMPONENTS", FPCToI2SInstantiation.str()}};
   if (operatorRef.is_open()) {
     while (std::getline(operatorRef, fileContent)) {
       for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
@@ -879,6 +971,304 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
     VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhd"
                    << " does not exist/not found!"); // TODO turn into assert
   }
+}
+
+std::string algorithms::generateInputInterfaceComponent(int bitWidth) {
+  std::stringstream outputStream;
+  outputStream << "component input_interface is\n"
+               << "  port ("
+               << "    clk : in std_logic;\n"
+               << "    ws : in std_logic;\n"
+               << "    rst : in std_logic;\n"
+               << "    l_valid : out std_logic;\n"
+               << "    r_valid : out std_logic;\n"
+               << "    l_ready : in std_logic;\n"
+               << "    r_ready : in std_logic;\n"
+               << "    l_data_in : in std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    r_data_in : in std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    l_data_out : out std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    r_data_out : out std_logic_vector ( "
+               << std::to_string(bitWidth - 1)  << " downto 0 )\n);\n"
+               << "end component input_interface;";
+  return outputStream.str();
+}
+
+std::string algorithms::generateOutputInterfaceComponent(int bitWidth) {
+    std::stringstream outputStream;
+  outputStream << "component output_interface is\n"
+               << "  port ("
+               << "    clk : in std_logic;\n"
+               << "    ws : in std_logic;\n"
+               << "    rst : in std_logic;\n"
+               << "    l_valid : in std_logic;\n"
+               << "    r_valid : in std_logic;\n"
+               << "    l_ready : out std_logic;\n"
+               << "    r_ready : out std_logic;\n"
+               << "    l_data_in : in std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    r_data_in : in std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    l_data_out : out std_logic_vector ( "
+               << std::to_string(bitWidth - 1) << " downto 0 );\n"
+               << "    r_data_out : out std_logic_vector ( "
+               << std::to_string(bitWidth - 1)  << " downto 0 )\n);\n"
+               << "end component output_interface;";
+  return outputStream.str();
+}
+
+std::string algorithms::generateI2SToFPCComponent(int inputBitWidth,
+                                                  int outputBitWidth) {
+  std::stringstream outputStream;
+  outputStream << "component i2s_to_fpc is\n"
+               << "  port ("
+               << "    clk : in std_logic;\n"
+               << "    rst : in std_logic;\n"
+               << "    op_in_ready_0 : out std_logic;\n"
+               << "    op_in_valid_0 : in std_logic;\n"
+               << "    op_in_data_0 : in std_logic_vector ( "
+               << std::to_string(inputBitWidth - 1) << " downto 0 );\n"
+               << "    op_out_ready_0 : in std_logic;\n"
+               << "    op_out_valid_0 : out std_logic;\n"
+               << "    op_out_data_0 : out std_logic_vector ( "
+               << std::to_string(outputBitWidth - 1) << " downto 0 )\n);\n"
+               << "end component i2s_to_fpc;";
+  return outputStream.str();
+}
+
+std::string algorithms::generateFPCToI2SComponent(int inputBitWidth, int outputBitWidth) {
+  std::stringstream outputStream;
+  outputStream << "component fpc_to_i2s is\n"
+               << "  port ("
+               << "    clk : in std_logic;\n"
+               << "    rst : in std_logic;\n"
+               << "    op_in_ready_0 : out std_logic;\n"
+               << "    op_in_valid_0 : in std_logic;\n"
+               << "    op_in_data_0 : in std_logic_vector ( "
+               << std::to_string(inputBitWidth - 1) << " downto 0 );\n"
+               << "    op_out_ready_0 : in std_logic;\n"
+               << "    op_out_valid_0 : out std_logic;\n"
+               << "    op_out_data_0 : out std_logic_vector ( "
+               << std::to_string(outputBitWidth - 1) << " downto 0 )\n);\n"
+               << "end component fpc_to_i2s;";
+  return outputStream.str();
+}
+
+std::string algorithms::generateAudioInterfaceWrapperPorts(int id) {
+  // NOTE sys_clk, mclk, and reset ports are generated outside of this function as they're shared
+  std::stringstream outputStream;
+  outputStream << "ac_bclk_" << std::to_string(id) << " : out std_logic;\n"
+               << "ac_pbdat_" << std::to_string(id) << " : out std_logic;\n"
+               << "ac_recdat_" << std::to_string(id) << " : in std_logic;\n"
+               << "ac_pblrc_" << std::to_string(id) << " : out std_logic;\n"
+               << "ac_reclrc_" << std::to_string(id) << " : out std_logic;\n";
+  return outputStream.str();
+}
+
+std::string algorithms::generateAudioInterfaceWrapperMapping(int id) {
+  std::stringstream outputStream;
+  std::string i2sTransceiver = "i2s_transceiver_" + std::to_string(id);
+  outputStream << "ac_bclk_" << std::to_string(id) << " <= " << i2sTransceiver << "_sclk;\n"
+               << "ac_pbdat_" << std::to_string(id) << " <= " << i2sTransceiver << "_sd_tx;\n"
+               << i2sTransceiver << "_sd_rx" << " <= " << "ac_recdat_" << std::to_string(id) << ";\n"
+               << "ac_pblrc_" << std::to_string(id) << " <= " << i2sTransceiver << "_ws;\n"
+               << "ac_reclrc_" << std::to_string(id) << " <= " << i2sTransceiver << "_ws;\n";
+  return outputStream.str();
+}
+
+std::string algorithms::generateI2STransceiverMapping(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0 )";
+  outputStream << "i2s_transceiver_" << std::to_string(id) << ": component i2s_transceiver\n"
+               << "    " << "port map (\n"
+               << "    " << "mclk => mclk_sig,\n"
+               << "    " << "reset_n => rst_sig,\n"
+               << "    " << "sclk => i2s_transceiver_" << id << "_sclk,\n"
+               << "    " << "ws => i2s_transceiver_" << id << "_ws,\n"
+               << "    " << "sd_rx => ac_recdat_" << id << ",\n"
+               << "    " << "sd_tx => i2s_transceiver_" << id << "_sd_tx,\n"
+               << "    " << "l_data_rx" << vectorSize << " => i2s_transceiver_"
+               << id << "_l_data_rx" << vectorSize << ",\n"
+               << "    " << "r_data_rx" << vectorSize << " => i2s_transceiver_"
+               << id << "_r_data_rx" << vectorSize << ",\n"
+               << "    " << "l_data_tx" << vectorSize << " => output_interface_"
+               << id << "_l_data_out" << vectorSize << ",\n"
+               << "    " << "r_data_tx" << vectorSize << " => output_interface_"
+               << id << "_r_data_out" << vectorSize << "\n);";
+  return outputStream.str();
+}
+
+std::string algorithms::generateInputInterfaceMapping(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0 )";
+  std::string inputInterface = "input_interface_" + std::to_string(id);
+  std::string i2sTransceiver = "i2s_transceiver_" + std::to_string(id);
+  outputStream << inputInterface << ": component input_interface\n"
+               << "    " << "port map (\n"
+               << "    " << "clk => sys_clk_sig,\n"
+               << "    " << "rst => rst_sig,\n"
+               << "    " << "ws => " << i2sTransceiver << "_ws,\n"
+               << "    " << "l_data_in" << vectorSize << " => "
+               << i2sTransceiver << "_l_data_rx" << vectorSize << ",\n"
+               << "    " << "l_data_out" << vectorSize << " => "
+               << inputInterface << "_l_data_out" << vectorSize << ",\n"
+               << "    " << "l_ready => i2s_to_fpc_" << std::to_string(id) << "_op_in_ready_0,\n"
+               << "    " << "l_valid => " << inputInterface << "_l_valid,\n"
+               << "    " << "r_data_in" << vectorSize << " => "
+               << i2sTransceiver << "_r_data_rx" << vectorSize << ",\n"
+               << "    " << "r_data_out" << vectorSize << " => "
+               << inputInterface << "_r_data_out" << vectorSize << ",\n"
+    // NOTE right channel connected to other i2s_to_fpc component
+               << "    " << "r_ready => i2s_to_fpc_" << std::to_string(id + 1) << "_op_in_ready_0,\n"
+               << "    " << "r_valid => " << inputInterface << "_r_valid\n);";
+  return outputStream.str();
+}
+
+std::string algorithms::generateOutputInterfaceMapping(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0 )";
+  std::string outputInterface = "output_interface_" + std::to_string(id);
+  std::string i2sTransceiver = "i2s_transceiver_" + std::to_string(id);
+  outputStream << outputInterface << ": component output_interface\n"
+               << "    " << "port map (\n"
+               << "    " << "clk => sys_clk_sig,\n"
+               << "    " << "rst => rst_sig,\n"
+               << "    " << "ws => " << i2sTransceiver << "_ws,\n"
+               << "    " << "l_data_in" << vectorSize << " => fpc_to_i2s_"
+               << std::to_string(id) << "_op_out_data_0" << vectorSize << ",\n"
+               << "    " << "l_data_out" << vectorSize << " => "
+               << outputInterface << "_l_data_out" << vectorSize << ",\n"
+               << "    " << "l_ready => " << outputInterface << "_l_ready,\n"
+               << "    " << "l_valid => fpc_to_i2s_"
+               << std::to_string(id) << "_op_out_valid_0,\n"
+               << "    " << "r_data_in" << vectorSize << " => fpc_to_i2s_"
+               << std::to_string(id + 1) << "_op_out_data_0" << vectorSize << ",\n"
+               << "    " << "r_data_out" << vectorSize << " => "
+               << outputInterface << "_r_data_out" << vectorSize << ",\n"
+    // NOTE right channel connected to other i2s_to_fpc component
+               << "    " << "r_ready => " << outputInterface << "_r_ready,\n"
+               << "    " << "r_valid => fpc_to_i2s_"
+               << std::to_string(id + 1) << "_op_out_valid_0\n);";
+  return outputStream.str();
+}
+
+std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) {
+  std::stringstream outputStream;
+  std::string channel;
+  if (id % 2 == 1) { // odd ids assigned to R channel
+    channel = "r";
+  } else { // even ids assigned to L channel
+    channel = "l";
+  }
+  outputStream << "i2s_to_fpc_" << id << ": component i2s_to_fpc\n"
+               << "    " << "port map (\n"
+               << "    " << "clk => sys_clk_sig,\n"
+               << "    " << "rst => rst_sig,\n"
+               << "    " << "op_in_data_0(23 downto 0) => input_interface_0_"
+               << channel << "_data_out(23 downto 0),\n"
+               << "    " << "op_in_ready_0 => i2s_to_fpc_"
+               << id << "_op_in_ready_0,\n"
+               << "    " << "op_in_valid_0 => input_interface_0_"
+               << channel << "_valid,\n"
+               << "    " << "op_out_data_0(33 downto 0) => i2s_to_fpc_"
+               << id << "_op_out_data_0(33 downto 0),\n"
+               << "    " << "op_out_ready_0 => " << entityName << "_in_ready_"
+               << id << "_i2s_to_fpc_" << id << "_op_out_ready_0,\n"
+               << "    " << "op_out_valid_0 => i2s_to_fpc_"
+               << id << "_op_out_valid_0\n"
+               << ");" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) {
+  std::stringstream outputStream;
+  std::string channel;
+  if (id % 2 == 1) { // odd ids assigned to R channel
+    channel = "r";
+  } else { // even ids assigned to L channel
+    channel = "l";
+  }
+  outputStream << "fpc_to_i2s_" << id << ": component fpc_to_i2s\n"
+               << "    " << "port map (\n"
+               << "    " << "clk => sys_clk_sig,\n"
+               << "    " << "rst => rst_sig,\n"
+               << "    " << "op_in_data_0(33 downto 0) => "
+               << entityName << "_out_data_" << id << "_fpc_to_i2s_" << id
+               << "_op_in_data_0,\n"
+               << "    " << "op_in_valid_0 => "
+               << entityName << "_out_valid_" << id << "_fpc_to_i2s_" << id
+               << "_op_in_valid_0,\n"
+               << "    " << "op_in_ready_0 => fpc_to_i2s_"
+               << id << "_op_in_ready_0,\n"
+               << "    " << "op_out_data_0(23 downto 0) => fpc_to_i2s_"
+               << id << "_op_out_data_0,\n"
+               << "    " << "op_out_ready_0 => " << "output_interface_0_"
+               << channel << "_ready,\n"
+               << "    " << "op_out_valid_0 => fpc_to_i2s_"
+               << id << "_op_out_valid_0\n"
+               << ");" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateI2STransceiverSignalNames(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0)";
+  std::string componentName = "i2s_transceiver_" + std::to_string(id);
+  outputStream << "signal " << componentName << "_l_data_rx : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_r_data_rx : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_sclk : std_logic;\n"
+               << "signal " << componentName << "_sd_tx : std_logic;\n"
+               << "signal " << componentName << "_ws : std_logic;\n"
+               << "signal " << componentName << "_sd_rx : std_logic;\n";
+  return outputStream.str();
+}
+
+std::string algorithms::generateInputInterfaceSignalNames(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0)";
+  std::string componentName = "input_interface_" + std::to_string(id);
+  outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_l_valid : std_logic;\n"
+               << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_r_valid : std_logic;\n";
+  return outputStream.str();
+}
+
+std::string algorithms::generateOutputInterfaceSignalNames(int id, int bitWidth) {
+  std::stringstream outputStream;
+  std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0)";
+  std::string componentName = "output_interface_" + std::to_string(id);
+  outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_l_ready : std_logic;\n"
+               << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_r_ready : std_logic;\n";
+  return outputStream.str();
+}
+
+// generate signal names for I2S to FPC converter component of given ID
+std::string algorithms::generateI2SToFPCSignalNames(int id) {
+  std::stringstream outputStream;
+  std::string componentName = "i2s_to_fpc_" + std::to_string(id);
+  std::string fpcVectorSize = "( 33 downto 0 )";
+  outputStream << "signal " << componentName << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentName << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentName << "_op_out_data_0 : std_logic_vector"
+               << fpcVectorSize << ";" << std::endl;
+  return outputStream.str();
+}
+
+// generate signal names for FPC to I2S converter component of given ID
+std::string algorithms::generateFPCToI2SSignalNames(int id) {
+  std::stringstream outputStream;
+  std::string componentName = "fpc_to_i2s_" + std::to_string(id);
+  std::string i2sVectorSize = "( 23 downto 0 )";
+  outputStream << "signal " << componentName << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentName << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentName << "_op_out_data_0 : std_logic_vector"
+               << i2sVectorSize << ";" << std::endl;
+  return outputStream.str();
 }
 
 std::string algorithms::generateComponent(VHDLComponent comp) {

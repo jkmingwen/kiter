@@ -41,6 +41,22 @@ namespace algorithms {
                        bool isBufferless);
   void generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
                                      std::string outputDir);
+  std::string generateAudioInterfaceWrapperPorts(int id);
+  std::string generateAudioInterfaceWrapperMapping(int id);
+  std::string generateI2SToFPCComponent(int inputBitWidth, int outputBitWidth);
+  std::string generateFPCToI2SComponent(int inputBitWidth, int outputBitWidth);
+  std::string generateInputInterfaceComponent(int bitWidth);
+  std::string generateOutputInterfaceComponent(int bitWidth);
+  std::string generateI2STransceiverMapping(int id, int bitWidth);
+  std::string generateInputInterfaceMapping(int id, int bitWidth);
+  std::string generateOutputInterfaceMapping(int id, int bitWidth);
+  std::string generateI2SToFPCMapping(int id, std::string entityName);
+  std::string generateFPCToI2SMapping(int id, std::string entityName);
+  std::string generateI2STransceiverSignalNames(int id, int bitWidth);
+  std::string generateInputInterfaceSignalNames(int id, int bitWidth);
+  std::string generateOutputInterfaceSignalNames(int id, int bitWidth);
+  std::string generateI2SToFPCSignalNames(int id);
+  std::string generateFPCToI2SSignalNames(int id);
   std::string generateComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);
