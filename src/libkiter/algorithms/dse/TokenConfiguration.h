@@ -39,11 +39,7 @@ namespace algorithms {
             using PerformanceUnit = PerformanceResult;
             using CostUnit = TOKEN_UNIT;
 
-            static std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration <double> > beginTime;
 
-            static void setBeginTime (const std::chrono::duration<double, std::milli>& shift) {
-                beginTime = std::chrono::steady_clock::now() - shift;
-            }
 
         private :
 
@@ -82,16 +78,25 @@ namespace algorithms {
                 return cost;
             };
 
-            void computePerformance(models::Dataflow* sandbox, PerformanceFunc performance_func) {
+            TIME_UNIT getCumulExecutionTimeMs() const {
+                return cumulativeTime;
+            }
+            void computePerformance(PerformanceFunc performance_func, const std::chrono::steady_clock::time_point beginTime, models::Dataflow* sandbox = nullptr) {
                 if (!performance_computed) {
+
+                    // Create the sandbox if it doesn't exist. A sandbox is a dataflow that the perf. func. can modify.
+                    if (!sandbox) sandbox = new models::Dataflow(*this->dataflow);
+
+                    // Run the performance function and store its duration.
                     auto startTime = std::chrono::steady_clock::now();
                     PerformanceResult res = performance_func(sandbox, *this);
                     auto endTime = std::chrono::steady_clock::now();
+
+                    // Update the TokenConfiguration with its performance results.
                     std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
-                    std::chrono::duration<double, std::milli> cumulTime = endTime - TokenConfiguration::beginTime;
+                    std::chrono::duration<double, std::milli> cumulTime = endTime - beginTime;
                     executionTime = execTime.count();
                     cumulativeTime = cumulTime.count();
-
                     performance = res;
                     performance_computed = true;
                 } else {

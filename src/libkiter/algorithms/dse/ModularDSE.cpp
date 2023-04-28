@@ -25,7 +25,10 @@ namespace algorithms {
         }
 
 
-        void ModularDSE::explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit, bool realtime_output) {
+        void ModularDSE::explore_thread(std::atomic<unsigned int>& idle_threads,
+                                        std::atomic<size_t>& explored, size_t limit,
+                                        const std::chrono::steady_clock::time_point beginTime,
+                                        bool realtime_output) {
 
             models::Dataflow sandbox = *this->dataflow;
             std::unique_ptr<TokenConfiguration> current_configuration;
@@ -83,7 +86,7 @@ namespace algorithms {
 
 
                 sandbox.reset_computation();
-                current_configuration->computePerformance(&sandbox, this->performance_func);
+                current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
                 auto next_configurations = next_func(*current_configuration);
                 VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
@@ -110,17 +113,23 @@ namespace algorithms {
 
 
 
-        void ModularDSE::explore(const size_t limit, bool realtime_output) {
+        void ModularDSE::explore(const size_t limit,
+                                 bool realtime_output) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
             std::atomic<unsigned int> idle_threads(0);
             std::atomic<size_t> explored(0);
 
+            auto beginTime =  std::chrono::steady_clock::now()
+                    + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double, std::milli>((this->results.getTotalProcessTimeMs())));
+
+
+
             if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, realtime_output));
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, realtime_output));
             }
 
             for (auto& future : futures) {

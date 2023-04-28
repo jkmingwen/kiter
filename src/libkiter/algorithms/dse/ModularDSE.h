@@ -40,7 +40,6 @@ namespace algorithms {
                       next_func(next_func),
                       stop_func(stop_func),
                       num_threads(num_threads) {
-                TokenConfiguration::setBeginTime(std::chrono::duration<double, std::milli>::zero());
             }
 
             ModularDSE& operator<<(const TokenConfiguration& config) {
@@ -61,11 +60,13 @@ namespace algorithms {
             std::string print_space(bool no_timing = false);
 
 
-            void explore(size_t limit = 0, bool realtime_output = false) ;
+            void explore(size_t limit = 0,
+                         bool realtime_output = false) ;
 
         private:
             bool should_stop(size_t idle_threads, size_t explored, size_t limit);
-            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit, bool realtime_output);
+            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit,
+                                const std::chrono::steady_clock::time_point beginTime, bool realtime_output);
 
         private:
             const models::Dataflow* dataflow;

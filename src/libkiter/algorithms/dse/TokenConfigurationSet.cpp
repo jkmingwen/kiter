@@ -9,10 +9,9 @@ namespace algorithms {
         void TokenConfigurationSet::add(const TokenConfiguration& new_config) {
             auto insert_res = this->configurations_by_cost[new_config.getCost()].insert(new_config);
             if (new_config.hasPerformance() and insert_res.second) {
-                if (best_point == nullptr) {
-                    best_point = &(*insert_res.first);
-                } else if (best_point->getPerformance() < new_config.getPerformance()) {
-                    best_point = &(*insert_res.first);
+                last_added = &(*insert_res.first);
+                if ((best_point == nullptr) or (best_point->getPerformance() < new_config.getPerformance())) {
+                    best_point = last_added;
                 }
            }
         }
@@ -68,7 +67,6 @@ namespace algorithms {
         bool TokenConfigurationSet::hasConfigWithCost(TokenConfiguration::CostUnit cost) {
             return (this->configurations_by_cost.find(cost) != this->configurations_by_cost.end());
         }
-
 
     } // algorithms
 } // dse

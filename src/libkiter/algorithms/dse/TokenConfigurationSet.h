@@ -24,6 +24,14 @@ namespace algorithms {
             bool empty() {
                 return this->configurations_by_cost.empty();
             }
+
+            TIME_UNIT getTotalProcessTimeMs() const {
+                if (this->last_added != nullptr) {
+                    return this->last_added->getCumulExecutionTimeMs();
+                } else {
+                    return 0.0;
+                }
+            }
             const TokenConfiguration& top () const {
                 return *(this->configurations_by_cost.begin()->second.begin());
             }
@@ -153,6 +161,7 @@ namespace algorithms {
                 return iterator(configurations_by_cost.end(), configurations_by_cost.end());
             }
 
+            const TokenConfiguration *last_added = nullptr;
         };
 
 

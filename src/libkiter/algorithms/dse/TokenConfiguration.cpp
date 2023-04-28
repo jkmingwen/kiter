@@ -4,8 +4,6 @@
 
 #include "TokenConfiguration.h"
 
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::duration <double> > algorithms::dse::TokenConfiguration::beginTime;
-
 namespace algorithms {
     namespace dse {
         std::vector<std::string> parseCsvLine(const std::string& line) {
@@ -219,6 +217,7 @@ namespace algorithms {
             cumulativeTime = cumulTime;
             this->performance_computed = true;
         }
+
 
 
     } // dse
