@@ -1801,9 +1801,10 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       for (auto &buffer : circuit.getConnectionMap()) {
         sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
         receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
+        outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
+        outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
+        outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
       }
-      outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
-      outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
     }
   }
 
