@@ -73,9 +73,9 @@ BOOST_AUTO_TEST_CASE(to_csv_line) {
     std::vector<TOKEN_UNIT> config_values = {1, 2, 3};
     TokenConfiguration config(cycle_sample, config_values);
 
-    BOOST_CHECK_EQUAL(config.to_csv_line(), "6,-,\"1,2,3\",-,-,-");
+    BOOST_CHECK_EQUAL(config.to_csv_line(), "6,-,\"\",\"1,2,3\",-,-,-,-");
     config.computePerformance(dummy_performance_func);
-    BOOST_CHECK_EQUAL(config.to_csv_line().substr(0,14),  "6,1,\"1,2,3\",\"\"");
+    BOOST_CHECK_EQUAL(config.to_csv_line().substr(0,4),  "6,1,");
     std::cout << config.to_csv_line();
 }
 

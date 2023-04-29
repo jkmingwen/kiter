@@ -176,6 +176,7 @@ int main (int argc, char **argv)
 
         } else {
             std::cerr << " Unsupported algorithm (-a " << name << "), list of supported algorithms is " << std::endl;
+            std::cerr  << "" << std::endl;
             KiterRegistry<>::print_all(std::cerr);
             exit(1);
         }

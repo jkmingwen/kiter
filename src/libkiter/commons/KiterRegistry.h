@@ -105,15 +105,19 @@ class KiterRegistry {
     static void print_all (std::ostream &out) {
         out << " List of supported generator (-g) is " << std::endl;
         KiterRegistry<generator_t>::print(out);
+        out << "" << std::endl;
 
         out << " List of supported buffer sizing algorithms (-a) is " << std::endl;
         KiterRegistry<buffer_sizing_t>::print(out);
+        out << "" << std::endl;
 
         out << " List of supported algorithms (-a) is " << std::endl;
         KiterRegistry<transformation_t>::print(out);
+        out << "" << std::endl;
 
         out << " List of supported printers (-a) is " << std::endl;
         KiterRegistry<printer_t>::print(out);
+        out << "" << std::endl;
 
     }
 
