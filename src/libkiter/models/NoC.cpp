@@ -12,22 +12,22 @@
 
 bool NoC::check_ids () {
 
-	VERBOSE_DEBUG("Start auto-check of NoC model");
+    VERBOSE_EXTRA_DEBUG("Start auto-check of NoC model");
 
 	std::set<noc_id_t> ids;
 
 	for (auto e : this->getEdges()) {
-		VERBOSE_DEBUG("Edge " << e);
+        VERBOSE_EXTRA_DEBUG("Edge " << e);
 		VERBOSE_ASSERT(ids.count(e.id) == 0, "Two NoC elements must not share the same id!");
 		ids.insert(e.id);
 	}
 	for (auto n : this->getNodes()) {
-		VERBOSE_DEBUG("Node " << n);
+        VERBOSE_EXTRA_DEBUG("Node " << n);
 		VERBOSE_ASSERT(ids.count(n.id) == 0, "Two NoC elements must not share the same id!");
 		ids.insert(n.id);
 	}
 
-	VERBOSE_DEBUG("End auto-check of NoC model");
+    VERBOSE_EXTRA_DEBUG("End auto-check of NoC model");
 
 	return (ids.size() == this->getEdges().size() + this->getNodes().size());
 
@@ -48,7 +48,7 @@ void NoC::generate() {
 	auto XSIZE = this->getXSize();
 	auto YSIZE = this->getYSize();
 
-	VERBOSE_DEBUG( "start NoC with dim=" << XSIZE << "x" << YSIZE  );
+    VERBOSE_EXTRA_DEBUG( "start NoC with dim=" << XSIZE << "x" << YSIZE  );
 
 				const int NodeCount = XSIZE * YSIZE * 2;
 
@@ -88,7 +88,7 @@ void NoC::generate() {
 
 					}
 				}
-				VERBOSE_DEBUG( "dim=" << XSIZE << "x" << YSIZE << ",edges=" << _vedges.size() << ",medges=" << _medges.size() );
+				VERBOSE_EXTRA_DEBUG( "dim=" << XSIZE << "x" << YSIZE << ",edges=" << _vedges.size() << ",medges=" << _medges.size() );
 
 
 
