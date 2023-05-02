@@ -1,8 +1,8 @@
--- Takes in one input (following AXI conventions), sending to three outputs at the same time.
+-- Takes in one input (following AXI conventions), sending to four outputs at the same time.
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity axi_splitter_3 is
+entity axi_splitter_$NUM_OUTPUTS is
   generic (bit_width : natural);
   port ( clk        : in std_logic;
          rst      : in std_logic;
@@ -11,20 +11,11 @@ entity axi_splitter_3 is
          in_valid_0 : in std_logic;
          in_data_0  : in std_logic_vector (bit_width-1 downto 0);
 
-         out_ready_0 : in std_logic;
-         out_valid_0 : out std_logic;
-         out_data_0 : out std_logic_vector (bit_width-1 downto 0);
+         $OUTPUT_PORTS
+         );
+end axi_splitter_$NUM_OUTPUTS;
 
-         out_ready_1 : in std_logic;
-         out_valid_1 : out std_logic;
-         out_data_1 : out std_logic_vector (bit_width-1 downto 0);
-
-         out_ready_2 : in std_logic;
-         out_valid_2 : out std_logic;
-         out_data_2 : out std_logic_vector (bit_width-1 downto 0) );
-end axi_splitter_3;
-
-architecture Behavioral of axi_splitter_3 is
+architecture Behavioral of axi_splitter_$NUM_OUTPUTS is
   signal temp_data_0   : std_logic_vector (bit_width-1 downto 0);
   signal is_in_ready_0 : std_logic := '1';
   signal is_stored_0   : std_logic := '0';
@@ -36,7 +27,7 @@ begin
   begin
     if falling_edge(clk) then
       -- clear previous data (considered sent after 1 cycle where out valid and ready = 1)
-      if (is_stored_0 = '1' AND (out_ready_0 = '1' AND out_ready_1 = '1' AND out_ready_2 = '1')) then
+      if (is_stored_0 = '1' AND ($OUT_READY_SIGS)) then
         is_stored_0 <= '0';
         is_in_ready_0 <= '1';
       else
@@ -61,14 +52,10 @@ begin
   begin
     if rising_edge(clk) then
       if (is_stored_0 = '1') then -- only write when both data ready to send
-        out_data_0 <= temp_data_0(bit_width-1 downto 0);
-        out_data_1 <= temp_data_0(bit_width-1 downto 0);
-        out_data_2 <= temp_data_0(bit_width-1 downto 0);
+        $OUT_DATA_MAPPING
       end if;
       in_ready_0 <= is_in_ready_0;
-      out_valid_0 <= is_stored_0;
-      out_valid_1 <= is_stored_0;
-      out_valid_2 <= is_stored_0;
+      $OUT_VALID_MAPPING
     end if;
   end process write_data;
 

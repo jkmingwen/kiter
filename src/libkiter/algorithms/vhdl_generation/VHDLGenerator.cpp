@@ -280,13 +280,47 @@ void algorithms::generateSplitterOperators(std::string compDir, std::string refe
                                            std::map<int, int> outputCounts) {
   std::ofstream vhdlOutput;
   std::string operatorFileName = "axi_splitter";
+  std::string wordsToReplace[] = {"$NUM_OUTPUTS", "$OUTPUT_PORTS", "$OUT_READY_SIGS",
+                                  "$OUT_DATA_MAPPING", "$OUT_VALID_MAPPING"};
   for (auto &i : outputCounts) {
-    std::string refFileName = operatorFileName + "_" + std::to_string(i.first) + ".vhd";
+    std::string refFileName = operatorFileName + ".vhd";
+    std::string outputFile = operatorFileName + "_" + std::to_string(i.first) + ".vhd";
     std::ifstream compReference(referenceDir + refFileName);
     std::string fileContent;
-    vhdlOutput.open(compDir + refFileName);
+    std::stringstream outputPorts;
+    std::stringstream outputReadySigs;
+    std::stringstream outputDataMapping;
+    std::stringstream outputValidMapping;
+
+    for (int outCount = 0; outCount < i.first; outCount++) {
+      std::string delimiter = ";\n";
+      std::string boolAnd = " AND ";
+      outputPorts << "out_ready_" << std::to_string(outCount) << " : in std_logic" << delimiter
+                  << "out_valid_" << std::to_string(outCount) << " : out std_logic" << delimiter;
+      outputDataMapping << "out_data_" << std::to_string(outCount) << " <= temp_data_0(bit_width-1 downto 0);\n";
+      outputValidMapping << "out_valid_" << std::to_string(outCount) << " <= is_stored_0;\n";
+      if (outCount + 1 == i.first) {
+        delimiter = "\n";
+        boolAnd = "";
+      }
+      outputPorts << "out_data_" << std::to_string(outCount) << " : out std_logic_vector(bit_width-1 downto 0)" << delimiter;
+      outputReadySigs << "out_ready_" << std::to_string(outCount) << "='1'" << boolAnd;
+    }
+    std::map<std::string, std::string> replacementWords = {{"$NUM_OUTPUTS", std::to_string(i.first)},
+                                                           {"$OUTPUT_PORTS", outputPorts.str()},
+                                                           {"$OUT_READY_SIGS", outputReadySigs.str()},
+                                                           {"$OUT_DATA_MAPPING", outputDataMapping.str()},
+                                                           {"$OUT_VALID_MAPPING", outputValidMapping.str()}};
+    vhdlOutput.open(compDir + outputFile);
     if (compReference.is_open()) {
       while (std::getline(compReference, fileContent)) {
+        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+          size_t pos = fileContent.find(word);
+          if (pos != std::string::npos) {
+            fileContent.replace(pos, word.length(),
+                                replacementWords[word]);
+          }
+        }
         vhdlOutput << fileContent << std::endl;
       }
       compReference.close();
@@ -1358,7 +1392,6 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
 }
 
 // generate one AXI splitter component for each corresponding Proj component (defined by number of outputs)
-// TODO find a way to generalise splitter component and generation
 std::string algorithms::generateConstComponents(std::map<int, int> outputCounts) {
   std::stringstream outputStream;
   std::string componentName;
@@ -1417,7 +1450,7 @@ std::string algorithms::generateSplitterComponents(std::map<int, int> outputCoun
       outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
                    << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
                    << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-                   << "ram_width - 1 downto 0);\n"
+                   << "bit_width - 1 downto 0);\n"
                    << std::endl;
     }
 
@@ -1428,10 +1461,10 @@ std::string algorithms::generateSplitterComponents(std::map<int, int> outputCoun
                    << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
       if (i + 1 == numOutputPorts) {
         outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+                     << "bit_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
       } else {
         outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0);\n" << std::endl;
+                     << "bit_width - 1 downto 0);\n" << std::endl;
       }
     }
 
