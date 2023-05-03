@@ -70,19 +70,22 @@ class VHDLCircuit {
         {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
         {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
         // NOTE unimplemented operators from here:
-        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}},
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+        {"fp_min", 1}, {"fp_abs", 1}}},
       {125,
        {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
         {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
         {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
         // NOTE unimplemented operators from here:
-        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}},
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+        {"fp_min", 1}, {"fp_abs", 1}}},
       {250,
        {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
         {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
         {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
         // NOTE unimplemented operators from here:
-        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}}
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+        {"fp_min", 1}, {"fp_abs", 1}}}
     };
   std::map<std::string, std::string> implementationNames = {{"fp_add", "fp_add_flopoco"},
                                                             {"fp_prod", "fp_prod_flopoco"},
@@ -97,7 +100,8 @@ class VHDLCircuit {
                                                             {"int2float", "int2float_flopoco"},
                                                             {"fp_floor", "fp_floor"},
                                                             {"int_max", "int_max"},
-                                                            {"int_min", "int_min"}};
+                                                            {"fp_max", "fp_min"},
+                                                            {"fp_abs", "fp_abs"}};
 
 };
 #endif /* VHDL_CIRCUIT_H_ */
