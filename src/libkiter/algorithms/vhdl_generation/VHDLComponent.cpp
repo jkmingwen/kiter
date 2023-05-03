@@ -46,7 +46,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   std::string compType = dataflow->getVertexType(a);
   std::string baseCompType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
   lifespan = 0;
-  FPCName = "default";
+  implementationName = "default";
   isMixedType = false;
   // identify order of arguments for binary operators
   // adapted from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
@@ -93,7 +93,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     std::string fpcFloatPrefix = (numericValue ? "01" : "00");
     binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
     componentType = baseCompType;
-  } else if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), baseCompType)) {
+  } else if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), baseCompType) ||
+             std::count(numOperatorTypes.begin(), numOperatorTypes.end(), baseCompType)) {
     isConstVal = false;
     if (inputTypes.size() > 1) { // mixing input types might result in unintended behaviour
       VERBOSE_WARNING(inputTypes.size() << " input types on " << compType
@@ -210,13 +211,11 @@ std::string VHDLComponent::getType() const{
   return this->componentType;
 }
 
-/* NOTE this function is redundant now that the FloPoCo operators are named
-   according to their file name and frequency, however, in the future, if we
-   intend to implement setting different frequencies for each operator,
-   generating their component names based on compType and operatorFreq
-   would be one way of going about it */
-std::string VHDLComponent::getFPCName() const{
-  return this->FPCName;
+/* NOTE in the future, if we intend to implement setting different frequencies
+   for each operator, generating their component names based on compType and
+   operatorFreq would be one way of going about it */
+std::string VHDLComponent::getImplementationName() const{
+  return this->implementationName;
 }
 
 const std::vector<std::string>& VHDLComponent::getArgOrder() const{
@@ -259,8 +258,8 @@ void VHDLComponent::setLifespan(int lifespan) {
   this->lifespan = lifespan;
 }
 
-void VHDLComponent::setFPCName(std::string newName) {
-  this->FPCName = newName;
+void VHDLComponent::setImplementationName(std::string newName) {
+  this->implementationName = newName;
 }
 
 std::string VHDLComponent::printStatus() const  {

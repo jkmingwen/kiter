@@ -36,7 +36,7 @@ class VHDLCircuit {
   VHDLComponent getFirstComponentByType(std::string op);
   std::string getName();
   int getOperatorLifespan(std::string opType);
-  std::string getOperatorFPCName(std::string opType);
+  std::string getOperatorImplementationName(std::string opType);
   std::map<int, int> getNumOutputs(std::string opType);
   std::vector<std::string> getConnectionNameFromComponents(std::string srcActorName,
                                                            std::string dstActorName);
@@ -68,27 +68,36 @@ class VHDLCircuit {
       {50,
        {{"fp_add", 1}, {"fp_prod", 1}, {"fp_div", 3}, {"fp_sqrt", 1},
         {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
-        {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}}},
+        {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+        // NOTE unimplemented operators from here:
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}},
       {125,
        {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
         {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
-        {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}}},
+        {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+        // NOTE unimplemented operators from here:
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}},
       {250,
        {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
         {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
-        {"int_diff", 1}, {"float2int", 2}, {"int2float", 3}}}
+        {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
+        // NOTE unimplemented operators from here:
+        {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}}}
     };
-  std::map<std::string, std::string> FPCNames = {{"fp_add", "FPAdd_8_23_F125_uid2"},
-                                                 {"fp_prod", "FPMult_8_23_8_23_8_23_uid2_F125_uid3"},
-                                                 {"fp_div", "FPDiv_8_23_F125_uid2"},
-                                                 {"fp_sqrt", "FPSqrt_8_23"},
-                                                 {"fp_diff", "FPSub_8_23_F125_uid2"},
-                                                 {"fp_pow", "FPPowr_8_23_F125_uid2"},
-                                                 {"int_add", "IntAdder_34_F125_uid2"},
-                                                 {"int_diff", "IntAdder_34_F125_uid2"},
-                                                 {"int_prod", "IntMultiplier_F125_uid2"},
-                                                 {"float2int", "FP2Fix_8_23_0_33_S_T_F125_uid2"},
-                                                 {"int2float", "Fix2FP_0_33_S_8_23_F125_uid2"}};
+  std::map<std::string, std::string> implementationNames = {{"fp_add", "fp_add_flopoco"},
+                                                            {"fp_prod", "fp_prod_flopoco"},
+                                                            {"fp_div", "fp_div_flopoco"},
+                                                            {"fp_sqrt", "fp_sqrt_flopoco"},
+                                                            {"fp_diff", "fp_diff_flopoco"},
+                                                            {"fp_pow", "fp_pow_flopoco"},
+                                                            {"int_add", "int_add_flopoco"},
+                                                            {"int_diff", "int_diff_flopoco"},
+                                                            {"int_prod", "int_prod_flopoco"},
+                                                            {"float2int", "float2int_flopoco"},
+                                                            {"int2float", "int2float_flopoco"},
+                                                            {"fp_floor", "fp_floor"},
+                                                            {"int_max", "int_max"},
+                                                            {"int_min", "int_min"}};
 
 };
 #endif /* VHDL_CIRCUIT_H_ */

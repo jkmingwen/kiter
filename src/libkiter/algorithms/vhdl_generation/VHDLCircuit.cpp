@@ -12,7 +12,7 @@ VHDLCircuit::VHDLCircuit() {}
 
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
   newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
-  newComp.setFPCName(this->getOperatorFPCName(newComp.getType()));
+  newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
   this->operatorMap[newComp.getType()]++; // track operators used in circuit
@@ -79,11 +79,13 @@ int VHDLCircuit::getOperatorLifespan(std::string opType) {
   }
 }
 
-std::string VHDLCircuit::getOperatorFPCName(std::string opType) {
-  if (this->FPCNames.count(opType)) {
-    return this->FPCNames[opType];
+std::string VHDLCircuit::getOperatorImplementationName(std::string opType) {
+  if (this->implementationNames.count(opType)) {
+    return this->implementationNames[opType];
   } else {
-    return "UNKNOWN_OPERATOR";
+    VERBOSE_WARNING("No implementation name listed for " << opType
+                    << ", check implemenatationNames in VHDLCircuit.h");
+    return "UNIMPLEMENTED_OPERATOR_" + opType;
   }
 }
 

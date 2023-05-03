@@ -32,7 +32,7 @@ class VHDLComponent {
   std::string getType()const;
   int getLifespan()const;
   std::string getBinaryValue()const;
-  std::string getFPCName()const;
+  std::string getImplementationName()const;
   const std::vector<std::string>& getArgOrder() const;
   const std::map<std::string, int>& getInputTypes() const;
   const std::map<std::string, int>& getOutputTypes() const;
@@ -42,7 +42,7 @@ class VHDLComponent {
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   void setLifespan(int lifespan);
-  void setFPCName(std::string newName);
+  void setImplementationName(std::string newName);
   void convConstIntToFloat();
   std::string printStatus() const ;
 
@@ -56,7 +56,7 @@ class VHDLComponent {
   std::vector<std::string> inputEdges;
   std::vector<std::string> outputEdges;
   int lifespan;
-  std::string FPCName; // for use in instantiating FPC-AXI interface
+  std::string implementationName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
   std::string dataType; // TODO add operator type ("fp/int")
   float fpValue;
@@ -67,6 +67,7 @@ class VHDLComponent {
                                       "vslider"}; // NOTE temporary workaround to handle UI components
   std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
                                               "prod", "sqrt", "pow"};
+  std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"}; // operators that act on numbers to produce numbers
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp

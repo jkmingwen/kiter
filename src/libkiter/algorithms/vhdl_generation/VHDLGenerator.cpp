@@ -395,7 +395,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
                                      std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
-  std::string operatorFileName = comp.getType() + "_flopoco" + "_f" + std::to_string(operatorFreq);
+  std::string operatorFileName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
 
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
   std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
@@ -418,7 +418,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
-  std::string componentName = entityName + "_flopoco";
+  std::string componentName = entityName + "_implementation";
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN",
                                   "$AXM_TYPE"};
@@ -431,8 +431,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
                               + "_" + opInputCount + ".vhd");
     std::string fileContent;
-    // std::string operatorName = comp.getFPCName() + "_f" + std::to_string(operatorFreq);
-    std::string operatorName = componentName + "_f" + std::to_string(operatorFreq);
+    std::string operatorName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
     std::string axmType = "";
     if (comp.getInputPorts().size() == 1) {
       axmType = "_one";
