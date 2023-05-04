@@ -61,9 +61,10 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           VERBOSE_INFO("Visiting " << opName
                        << " (" << dataflow_prime->getVertexName(v) << ")...");
           if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
-            VERBOSE_INFO(dataflow_prime->getVertexName(v) << " has no input/output edges, removing...");
+            VERBOSE_INFO(opName << "(" << dataflow_prime->getVertexName(v) << ") has no input/output edges, removing...");
             dataflow_prime->removeVertex(v);
             changeDetected = true;
+            break;
           }
           if (opName == "delay") {
             // identify input signal edge and static delay amount

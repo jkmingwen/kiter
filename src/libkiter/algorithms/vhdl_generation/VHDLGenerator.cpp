@@ -879,7 +879,6 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
       // need to generate these intermediate signals here as there are sometimes less less input ports
       // in the Faust component than there are input ports in the input interfaces
       I2SToFPCSignals << generateI2SToFPCSignalNames(i);
-      I2SToFPCSignals << generateI2SToFPCSignalNames(i + 1);
     }
   }
   if (numOutputPorts) {
@@ -891,7 +890,6 @@ void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string
       // need to generate these intermediate signals here as there are sometimes less less output ports
       // in the Faust component than there are output ports in the output interfaces
       FPCToI2SSignals << generateFPCToI2SSignalNames(i);
-      FPCToI2SSignals << generateFPCToI2SSignalNames(i + 1);
     }
   }
 
@@ -1281,25 +1279,39 @@ std::string algorithms::generateOutputInterfaceSignalNames(int id, int bitWidth)
 }
 
 // generate signal names for I2S to FPC converter component of given ID
+// signals for both L and R channels are generated simultaneously to avoid
+// instances of unconnected ports
 std::string algorithms::generateI2SToFPCSignalNames(int id) {
   std::stringstream outputStream;
-  std::string componentName = "i2s_to_fpc_" + std::to_string(id);
+  std::string componentNameL = "i2s_to_fpc_" + std::to_string(id*2);
+  std::string componentNameR = "i2s_to_fpc_" + std::to_string((id*2)+1);
   std::string fpcVectorSize = "( 33 downto 0 )";
-  outputStream << "signal " << componentName << "_op_out_valid_0 : std_logic;\n"
-               << "signal " << componentName << "_op_in_ready_0 : std_logic;\n"
-               << "signal " << componentName << "_op_out_data_0 : std_logic_vector"
+  outputStream << "signal " << componentNameL << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentNameL << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentNameL << "_op_out_data_0 : std_logic_vector"
+               << fpcVectorSize << ";\n"
+               << "signal " << componentNameR << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentNameR << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentNameR << "_op_out_data_0 : std_logic_vector"
                << fpcVectorSize << ";" << std::endl;
   return outputStream.str();
 }
 
 // generate signal names for FPC to I2S converter component of given ID
+// signals for both L and R channels are generated simultaneously to avoid
+// instances of unconnected ports
 std::string algorithms::generateFPCToI2SSignalNames(int id) {
   std::stringstream outputStream;
-  std::string componentName = "fpc_to_i2s_" + std::to_string(id);
+  std::string componentNameL = "fpc_to_i2s_" + std::to_string(id*2);
+  std::string componentNameR = "fpc_to_i2s_" + std::to_string((id*2)+1);
   std::string i2sVectorSize = "( 23 downto 0 )";
-  outputStream << "signal " << componentName << "_op_out_valid_0 : std_logic;\n"
-               << "signal " << componentName << "_op_in_ready_0 : std_logic;\n"
-               << "signal " << componentName << "_op_out_data_0 : std_logic_vector"
+  outputStream << "signal " << componentNameL << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentNameL << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentNameL << "_op_out_data_0 : std_logic_vector"
+               << i2sVectorSize << ";\n"
+               << "signal " << componentNameR << "_op_out_valid_0 : std_logic;\n"
+               << "signal " << componentNameR << "_op_in_ready_0 : std_logic;\n"
+               << "signal " << componentNameR << "_op_out_data_0 : std_logic_vector"
                << i2sVectorSize << ";" << std::endl;
   return outputStream.str();
 }
