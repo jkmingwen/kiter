@@ -135,7 +135,11 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }
     std::string compTypePrefix = dataType + "_";
     componentType = compTypePrefix + baseCompType;
-  } else if (baseCompType == "float") { // conversion operator
+  } else if (std::count(routingTypes.begin(), routingTypes.end(), baseCompType)) {
+    isConstValue = false;
+    componentType = baseCompType;
+  }
+  else if (baseCompType == "float") { // conversion operator
     isConstVal = false;
     componentType = "int2float";
   } else if (baseCompType == "int") { // conversion operator

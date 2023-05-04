@@ -68,6 +68,7 @@ class VHDLComponent {
   std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
                                               "prod", "sqrt", "pow"};
   std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"}; // operators that act on numbers to produce numbers
+  std::vector<std::string> routingTypes = {"select2", "select3", "attach"}; // operators that route input signals to outputs
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp
