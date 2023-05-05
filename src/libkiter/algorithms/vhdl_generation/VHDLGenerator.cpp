@@ -1491,7 +1491,7 @@ void algorithms::generateAXIInterfaceComponents(std::string compDir,
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
   // TODO only produce the AXI component files if necessary; right now, we're just writing every file
-  std::vector<std::string> componentNames = {"axi_merger", "delay",
+  std::vector<std::string> componentNames = {"axi_merger", "countdown",
                                              "store_send", "axi_merger_negate",
                                              "axi_merger_one", "axi_merger_three"};
   if (!isBufferless) {

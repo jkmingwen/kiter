@@ -4,7 +4,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity delay is
+entity countdown is
   generic ( operator_lifespan : integer); -- NOTE fifo buffer implementation
                                           -- uses natural type but, according
                                           -- to https://www.ics.uci.edu/~jmoorkan/vhdlref/generics.html,
@@ -17,9 +17,9 @@ entity delay is
          can_store     : in std_logic;
          count         : out integer := operator_lifespan; -- just for debugging
          trigger_store : out std_logic := '0' );
-end delay;
+end countdown;
 
-architecture Behavioral of delay is
+architecture Behavioral of countdown is
   signal is_ready         : std_logic;
   signal is_trigger_store : std_logic;
   signal local_counter    : integer := 0;

@@ -32,7 +32,7 @@ architecture connections of $ENTITY_NAME is
                              out_data   : out std_logic_vector (bit_width-1 downto 0) );
   end component;
 
-  component delay is
+  component countdown is
     generic ( operator_lifespan : integer := operator_lifespan);
     port ( clk           : in std_logic;
            reset         : in std_logic;
@@ -62,7 +62,7 @@ architecture connections of $ENTITY_NAME is
   end component;
 
   -- internal signals
-  signal dly_in_ready, dly_in_valid, dly_trigger_store,
+  signal cd_in_ready, cd_in_valid, cd_trigger_store,
     ss_can_store : std_logic;
   signal axm_out_data0,
     flopoco_out_result : std_logic_vector (bit_width-1 downto 0);
@@ -76,25 +76,25 @@ begin
                in_ready_0 => op_in_ready_0,
                in_valid_0 => op_in_valid_0,
                in_data_0  => op_in_data_0,
-               out_ready  => dly_in_ready,
-               out_valid  => dly_in_valid,
+               out_ready  => cd_in_ready,
+               out_valid  => cd_in_valid,
                out_data   => axm_out_data0 );
 
   $COMPONENT_NAME : $FLOPOCO_OP_NAME port map ( clk => clk,
                                                 X => axm_out_data0,
                                                 R => flopoco_out_result );
 
-  dly: delay port map ( clk           => clk,
-                        reset         => rst,
-                        in_ready      => dly_in_ready,
-                        in_valid      => dly_in_valid,
-                        can_store     => ss_can_store,
-                        trigger_store => dly_trigger_store );
+  cd: countdown port map ( clk           => clk,
+                            reset         => rst,
+                            in_ready      => cd_in_ready,
+                            in_valid      => cd_in_valid,
+                            can_store     => ss_can_store,
+                            trigger_store => cd_trigger_store );
 
   ss: store_send
     generic map ( data_bit_width => bit_width )
     port map ( clk           => clk,
-               trigger_store => dly_trigger_store,
+               trigger_store => cd_trigger_store,
                out_ready     => op_out_ready_0,
                in_data       => flopoco_out_result,
                out_valid     => op_out_valid_0,
