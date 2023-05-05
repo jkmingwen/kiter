@@ -1774,7 +1774,7 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
       }
       if (opName == "delay") {
         int ramInitVal = 0;
-        int ramDepthVal = 1;
+        int ramDepthVal = 2048;
         outputStream << "generic map (\n"
                      << "    " << "ram_width => ram_width,\n"
                      << "    " << "ram_init => " << std::to_string(ramInitVal) << ",\n"
