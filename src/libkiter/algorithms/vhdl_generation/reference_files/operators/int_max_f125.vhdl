@@ -10,7 +10,19 @@ entity int_max_f125 is
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of int_max_f125 is
+architecture Behavioral of int_max_f125 is
+  signal X_signed, Y_signed : signed(31 downto 0);
 begin
-
-end architecture;
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      X_signed <= signed(X(31 downto 0));
+      Y_signed <= signed(Y(31 downto 0));
+      if X_signed < Y_signed then
+        R <= Y;
+      else
+        R <= X;
+      end if;
+    end if;
+  end process;
+end Behavioral;

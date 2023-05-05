@@ -10,7 +10,43 @@ entity fp_max_f125 is
           R : out  std_logic_vector(8+23+2 downto 0)   );
 end entity;
 
-architecture arch of fp_max_f125 is
+
+architecture Behavioral of fp_max_f125 is
+  
+  signal X_sign, Y_sign : std_logic;
+  signal X_exp, Y_exp : std_logic_vector(8 downto 0);
+  signal X_man, Y_man : std_logic_vector(23 downto 0);
+  
 begin
 
-end architecture;
+  Y_sign <= Y(31);
+  X_sign <= X(31);
+  X_exp <= X(30 downto 22);
+  Y_exp <= Y(30 downto 22);
+  X_man <= X(22 downto 0);
+  Y_man <= Y(22 downto 0);
+
+
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      if X_sign < Y_sign then  -- compare sign bits
+        R <= Y;
+      elsif X_sign > Y_sign then
+        R <= X;
+      else  -- sign bits are equal, so compare exponents
+        if X_exp < Y_exp then
+          R <= Y;
+        elsif X_exp > Y_exp then
+          R <= X;
+        else  -- exponents are equal, so compare mantissas
+          if X_man <= Y_man then
+            R <= Y;
+          else
+            R <= X;
+          end if;
+        end if;
+      end if;
+    end if;
+  end process;
+end Behavioral;
