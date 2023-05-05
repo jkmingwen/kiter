@@ -86,13 +86,25 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   // pEnd will be a character if there are any characters in baseCompType (therefore not a float)
   // and numericValue will be 0 if strtof fails to convert string to float; check for both in case
   // we have a baseCompType of "0"
-  if (std::count(uiTypes.begin(), uiTypes.end(), baseCompType)) { // NOTE treat UI components as const_val for now
+  if (std::count(uiTypes.begin(), uiTypes.end(), baseCompType)) { // NOTE we treat UI components as const_val for now
+    VERBOSE_INFO("Adding GUI component (" << compType << ")");
+    // NOTE generate const_value components with the default value of GUI component
+    if (outputTypes.size() == 1) {
+      dataType = outputTypes.begin()->first;
+    } else {
+      dataType = "undefined"; // TODO replace with assert
+    }
+    if (dataType == "real") { // const is of type float
+      fpValue = numericValue;
+      std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
+      binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
+    } else if (dataType == "int") {
+      std::string::size_type sz;
+      intValue = std::stoi(baseCompType, &sz);
+      binaryValue = std::bitset<34>(intValue).to_string(); // NOTE assuming unsigned binary representation here
+    } // TODO add else for edge cases
     isConstVal = true;
-    numericValue = strtof((compType.substr(compType.find("_") + 1)).c_str(), &pEnd); // UI components have "type_defaultvalue" type naming convention; set value to default
-    fpValue = numericValue;
-    std::string fpcFloatPrefix = (numericValue ? "01" : "00");
-    binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
-    componentType = baseCompType;
+    componentType = "const_value";
   } else if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), baseCompType) ||
              std::count(numOperatorTypes.begin(), numOperatorTypes.end(), baseCompType)) {
     isConstVal = false;
