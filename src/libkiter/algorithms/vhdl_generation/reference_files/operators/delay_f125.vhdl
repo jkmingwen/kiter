@@ -18,16 +18,16 @@ generic (
          op_in_ready_1 : out std_logic;
          op_in_valid_1 : in std_logic;
          op_in_data_1  : in std_logic_vector(33 downto 0) ;
-         
+
          op_out_ready_0  : in std_logic;
          op_out_valid_0  : out std_logic;
-         op_out_data_0   : out std_logic_vector(33 downto 0) 
+         op_out_data_0   : out std_logic_vector(33 downto 0)
           );
 end delay;
 
 architecture connections of delay is
 
-    -- This is the RAM of the buffer. 
+    -- This is the RAM of the buffer.
     type ram_type is array (0 to ram_depth - 1) of std_logic_vector (ram_width - 1 downto 0);
     signal ram : ram_type;
     attribute ram_style : string;
@@ -49,7 +49,7 @@ function min_value(A_vector: std_logic_vector; B_natural: natural) return natura
       return B_natural;
     end if;
   end function min_value;
-  
+
 begin
 
 
@@ -59,56 +59,56 @@ begin
   variable tmp_read_index : natural;
   begin
     if rst = '1' then
-    
+
       read_index <= 0;
       write_index <= ram_init;
-      
+
       if ram_init + 1 = ram_depth then
         fifo_full <= '1';
-      else 
+      else
         fifo_full <= '0';
       end if;
-      
+
       if ram_init = 0 then
         fifo_empty <= '1';
-      else 
+      else
         fifo_empty <= '0';
       end if;
-       
+
       cmd_ready <= '0';
-      
+
     elsif rising_edge(clk) then
-    
+
       -- Input behavior
       if op_in_valid_0 = '1' and fifo_full = '0' then
         ram(write_index) <= op_in_data_0;
         write_index <= (write_index + 1) mod ram_depth;
         tmp_write_index := (write_index + 1) mod ram_depth;
-        else 
+        else
         tmp_write_index := write_index mod ram_depth;
       end if;
-      
+
       -- Output behavior
       if op_out_ready_0 = '1' and fifo_empty = '0' then
         op_out_data_0 <= ram(read_index);
         read_index <= (read_index + 1) mod ram_depth;
         tmp_read_index := (read_index + 1) mod ram_depth;
-        else 
+        else
         tmp_read_index := read_index mod ram_depth;
       end if;
-      
+
       if op_in_valid_1 = '1' and cmd_ready = '1' and last_cmd /= op_in_data_1 then
         tmp_read_index := 0;
         tmp_write_index := min_value(op_in_data_1, ram_depth);
         write_index <= tmp_write_index;
         read_index <= tmp_read_index;
       end if;
-      
+
       fifo_empty <= '1' when tmp_read_index = tmp_write_index else '0';
       fifo_full <= '1' when ((tmp_write_index + 1) mod ram_depth) = tmp_read_index else '0';
       cmd_ready <= '1';
       last_cmd <= op_in_data_1;
-   
+
     end if;
   end process read_logic;
 

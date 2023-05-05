@@ -112,7 +112,9 @@ class VHDLCircuit {
                                                             {"fp_abs", "fp_abs"},
                                                             {"select2", "select2"},
                                                             // {"select3", "select3"},
-                                                            {"attach", "attach"}};
+                                                            {"attach", "attach"},
+                                                            {"delay", "delay"} // NOTE delay doesn't have a fixed lifespan, which is why it's not in the operatorLifespan map
+  };
 
 };
 #endif /* VHDL_CIRCUIT_H_ */

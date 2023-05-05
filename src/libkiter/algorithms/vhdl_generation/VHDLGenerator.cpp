@@ -174,6 +174,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     } else if (op.first == "fp_floor") {
       generateFloorOperator(circuit.getFirstComponentByType(op.first),
                             compDir, compRefDir, operatorFreq);
+    } else if (op.first == "delay") {
+      generateDelayOperator(circuit.getFirstComponentByType(op.first),
+                            compDir, compRefDir, operatorFreq);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir, operatorFreq);
@@ -466,6 +469,11 @@ void algorithms::generateFloorOperator(VHDLComponent comp, std::string compDir,
   }
 }
 
+void algorithms::generateDelayOperator(VHDLComponent comp, std::string compDir,
+                                       std::string referenceDir, int operatorFreq) {
+  generateFPCOperator(comp.getImplementationName(), compDir, referenceDir, operatorFreq);
+}
+
 // Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(std::string compImplementationName, std:: string compDir,
                                      std::string referenceDir, int operatorFreq) {
@@ -483,9 +491,7 @@ void algorithms::generateFPCOperator(std::string compImplementationName, std:: s
     operatorRef.close();
     vhdlOutput.close();
   } else {
-
-      VERBOSE_ERROR ("Reference file for " <<  compImplementationName  << " does not exist/not found!"); // TODO turn into assert
-
+    VERBOSE_ERROR ("Reference file for " <<  compImplementationName  << " does not exist/not found!"); // TODO turn into assert
   }
 }
 
@@ -602,6 +608,9 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
         outputCounts = circuit.getNumOutputs(op.first);
         if (op.first == "Proj") {
           vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+        } else if (op.first == "delay") {
+          vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
+                     << std::endl;
         } else if (op.first == "const_value" ||
                    circuit.getFirstComponentByType(op.first).isConst()) {
           constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
@@ -1450,6 +1459,55 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   return outputStream.str();
 }
 
+std::string algorithms::generateDelayComponent(VHDLComponent comp) {
+  std::stringstream outputStream;
+  std::string componentName = comp.getType();
+  int numInputPorts = comp.getInputPorts().size();
+  int numOutputPorts = comp.getOutputPorts().size();
+
+  outputStream << "component delay is\n"
+               << "generic (\n"
+               << "    " << "ram_width : natural;\n"
+               << "    " << "ram_depth : natural;\n"
+               << "    " << "ram_init : natural\n"
+               << ");" << std::endl;
+  outputStream << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << std::endl;
+  // Specify ready, valid, and data ports for each input port:
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    op_in";
+    if (comp.getType() == "const_value") {
+      portName = "    in";
+    }
+    outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                 << "33 downto 0);\n"
+                 << std::endl;
+  }
+  // Specify ready, valid, and data ports for each output port:
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    op_out";
+    if (comp.getType() == "const_value") {
+      portName = "    out";
+    }
+    outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "33 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "33 downto 0);\n" << std::endl;
+    }
+  }
+
+  outputStream << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
 std::string algorithms::generateBufferComponent(std::string circuitName) {
   std::stringstream outputStream;
 
@@ -1713,6 +1771,15 @@ std::string algorithms::generatePortMapping(VHDLCircuit circuit,
                      << "    " << "value => " << "\""
                      << op.second.getBinaryValue() << "\"" << "\n)\n"
                      << std::endl;
+      }
+      if (opName == "delay") {
+        int ramInitVal = 0;
+        int ramDepthVal = 1;
+        outputStream << "generic map (\n"
+                     << "    " << "ram_width => ram_width,\n"
+                     << "    " << "ram_init => " << std::to_string(ramInitVal) << ",\n"
+                     << "    " << "ram_depth => " << std::to_string(ramDepthVal)
+                     << "\n)\n" << std::endl;
       }
       outputStream << "port map (\n"
                    << "    " << "clk => " << "clk,\n"
