@@ -31,7 +31,7 @@ component axi_merger_one is
          out_data   : out std_logic_vector (bit_width-1 downto 0) );
 end component;
 
-  component delay is
+  component countdown is
     generic ( operator_lifespan : integer := operator_lifespan);
     port ( clk           : in std_logic;
            reset         : in std_logic;
@@ -85,7 +85,7 @@ begin
                out_valid  => dly_in_valid,
                out_data => axm_out_data0);
 
-  dly: delay port map ( clk           => clk,
+  dly: countdown port map ( clk           => clk,
                         reset         => rst,
                         in_ready      => dly_in_ready,
                         in_valid      => dly_in_valid,
