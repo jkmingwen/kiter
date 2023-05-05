@@ -103,9 +103,18 @@ begin
         write_index <= tmp_write_index;
         read_index <= tmp_read_index;
       end if;
-
-      fifo_empty <= '1' when tmp_read_index = tmp_write_index else '0';
-      fifo_full <= '1' when ((tmp_write_index + 1) mod ram_depth) = tmp_read_index else '0';
+       
+      if (tmp_read_index = tmp_write_index) then
+      fifo_empty <= '1' ;
+      else 
+      fifo_empty <= '0' ;
+      end if;
+      if (((tmp_write_index + 1) mod ram_depth) = tmp_read_index) then
+      fifo_full <= '1' ;
+      else 
+      fifo_full <= '0' ;
+      end if;
+      
       cmd_ready <= '1';
       last_cmd <= op_in_data_1;
 
