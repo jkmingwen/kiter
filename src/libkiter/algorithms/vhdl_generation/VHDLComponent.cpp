@@ -163,7 +163,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     } else if (dataType == "int") {
       std::string::size_type sz;
       intValue = std::stoi(baseCompType, &sz);
-      binaryValue = "00" + std::bitset<32>(intValue).to_string(); // NOTE assuming unsigned binary representation here
+      binaryValue = std::bitset<34>(intValue).to_string(); // NOTE assuming unsigned binary representation here
     } // TODO add else for edge cases
     isConstVal = true;
     componentType = "const_value";
