@@ -160,7 +160,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
-    VERBOSE_DEBUG( "Generate VHDL component file for " << op.first );
+    VERBOSE_INFO( "Generate VHDL component file for " << op.first );
     // track number of outputs for cases where operator can have different number of outputs
     std::map<int, int> outputCounts;
     outputCounts = circuit.getNumOutputs(op.first);
@@ -171,6 +171,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     } else if (op.first == "select2") {
       generateRoutingOperators(circuit.getFirstComponentByType(op.first),
                                compDir, compRefDir);
+    } else if (op.first == "fp_floor") {
+      generateFloorOperator(circuit.getFirstComponentByType(op.first),
+                            compDir, compRefDir, operatorFreq);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir, operatorFreq);
@@ -390,12 +393,85 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
   }
 }
 
+// NOTE workaround for now to generate floor operator; integrate into generateOperator in the future
+void algorithms::generateFloorOperator(VHDLComponent comp, std::string compDir,
+                                       std::string referenceDir, int operatorFreq) {
+  // TODO a lot of things just hardcoded here; need to change this --- just a really messy way of getting this done for now
+  // copy in fp_floor_freq implementation file
+  generateFPCOperator("fp_floor", compDir, referenceDir, operatorFreq);
+
+  // copy in fp_floor wrapper file and change operator frequency
+  std::ofstream floorWrapperCopy;
+  floorWrapperCopy.open(compDir + "fp_floor.vhd");
+  std::ifstream floorWrapper(referenceDir + "fp_floor.vhd");
+  std::string content;
+  std::string freq = "$FREQ";
+  if (floorWrapper.is_open()) {
+    while (std::getline(floorWrapper, content)) {
+      size_t pos = content.find(freq);
+      if (pos != std::string::npos) {
+        content.replace(pos, freq.length(),
+                        std::to_string(operatorFreq));
+      }
+      floorWrapperCopy << content << std::endl;
+    }
+    floorWrapperCopy.close();
+  } else {
+    VERBOSE_ERROR ("Reference file for " << "fp_floor.vhd does not exist/not found!"); // TODO turn into assert
+  }
+  // generate internal components that make up floor operator
+  std::string internalComponents[] = {"float2int", "int2float"};
+  for (const std::string &c : internalComponents) {
+    std::ofstream vhdlOutput;
+    std::string entityName = c;
+    std::string componentName = entityName + "_implementation";
+    std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
+                                    "$COMPONENT_NAME", "$OP_LIFESPAN",
+                                    "$AXM_TYPE"};
+    std::string implementationName = c + "_flopoco";
+    std::string lifespan = "1";
+    if (operatorFreq == 250) {
+      if (c == "float2int") {
+        lifespan = "2";
+      } else if (c == "int2float") {
+        lifespan = "3";
+      }
+    }
+    generateFPCOperator(implementationName, compDir, referenceDir, operatorFreq);
+    vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
+    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface_1.vhd");
+    std::string fileContent;
+    std::string operatorName = implementationName + "_f" + std::to_string(operatorFreq);
+    std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
+                                                           {"$FLOPOCO_OP_NAME", operatorName},
+                                                           {"$COMPONENT_NAME", componentName},
+                                                           {"$OP_LIFESPAN", lifespan},
+                                                           {"$AXM_TYPE", "_one"}};
+    if (operatorRef.is_open()) {
+      while (std::getline(operatorRef, fileContent)) {
+        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+          size_t pos = fileContent.find(word);
+          if (pos != std::string::npos) {
+            fileContent.replace(pos, word.length(),
+                                replacementWords[word]);
+          }
+        }
+        vhdlOutput << fileContent << std::endl;
+      }
+      operatorRef.close();
+      vhdlOutput.close();
+    } else {
+      VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_1.vhd does not exist/not found!"); // TODO turn into assert
+    }
+  }
+}
+
 // Copy FloPoCo operator from reference file to project
-void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
+void algorithms::generateFPCOperator(std::string compImplementationName, std:: string compDir,
                                      std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
-  std::string operatorFileName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
+  std::string operatorFileName = compImplementationName + "_f" + std::to_string(operatorFreq);
 
   vhdlOutput.open(compDir + operatorFileName + ".vhd"); // instantiate VHDL file
   std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
@@ -408,7 +484,7 @@ void algorithms::generateFPCOperator(VHDLComponent comp, std:: string compDir,
     vhdlOutput.close();
   } else {
 
-      VERBOSE_ERROR ("Reference file for " <<  comp.getType()  << " does not exist/not found!"); // TODO turn into assert
+      VERBOSE_ERROR ("Reference file for " <<  compImplementationName  << " does not exist/not found!"); // TODO turn into assert
 
   }
 }
@@ -426,7 +502,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
-    generateFPCOperator(comp, compDir, referenceDir, operatorFreq); // generate FloPoCo operator
+    generateFPCOperator(comp.getImplementationName(), compDir, referenceDir, operatorFreq); // generate FloPoCo operator
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
     std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
                               + "_" + opInputCount + ".vhd");

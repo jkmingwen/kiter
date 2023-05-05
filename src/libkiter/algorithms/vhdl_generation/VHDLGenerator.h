@@ -33,7 +33,9 @@ namespace algorithms {
                                  std::map<int, int> outputCounts);
   void generateRoutingOperators(VHDLComponent comp, std::string compDir,
                                 std::string referenceDir);
-  void generateFPCOperator(VHDLComponent comp, std::string compDir,
+  void generateFloorOperator(VHDLComponent comp, std::string compDir,
+                             std::string referenceDir, int operatorFreq);
+  void generateFPCOperator(std::string compImplementationName, std::string compDir,
                            std::string referenceDir, int operatorFreq);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
                         std::string referenceDir, int operatorFreq);
