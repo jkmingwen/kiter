@@ -132,7 +132,26 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           }
         }}
   }
-  VERBOSE_INFO("No further possible evaluations detected, producing simplified graph");
+  VERBOSE_INFO("No further possible evaluations detected");
+  VERBOSE_INFO("Checking for delays with more than one output:");
+  /* Check for delays with multiple outputs only after iterative evaluation
+     complete to prevent unnecessarily generating Proj operators when the
+     delay could've just been bypassed */
+  changeDetected = true;
+  while (changeDetected) {
+    changeDetected = false;
+    {ForEachVertex(dataflow_prime, v) {
+        std::string opName = dataflow_prime->getVertexType(v);
+        VERBOSE_INFO("Visiting " << opName
+                     << " (" << dataflow_prime->getVertexName(v) << ")...");
+        if (opName == "delay" && dataflow_prime->getVertexOutDegree(v) > 1) {
+          routeMultiOutDelay(dataflow_prime, v);
+          changeDetected = true;
+          break;
+        }
+      }}
+  }
+  VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
   if (outputSpecified) { // only write output file if output directory specified
     VERBOSE_INFO("Simplified graph:" << outputName);
     printers::writeSDF3File(outputName, dataflow_prime);
@@ -506,6 +525,164 @@ void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
   }
 
   dataflow->removeVertex(dataflow->getVertexByName(projName));
+}
+
+// Route the output of delays with more than 1 output to Proj operators
+// The idea is to ensure that delays only ever have 1 output
+void algorithms::routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v) {
+  ARRAY_INDEX cnt = 0;
+  while (dataflow->getVertexOutDegree(v) > 1) {
+    VERBOSE_INFO("Routing multi-output delay");
+    // add duplicate (Proj operator)
+    std::string ogName = dataflow->getVertexName(v);
+    std::string newDupName = ogName;
+    if (newDupName.find("_") != std::string::npos) { // only use the base name for updating target actor name
+      newDupName = newDupName.substr(0, newDupName.find("_"));
+      ogName = newDupName;
+      VERBOSE_INFO("Base name of actor whose output we're merging: " << newDupName);
+    }
+    newDupName = newDupName  + "Dup" + commons::toString(cnt++);
+    Vertex newDup = dataflow->addVertex(newDupName);
+    dataflow->setPhasesQuantity(newDup,1);
+    dataflow->setVertexDuration(newDup, {1});
+    dataflow->setVertexType(newDup, "Proj");
+
+    // connect edge to Proj
+    VERBOSE_INFO("Create new edge from source to new Proj operator");
+    Edge ne = dataflow->addEdge(v, newDup);
+    // get one of the port names, and strip in/out to get port id and thus name edge
+    dataflow->setEdgeInPhases(ne, {1});
+    dataflow->setEdgeOutPhases(ne, {1});
+    // generate output edges for Proj
+    Edge c1;
+    Edge c2;
+    int cnt = 0;
+    std::string c1_type;
+    std::string c2_type;
+    {ForOutputEdges(dataflow, v, c)	{
+        cnt++;
+        std::string edgeName = dataflow->getEdgeName(c);
+        // ignore "vect" to find the actual data type
+        if (edgeName.substr(edgeName.find_last_of("_") + 1) == "vect") {
+          edgeName.erase(edgeName.find_last_of("_"), std::string::npos);
+        }
+        if (cnt == 1) {
+          c1 =  c;
+          c1_type = edgeName.substr(edgeName.find_last_of("_") + 1);
+        }
+        if (cnt == 2) {
+          c2 =  c;
+          c2_type = edgeName.substr(edgeName.find_last_of("_") + 1);
+        }
+        if (cnt >= 3) break; // only take 2 at a time
+      }}
+    // workaround for manual channel naming
+    std::string neName = "channel_" + commons::toString(dataflow->getEdgeId(ne)) + "_0_" + dataflow->getVertexName(v) + "_" + c1_type; // NOTE assuming here that all outputs are the same type
+    VERBOSE_INFO("\tSetting new output edge name to " << neName);
+    dataflow->setEdgeName(ne, neName);
+    dataflow->setEdgeInputPortName(ne, "in_" + neName);
+    dataflow->setEdgeOutputPortName(ne, "out_" + neName);
+
+    VERBOSE_INFO("\tCreate new edges to targets");
+    Edge nc1 = dataflow->addEdge(newDup, dataflow->getEdgeTarget(c1));
+    dataflow->setEdgeInPhases(nc1, {1});
+    dataflow->setEdgeOutPhases(nc1, {1});
+    // workaround for manual channel naming
+    std::string nc1Name = "channel_" + commons::toString(dataflow->getEdgeId(nc1)) + "_1_" + dataflow->getVertexName(v) + "_" + c1_type;
+    dataflow->setEdgeName(nc1, nc1Name);
+    dataflow->setEdgeInputPortName(nc1, "in_" + nc1Name);
+    dataflow->setEdgeOutputPortName(nc1, "out_" + nc1Name);
+    // update name of target actor if its name defines input arg order (i.e. actorname_arg1_arg2)
+    /* iterate through the name of the target actor of c1/c2
+       (assigned to nc1/2TargetName); once we find a string that
+       matches the name of our original source actor (ogName),
+       replace that with the name of the new source actor (newDupName) */
+    /* NOTE current implementation is designed to only replace the first instance
+       of a substring matching the original source actor name as we expect that multiple
+       inputs from the same original actor would then come from another newly
+       constructed source actor*/
+    std::string nc1TargetName = dataflow->getVertexName(dataflow->getEdgeTarget(c1));
+    std::string nc1OriginalName = nc1TargetName;
+    if (nc1TargetName.find("_") != std::string::npos) {
+      VERBOSE_INFO("\tUpdating name of target actor from " << nc1TargetName << " (searching for " << ogName << ")");
+      VERBOSE_INFO("\tNew source name is " << newDupName);
+      std::string nc1NewName;
+      bool targetNameUpdated = false; // track when we've identified the part of the target name we need to update
+      size_t pos = nc1TargetName.find("_");
+      while ((pos = nc1TargetName.find("_")) != std::string::npos) {
+        std::string partialName;
+        partialName = nc1TargetName.substr(0, pos); // break up check into substrings delimited by underscore
+        if (partialName == ogName && !targetNameUpdated) {
+          VERBOSE_INFO("\t\tFound matching partial name for " << ogName
+                       << ", changing it to " << newDupName);
+          partialName = newDupName; // update the part of the target name that we're replacing with the new actor
+          targetNameUpdated = true;
+        }
+        nc1NewName += partialName; // reconstruct new actor name by parts
+        nc1TargetName.erase(0, pos + 1);
+        if (nc1TargetName.find("_") != std::string::npos) {
+          nc1NewName += "_";
+        } else {
+          if (nc1TargetName == ogName && !targetNameUpdated) { // separate check for last substring
+            partialName = newDupName;
+            targetNameUpdated = true;
+          } else {
+            partialName = nc1TargetName;
+          }
+          nc1NewName += "_" + partialName;
+        }
+        VERBOSE_INFO("\t\tCurrent constructed new name: " << nc1NewName);
+      }
+      VERBOSE_INFO("\tto " << nc1NewName);
+      dataflow->setVertexName(dataflow->getEdgeTarget(c1), nc1NewName);
+    }
+    Edge nc2 = dataflow->addEdge(newDup,  dataflow->getEdgeTarget(c2));
+    dataflow->setEdgeInPhases(nc2, {1});
+    dataflow->setEdgeOutPhases(nc2, {1});
+    // workaround for manual channel naming
+    std::string nc2Name = "channel_" + commons::toString(dataflow->getEdgeId(nc2)) + "_2_" + dataflow->getVertexName(v) + "_" + c2_type;
+    dataflow->setEdgeName(nc2, nc2Name);
+    dataflow->setEdgeInputPortName(nc2, "in_" + nc2Name);
+    dataflow->setEdgeOutputPortName(nc2, "out_" + nc2Name);
+    std::string nc2TargetName = dataflow->getVertexName(dataflow->getEdgeTarget(c2));
+    std::string nc2OriginalName = nc2TargetName;
+    if (nc2TargetName.find("_") != std::string::npos) {
+      VERBOSE_INFO("Updating name of target actor from " << nc2TargetName << " (searching for " << ogName << ")");
+      VERBOSE_INFO("New source name is " << newDupName);
+      std::string nc2NewName;
+      bool targetNameUpdated = false; // track when we've identified the part of the target name we need to update
+      size_t pos = nc2TargetName.find("_");
+      while ((pos = nc2TargetName.find("_")) != std::string::npos) { // separate check for last substring
+        std::string partialName;
+        partialName = nc2TargetName.substr(0, pos); // break up check into substrings delimited by underscore
+        if (partialName == ogName && !targetNameUpdated) {
+          VERBOSE_INFO("\t\tFound matching partial name for " << ogName << ", changing it to " << newDupName);
+          partialName = newDupName; // update the part of the target name that we're replacing with the new actor
+          targetNameUpdated = true;
+        }
+        nc2NewName += partialName; // reconstruct new actor name by parts
+        nc2TargetName.erase(0, pos + 1);
+        if (nc2TargetName.find("_") != std::string::npos) {
+          nc2NewName += "_";
+        } else {
+          if (nc2TargetName == ogName && !targetNameUpdated) {
+            partialName = newDupName;
+            targetNameUpdated = true;
+          } else {
+            partialName = nc2TargetName;
+          }
+          nc2NewName += "_" + partialName;
+        }
+        VERBOSE_INFO("\t\tCurrent constructed new name: " << nc2NewName);
+      }
+      VERBOSE_INFO("\tto " << nc2NewName);
+      dataflow->setVertexName(dataflow->getEdgeTarget(c2), nc2NewName);
+    }
+    // remote the two buffer
+    VERBOSE_INFO("Remove original edges");
+    dataflow->removeEdge(c1);
+    dataflow->removeEdge(c2);
+  }
 }
 
 // update vertex with the specified result, removing any input arguments

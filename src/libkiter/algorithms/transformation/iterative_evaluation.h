@@ -37,6 +37,7 @@ namespace algorithms {
   void bypassDelay(models::Dataflow* const dataflow, Vertex v,
                    Edge inputSig, Edge delayArg, int delayAmt);
   void bypassProj(models::Dataflow* const dataflow, Vertex v);
+  void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v);
   void applyResult(models::Dataflow* const dataflow, Vertex v, std::string result);
   int getChannelNumber(std::string channelName);
 }
