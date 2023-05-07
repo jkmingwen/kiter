@@ -29,7 +29,13 @@ void VHDLCircuit::addOutputPort(std::string portName,
 }
 
 int VHDLCircuit::getOperatorCount(const std::string &op) const {
-  return this->getOperatorMap().at(op);
+    const auto &op_map = this->getOperatorMap();
+    auto it = op_map.find(op);
+    if   (it == op_map.end()) {
+      VERBOSE_WARNING("The operator '" << op << "' is not inside the operator map of the VHDLCircuit.");
+      return 0;
+     }
+    return it->second;
 }
 
 // iterate through component map and return first instance of component matching type from argument
