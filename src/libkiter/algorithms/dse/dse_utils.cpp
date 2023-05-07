@@ -14,10 +14,11 @@ void algorithms::generateInplaceFeedbackBuffers(models::Dataflow* g){
 
 // Only feedback for non-feedback;
             if (g->getEdgeType(c) == EDGE_TYPE::FEEDBACK_EDGE) {continue;};
-            if (g->edgeExist(g->getEdgeTarget(c),
-                             g->getEdgeSource(c))) {
-                FAILED("Unsupported case for sanity reason.");
-            }
+
+//            if (g->edgeExist(g->getEdgeTarget(c),
+//                             g->getEdgeSource(c))) {
+//                FAILED("Unsupported case for sanity reason.");
+//            }
 
             Edge original_edge = g->getEdgeById(g->getEdgeId(c));
             Edge new_edge = g->addEdge(g->getEdgeTarget(c),
