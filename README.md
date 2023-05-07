@@ -177,3 +177,12 @@ It is also possible to store and reuse past exploration now:
 ./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE -pimport=past.txt -plimit=1
 
 ```
+
+# Dataset Generator
+
+The following commands an be used to generate the dataset files for KiterML. However the generation is not really efficient right now. 
+
+```
+./Release/bin/dataset_generator -s 2 -w 20 > dataset_2_20.txt
+./Release/bin/dataset_generator -s 4 -w 30 -t 1 > ./dataset_4_30.txt
+```
