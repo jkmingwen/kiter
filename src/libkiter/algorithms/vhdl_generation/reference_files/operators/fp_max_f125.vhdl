@@ -15,7 +15,7 @@ architecture Behavioral of fp_max_f125 is
   
   signal X_sign, Y_sign : std_logic;
   signal X_exp, Y_exp : std_logic_vector(8 downto 0);
-  signal X_man, Y_man : std_logic_vector(23 downto 0);
+  signal X_man, Y_man : std_logic_vector(22 downto 0);
   
 begin
 
