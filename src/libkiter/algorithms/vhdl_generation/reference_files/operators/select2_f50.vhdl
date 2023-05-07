@@ -13,5 +13,6 @@ end entity;
 
 architecture arch of select2_f50 is
 begin
-
+  R <= Y when (X = '00000000000000000000000000000000') else
+       Z ;
 end architecture;

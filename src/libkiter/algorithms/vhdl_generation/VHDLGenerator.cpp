@@ -978,7 +978,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const
     componentDeclaration << generateInputInterfaceComponent(i2sBitWidth) << std::endl;
     componentDeclaration << generateI2SToFPCComponent(i2sBitWidth, fpcBitWidth) << std::endl;
     // Generate mappings for input/output interfaces and I2S transceivers
-    for (auto i = 0; i < numInputInterfaces; i++) {
+    for (auto i = 0; i < numAudioCodecs; i++) { //
       inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
       inputInterfaceMapping << generateInputInterfaceMapping(i, i2sBitWidth);
       // need to generate these intermediate signals here as there are sometimes less less input ports
@@ -989,7 +989,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const
   if (numOutputPorts) {
     componentDeclaration << generateOutputInterfaceComponent(i2sBitWidth) << std::endl;
     componentDeclaration << generateFPCToI2SComponent(fpcBitWidth, i2sBitWidth) << std::endl;
-    for (auto i = 0; i < numOutputInterfaces; i++) {
+    for (auto i = 0; i < numAudioCodecs; i++) {
       outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
       outputInterfaceMapping << generateOutputInterfaceMapping(i, i2sBitWidth);
       // need to generate these intermediate signals here as there are sometimes less less output ports

@@ -12,5 +12,5 @@ end entity;
 
 architecture arch of attach_f50 is
 begin
-
+  R <= X ;
 end architecture;
