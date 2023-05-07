@@ -47,10 +47,9 @@ models::Dataflow*  generators::new_normalized_cycle(size_t node_count ,
         to->setPreload(e1,edge_preloads[i]);
     }
 
-    {ForEachEdge(to,e) {
-            to->setEdgeType(e,EDGE_TYPE::FEEDBACK_EDGE);
-    }}
 
+
+    to->setEdgeType(to->getFirstEdge(),EDGE_TYPE::FEEDBACK_EDGE);
 
     return to;
 }
