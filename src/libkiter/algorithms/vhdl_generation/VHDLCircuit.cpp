@@ -19,43 +19,21 @@ void VHDLCircuit::addComponent(VHDLComponent newComp) {
 }
 
 void VHDLCircuit::addInputPort(std::string portName,
-                               std::vector<std::string> signalNames) {
+                               const std::vector<std::string>& signalNames) {
   this->inputPorts.insert(std::make_pair(portName, signalNames));
 }
 
 void VHDLCircuit::addOutputPort(std::string portName,
-                                std::vector<std::string> signalNames) {
+                                const std::vector<std::string>& signalNames) {
   this->outputPorts.insert(std::make_pair(portName, signalNames));
 }
 
-std::map<Vertex, VHDLComponent> VHDLCircuit::getComponentMap() {
-  return this->componentMap;
-}
-
-std::map<Edge, VHDLConnection> VHDLCircuit::getConnectionMap() {
-  std::map<Edge, VHDLConnection> connMap(this->connectionMap);
-  return connMap;
-}
-
-std::map<std::string, int> VHDLCircuit::getOperatorMap() {
-  return this->operatorMap;
-}
-
-std::map<std::string, std::vector<std::string>> VHDLCircuit::getInputPorts() {
-  return this->inputPorts;
-}
-
-std::map<std::string, std::vector<std::string>> VHDLCircuit::getOutputPorts() {
-  return this->outputPorts;
-}
-
-int VHDLCircuit::getOperatorCount(std::string op) {
-  std::map<std::string, int> opMap = this->getOperatorMap();
-  return opMap[op];
+int VHDLCircuit::getOperatorCount(const std::string &op) const {
+  return this->getOperatorMap().at(op);
 }
 
 // iterate through component map and return first instance of component matching type from argument
-VHDLComponent VHDLCircuit::getFirstComponentByType(std::string op) {
+const VHDLComponent& VHDLCircuit::getFirstComponentByType(const std::string &op) const {
   for (auto &comp : this->componentMap) {
     if (comp.second.getType() == op) {
       return comp.second;
@@ -66,22 +44,19 @@ VHDLComponent VHDLCircuit::getFirstComponentByType(std::string op) {
   // TODO return null VHDL component if nothing found
 }
 
-std::string VHDLCircuit::getName() {
-  return this->graphName;
-}
 
-int VHDLCircuit::getOperatorLifespan(std::string opType) {
-  if (this->operatorLifespans[this->operatorFreq].count(opType)) {
-    return this->operatorLifespans[this->operatorFreq][opType];
+int VHDLCircuit::getOperatorLifespan(const std::string &opType) const {
+  if (this->operatorLifespans.at(this->operatorFreq).count(opType)) {
+    return this->operatorLifespans.at(this->operatorFreq).at(opType);
   } else {
     // NOTE default to 0 if lifespan not specified
     return 0;
   }
 }
 
-std::string VHDLCircuit::getOperatorImplementationName(std::string opType) {
+std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const{
   if (this->implementationNames.count(opType)) {
-    return this->implementationNames[opType];
+    return this->implementationNames.at(opType);
   } else {
     VERBOSE_WARNING("No implementation name listed for " << opType
                     << ", check implemenatationNames in VHDLCircuit.h");
@@ -90,7 +65,7 @@ std::string VHDLCircuit::getOperatorImplementationName(std::string opType) {
 }
 
 // return output counts for each occurance of the given operator
-std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
+std::map<int, int> VHDLCircuit::getNumOutputs(const std::string &opType) const {
   std::map<int, int> outputCounts; // number of outputs, and their occurances
   // std::vector<int> outputCounts;
   for (auto &comp : this->componentMap) {
@@ -103,8 +78,8 @@ std::map<int, int> VHDLCircuit::getNumOutputs(std::string opType) {
 }
 
 // return name of the channel between two components
-std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(std::string srcActorName,
-                                                                      std::string dstActorName) {
+std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(const std::string& srcActorName,
+                                                                      const std::string& dstActorName) const {
   std::vector<std::string> srcOutputEdges;
   std::vector<std::string> dstInputEdges;
   std::vector<std::string> connNames;
@@ -135,9 +110,9 @@ std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(std::strin
 }
 
 // return destination port of connection between two components
-std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(std::string srcActorName,
-                                                                  std::string dstActorName) {
-  std::vector<std::string> connNames = this->getConnectionNameFromComponents(srcActorName, dstActorName);
+std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(const std::string &srcActorName,
+                                                                  const std::string &dstActorName) const {
+  const std::vector<std::string>& connNames = this->getConnectionNameFromComponents(srcActorName, dstActorName);
   std::vector<std::string> portNames;
   for (auto &name : connNames) {
     for (auto &conn : this->connectionMap) {
@@ -156,7 +131,7 @@ std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(std::string sr
 // Naming convention of 'actor_arg1_arg2' for binary operators
 // means that arg1 and arg2 would only contain the 'actor' part
 // of the naming convention.
-std::string VHDLCircuit::getComponentFullName(std::string partialName) {
+std::string VHDLCircuit::getComponentFullName(const std::string &partialName) const {
   std::vector<std::string> matchingNames;
   for (auto& comp : this->componentMap) {
     std::size_t found = comp.second.getName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
@@ -237,7 +212,7 @@ std::string VHDLCircuit::printStatus() {
 
 // return list of actor names who have more than their expected number of outputs
 // this is for use in generating a bash script to distribute these outputs into Proj operators
-std::vector<std::string> VHDLCircuit::getMultiOutActors() {
+std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
   std::vector<std::string> actorNames;
   for (auto &comp : this->componentMap) {
     if ((comp.second).getType() != "Proj" && !(comp.second).isConst()) {
@@ -249,10 +224,10 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() {
   return actorNames;
 }
 
-std::vector<VHDLComponent> VHDLCircuit::getDstComponents(VHDLComponent srcComponent) {
+std::vector<VHDLComponent> VHDLCircuit::getDstComponents(const VHDLComponent &srcComponent) const {
   VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
   std::vector<VHDLComponent> dstComponents;
-  std::vector<std::string> srcOutEdges = srcComponent.getOutputEdges();
+  const std::vector<std::string>& srcOutEdges = srcComponent.getOutputEdges();
   for (auto &comp : this->componentMap) {
     for (auto &inEdge : comp.second.getInputEdges()) {
       if (std::find(srcOutEdges.begin(), srcOutEdges.end(), inEdge) != srcOutEdges.end()) {

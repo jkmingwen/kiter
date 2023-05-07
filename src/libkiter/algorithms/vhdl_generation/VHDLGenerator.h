@@ -41,10 +41,19 @@ namespace algorithms {
                            std::string referenceDir, int operatorFreq);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
                         std::string referenceDir, int operatorFreq);
+
+
+    // GenerateCircuit helper functions
+    void generateVHDLHeader(std::ofstream &vhdlOutput);
+    void generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int numOutputPorts, std::ofstream &vhdlOutput);
+    void generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, std::map<std::string, int> &operatorMap,
+                                  bool noOperators, std::ofstream &vhdlOutput);
+
+
   void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
                        bool isBufferless);
-  void generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
-                                     std::string outputDir);
+  void generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const std::string &referenceDir,
+                                     const std::string &outputDir);
   std::string generateAudioInterfaceWrapperPorts(int id);
   std::string generateAudioInterfaceWrapperMapping(int id);
   std::string generateI2SToFPCComponent(int inputBitWidth, int outputBitWidth);
@@ -72,11 +81,11 @@ namespace algorithms {
   void generateAudioInterfaceComponents(std::string componentDir,
                                         std::string referenceDir,
                                         int operatorFreq);
-  std::vector<std::string> generateSendSigNames(std::string srcPort,
-                                                VHDLCircuit circuit);
-  std::vector<std::string> generateReceiveSigNames(std::string dstPort,
-                                                   VHDLCircuit circuit);
-  std::string generatePortMapping(VHDLCircuit circuit, bool isBufferless,
+  std::vector<std::string> generateSendSigNames(const std::string &srcPort,
+                                                const VHDLCircuit &circuit);
+  std::vector<std::string> generateReceiveSigNames(const std::string &dstPort,
+                                                   const VHDLCircuit &circuit);
+  std::string generatePortMapping(const VHDLCircuit &circuit, bool isBufferless,
                                   bool noOperators);
   void generateMergingScript(std::vector<std::string> actorNames, std::string graphName,
                              std::string dirName, std::string referenceDir);

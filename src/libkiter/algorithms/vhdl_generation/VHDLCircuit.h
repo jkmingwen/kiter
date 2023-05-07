@@ -24,29 +24,50 @@ class VHDLCircuit {
 
   void addComponent(VHDLComponent newComp);
   void addConnection(VHDLConnection newConnect);
-  void addInputPort(std::string portName, std::vector<std::string> signalNames);
-  void addOutputPort(std::string portName, std::vector<std::string> signalNames);
+  void addInputPort(std::string portName, const std::vector<std::string> &signalNames);
+  void addOutputPort(std::string portName, const std::vector<std::string> &signalNames);
+
   std::string printStatus();
-  std::map<Vertex, VHDLComponent> getComponentMap();
-  std::map<Edge, VHDLConnection> getConnectionMap();
-  std::map<std::string, int> getOperatorMap();
-  std::map<std::string, std::vector<std::string>> getInputPorts();
-  std::map<std::string, std::vector<std::string>> getOutputPorts();
-  int getOperatorCount(std::string op);
-  VHDLComponent getFirstComponentByType(std::string op);
-  std::string getName();
-  int getOperatorLifespan(std::string opType);
-  std::string getOperatorImplementationName(std::string opType);
-  std::map<int, int> getNumOutputs(std::string opType);
-  std::vector<std::string> getConnectionNameFromComponents(std::string srcActorName,
-                                                           std::string dstActorName);
-  std::vector<std::string> getDstPortBetweenComponents(std::string srcActorName,
-                                                       std::string dstActorName);
-  std::string getComponentFullName(std::string partialName);
+
+    const std::string &getName() const {
+        return this->graphName;
+    }
+
+    const std::map<Vertex, VHDLComponent>& getComponentMap() const {
+        return this->componentMap;
+    }
+
+    const std::map<Edge, VHDLConnection>& getConnectionMap() const {
+        return this->connectionMap;
+    }
+
+    const std::map<std::string, int>& getOperatorMap() const {
+        return this->operatorMap;
+    }
+
+    const std::map<std::string, std::vector<std::string>>& getInputPorts() const {
+        return this->inputPorts;
+    }
+
+    const std::map<std::string, std::vector<std::string>>& getOutputPorts() const {
+        return this->outputPorts;
+    }
+  int getOperatorCount(const std::string &op) const;
+  const VHDLComponent&  getFirstComponentByType(const std::string &op) const;
+
+  int getOperatorLifespan(const std::string &opType) const;
+  std::string getOperatorImplementationName(const std::string &opType) const;
+  std::map<int, int> getNumOutputs(const  std::string &opType) const;
+  std::vector<std::string> getConnectionNameFromComponents(const std::string &srcActorName,
+                                                           const std::string &dstActorName) const;
+  std::vector<std::string> getDstPortBetweenComponents(const std::string &srcActorName,
+                                                       const std::string &dstActorName) const;
+  std::string getComponentFullName(const std::string &partialName) const;
+    std::vector<std::string> getMultiOutActors() const;
+    std::vector<VHDLComponent> getDstComponents(const VHDLComponent &srcComponent) const;
+
   void setName(std::string);
   void setOperatorFreq(int freq);
-  std::vector<std::string> getMultiOutActors();
-  std::vector<VHDLComponent> getDstComponents(VHDLComponent srcComponent);
   void convConstIntToFloat(Vertex v);
 
  private:
@@ -117,5 +138,5 @@ class VHDLCircuit {
                                                             {"int_abs", "int_abs"}
   };
 
-};
+}; // End of VHDLCircuit
 #endif /* VHDL_CIRCUIT_H_ */

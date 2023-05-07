@@ -555,238 +555,285 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") && operatorMap.count("OUTPUT"); // edge case where Faust program has no operators (only inputs/outputs)
 
+  // Open the stream
   vhdlOutput.open(outputDir + graphName + ".vhd"); // instantiate VHDL file
+
   // 1. Define libraries used
-  vhdlOutput << "library ieee;\n"
-             << "use ieee.std_logic_1164.all;\n"
-             << "use ieee.numeric_std.all;\n" << std::endl;
-  // 2. Port declarations
-  vhdlOutput << "entity " << circuit.getName() << " is\n"
-             << "generic (\n"
-             << "    " << "ram_width : natural := 34;\n"
-             << "    " << "ram_depth : natural := 2);\n" // buffer size
-             << "port (\n"
-             << "    " << "clk : in std_logic;\n"
-             << "    " << "rst : in std_logic;\n"
-             << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    // TODO define portName variable outside of loop to minimize unnecessary repetition
-    //      (also, for loop should be outside if loop)
-    std::string portName = "    " + circuit.getName() + "_in";
-    vhdlOutput << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-               << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-               << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-               << "ram_width - 1 downto 0) := (others => '0');\n"
+    generateVHDLHeader(vhdlOutput);
+    // 2. Port declarations
+    generateVHDLEntity(circuit, numInputPorts, numOutputPorts, vhdlOutput);
+
+    // 3. Specify architecture (behaviour) of operator type
+    generateVHDLArchitecture(circuit, isBufferless, operatorMap, noOperators, vhdlOutput);
+
+    // Close the stream
+    vhdlOutput.close();
+}
+
+void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
+    vhdlOutput << "library ieee;\n"
+                 << "use ieee.std_logic_1164.all;\n"
+                 << "use ieee.numeric_std.all;\n" << std::endl;
+}
+
+void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int numOutputPorts,
+                                    std::ofstream &vhdlOutput) {
+    vhdlOutput << "entity " << circuit.getName() << " is\n"
+               << "generic (\n"
+               << "    " << "ram_width : natural := 34;\n"
+               << "    " << "ram_depth : natural := 2);\n" // buffer size
+               << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
                << std::endl;
-  }
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    " + circuit.getName() + "_out";
-    vhdlOutput << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-               << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-    if (i + 1 == numOutputPorts) {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                 << "ram_width - 1 downto 0) := (others => '0')\n"
-                 << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                 << "ram_width - 1 downto 0) := (others => '0');\n"
-                 << std::endl;
+    // Specify ready, valid, and data ports for each input port:
+    for (auto i = 0; i < numInputPorts; i++) {
+        // TODO define portName variable outside of loop to minimize unnecessary repetition
+        //      (also, for loop should be outside if loop)
+        std::string portName = "    " + circuit.getName() + "_in";
+        vhdlOutput << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                   << "ram_width - 1 downto 0) := (others => '0');\n"
+                   << std::endl;
     }
-  }
-  vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
-
-  // 3. Specify architecture (behaviour) of operator type
-  // component declaration
-  vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
-  if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
-    std::map<int, int> constOutputs;
-    for (auto const &op : operatorMap) {
-      if (op.first != "INPUT" && op.first != "OUTPUT") {
-        std::map<int, int> outputCounts;
-        outputCounts = circuit.getNumOutputs(op.first);
-        if (op.first == "Proj") {
-          vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
-        } else if (op.first == "delay") {
-          vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
-                     << std::endl;
-        } else if (op.first == "const_value" ||
-                   circuit.getFirstComponentByType(op.first).isConst()) {
-          constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+    // Specify ready, valid, and data ports for each output port:
+    for (auto i = 0; i < numOutputPorts; i++) {
+        std::string portName = "    " + circuit.getName() + "_out";
+        vhdlOutput << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+        if (i + 1 == numOutputPorts) {
+            vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0) := (others => '0')\n"
+                       << std::endl; // last line of port declaration has no terminating semicolon
         } else {
-          vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                     << std::endl;
+            vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0) := (others => '0');\n"
+                       << std::endl;
         }
+    }
+    vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
+}
+void
+algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, std::map<std::string, int> &operatorMap,
+                                     bool noOperators, std::ofstream &vhdlOutput) {// component declaration
+    vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
+    if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
+      std::map<int, int> constOutputs;
+      for (auto const &op : operatorMap) {
+        if (op.first != "INPUT" && op.first != "OUTPUT") {
+          std::map<int, int> outputCounts;
+          outputCounts = circuit.getNumOutputs(op.first);
+          if (op.first == "Proj") {
+            vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+          } else if (op.first == "delay") {
+            vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
+          } else if (op.first == "const_value" ||
+                     circuit.getFirstComponentByType(op.first).isConst()) {
+            constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+          } else {
+            vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
+          }
 
+        }
+      }
+      if (constOutputs.size()) {
+        vhdlOutput << generateConstComponents(constOutputs) << std::endl;
       }
     }
-    if (constOutputs.size()) {
-      vhdlOutput << generateConstComponents(constOutputs) << std::endl;
+    // no need to generate buffer component if there aren't any operators between the input/output
+    bool delayDetected = false;
+    for (auto &conn : circuit.getConnectionMap()) {
+      if (conn.second.getInitialTokenCount()) {
+        delayDetected = true;
+      }
     }
-  }
-  // no need to generate buffer component if there aren't any operators between the input/output
-  bool delayDetected = false;
-  for (auto &conn : circuit.getConnectionMap()) {
-    if (conn.second.getInitialTokenCount()) {
-      delayDetected = true;
+    if ((delayDetected &&
+        (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) || !isBufferless) { // we will always have FIFO buffers if the bufferless flag is false
+      vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
     }
-  }
-  if ((delayDetected &&
-      (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) || !isBufferless) { // we will always have FIFO buffers if the bufferless flag is false
-    vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-  }
-  // Track top-level input and output signals
-  std::vector<std::string> inSignalNames;
-  std::vector<std::string> outSignalNames;
-  if (isBufferless) { // no FIFO buffers between components
-    // NOTE Using a really roundabout method here to look for buffers with initial token counts; it's probably possible to reduce the number of nested loops
-    for (auto &op : circuit.getComponentMap()) {
-      if (op.second.getType() == "INPUT") {
-        for (auto &i : op.second.getOutputEdges()) {
-          for (auto &conn : circuit.getConnectionMap()) {
-            if (conn.second.getName() == i) { // check if given edge has initial tokens
-              if (conn.second.getInitialTokenCount()) {
-                inSignalNames.push_back(conn.second.getSrcPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
-              } else {
-                inSignalNames.push_back(i); // if not, edge names will be used as signal names
+    // Track top-level input and output signals
+    std::vector<std::string> inSignalNames;
+    std::vector<std::string> outSignalNames;
+    if (isBufferless) { // no FIFO buffers between components
+      // NOTE Using a really roundabout method here to look for buffers with initial token counts; it's probably possible to reduce the number of nested loops
+      for (auto &op : circuit.getComponentMap()) {
+        if (op.second.getType() == "INPUT") {
+          for (auto &i : op.second.getOutputEdges()) {
+            for (auto &conn : circuit.getConnectionMap()) {
+              if (conn.second.getName() == i) { // check if given edge has initial tokens
+                if (conn.second.getInitialTokenCount()) {
+                  inSignalNames.push_back(conn.second.getSrcPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
+                } else {
+                  inSignalNames.push_back(i); // if not, edge names will be used as signal names
+                }
+              }
+            }
+          }
+        } else if (op.second.getType() == "OUTPUT") {
+          for (auto &i : op.second.getInputEdges()) {
+            for (auto &conn : circuit.getConnectionMap()) {
+              if (conn.second.getName() == i) { // check if given edge has initial tokens
+                if (conn.second.getInitialTokenCount()) {
+                  outSignalNames.push_back(conn.second.getDstPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
+                } else {
+                  outSignalNames.push_back(i); // if not, edge names will be used as signal names
+                }
               }
             }
           }
         }
-      } else if (op.second.getType() == "OUTPUT") {
-        for (auto &i : op.second.getInputEdges()) {
-          for (auto &conn : circuit.getConnectionMap()) {
-            if (conn.second.getName() == i) { // check if given edge has initial tokens
-              if (conn.second.getInitialTokenCount()) {
-                outSignalNames.push_back(conn.second.getDstPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
-              } else {
-                outSignalNames.push_back(i); // if not, edge names will be used as signal names
-              }
-            }
+      }
+    } else { // use port names to generate signals to/from FIFO buffers
+      for (auto &op : circuit.getComponentMap()) {
+        if (op.second.getType() == "INPUT") {
+          for (auto &i : op.second.getOutputPorts()) {
+            inSignalNames.push_back(i);
+          }
+        } else if (op.second.getType() == "OUTPUT") {
+          for (auto &i : op.second.getInputPorts()) {
+            outSignalNames.push_back(i);
           }
         }
       }
     }
-  } else { // use port names to generate signals to/from FIFO buffers
-    for (auto &op : circuit.getComponentMap()) {
-      if (op.second.getType() == "INPUT") {
-        for (auto &i : op.second.getOutputPorts()) {
-          inSignalNames.push_back(i);
-        }
-      } else if (op.second.getType() == "OUTPUT") {
-        for (auto &i : op.second.getInputPorts()) {
-          outSignalNames.push_back(i);
-        }
-      }
-    }
-  }
 
-  // Define and generate signal names
-  int inCount = 0;
-  int outCount = 0;
-  bool isTopInput;
-  bool isTopOutput;
-  bool hasInputDelay;
-  bool hasOutputDelay;
-  for (auto &connection : circuit.getConnectionMap()) {
-    if (isBufferless) {
-      if (connection.second.getInitialTokenCount()) { // account for different signal names when channel has initial token count
+    // Define and generate signal names
+    int inCount = 0;
+    int outCount = 0;
+    bool isTopInput;
+    bool isTopOutput;
+    bool hasInputDelay;
+    bool hasOutputDelay;
+    for (auto &connection : circuit.getConnectionMap()) {
+      if (isBufferless) {
+        if (connection.second.getInitialTokenCount()) { // account for different signal names when channel has initial token count
+          isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
+                                 connection.second.getSrcPort()) != inSignalNames.end();
+          isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
+                                  connection.second.getDstPort()) != outSignalNames.end();
+        } else {
+          isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
+                                 connection.second.getName()) != inSignalNames.end();
+          isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
+                                  connection.second.getName()) != outSignalNames.end();
+        }
+      } else {
         isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
                                connection.second.getSrcPort()) != inSignalNames.end();
         isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
                                 connection.second.getDstPort()) != outSignalNames.end();
-      } else {
-        isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
-                               connection.second.getName()) != inSignalNames.end();
-        isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
-                                connection.second.getName()) != outSignalNames.end();
       }
-    } else {
-      isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
-                             connection.second.getSrcPort()) != inSignalNames.end();
-      isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
-                              connection.second.getDstPort()) != outSignalNames.end();
-    }
 
-    if (isTopInput) {
-      std::vector<std::string> signalNames(3);
-      signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inCount);
-      signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
-      signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
-      if (isBufferless && !noOperators) {
-        if (connection.second.getInitialTokenCount()) {
-          hasInputDelay = true;
-          circuit.addInputPort(connection.second.getDstPort(), signalNames);
-        } else {
-          hasInputDelay = false;
-          circuit.addInputPort(connection.second.getName(), signalNames);
-        }
-      } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
-        circuit.addInputPort(connection.second.getSrcPort(), signalNames);
-      } else {
-        if (!noOperators) {
-          circuit.addInputPort(connection.second.getDstPort(), signalNames);
-        } else { // if there are only inputs/outputs, then the top-level input port is the output port of the INPUT operators
+      if (isTopInput) {
+        std::vector<std::string> signalNames(3);
+        signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inCount);
+        signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
+        signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
+        if (isBufferless && !noOperators) {
+          if (connection.second.getInitialTokenCount()) {
+            hasInputDelay = true;
+            circuit.addInputPort(connection.second.getDstPort(), signalNames);
+          } else {
+            hasInputDelay = false;
+            circuit.addInputPort(connection.second.getName(), signalNames);
+          }
+        } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
           circuit.addInputPort(connection.second.getSrcPort(), signalNames);
-        }
-      }
-      inCount++;
-    }
-    if (isTopOutput) {
-      std::vector<std::string> signalNames(3);
-      signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outCount);
-      signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
-      signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
-      if (isBufferless && !noOperators) {
-        if (connection.second.getInitialTokenCount()) {
-          hasOutputDelay = true;
-          circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
         } else {
-          hasOutputDelay = false;
+          if (!noOperators) {
+            circuit.addInputPort(connection.second.getDstPort(), signalNames);
+          } else { // if there are only inputs/outputs, then the top-level input port is the output port of the INPUT operators
+            circuit.addInputPort(connection.second.getSrcPort(), signalNames);
+          }
+        }
+        inCount++;
+      }
+      if (isTopOutput) {
+        std::vector<std::string> signalNames(3);
+        signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outCount);
+        signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
+        signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
+        if (isBufferless && !noOperators) {
+          if (connection.second.getInitialTokenCount()) {
+            hasOutputDelay = true;
+            circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+          } else {
+            hasOutputDelay = false;
+            circuit.addOutputPort(connection.second.getName(), signalNames);
+          }
           circuit.addOutputPort(connection.second.getName(), signalNames);
-        }
-        circuit.addOutputPort(connection.second.getName(), signalNames);
-      } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
-        circuit.addOutputPort(connection.second.getDstPort(), signalNames);
-      } else {
-        if (!noOperators) {
-          circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
-        } else { // if there are only inputs/outputs, then the top-level input port is the input port of the OUTPUT operators
+        } else if (isBufferless && noOperators) { // TODO can be reduced to fewer conditions
           circuit.addOutputPort(connection.second.getDstPort(), signalNames);
+        } else {
+          if (!noOperators) {
+            circuit.addOutputPort(connection.second.getSrcPort(), signalNames);
+          } else { // if there are only inputs/outputs, then the top-level input port is the input port of the OUTPUT operators
+            circuit.addOutputPort(connection.second.getDstPort(), signalNames);
+          }
         }
+        outCount++;
       }
-      outCount++;
     }
-  }
 
-  std::vector<std::string> dataSignals;
-  std::vector<std::string> validReadySignals;
-  for (auto &connection : circuit.getConnectionMap()) {
-    bool isNotTopInOut; // check if connection belongs to top level input/output
-    if (isBufferless) {
-      std::string topInSigName;
-      std::string topOutSigName;
-      if (hasInputDelay) {
-        topInSigName = connection.second.getDstPort();
+    std::vector<std::string> dataSignals;
+    std::vector<std::string> validReadySignals;
+    for (auto &connection : circuit.getConnectionMap()) {
+      bool isNotTopInOut; // check if connection belongs to top level input/output
+      if (isBufferless) {
+        std::string topInSigName;
+        std::string topOutSigName;
+        if (hasInputDelay) {
+          topInSigName = connection.second.getDstPort();
+        } else {
+          topInSigName = connection.second.getName();
+        }
+        if (hasOutputDelay) {
+          topOutSigName = connection.second.getSrcPort();
+        } else {
+          topOutSigName = connection.second.getName();
+        }
+        isNotTopInOut = !(circuit.getInputPorts().count(topInSigName) ||
+                          circuit.getOutputPorts().count(topOutSigName));
       } else {
-        topInSigName = connection.second.getName();
+        isNotTopInOut = !(circuit.getInputPorts().count(connection.second.getDstPort()) ||
+                          circuit.getOutputPorts().count(connection.second.getSrcPort()));
       }
-      if (hasOutputDelay) {
-        topOutSigName = connection.second.getSrcPort();
+      // only generate signal names for non-input/output ports
+      if (!noOperators) {
+        if (isNotTopInOut) {
+          if (isBufferless) {
+            if (connection.second.getInitialTokenCount()) { // if there are initial tokens, separate send/receive signals required due to buffers between components
+              std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
+              std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
+              dataSignals.push_back(sendSignals[DATA]);
+              dataSignals.push_back(receiveSignals[DATA]);
+              validReadySignals.push_back(sendSignals[VALID]);
+              validReadySignals.push_back(receiveSignals[VALID]);
+              validReadySignals.push_back(sendSignals[READY]);
+              validReadySignals.push_back(receiveSignals[READY]);
+            } else {
+              std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
+              dataSignals.push_back(signalNames[DATA]);
+              validReadySignals.push_back(signalNames[VALID]);
+              validReadySignals.push_back(signalNames[READY]);
+            }
+          } else {
+            // separate send/receive signals required due to buffers between components
+            std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
+            std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
+            dataSignals.push_back(sendSignals[DATA]);
+            dataSignals.push_back(receiveSignals[DATA]);
+            validReadySignals.push_back(sendSignals[VALID]);
+            validReadySignals.push_back(receiveSignals[VALID]);
+            validReadySignals.push_back(sendSignals[READY]);
+            validReadySignals.push_back(receiveSignals[READY]);
+          }
+        }
       } else {
-        topOutSigName = connection.second.getName();
-      }
-      isNotTopInOut = !(circuit.getInputPorts().count(topInSigName) ||
-                        circuit.getOutputPorts().count(topOutSigName));
-    } else {
-      isNotTopInOut = !(circuit.getInputPorts().count(connection.second.getDstPort()) ||
-                        circuit.getOutputPorts().count(connection.second.getSrcPort()));
-    }
-    // only generate signal names for non-input/output ports
-    if (!noOperators) {
-      if (isNotTopInOut) {
-        if (isBufferless) {
+        if (isBufferless) { // TODO I suspect this is redundant --- check to see if this is the case
           if (connection.second.getInitialTokenCount()) { // if there are initial tokens, separate send/receive signals required due to buffers between components
             std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
             std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
@@ -814,75 +861,48 @@ void algorithms::generateCircuit(VHDLCircuit &circuit, std::string outputDir,
           validReadySignals.push_back(receiveSignals[READY]);
         }
       }
-    } else {
-      if (isBufferless) { // TODO I suspect this is redundant --- check to see if this is the case
-        if (connection.second.getInitialTokenCount()) { // if there are initial tokens, separate send/receive signals required due to buffers between components
-          std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
-          std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
-          dataSignals.push_back(sendSignals[DATA]);
-          dataSignals.push_back(receiveSignals[DATA]);
-          validReadySignals.push_back(sendSignals[VALID]);
-          validReadySignals.push_back(receiveSignals[VALID]);
-          validReadySignals.push_back(sendSignals[READY]);
-          validReadySignals.push_back(receiveSignals[READY]);
-        } else {
-          std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
-          dataSignals.push_back(signalNames[DATA]);
-          validReadySignals.push_back(signalNames[VALID]);
-          validReadySignals.push_back(signalNames[READY]);
+    }
+    // data signals
+    if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
+      vhdlOutput << "signal ";
+      std::string delim = ",";
+      int counter = 0;
+      for (auto &signal : dataSignals) {
+        counter++;
+        if (counter == dataSignals.size()) {
+          delim = "";
         }
-      } else {
-        // separate send/receive signals required due to buffers between components
-        std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
-        std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
-        dataSignals.push_back(sendSignals[DATA]);
-        dataSignals.push_back(receiveSignals[DATA]);
-        validReadySignals.push_back(sendSignals[VALID]);
-        validReadySignals.push_back(receiveSignals[VALID]);
-        validReadySignals.push_back(sendSignals[READY]);
-        validReadySignals.push_back(receiveSignals[READY]);
+        vhdlOutput << signal << delim << std::endl;
       }
-    }
-  }
-  // data signals
-  if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
-    vhdlOutput << "signal ";
-    std::string delim = ",";
-    int counter = 0;
-    for (auto &signal : dataSignals) {
-      counter++;
-      if (counter == dataSignals.size()) {
-        delim = "";
+      vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
+                 << std::endl;
+      // valid and ready signals
+      vhdlOutput << "signal ";
+      delim = ",";
+      counter = 0;
+      for (auto &signal : validReadySignals) {
+        counter++;
+        if (counter == validReadySignals.size()) {
+          delim = "";
+        }
+        vhdlOutput << signal << delim << std::endl;
       }
-      vhdlOutput << signal << delim << std::endl;
-    }
-    vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
-               << std::endl;
-    // valid and ready signals
-    vhdlOutput << "signal ";
-    delim = ",";
-    counter = 0;
-    for (auto &signal : validReadySignals) {
-      counter++;
-      if (counter == validReadySignals.size()) {
-        delim = "";
-      }
-      vhdlOutput << signal << delim << std::endl;
-    }
-    vhdlOutput << " : std_logic;\n" << std::endl;
-    vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
-    vhdlOutput << "end behaviour;" << std::endl;
+      vhdlOutput << " : std_logic;\n" << std::endl;
+      vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
+      vhdlOutput << "end behaviour;" << std::endl;
 
-    vhdlOutput.close();
-  } else {
-    vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
-    vhdlOutput << "end behaviour;" << std::endl;
-  }
+      vhdlOutput.close();
+    } else {
+      vhdlOutput << generatePortMapping(circuit, isBufferless, noOperators) << std::endl;
+      vhdlOutput << "end behaviour;" << std::endl;
+    }
 }
 
+
+
 // Generate AXI interface for each FloPoCo operator
-void algorithms::generateAudioInterfaceWrapper(VHDLCircuit &circuit, std::string referenceDir,
-                                               std::string outputDir) {
+void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const std::string &referenceDir,
+                                               const std::string &outputDir) {
   int i2sBitWidth = 24;
   int fpcBitWidth = 34;
   std::ofstream vhdlOutput;
@@ -1710,8 +1730,8 @@ void algorithms::generateAudioInterfaceComponents(std::string compDir,
   }
 }
 
-std::vector<std::string> algorithms::generateSendSigNames(std::string srcPort,
-                                                          VHDLCircuit circuit) {
+std::vector<std::string> algorithms::generateSendSigNames(const std::string &srcPort,
+                                                          const VHDLCircuit &circuit) {
   std::vector<std::string> sendSignals(3);
 
   if (circuit.getOutputPorts().count(srcPort)) {
@@ -1724,8 +1744,8 @@ std::vector<std::string> algorithms::generateSendSigNames(std::string srcPort,
   return sendSignals;
 }
 
-std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort,
-                                                             VHDLCircuit circuit) {
+std::vector<std::string> algorithms::generateReceiveSigNames(const std::string &dstPort,
+                                                             const VHDLCircuit &circuit) {
   std::vector<std::string> receiveSignals(3);
 
   if (circuit.getInputPorts().count(dstPort)) {
@@ -1740,7 +1760,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(std::string dstPort
 }
 
 // Generate port mapping for each operator in the circuit
-std::string algorithms::generatePortMapping(VHDLCircuit circuit,
+std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
                                             bool isBufferless, bool noOperators) {
   std::stringstream outputStream;
   std::string componentName;

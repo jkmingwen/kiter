@@ -164,18 +164,19 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
 // returns true if all input vertices to the given vertex have numeric values
 bool algorithms::checkForNumericInputs(models::Dataflow* const dataflow, Vertex v) {
   bool allInputNum = true;
-  if (dataflow->getVertexInDegree(v)) {
-    {ForInputEdges(dataflow, v, e) {
-        std::string actorType = dataflow->getVertexType(dataflow->getEdgeSource(e));
-        try {
-          float conv = std::stof(actorType);
-        } catch(std::invalid_argument const& ex) {
-          allInputNum = false;
-        }
-      }}
-  } else {
-    allInputNum = false; // no inputs means no numeric inputs
-  }
+    try {
+      if (dataflow->getVertexInDegree(v)) {
+        {ForInputEdges(dataflow, v, e) {
+            std::string actorType = dataflow->getVertexType(dataflow->getEdgeSource(e));
+              float conv = std::stof(actorType);
+          }}
+      } else {
+        allInputNum = false; // no inputs means no numeric inputs
+      }
+    } catch(std::invalid_argument const& ex) {
+        allInputNum = false;
+    }
+
   return allInputNum;
 }
 
