@@ -24,9 +24,7 @@ Edge VHDLConnection::getEdge()  const{
   return this->edge;
 }
 
-std::string VHDLConnection::getName()  const{
-  return this->connectionName;
-}
+
 
 ARRAY_INDEX VHDLConnection::getId()  const{
   return this->id;

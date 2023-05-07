@@ -20,7 +20,9 @@ class VHDLConnection {
   VHDLConnection(models::Dataflow* const dataflow, Edge e); // actor must be associated to a graph
 
   Edge getEdge() const;
-  std::string getName() const;
+   const std::string &getName()  const{
+        return this->connectionName;
+    }
   ARRAY_INDEX getId() const;
   std::string getSrcPort() const;
   std::string getDstPort() const;

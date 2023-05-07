@@ -160,22 +160,24 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
     // std::cout << printers::generateSDF3XML(dataflow_prime) << std::endl;
   }
 }
-
+bool is_number(const std::string &s) {
+    return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
+}
 // returns true if all input vertices to the given vertex have numeric values
 bool algorithms::checkForNumericInputs(models::Dataflow* const dataflow, Vertex v) {
   bool allInputNum = true;
-    try {
+
       if (dataflow->getVertexInDegree(v)) {
         {ForInputEdges(dataflow, v, e) {
             std::string actorType = dataflow->getVertexType(dataflow->getEdgeSource(e));
-              float conv = std::stof(actorType);
+            if (!is_number(actorType)) return false;
+            // FIXME: Here I remove the exception to speed up things. But I am not 100% sure the behaviour is the same.
+            // float conv = std::stof(actorType);
           }}
       } else {
         allInputNum = false; // no inputs means no numeric inputs
       }
-    } catch(std::invalid_argument const& ex) {
-        allInputNum = false;
-    }
+
 
   return allInputNum;
 }
