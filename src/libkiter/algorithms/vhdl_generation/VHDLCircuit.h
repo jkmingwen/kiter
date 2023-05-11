@@ -94,7 +94,7 @@ class VHDLCircuit {
         {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
         {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
         // {"select3", 1},
-        {"attach", 1}, {"int_abs", 1}}},
+        {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}},
       {125,
        {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
         {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
@@ -103,7 +103,7 @@ class VHDLCircuit {
         {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
         {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
         // {"select3", 1},
-        {"attach", 1}, {"int_abs", 1}}},
+        {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}},
       {250,
        {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
         {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
@@ -112,7 +112,7 @@ class VHDLCircuit {
         {"fp_floor", 1}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
         {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
         // {"select3", 1},
-        {"attach", 1}, {"int_abs", 1}}}
+        {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}}
     };
   std::map<std::string, std::string> implementationNames = {{"fp_add", "fp_add_flopoco"},
                                                             {"fp_prod", "fp_prod_flopoco"},
@@ -135,7 +135,8 @@ class VHDLCircuit {
                                                             // {"select3", "select3"},
                                                             {"attach", "attach"},
                                                             {"delay", "delay"}, // NOTE delay doesn't have a fixed lifespan, which is why it's not in the operatorLifespan map
-                                                            {"int_abs", "int_abs"}
+                                                            {"int_abs", "int_abs"},
+                                                            {"vbargraph", "vbargraph"}
   };
 
 }; // End of VHDLCircuit
