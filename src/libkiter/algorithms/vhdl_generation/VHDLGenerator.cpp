@@ -13,6 +13,7 @@
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
 #include <algorithms/transformation/singleOutput.h>
+#include <printers/SDF3Wrapper.h>
 
 // for signal name retrieval
 #define VALID 0
@@ -37,6 +38,16 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
     {ForEachVertex(dataflow, actor) {
             VHDLComponent newComp(dataflow, actor);
             circuit.addComponent(newComp);
+            // update execution time in dataflow according to component operator type
+            TIME_UNIT opLifespan = circuit.getOperatorLifespan(newComp.getType());
+            VERBOSE_INFO("operator lifespan (" << newComp.getType() << "): " << opLifespan);
+            if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
+              std::vector<TIME_UNIT> opLifespans{1};
+              dataflow->setVertexDuration(actor, opLifespans);
+            } else {
+              std::vector<TIME_UNIT> opLifespans{opLifespan};
+              dataflow->setVertexDuration(actor, opLifespans);
+            }
         }}
     {ForEachEdge(dataflow, edge) {
             VHDLConnection newConn(dataflow, edge);
@@ -145,6 +156,8 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
         generateCircuit(tmp, topDir, bufferless);
         generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
+        printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
+                                dataflow);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
     } else {
         VERBOSE_WARNING("No VHDL files created.");
