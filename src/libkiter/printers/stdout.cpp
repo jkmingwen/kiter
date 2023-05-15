@@ -730,7 +730,7 @@ static EXEC_COUNT sum_qt(models::Dataflow* const  dataflow) {
 	return total;
 }
 
-void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list_t ) {
+void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list_t) {
 
 	bool consistent = dataflow->is_consistent();
 
@@ -770,7 +770,7 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 				<< std::setw(8) << "VertexId"
 				<< ")"
 				<< std::setw(9) << "InEdges"
-				<< std::setw(9) << "OutEdges"
+                << std::setw(9) << "OutEdges"
 				<< std::setw(16) << "TotalDuration"
 				<< std::setw(20)<< "RepetitionFactor"
 				<< std::setw(16)<< "PhaseQuantity"
@@ -783,7 +783,7 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
                       << std::setw(8) << dataflow->getVertexId(t)
                       << ")"
 					  << std::setw(9) << dataflow->getVertexInDegree(t)
-					  << std::setw(9) << dataflow->getVertexOutDegree(t)
+                      << std::setw(9) << dataflow->getVertexOutDegree(t)
                       << std::setw(16) << dataflow->getVertexTotalDuration(t)
                       << std::setw(20)<< (consistent ? commons::toString(dataflow->getNi(t)) : "N/A")
                       << std::setw(16)<< dataflow->getPhasesQuantity(t)
@@ -809,7 +809,8 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 				<< std::setw(10) << "Source"
 				<< std::setw(10) << "Target"
 				<< std::setw(10) << "TotalIn"
-				<< std::setw(10) << "TotalOut"
+                << std::setw(10) << "TotalOut"
+                << std::setw(10) << "StepSize"
 				<< std::setw(15) << "InitialMarking"
 				<< std::setw(20) << "Route"
 				<< std::endl;
@@ -823,6 +824,7 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 					  << std::setw(10) <<dataflow->getVertexId(dataflow->getEdgeTarget(c))
 					  << std::setw(10) << dataflow->getEdgeIn(c)
 					  << std::setw(10) << dataflow->getEdgeOut(c)
+                      << std::setw(10) << dataflow->getFineGCD(c)
 					  << std::setw(15) << dataflow->getPreload(c)
 					  << std::setw(20) << commons::toString(dataflow->getRoute(c))
 					  << std::endl;
