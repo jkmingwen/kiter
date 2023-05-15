@@ -778,8 +778,7 @@ void algorithms::compute_1Kperiodic_throughput (models::Dataflow* const  dataflo
 		print_function    ( dataflow, kvector , result.throughput , false,false,true);
 	} else {
 		TIME_UNIT res = result.throughput;
-		std::cout << "1Periodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  res   << std::endl;
-		std::cout << "1Periodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << 1.0/res   << std::endl;
+		std::cout << "Period=" <<  std::floor(1.0/res)   << std::endl;
 	}
 }
 
@@ -1037,15 +1036,17 @@ void algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow,
 
 	if (showdetails) {
 
+        auto very_end = std::chrono::steady_clock::now();
+        double  duration = std::chrono::duration<double> (very_end-very_start).count() * 1000;
+
+        std::cout << "KPeriodic Throughput is "  << std::setw( 20 ) << std::setprecision( 9 ) <<     res    << std::endl;
+        std::cout << "KPeriodic Period is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << 1.0/res    << std::endl;
+        std::cout << "KPeriodic Execution Time is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << duration   << std::endl;
+        std::cout << "KPeriodic Scheduling Size is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << total_kiphit   << std::endl;
+
 	} else {
+        std::cout << "Period="  << std::floor(1.0/res)    << std::endl;
 
-		auto very_end = std::chrono::steady_clock::now();
-		double  duration = std::chrono::duration<double> (very_end-very_start).count() * 1000;
-
-		std::cout << "KPeriodic Throughput is "  << std::setw( 20 ) << std::setprecision( 9 ) <<     res    << std::endl;
-		std::cout << "KPeriodic Period is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << 1.0/res    << std::endl;
-		std::cout << "KPeriodic Execution Time is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << duration   << std::endl;
-		std::cout << "KPeriodic Scheduling Size is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << total_kiphit   << std::endl;
 		}
 }
 

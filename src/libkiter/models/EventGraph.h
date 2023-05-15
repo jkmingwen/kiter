@@ -102,8 +102,9 @@ typedef boost::property < boost::vertex_index1_t,      unsigned int,   /* vertex
         boost::property < boost::vertex_predecessor_t, unsigned int ,  /* EventGraphVertex                */
         boost::property < boost::vertex_color_t,       PHASE_INDEX,     /*  vertex_color_t(task's phase)                */
         boost::property < boost::vertex_index2_t,      EXEC_COUNT,    /* vertex_index2_t(occurence d'execution) */
+        boost::property < boost::vertex_distance_t,    TIME_UNIT ,  /* delay */
         boost::property < boost::vertex_discover_time_t, TIME_UNIT    /* vertex_discover_time_t(execution time) */
-        > > > > > > EventGraphVertexProperties;
+        > > > > > > > EventGraphVertexProperties;
 
 typedef boost::property < boost::edge_weight_t,TIME_UNIT, /* edge_weight_t(w)        */ // Weight is TIME_UNIT and must keep it like that !
         boost::property < boost::edge_index_t,ARRAY_INDEX,  /* edge_index_t(channel_id)        */
@@ -533,6 +534,7 @@ public :
     std::string printXML    ();
     std::string printTikz    () ;
 
+    EventGraphVertex getFirstEvent() { return 0;};
 };
 void freeStrongConnection ( std::map<unsigned int,EventGraph*>*  ) ;
 std::map<unsigned int,EventGraph*>* StrongConnection(models::EventGraph * g)  ;

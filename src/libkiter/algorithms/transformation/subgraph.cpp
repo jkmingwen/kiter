@@ -48,7 +48,7 @@ namespace algorithms {
             cc_g->setPreload(e_cc, g->getPreload(original_edge));
             cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(original_edge));
             cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(original_edge));
-
+            cc_g->setEdgeType(e_cc, g->getEdgeType(original_edge));
         }
         return cc_g;
     }

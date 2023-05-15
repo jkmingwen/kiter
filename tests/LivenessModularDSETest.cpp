@@ -192,4 +192,35 @@ BOOST_FIXTURE_TEST_SUITE( liveness_modular_dse_test, WITH_SAMPLE)
     }
 
 
+    BOOST_AUTO_TEST_CASE(solve_dicho_liveness_test) {
+
+        commons::set_verbose_mode(commons::DEBUG_LEVEL);
+        // create the input graph
+        models::Dataflow g;
+        Vertex v1 = g.addVertex(1,"v1");
+        Vertex v2 = g.addVertex(2,"v2");
+        Edge e1 = g.addEdge(v1, v2, 1,"12");
+        Edge e2 = g.addEdge(v2, v1, 2,"21");
+        g.setPreload(e1, 0);
+        g.setPreload(e2, 0);
+
+        g.setEdgeType(e1,EDGE_TYPE::FEEDBACK_EDGE);
+        //g.setEdgeType(e2,EDGE_TYPE::FEEDBACK_EDGE);
+
+        g.setEdgeInPhases(e1, {40});
+        g.setEdgeOutPhases(e1, {50});
+
+        g.setEdgeInPhases(e2, {50});
+        g.setEdgeOutPhases(e2, {40});
+
+        g.setVertexDuration(v1,{1});
+        g.setVertexDuration(v2,{1});
+
+        g.setReentrancyFactor(v1,1);
+        g.setReentrancyFactor(v2,1);
+
+        algorithms::dse::TokenConfigurationSet res = algorithms::dse::solve_liveness   (&g, true) ;
+
+    }
+
 BOOST_AUTO_TEST_SUITE_END()

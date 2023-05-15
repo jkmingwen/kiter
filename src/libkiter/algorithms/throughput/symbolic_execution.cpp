@@ -695,7 +695,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
                 periodics.first = actors_check[dataflow->getVertexId(task)] - periodics.second[0];
                 task_schedule_t sched_struct = {initials,periodics};
                 schedule.set(dataflow->getVertexId(task), sched_struct);
-                std::cout << dataflow->getVertexName(task) << ": initial starts=" << commons::toString(initials) << ", periodic starts=" << commons::toString(periodics) << std::endl;
+                //std::cout << dataflow->getVertexName(task) << ": initial starts=" << commons::toString(initials) << ", periodic starts=" << commons::toString(periodics) << std::endl;
               }}
               return std::make_pair(thr, schedule);
             }
@@ -727,7 +727,19 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
 }
 
 void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
-                                         parameters_list_t param_list) {
+                                            parameters_list_t param_list) {
+
+    int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
+    models::Scheduling res = algorithms::scheduling::ASAPScheduling(dataflow) ;
+
+    std::cout << res.asASCII(linesize);
+    std::cout << res.asText();
+    std::cout << "Throughput=" << res.getGraphThroughput() << std::endl;
+
+    std::cout << "Period=" << res.getGraphPeriod() << std::endl;
+}
+
+models::Scheduling algorithms::scheduling::ASAPScheduling(models::Dataflow* dataflow) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
   std::map<int, std::vector<ARRAY_INDEX>> sccMap;
@@ -735,7 +747,6 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
 
   scheduling_t scheduling_result;
-  int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
 
   // generate SCCs if any
   sccMap = computeSCCKosaraju(dataflow);
@@ -788,27 +799,16 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
 
-    std::cout << res.asASCII(linesize);
-    std::cout << res.asText();
 
-    std::cout << "ASAP throughput is  " << minThroughput << std::endl;
-    std::cout << "ASAP period is  " << omega << std::endl;
-
-    return;
+    return res;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
   auto res_pair = computeComponentThroughputSchedule(dataflow, actorInfo, scheduling_result);
   minThroughput = res_pair.first;
   scheduling_result = res_pair.second;
-  std::cout << "Throughput of graph: " << minThroughput << std::endl;
   TIME_UNIT omega = 1.0 / minThroughput ;
   models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
-  std::cout << res.asASCII(linesize);
-  std::cout << res.asText();
 
-  std::cout << "ASAP throughput is  " << minThroughput << std::endl;
-  std::cout << "ASAP period is  " << omega << std::endl;
-
-  return;
+  return res;
 }

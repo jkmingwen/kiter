@@ -5,6 +5,8 @@
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/dse/LivenessModularDSE.h>
+#include "algorithms/transformation/subgraph.h"
+
 namespace algorithms {
     namespace dse {
 
@@ -45,8 +47,79 @@ algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow
 
 
 
-// TODO : the kperiodic results is missing here
-// TODO : also the step size is not there
+std::vector<algorithms::dse::TokenConfiguration> liveness_next_func_by_dichotomy(const algorithms::dse::TokenConfiguration& starting_point) {
+
+    VERBOSE_INFO("[start] liveness_next_func_by_dichotomy:" << starting_point.to_csv_line());
+
+    const models::Dataflow* df =  starting_point.getDataflow();
+
+
+    // 1. build a minimal graph with the critical edges only.
+    VERBOSE_INFO("[start] liveness_next_func_by_dichotomy: Build cc");
+    models::Dataflow* cc_g = algorithms::build_subgraph(df, starting_point.getPerformance().critical_edges);
+    VERBOSE_INFO("[start] liveness_next_func_by_dichotomy: cc built");
+
+    // 1bis. find critical feedback_edge
+    std::vector<algorithms::dse::TokenConfiguration::EdgeIdentifier> critical_feedbacks;
+    {ForEachEdge(cc_g, c) {
+        auto edgeId = cc_g->getEdgeId(c);
+        if (cc_g->getEdgeType(c) != EDGE_TYPE::FEEDBACK_EDGE) continue; // Skip non feedback buffers.
+        critical_feedbacks.push_back(edgeId);
+        VERBOSE_INFO("[start] Found a FEEDBACK_EDGE");
+    }}
+
+    VERBOSE_ASSERT((critical_feedbacks.size() > 0), "Unsupported case.");
+    VERBOSE_ASSERT((critical_feedbacks.size() == 1), "Unsupported case.");
+
+
+    // 2. Check the critical edge
+    auto criticalEdgeId = *critical_feedbacks.begin();
+    Edge criticalEdge = cc_g->getEdgeById(criticalEdgeId);
+    VERBOSE_ASSERT(cc_g->getEdgeType(criticalEdge) == EDGE_TYPE::FEEDBACK_EDGE, "Unsupported case.");
+    VERBOSE_INFO("[start] liveness_next_func_by_dichotomy: edge check");
+
+
+    // Create a new TokenConfiguration with the updated buffer size for the current edge
+    // And compute throughput
+    std::map<ARRAY_INDEX , TOKEN_UNIT> current_configuration; // Replace Edge with the correct type for your implementation
+    { ForEachEdge(cc_g,e) {
+            ARRAY_INDEX tid = cc_g->getEdgeId(e);
+            if (cc_g->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+                current_configuration[tid] = starting_point.getConfiguration().at(criticalEdgeId);
+            } else {
+                // current_configuration[tid] = 0;
+            }
+        }}
+    //std::map<ARRAY_INDEX, TOKEN_UNIT> current_configuration = liveness_initial_func(cc_g).getConfiguration();
+    TOKEN_UNIT distance = std::max((TOKEN_UNIT) 1, current_configuration.at(criticalEdgeId)) ;
+
+    //VERBOSE_INFO("[     ] liveness_next_func_by_dichotomy: starting distance " << distance);
+
+    bool alive_once = false;
+    while (true) {
+        cc_g->reset_computation();
+        algorithms::dse::TokenConfiguration new_token_configuration(cc_g, current_configuration);
+        auto res = liveness_performance_func(cc_g, new_token_configuration);
+
+        if (res.throughput > 0) {
+            alive_once = true;
+            distance = distance / 2;
+            //VERBOSE_INFO("[     ] liveness_next_func_by_dichotomy: alive, new distance is " << distance);
+            if (distance == 0)  return {new_token_configuration};
+            current_configuration[criticalEdgeId] = current_configuration[criticalEdgeId] - distance; // Increment the buffer size for the current edge by 1
+        } else {
+            if (!alive_once) distance = distance * 2;
+            //VERBOSE_INFO("[     ] liveness_next_func_by_dichotomy: dead, new distance is " << distance);
+            current_configuration[criticalEdgeId] = current_configuration[criticalEdgeId] + distance; // Increment the buffer size for the current edge by 1
+        }
+        //VERBOSE_INFO("[     ] liveness_next_func_by_dichotomy: new token size " << current_configuration[criticalEdgeId]);
+
+    }
+
+
+
+}
+
 std::vector<algorithms::dse::TokenConfiguration> liveness_next_func(const algorithms::dse::TokenConfiguration& current) {
 
     // stopping condition
@@ -56,8 +129,30 @@ std::vector<algorithms::dse::TokenConfiguration> liveness_next_func(const algori
     }
 
     const models::Dataflow* df =  current.getDataflow();
-    std::vector<algorithms::dse::TokenConfiguration> next_configurations;
     const auto& current_configuration = current.getConfiguration();
+
+    /*
+     *  Special Case 1: only one critical edge, can perform dichotomy
+     */
+
+    std::vector<algorithms::dse::TokenConfiguration::EdgeIdentifier> critical_feedbacks;
+    for (algorithms::dse::TokenConfiguration::EdgeIdentifier edgeId : current.getPerformance().critical_edges) {
+        Edge c = df->getEdgeById(edgeId);
+        if (df->getEdgeType(c) != EDGE_TYPE::FEEDBACK_EDGE) continue; // Skip non feedback buffers.
+        critical_feedbacks.push_back(edgeId);
+    }
+
+    if (critical_feedbacks.size() == 1) {
+        VERBOSE_DEBUG("Special case 1: Run Dichotomy");
+        return liveness_next_func_by_dichotomy(current);
+    }
+
+    /*
+     *  General Case : Step up each critical edge by a gcd step
+     */
+
+    std::vector<algorithms::dse::TokenConfiguration> next_configurations;
+
     for (algorithms::dse::TokenConfiguration::EdgeIdentifier edgeId : current.getPerformance().critical_edges) {
         Edge c = df->getEdgeById(edgeId);
         if (df->getEdgeType(c) != EDGE_TYPE::FEEDBACK_EDGE) continue; // Skip non feedback buffers.

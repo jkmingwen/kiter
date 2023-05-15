@@ -26,7 +26,9 @@ struct dataset_generator_params {
     std::string input_file;
     std::string output_file;
     ARRAY_INDEX cycle_size;
+    TOKEN_UNIT min_weight;
     TOKEN_UNIT max_weight;
+    int verbosity;
     ARRAY_INDEX count = -1;
 
 };
@@ -46,7 +48,7 @@ class CycleGenerator {
 public:
 
 
-    CycleGenerator(size_t cycle_size, size_t max_weight) : cycle_size(cycle_size), max_weight(max_weight) {
+    CycleGenerator(size_t cycle_size, size_t min_weight, size_t max_weight) : cycle_size(cycle_size), min_weight(min_weight) , max_weight(max_weight) {
     }
     void load(std::string filename) {
         current_cycle.clear();
@@ -82,22 +84,6 @@ public:
         return (current_cycle.empty());
     }
 
-    std::vector<int> next_cycle(const std::vector<int>& previous, int N) {
-        std::vector<int> next = previous;
-        std::cout << "Cycle was " << commons::toString(previous) << std::endl;
-        std::cout << "Cycle is " << commons::toString(next) << std::endl;
-        for (int i = next.size() - 1; i >= 0; --i) {
-            if (next[i] < N) {
-                next[i]++;
-                break;
-            } else {
-                next[i] = 1;
-            }
-        }
-        return next;
-    }
-
-
 
 
     const Cycle get_next_cycle(const Cycle& previous) {
@@ -107,7 +93,7 @@ public:
                 next[i]++;
                 break;
             } else {
-                next[i] = 1;
+                next[i] = this->min_weight;
             }
         }
         return next;
@@ -119,7 +105,7 @@ public:
 
         if (current_cycle.empty()) {
             // initialize the first cycle
-            current_cycle = Cycle(cycle_size, 1);
+            current_cycle = Cycle(cycle_size, this->min_weight);
         } else {
             current_cycle = get_next_cycle(current_cycle);
         }
@@ -129,6 +115,7 @@ public:
 
 private:
     size_t cycle_size;
+    size_t min_weight;
     size_t max_weight;
     Cycle current_cycle;
 
@@ -154,13 +141,15 @@ dataset_generator_params parse_aguments (int argc, char **argv) {
     dataset_generator_params params;
     // ** Retreive arguments **
     int c;
-    while ((c = getopt(argc, (char **)argv, "s:w:i:o:c:t:h")) != -1) {
+    while ((c = getopt(argc, (char **)argv, "s:m:w:i:o:c:t:v:h")) != -1) {
         if (c == 'i') { params.input_file = optarg;}
         if (c == 'o') { params.output_file = optarg;}
         if (c == 's') { params.cycle_size =  std::atoi(optarg);}
+        if (c == 'm') { params.min_weight =  std::atoi(optarg);}
         if (c == 'w') { params.max_weight =  std::atoi(optarg);}
         if (c == 'c') { params.count =  std::atoi(optarg);}
         if (c == 't') { params.thread =  std::atoi(optarg);}
+        if (c == 'v') { params.verbosity =  std::atoi(optarg);}
 
         if (c == 'h') {
             std::cerr << "Command: dataset_generator -s cycle_size -w max_weight -i inputfile -o outputfile." << std::endl;
@@ -187,8 +176,8 @@ int main (int argc, char **argv) {
     commons::set_verbose_mode(commons::WARNING_LEVEL); // default verbose mode is ...
 
     dataset_generator_params params = parse_aguments (argc, argv);
-
-    CycleGenerator generator (params.cycle_size, params.max_weight);
+    commons::set_verbose_mode(params.verbosity);
+    CycleGenerator generator (params.cycle_size, params.min_weight, params.max_weight);
 
     //if (params.input_file != "") generator.load(params.input_file);
     if (CSV_HAS_HEADER) print_csv_header(params.cycle_size);
