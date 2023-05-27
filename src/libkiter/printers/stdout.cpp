@@ -804,29 +804,31 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 
 		std::cout <<  std::setw(name_len) << "ChannelName"
 				<< " ("
-				<< std::setw(10) << "ChannelId"
+				<< std::setw(9) << "ChannelId"
 				<< ")"
-				<< std::setw(10) << "Source"
-				<< std::setw(10) << "Target"
+				<< std::setw(6) << "Source"
+				<< std::setw(6) << "Target"
 				<< std::setw(10) << "TotalIn"
                 << std::setw(10) << "TotalOut"
                 << std::setw(10) << "StepSize"
-				<< std::setw(15) << "InitialMarking"
-				<< std::setw(20) << "Route"
+                << std::setw(10) << "Preload"
+                << std::setw(10) << "Type"
+				<< std::setw(15) << "Route"
 				<< std::endl;
 
 		{ForEachChannel(dataflow,c) {
 			std::cout << std::setw(name_len) << dataflow->getEdgeName(c)
                       << " ("
-					  << std::setw(10) << dataflow->getEdgeId(c)
+					  << std::setw(9) << dataflow->getEdgeId(c)
 					  << ")"
-					  << std::setw(10) << dataflow->getVertexId(dataflow->getEdgeSource(c))
-					  << std::setw(10) <<dataflow->getVertexId(dataflow->getEdgeTarget(c))
+					  << std::setw(6) << dataflow->getVertexId(dataflow->getEdgeSource(c))
+					  << std::setw(6) <<dataflow->getVertexId(dataflow->getEdgeTarget(c))
 					  << std::setw(10) << dataflow->getEdgeIn(c)
 					  << std::setw(10) << dataflow->getEdgeOut(c)
                       << std::setw(10) << dataflow->getFineGCD(c)
-					  << std::setw(15) << dataflow->getPreload(c)
-					  << std::setw(20) << commons::toString(dataflow->getRoute(c))
+                      << std::setw(10) << dataflow->getPreload(c)
+                      << std::setw(10) << dataflow->getEdgeTypeStr(c)
+					  << std::setw(15) << commons::toString(dataflow->getRoute(c))
 					  << std::endl;
 
 

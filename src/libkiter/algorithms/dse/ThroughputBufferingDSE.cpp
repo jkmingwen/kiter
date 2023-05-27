@@ -4,6 +4,7 @@
 
 #include "ThroughputBufferingDSE.h"
 #include "algorithms/transformation/subgraph.h"
+#include "algorithms/transformation/AddFeedbackBuffers.h"
 #include <algorithms/dse/dse_utils.h>
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
@@ -196,7 +197,7 @@ namespace algorithms {
             TIME_UNIT target_throughput = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow).throughput;
             models::Dataflow* dataflow_prime = new models::Dataflow(*dataflow);
 
-            algorithms::generateInplaceFeedbackBuffers(dataflow_prime);
+            algorithms::transformation::generateInplaceFeedbackBuffers(dataflow_prime);
             dataflow_prime->precomputeFineGCD();
             ThroughputBufferingStopCondition throughputbuffering_stop_condition(target_throughput);
 
@@ -219,7 +220,7 @@ namespace algorithms {
 
 
             // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit,realtime_output] { dse.explore(limit, realtime_output); });
+            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit,realtime_output] { dse.explore(limit, false, realtime_output); });
 
             if (timeout > 0) {
                 std::this_thread::sleep_for(std::chrono::seconds (timeout));

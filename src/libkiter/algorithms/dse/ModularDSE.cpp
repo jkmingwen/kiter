@@ -28,6 +28,7 @@ namespace algorithms {
         void ModularDSE::explore_thread(std::atomic<unsigned int>& idle_threads,
                                         std::atomic<size_t>& explored, size_t limit,
                                         const std::chrono::steady_clock::time_point beginTime,
+                                        bool bottom_up,
                                         bool realtime_output) {
 
             models::Dataflow sandbox = *this->dataflow;
@@ -68,9 +69,13 @@ namespace algorithms {
                         continue;
                     }
 
-                    current_configuration = std::make_unique<TokenConfiguration>(
-                            job_pool.top());
+                    if (bottom_up) {
+                        current_configuration = std::make_unique<TokenConfiguration>(job_pool.last());
+                        job_pool.pop_last();
+                    } else {
+                    current_configuration = std::make_unique<TokenConfiguration>(job_pool.top());
                     job_pool.pop();
+                    };
                     explored++;
 
                     bool stop_decision = stop_func(*current_configuration, results);
@@ -113,7 +118,7 @@ namespace algorithms {
 
 
 
-        void ModularDSE::explore(const size_t limit,
+        void ModularDSE::explore(const size_t limit, bool bottom_up,
                                  bool realtime_output) {
 
             VERBOSE_INFO("Start to explore");
@@ -129,7 +134,7 @@ namespace algorithms {
             if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, realtime_output));
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output));
             }
 
             for (auto& future : futures) {

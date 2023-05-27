@@ -6,7 +6,7 @@
 
 #include "helpers/test_classes.h"
 #include "helpers/random_generator.h"
-#include <algorithms/dse/LivenessModularDSE.h>
+#include <algorithms/liveness/LivenessModularDSE.h>
 #include <future>
 #include <printers/SDF3Wrapper.h>
 #include <models/EventGraph.h>

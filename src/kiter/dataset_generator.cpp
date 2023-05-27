@@ -11,9 +11,9 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-#include "models/Dataflow.h"
-#include "generators/NormalizedCycleGenerator.h"
-#include "algorithms/dse/LivenessModularDSE.h"
+#include <models/Dataflow.h>
+#include <generators/NormalizedCycleGenerator.h>
+#include <algorithms/liveness/LivenessModularDSE.h>
 
 #define CSV_SEPARATOR ' '
 #define CSV_HAS_HEADER false
@@ -48,7 +48,7 @@ class CycleGenerator {
 public:
 
 
-    CycleGenerator(size_t cycle_size, size_t min_weight, size_t max_weight) : cycle_size(cycle_size), min_weight(min_weight) , max_weight(max_weight) {
+    CycleGenerator(TOKEN_UNIT cycle_size, TOKEN_UNIT min_weight, TOKEN_UNIT max_weight) : cycle_size(cycle_size), min_weight(min_weight) , max_weight(max_weight) {
     }
     void load(std::string filename) {
         current_cycle.clear();
@@ -58,7 +58,7 @@ public:
             while (std::getline(infile, line)) {
                 std::istringstream iss(line);
                 Cycle cycle(cycle_size);
-                for (size_t i = 0; i < cycle_size; i++) {
+                for (TOKEN_UNIT i = 0; i < cycle_size; i++) {
                     if (!(iss >> cycle[i])) {
                         std::cerr << "Error parsing input file: invalid format" << std::endl;
                         return;
@@ -114,9 +114,9 @@ public:
 
 
 private:
-    size_t cycle_size;
-    size_t min_weight;
-    size_t max_weight;
+    TOKEN_UNIT cycle_size;
+    TOKEN_UNIT min_weight;
+    TOKEN_UNIT max_weight;
     Cycle current_cycle;
 
 };
@@ -128,7 +128,7 @@ models::Dataflow * create_graph(const Cycle & c) {
 
 
 
-size_t compute_minimal_size (const Cycle & c, size_t thread) {
+TOKEN_UNIT compute_minimal_size (const Cycle & c, size_t thread) {
     models::Dataflow *graph = create_graph(c);
     algorithms::dse::TokenConfigurationSet res = algorithms::dse::solve_liveness   (graph, false, thread) ;
     VERBOSE_ASSERT (res.getBestPerformancePoint()->getPerformance().throughput > 0, "Solution should be alive.");
@@ -159,14 +159,14 @@ dataset_generator_params parse_aguments (int argc, char **argv) {
     return params;
 }
 
-void print_csv_header (size_t cycle_size) {
-    for (size_t i = 0 ; i < cycle_size; i++) {
+void print_csv_header (TOKEN_UNIT cycle_size) {
+    for (TOKEN_UNIT i = 0 ; i < cycle_size; i++) {
         std::cout << "Z_" <<  i <<  CSV_SEPARATOR ;
     }
     std::cout << "liveness_condition" << std::endl;
 }
 void print_csv_line (const Cycle & cycle, size_t thread) {
-    size_t res = compute_minimal_size(cycle, thread);
+    TOKEN_UNIT res = compute_minimal_size(cycle, thread);
     print_cycle(cycle);
     std::cout << CSV_SEPARATOR << res << std::endl;
 }

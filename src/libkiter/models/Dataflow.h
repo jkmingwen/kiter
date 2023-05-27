@@ -373,7 +373,8 @@ inline 	Vertex 				addVertex			() 							{
 
 inline  Vertex                addVertex         (const ARRAY_INDEX id)      {
 	// TODO: fixme too long
-	ForEachVertex(this,v) 	{ if (this->getVertexId(v) >= id) VERBOSE_FAILURE();};
+    //FIXME: I forogt why this check with >= ...
+	ForEachVertex(this,v) 	{ if (this->getVertexId(v) == id) VERBOSE_FAILURE();};
 	return addUnsafeVertex(id);
 
 }
@@ -599,10 +600,10 @@ public :
     inline std::string           getEdgeTypeStr (const Edge e )    const     {
     	EDGE_TYPE et = this->getEdgeType(e);
     	switch (et) {
-            case EDGE_TYPE::NORMAL_EDGE : return "NORMAL_EDGE";
-            case EDGE_TYPE::BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
-            case EDGE_TYPE::FEEDBACK_EDGE : return "FEEDBACK_EDGE";
-            case EDGE_TYPE::VIRTUAL_EDGE : return "VIRTUAL_EDGE";
+            case EDGE_TYPE::NORMAL_EDGE : return "NORMAL";
+            case EDGE_TYPE::BUFFERLESS_EDGE : return "BUFFERLESS";
+            case EDGE_TYPE::FEEDBACK_EDGE : return "FEEDBACK";
+            case EDGE_TYPE::VIRTUAL_EDGE : return "VIRTUAL";
     		default : return "UNKNOWN";
     	}
     }
@@ -979,13 +980,13 @@ public :
 	  return (TOKEN_UNIT) result;
     }
 
- inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  {
+ inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  const {
         TOKEN_UNIT gcda = this->getFineGCD(c);
         TOKEN_UNIT old  = commons::floor(v,gcda);
 
         return normalizeValue(c,old);
     }
- inline TOKEN_UNIT		getNormMop  	(const Edge c)	 {
+ inline TOKEN_UNIT		getNormMop  	(const Edge c)	const {
     TOKEN_UNIT mop= this->getPreload(c);
     return normalizeUnknowValue(c,mop);
 }

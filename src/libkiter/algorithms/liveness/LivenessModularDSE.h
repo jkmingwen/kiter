@@ -2,8 +2,8 @@
 // Created by toky on 24/4/23.
 //
 
-#ifndef KITER_LIVENESSMODULARDSE_H
-#define KITER_LIVENESSMODULARDSE_H
+#ifndef KITER_LIVENESS_MODULAR_DSE_H
+#define KITER_LIVENESS_MODULAR_DSE_H
 
 
 #include <algorithms/dse/kperiodic.h>
@@ -23,6 +23,8 @@ namespace algorithms {
                                                 size_t timeout = 0,
                                                 size_t limit = 0,
                                                 std::string  filename = "",
+                                                bool use_dichotomy = false,
+                                                bool use_last = false,
                                                 algorithms::dse::TokenConfiguration* tc = nullptr) ;
 
         void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
@@ -38,4 +40,4 @@ ADD_TRANSFORMATION(LivenessDSE,
                        ));
 
 
-#endif //KITER_LIVENESSMODULARDSE_H
+#endif //KITER_LIVENESS_MODULAR_DSE_H

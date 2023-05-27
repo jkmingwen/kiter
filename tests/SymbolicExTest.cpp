@@ -15,7 +15,7 @@ BOOST_FIXTURE_TEST_SUITE(symbolic_ex_test, WITH_SAMPLE)
         BOOST_REQUIRE(pipeline_sample);
         BOOST_TEST(false);
         //TODO: infinite loop
-//        algorithms::symbolic_execution_with_packets(pipeline_sample, params);
+        //algorithms::symbolic_execution_with_packets(pipeline_sample, params);
     }
 
     BOOST_AUTO_TEST_CASE(sample_symbolic_execution_test)

@@ -11,7 +11,86 @@
 
 using namespace models;
 
+std::map<ARRAY_INDEX,TOKEN_UNIT> compute_alphas(models::Dataflow *from ) {
 
+    // Compute local lcms
+    std::map<ARRAY_INDEX,TOKEN_UNIT> lcms;
+    std::map<ARRAY_INDEX,TOKEN_UNIT> alphas;
+
+    {ForEachVertex(from, t) {
+            ARRAY_INDEX tid = from->getVertexId(t);
+            lcms[tid] = 1;
+            {ForInputEdges(from,t,c) {
+                    lcms[tid] = std::lcm(from->getEdgeOut(c), lcms[tid]);
+                }}
+            {ForOutputEdges(from,t,c) {
+                    lcms[tid] = std::lcm(from->getEdgeIn(c), lcms[tid]);
+                }}
+        }}
+
+
+    {ForEachEdge(from, c) {
+            ARRAY_INDEX cid = from->getEdgeId(c);
+            Vertex source = from->getEdgeSource(c);
+            Vertex destination = from->getEdgeTarget(c);
+            ARRAY_INDEX sourceId = from->getVertexId(source);
+            ARRAY_INDEX destinationId = from->getVertexId(destination);
+            TOKEN_UNIT sourceProd = from->getEdgeIn(c);
+            TOKEN_UNIT destinationCons = from->getEdgeOut(c);
+            alphas[cid] = std::lcm(lcms[sourceId] / sourceProd, lcms[destinationId] / destinationCons);
+        }}
+
+    return alphas;
+}
+
+bool setNormalizationFromAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX,TOKEN_UNIT>&  alphas) {
+
+    {ForEachEdge(to, c) {
+        ARRAY_INDEX cid = to->getEdgeId(c);
+        TOKEN_UNIT alpha_c = alphas.at(cid);
+        to->setAlpha(c,alpha_c);
+
+        Vertex Ti = to->getEdgeSource(c);
+        Vertex Tj = to->getEdgeTarget(c);
+
+
+        TOKEN_UNIT Ui = to->getEdgeIn(c);
+        TOKEN_UNIT Uj = to->getEdgeOut(c);
+
+        TOKEN_UNIT Zi = alpha_c * Ui;
+        TOKEN_UNIT Zj = alpha_c *  Uj;
+
+        to->setZi(Ti, Zi);
+        to->setZi(Tj, Zj);
+    }}
+
+    return true;
+}
+
+
+bool checkAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX,TOKEN_UNIT>&  alphas) {
+
+    {ForEachVertex(to, t) {
+        TOKEN_UNIT Zt = 0;
+            { ForInputEdges(to,t, c) {
+                    ARRAY_INDEX cid = to->getEdgeId(c);
+                    TOKEN_UNIT alpha_c = alphas.at(cid);
+                    TOKEN_UNIT Uj = to->getEdgeOut(c);
+                    TOKEN_UNIT Zj = alpha_c *  Uj;
+                    if (Zt == 0) Zt = Zj;
+                    VERBOSE_ASSERT_EQUALS(Zt, Zj);
+            }}
+            { ForOutputEdges(to,t, c) {
+                    ARRAY_INDEX cid = to->getEdgeId(c);
+                    TOKEN_UNIT alpha_c = alphas.at(cid);
+                    TOKEN_UNIT Ui = to->getEdgeIn(c);
+                    TOKEN_UNIT Zi = alpha_c *  Ui;
+                    if (Zt == 0) Zt = Zi;
+                    VERBOSE_ASSERT_EQUALS(Zt, Zi);
+                }}
+        }}
+        return true;
+}
 bool algorithms::check_validity (models::Dataflow *from, std::map<Vertex,TOKEN_UNIT> *  normalization ) {
 
     if (!normalization) return false;
@@ -438,7 +517,7 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
 
 }
 
-bool algorithms::normalize (models::Dataflow *from) {
+bool algorithms::oldnormalize (models::Dataflow *from) {
 
 	if (from->is_normalized()) return true;
 
@@ -470,6 +549,26 @@ bool algorithms::normalize (models::Dataflow *from) {
 
 }
 
+bool algorithms::normalize (models::Dataflow *from) {
+
+    if (from->is_normalized()) return true;
+
+    from->set_read_only();
+
+    bool res;
+
+    // Generate alphas
+    std::map<ARRAY_INDEX,TOKEN_UNIT> alphas = compute_alphas(from);
+
+    //Check alphas
+    VERBOSE_ASSERT(checkAlphas(from, alphas), "Normalization failed");
+
+    // Set alphas
+    res = setNormalizationFromAlphas(from,alphas);
+    if (res) from->set_normalize();
+    return res;
+
+}
 
 
 

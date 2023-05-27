@@ -35,6 +35,19 @@ namespace algorithms {
             const TokenConfiguration& top () const {
                 return *(this->configurations_by_cost.begin()->second.begin());
             }
+            const TokenConfiguration& last () const {
+                return *(std::prev(std::prev(this->configurations_by_cost.end())->second.end()));
+            }
+
+            void pop_last () {
+                // remove the last config
+                std::prev(this->configurations_by_cost.end())->second.erase(std::prev(std::prev(this->configurations_by_cost.end())->second.end()));
+
+                // remove empty set
+                if (std::prev(this->configurations_by_cost.end())->second.empty()) {
+                    this->configurations_by_cost.erase(std::prev(this->configurations_by_cost.end()));
+                }
+            }
 
             void pop () {
                 // remove the first config
