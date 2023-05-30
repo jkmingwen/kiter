@@ -2,8 +2,8 @@
 // Created by toky on 26/4/23.
 //
 
-#ifndef KITER_THROUGHPUTBUFFERINGDSE_H
-#define KITER_THROUGHPUTBUFFERINGDSE_H
+#ifndef KITER_THROUGHPUT_BUFFERING_DSE_H
+#define KITER_THROUGHPUT_BUFFERING_DSE_H
 
 
 
@@ -12,13 +12,13 @@
 
 namespace algorithms {
     namespace dse {
+        enum ThroughputBufferingMode {DSE_MODE, KDSE_MODE, KDSEA_MODE};
         TokenConfiguration::PerformanceResult throughputbuffering_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
         std::vector<TokenConfiguration> throughputbuffering_initial_func(const models::Dataflow* dataflow);
-        std::vector<TokenConfiguration> throughputbuffering_next_func(const TokenConfiguration& );
 
 
         TokenConfigurationSet solve_throughputbuffering   (models::Dataflow* const  dataflow,
-                                                           bool deep_mode = false,
+                                                           ThroughputBufferingMode mode,
                                                 bool realtime_output = false,
                                                 size_t thread_count = 1,
                                                 size_t timeout = 0,
@@ -40,4 +40,4 @@ ADD_TRANSFORMATION(throughputbufferingDSE,
 
 
 
-#endif //KITER_THROUGHPUTBUFFERINGDSE_H
+#endif //KITER_THROUGHPUT_BUFFERING_DSE_H
