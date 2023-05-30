@@ -23,15 +23,15 @@ namespace algorithms {
         class ModularDSE {
         public:
             // TODO: decide if they are declared here or in the TokenConfiguration
-            using InitialConfigurationFunc = std::function<TokenConfiguration(const models::Dataflow*)>;
+            using InitialConfigurationsFunc = std::function<std::vector<TokenConfiguration>(const models::Dataflow*)>;
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
-            using NextConfigurationFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
+            using NextConfigurationsFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
             using StopConditionFunc = std::function<bool(const TokenConfiguration&,const TokenConfigurationSet&)>;
 
             ModularDSE(const models::Dataflow* dataflow,
                        PerformanceFunc performance_func,
-                       InitialConfigurationFunc initial_func,
-                       NextConfigurationFunc next_func,
+                       InitialConfigurationsFunc initial_func,
+                       NextConfigurationsFunc next_func,
                        StopConditionFunc stop_func,
                        size_t num_threads = std::thread::hardware_concurrency())
                     : dataflow(dataflow),
@@ -54,6 +54,7 @@ namespace algorithms {
             void import_results(std::istream& input);
             void import_results(const std::string& filename);
             void add_initial_job(const TokenConfiguration& tc) ;
+            void add_initial_jobs(const std::vector<TokenConfiguration>& tc) ;
             void stop() ;
             const TokenConfigurationSet & getResults () const {return results;} ;
             size_t results_size () const {return results.size();};
@@ -72,8 +73,8 @@ namespace algorithms {
         private:
             const models::Dataflow* dataflow;
             PerformanceFunc performance_func;
-            InitialConfigurationFunc initial_func;
-            NextConfigurationFunc next_func;
+            InitialConfigurationsFunc initial_func;
+            NextConfigurationsFunc next_func;
             StopConditionFunc stop_func;
             size_t num_threads;
 

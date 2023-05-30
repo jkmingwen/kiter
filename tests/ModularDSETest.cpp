@@ -20,7 +20,7 @@ TokenConfiguration::PerformanceResult dummy_pc(models::Dataflow*, const TokenCon
     return TokenConfiguration::PerformanceResult(config.getCost(), {});
 }
 
-TokenConfiguration dummy_if(const models::Dataflow* dataflow) {
+std::vector<TokenConfiguration> dummy_if(const models::Dataflow* dataflow) {
     std::map<ARRAY_INDEX , TOKEN_UNIT> configuration;
     { ForEachEdge(dataflow,e) {
             ARRAY_INDEX tid = dataflow->getEdgeId(e);
@@ -28,7 +28,7 @@ TokenConfiguration dummy_if(const models::Dataflow* dataflow) {
                 configuration[tid] = 0;
             }
         }}
-    return algorithms::dse::TokenConfiguration(dataflow, configuration);
+    return {algorithms::dse::TokenConfiguration(dataflow, configuration)};
 }
 
 std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& current ) {
@@ -131,8 +131,8 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         }}
 
-        algorithms::dse::TokenConfiguration tc1 = dummy_if(df);
-        algorithms::dse::TokenConfiguration tc2 = dummy_if(df);
+        algorithms::dse::TokenConfiguration tc1 = dummy_if(df).front();
+        algorithms::dse::TokenConfiguration tc2 = dummy_if(df).front();
 
         BOOST_REQUIRE(tc1.dominates(tc2));
         BOOST_REQUIRE(tc2.dominates(tc1));
@@ -156,8 +156,8 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
                                         dummy_nf,
                                         dummy_sc, 1);
 
-        algorithms::dse::TokenConfiguration tc = dummy_if(df);
-        dse.add_initial_job(tc);
+        std::vector<algorithms::dse::TokenConfiguration> tc = dummy_if(df);
+        dse.add_initial_jobs(tc);
         dse.explore(10);
 
         // Test the results
@@ -188,7 +188,7 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
                                         dummy_nf,
                                         dummy_sc, 1);
 
-        algorithms::dse::TokenConfiguration tc = dummy_if(df);
+        algorithms::dse::TokenConfiguration tc = dummy_if(df).front();
 
         std::istringstream input(csv_file_content_with_timings);
         dse.import_results(input);

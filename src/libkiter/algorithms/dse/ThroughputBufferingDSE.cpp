@@ -91,7 +91,7 @@ namespace algorithms {
             return res;
         }
 
-        algorithms::dse::TokenConfiguration throughputbuffering_initial_func(const models::Dataflow* dataflow) {
+        std::vector<algorithms::dse::TokenConfiguration> throughputbuffering_initial_func(const models::Dataflow* dataflow) {
 
             std::map<ARRAY_INDEX , TOKEN_UNIT> configuration; // Replace Edge with the correct type for your implementation
 
@@ -123,7 +123,7 @@ namespace algorithms {
                     }
             }}
 
-            return algorithms::dse::TokenConfiguration(dataflow, configuration);
+            return {algorithms::dse::TokenConfiguration(dataflow, configuration)};
         }
 
 
@@ -215,7 +215,7 @@ namespace algorithms {
                 VERBOSE_INFO("Initial state of the search is forced to " << *tc);
                 dse.add_initial_job(*tc);
             } else {
-                dse.add_initial_job(throughputbuffering_initial_func(dataflow_prime));
+                dse.add_initial_jobs(throughputbuffering_initial_func(dataflow_prime));
             }
 
 

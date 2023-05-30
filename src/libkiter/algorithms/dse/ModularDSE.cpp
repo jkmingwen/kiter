@@ -143,6 +143,12 @@ namespace algorithms {
         }
 
 
+        void ModularDSE::add_initial_jobs(const std::vector<TokenConfiguration>& vec) {
+            std::unique_lock<std::mutex> lock(mtx);
+            for (auto tc : vec)
+                job_pool.push(tc);
+            cv.notify_one();
+        }
         void ModularDSE::add_initial_job(const TokenConfiguration& tc) {
             std::unique_lock<std::mutex> lock(mtx);
             job_pool.push(tc);

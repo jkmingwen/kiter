@@ -13,7 +13,7 @@
 namespace algorithms {
     namespace dse {
         TokenConfiguration::PerformanceResult throughputbuffering_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
-        TokenConfiguration throughputbuffering_initial_func(const models::Dataflow* dataflow);
+        std::vector<TokenConfiguration> throughputbuffering_initial_func(const models::Dataflow* dataflow);
         std::vector<TokenConfiguration> throughputbuffering_next_func(const TokenConfiguration& );
 
 

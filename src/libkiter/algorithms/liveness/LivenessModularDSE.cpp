@@ -178,7 +178,7 @@ namespace algorithms {
 
 
 // TODO: for the liveness problem it might make sense, but for buffer sizing it is so dumb.
-algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow* dataflow) {
+std::vector<algorithms::dse::TokenConfiguration> liveness_initial_func(const models::Dataflow* dataflow) {
     std::map<ARRAY_INDEX , TOKEN_UNIT> configuration; // Replace Edge with the correct type for your implementation
     { ForEachEdge(dataflow,e) {
             ARRAY_INDEX tid = dataflow->getEdgeId(e);
@@ -186,7 +186,7 @@ algorithms::dse::TokenConfiguration liveness_initial_func(const models::Dataflow
                 configuration[tid] = 0;
             }
         }}
-    return algorithms::dse::TokenConfiguration(dataflow, configuration);
+    return {algorithms::dse::TokenConfiguration(dataflow, configuration)};
 }
 
 
@@ -225,7 +225,7 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                     VERBOSE_INFO("Initial state of the search is forced to " << *tc);
                     dse.add_initial_job(*tc);
             } else {
-                    dse.add_initial_job(liveness_initial_func(dataflow));
+                    dse.add_initial_jobs(liveness_initial_func(dataflow));
             }
 
             // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
