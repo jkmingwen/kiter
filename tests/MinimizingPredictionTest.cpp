@@ -28,7 +28,7 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
     {
         //TODO: testing only --- absolute path badness
         parameters_list_t params;
-        std::string DICT_PATH = "";
+        std::string DICT_PATH;
 
         // Need to change the dictionary path
         if (DICT_PATH.empty()) {

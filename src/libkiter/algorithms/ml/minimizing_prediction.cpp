@@ -53,14 +53,30 @@ PreloadDict::buildMap(const std::string& filename) {
     return map;
 }
 
-// Machine learning version of the algorithm
-//int algorithms::get_preload(const std::vector<int>& weights, parameters_list_t parameters) {
-//    // Load the model
-//    if(!parameters.count("MODEL_DIR")) {
-//        VERBOSE_ERROR("get_preload: Model path not found!")
-//        return -1;
-//    }
-//
+std::vector<int> algorithms::get_preload(models::Dataflow*  dataflow, parameters_list_t parameters) {
+    // Load the model
+    if (!parameters.count("DICT_PATH")) {
+        VERBOSE_ERROR("get_preload: Model path not found!")
+        std::vector<int> res {-1};
+        return res;
+    }
+    VERBOSE_ASSERT(algorithms::normalize(dataflow), "get_preload: Normalization failed")
+
+    std::vector<uint8_t> weights;
+
+    dataflow->getVertices();
+    ForEachVertex(dataflow,v) {
+            weights.push_back(static_cast<uint8_t>(dataflow->getZi(v)));
+    }
+
+    //TODO: this should just reference a singleton
+    PreloadDict preload_dict(parameters["DICT_PATH"]);
+    std::vector<uint8_t> dict_result = preload_dict.lookup(weights);
+
+    std::vector<int> res(dict_result.begin(), dict_result.end());
+    return res;
+}
+
 //    long input_size = static_cast<long>(weights.size());
 //    std::string model_dir = parameters["MODEL_DIR"];
 //    cppflow::model model(model_dir);

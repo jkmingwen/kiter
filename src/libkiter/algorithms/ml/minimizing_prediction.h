@@ -41,7 +41,7 @@ private:
     static std::unordered_map<std::vector<uint8_t>, std::vector<uint8_t>, KeyHasher, KeyEqual> buildMap(const std::string& filename);
 };
 namespace algorithms {
-    int get_preload(models::Dataflow*  dataflow, parameters_list_t parameters);
+    std::vector<int> get_preload(models::Dataflow*  dataflow, parameters_list_t parameters);
 }
 
 
