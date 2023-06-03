@@ -5,6 +5,8 @@
  *      Author: toky
  */
 
+#include <models/Dataflow.h>
+
 #ifndef NORMALIZATION_H_
 #define NORMALIZATION_H_
 namespace commons { class GLPSol;   }
