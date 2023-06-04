@@ -13,15 +13,19 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
     BOOST_AUTO_TEST_CASE(minimizing_prediciton_not_found_test)
     {
         parameters_list_t params;
-        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/notes/data/kiter_data.txt";
+        params["DICT_PATH"] = "";
+        // Need to change the dictionary path
+        if (params["DICT_PATH"].empty()) {
+            BOOST_ASSERT(false);
+        }
 
         PreloadDict preload_dict(params["DICT_PATH"]);
 
         std::vector<uint8_t> weights = {60, 223, 42, 12};
         std::vector<uint8_t> result = preload_dict.lookup(weights);
-        std::vector<uint8_t> expected = {0,0,0,0};
+        std::vector<uint8_t> not_found = {0};
 
-        BOOST_ASSERT(result == expected);
+        BOOST_ASSERT(result == not_found);
     }
 
     BOOST_AUTO_TEST_CASE(sample_minimizing_prediciton_test)
@@ -52,5 +56,20 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
         BOOST_ASSERT(result1 == expected1);
         BOOST_ASSERT(result2 == expected2);
         BOOST_ASSERT(result3 == expected3);
+    }
+
+    BOOST_AUTO_TEST_CASE(random_graph_minimizing_prediction_test)
+    {
+        //TODO: testing only --- absolute path badness
+        parameters_list_t params;
+        params["DICT_PATH"] = "";
+
+
+        // Need to change the dictionary path
+        if (params["DICT_PATH"].empty()) {
+            BOOST_ASSERT(false);
+        }
+
+        algorithms::get_preload(cycle_sample, params);
     }
 BOOST_AUTO_TEST_SUITE_END()

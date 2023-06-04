@@ -12,7 +12,7 @@ PreloadDict::PreloadDict(const std::string& filename) {
 }
 
 std::vector<uint8_t> PreloadDict::lookup(const std::vector<uint8_t>& key) const {
-    std::vector<uint8_t> result = {0,0,0,0};
+    std::vector<uint8_t> result = {0};
     auto it = map_.find(key);
 
     if (it != map_.end()) {
