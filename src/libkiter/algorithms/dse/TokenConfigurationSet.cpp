@@ -68,5 +68,36 @@ namespace algorithms {
             return (this->configurations_by_cost.find(cost) != this->configurations_by_cost.end());
         }
 
+
+        bool TokenConfigurationSet::isNonMinimal(const TokenConfiguration& newConfig)  {
+
+            for (auto config : *this) {
+                if ((newConfig.getCost() > config.getCost() &&
+                     (newConfig.getPerformance().throughput <= config.getPerformance().throughput )))
+                    return true;
+                if (newConfig.getCost() >= config.getCost() &&
+                        newConfig.getPerformance().throughput < config.getPerformance().throughput)
+                    return true;
+            }
+
+
+        }
+
+        size_t TokenConfigurationSet::removeDominatedBy(const TokenConfiguration& newConfig) {
+
+            size_t removed = 0;
+
+            for (auto config : *this) {
+                    if (newConfig.getCost() == config.getCost() && // remove existing equal storage dist (size) with lower thr
+                                                                   newConfig.getPerformance().throughput  > config.getPerformance().throughput ) {
+
+                        this->remove(config);
+                        removed ++;
+                    }
+            }
+            return removed;
+        }
+
+
     } // algorithms
 } // dse

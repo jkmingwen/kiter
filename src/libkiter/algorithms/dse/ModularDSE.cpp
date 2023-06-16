@@ -5,8 +5,12 @@
 #include "ModularDSE.h"
 #include "TokenConfiguration.h"
 
+#define VERBOSE_DSE_THREADS(msg) VERBOSE_CUSTOM_DEBUG ("DSE_THREAD", msg)
+
 namespace algorithms {
     namespace dse {
+
+
 
         // This needs the lock
         bool ModularDSE::should_stop(size_t idle_threads, size_t explored, size_t limit) {
@@ -39,20 +43,20 @@ namespace algorithms {
                     // Idle phase, looking for a job
                     // =============================
                     std::unique_lock<std::mutex> lock(mtx);
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " enters its loop (got the lock)");
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " enters its loop (got the lock)");
                     ++idle_threads;
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads
                                             << " and leave the lock.");
 
                     cv.wait_for(lock, std::chrono::milliseconds(1000),
                                 [this,&idle_threads] { return stop_exploration || !job_pool.empty() || idle_threads == num_threads; });
 
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id()
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                             << " get the lock again, wait_for satisfied stop_exploration="
                                             << (stop_exploration ? "true" : "false") << " and job_pool.size()="
                                             << job_pool.size() << ".");
                     if (should_stop(idle_threads, explored, limit)) {
-                        VERBOSE_DEBUG("Thread " << std::this_thread::get_id()
+                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                                 << " says we should stop and stop_exploration is "
                                                 << (stop_exploration ? "true" : "false"));
                         break;
@@ -62,10 +66,10 @@ namespace algorithms {
                     // ===============================
 
                     --idle_threads;
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads);
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads);
 
                     if (job_pool.empty()) {
-                        VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " finds the pool empty ");
+                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " finds the pool empty ");
                         continue;
                     }
 
@@ -79,7 +83,7 @@ namespace algorithms {
                     explored++;
 
                     bool stop_decision = stop_func(*current_configuration, results);
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id()
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                             << " will release the lock and stop the good work. his decision to stop is  "
                                             << (stop_decision ? "true" : "false"));
                     if (stop_decision) return;
@@ -93,14 +97,14 @@ namespace algorithms {
                 sandbox.reset_computation();
                 current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
                 auto next_configurations = next_func(*current_configuration);
-                VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " is done and need the lock");
+                VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
                 {
                     // printing add next config phase
                     // ===============================
                     std::unique_lock<std::mutex> lock(mtx);
 
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
 
                     if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                     results.add(*current_configuration);
@@ -109,7 +113,7 @@ namespace algorithms {
                             job_pool.push(next_configuration);
                         }
                     }
-                    VERBOSE_DEBUG("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ".");
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ".");
                 }
                 cv.notify_all();
 

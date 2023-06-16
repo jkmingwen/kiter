@@ -211,7 +211,6 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
             dataflow->precomputeFineGCD();
             algorithms::dse::ModularDSE dse(dataflow,
                                             liveness_performance_func,
-                                            liveness_initial_func,
                                             LivenessNextFunc(use_dichotomy),
                                             liveness_stop_condition,
                                             thread_count);

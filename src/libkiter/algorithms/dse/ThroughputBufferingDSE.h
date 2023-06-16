@@ -12,8 +12,35 @@
 
 namespace algorithms {
     namespace dse {
-        enum ThroughputBufferingMode {DSE_MODE, KDSE_MODE, KDSEA_MODE};
-        TokenConfiguration::PerformanceResult throughputbuffering_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
+        enum ThroughputBufferingMode {
+            ASAP_DSE_MODE, // Stuijk2006
+            KDSE_MODE, //  Koh2022
+            K2DSE_MODE,
+            K2DSEA_MODE
+        };
+
+
+        class ThroughputBufferingStopCondition {
+        public:
+            ThroughputBufferingStopCondition(TIME_UNIT target_th, bool surface_only = false) : surface_only(surface_only), target_th(target_th) {}
+            bool operator()(const algorithms::dse::TokenConfiguration& new_config, const algorithms::dse::TokenConfigurationSet& searched_configs) const ;
+        private:
+            bool      surface_only;
+            TIME_UNIT target_th;
+        };
+
+        class ThroughputBufferingNext {
+        public:
+            ThroughputBufferingNext(ThroughputBufferingMode mode, TIME_UNIT max_th) : max_th(max_th), mode(mode)  {}
+            std::vector<algorithms::dse::TokenConfiguration>  operator()(const algorithms::dse::TokenConfiguration& current) const;
+        private:
+            TIME_UNIT max_th;
+            ThroughputBufferingMode mode;
+        };
+
+
+        TokenConfiguration::PerformanceResult asap_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
+        TokenConfiguration::PerformanceResult kperiodic_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
         std::vector<TokenConfiguration> throughputbuffering_initial_func(const models::Dataflow* dataflow);
 
 

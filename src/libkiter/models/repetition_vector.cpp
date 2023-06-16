@@ -9,6 +9,9 @@
 #include "repetition_vector.h"
 #include <models/Dataflow.h>
 
+
+#define VERBOSE_RV(msg) VERBOSE_CUSTOM_DEBUG ("RV", msg)
+
 #define CRAZY
 
 
@@ -139,17 +142,17 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
     {ForEachVertex(from,v) {
     	subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
     }}
-    VERBOSE_EXTRA_DEBUG("SubRate = " << subrate);
+    VERBOSE_RV("SubRate = " << subrate);
 
     {ForEachVertex(from,v) {
             repetitionVector[v] = repetitionVector[v] / subrate;
         }}
 #endif
 
-    VERBOSE_EXTRA_DEBUG("Repetition Vector :");
+    VERBOSE_RV("Repetition Vector :");
     {ForEachVertex(from,v) {
             from->setNi(v,repetitionVector[v]);
-            VERBOSE_EXTRA_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+            VERBOSE_RV(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
         }}
 
     return true;
@@ -311,7 +314,7 @@ bool computeRepetitionVector(models::Dataflow *from) {
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }}
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_EXTRA_DEBUG("Rate Period = " << ratePeriod);
+    VERBOSE_RV("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor
@@ -343,7 +346,7 @@ bool generic_repetition_vector (models::NaiveDataflow *from) {
             ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_INFO("Rate Period = " << ratePeriod);
+    VERBOSE_RV("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor
@@ -355,14 +358,14 @@ bool generic_repetition_vector (models::NaiveDataflow *from) {
         }
 
 
-    VERBOSE_INFO("Calc done");
+    VERBOSE_RV("Calc done");
 
     // Calculate repetition vector based on firing ratios
     auto repetitionVector =  generic_calc_repetition_vector(from,fractions, ratePeriod);
-    VERBOSE_INFO("Repetition Vector done");
+    VERBOSE_RV("Repetition Vector done");
     for (auto v : from->getVertices()) {
             from->setNi(v,repetitionVector[from->getVertexId(v)]);
-            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[from->getVertexId(v)] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+        VERBOSE_RV(from->getVertexName(v) << " \t: " << repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[from->getVertexId(v)] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
     }
 
     return true;

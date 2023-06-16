@@ -21,9 +21,8 @@
 bool local_stop_condition(StorageDistributionSet& minStorageDist, StorageDistributionSet& checklist, TIME_UNIT target_thr) {
     return minStorageDist.isSearchComplete(checklist, target_thr);
 }
-StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow, StorageDistribution initDist) {
+StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow, StorageDistribution initDist, bool approx) {
 
-    char *AD = getenv("APPROX_DSE");
     // Compute the minimal steps
     std::map<Edge, TOKEN_UNIT> minStepSizes;
     findMinimumStepSz(dataflow, minStepSizes);
@@ -70,7 +69,7 @@ StorageDistributionSet local_dse_with_init_dist(models::Dataflow *const dataflow
           also, checklist storagedistributions incorrect? */
 
         // clean up distributions
-        if (AD)
+        if (approx)
         minStorageDist.minimizeStorageDistributions(checkDist);
 
     }
@@ -126,7 +125,7 @@ models::Dataflow* get_critical_cycle_original_edges_from_prime (const models::Da
 }
 
 std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribution_efficiently_from_cc(const StorageDistribution& checkDist, models::Dataflow *dataflow_prime,
-                                                                                                         const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes) {
+                                                                                                         const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes, bool approx) {
 
 
     VERBOSE_DEBUG_DSE("Update the dataflow_prime with");
@@ -154,7 +153,7 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
     VERBOSE_INFO("Local search result from " << local_dist );
 
     // TODO: There is no stopping condition here, this could be improved, but the stopping condition is not trivial!
-    StorageDistributionSet cc_sds = local_dse_with_init_dist(cc_g, local_dist);
+    StorageDistributionSet cc_sds = local_dse_with_init_dist(cc_g, local_dist, approx);
 
 
     //StorageDistributionTree tree;
@@ -218,7 +217,7 @@ StorageDistribution update_storage_distribution_from_cc(const StorageDistributio
 }
 
 
-StorageDistributionSet algorithms::deep_dse(models::Dataflow *const dataflow) {
+StorageDistributionSet algorithms::deep_dse(models::Dataflow *const dataflow, bool approx) {
         std::cout << "storage distribution size,throughput,channel quantities,computation duration,cumulative duration" << std::endl;
         auto beginTime = std::chrono::steady_clock::now();
         auto initDist = initialiseDist(dataflow);
@@ -262,7 +261,7 @@ StorageDistributionSet algorithms::deep_dse(models::Dataflow *const dataflow) {
 
             // Compute the next distribution to explore
             auto startTime = std::chrono::steady_clock::now();
-            std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = get_next_storage_distribution_efficiently_from_cc(checkDist, dataflow_prime, matching, minStepSizes);
+            std::pair<TIME_UNIT, std::vector<StorageDistribution>> new_points = get_next_storage_distribution_efficiently_from_cc(checkDist, dataflow_prime, matching, minStepSizes, approx);
             auto endTime = std::chrono::steady_clock::now();
             std::chrono::duration<double, std::milli> execTime = endTime - startTime; // duration in ms
             checklist.addStorageDistributions(new_points.second);

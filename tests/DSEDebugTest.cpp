@@ -98,58 +98,12 @@ BOOST_AUTO_TEST_CASE( test_setting_throughput_maximal )
     }
 
 
-
-    std::pair<TIME_UNIT, std::vector<StorageDistribution>> TESTING_get_next_storage_distribution_efficiently_from_cc(StorageDistribution checkDist, models::Dataflow *dataflow_prime,
-                                                                                                             std::map<Edge,Edge>& matching, std::map<Edge, TOKEN_UNIT> & minStepSizes) {
-
-
-        VERBOSE_INFO("Update the dataflow_prime with");
-        updateGraphwMatching(dataflow_prime, matching, checkDist);
-
-        // Compute throughput and storage deps
-        VERBOSE_INFO("Compute throughput to get a critical cycle, and explore solutions using the CC");
-        kperiodic_result_t result = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow_prime);
-        models::Dataflow* cc_g = get_critical_cycle_original_edges_from_prime (dataflow_prime, matching , result);
-
-        auto local_dist = initialiseDist(cc_g);
-        for (Edge c: local_dist.getEdges()) { // FIXME: This is a workaround
-            std::string cc_edge_name = cc_g->getEdgeName(c);
-            Edge prime_edge = dataflow_prime->getEdgeByName(cc_edge_name);
-            local_dist.setChannelQuantity(c, checkDist.getChannelQuantity(matching.at(prime_edge)));
-        }
-
-        VERBOSE_INFO("Old distribution is " << commons::toString(local_dist));
-
-        // TODO: There is no stopping condition here, this could be improved, but the stopping condition is not trivial!
-        StorageDistributionSet cc_sds = algorithms::new_compute_Kperiodic_dse_with_init_dist(cc_g, local_dist);
-
-        VERBOSE_INFO("Local search result is  " << cc_sds.printDistributions());
-        std::vector<StorageDistribution> new_distributions;
-        for (std::pair<TOKEN_UNIT, std::vector<StorageDistribution>> cc_pair : cc_sds.getSet()){
-            if (cc_pair.first > local_dist.getDistributionSize()) {
-                for (StorageDistribution cc_sd : cc_pair.second) {
-                    // The distribution size of the point is bigger than the origial, must be interesting.
-                    StorageDistribution new_sd = update_storage_distribution_from_cc(checkDist, cc_sd);
-                    new_distributions.push_back(new_sd);
-                }
-                // TODO: If you break here, you can miss important configuration
-                // TODO: Careful about it in the proof.
-                // break;
-            }
-        }
-
-        VERBOSE_INFO("New distributions are \n" << commons::toString(new_distributions));
-
-
-
-        return std::pair<TIME_UNIT, std::vector<StorageDistribution>> (result.throughput, new_distributions);
-    }
 BOOST_AUTO_TEST_CASE( test_deep_dse ) {
         VERBOSE_INFO("Generate the Sample Cycle");
         models::Dataflow* dataflow = generateSampleCycle();
         VERBOSE_INFO(printers::generateSDF3XML(dataflow));
 
-        auto minStorageDist = algorithms::deep_dse(dataflow);
+        auto minStorageDist = algorithms::deep_dse(dataflow, false);
 
         VERBOSE_INFO("Storage distributions are \n" << minStorageDist.printDistributions());
 

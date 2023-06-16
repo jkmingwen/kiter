@@ -21,6 +21,9 @@
 #include <cstring>
 #include <fstream>
 
+
+#define VERBOSE_PARSER(msg) VERBOSE_CUSTOM_DEBUG ("SDF3PARSER", msg)
+
 using std::vector;
 
 #define TXT_XML_ERROR "TXT_XML_ERROR"
@@ -138,7 +141,7 @@ void parse_actor_node (models::Dataflow *to, xmlNodePtr taskNode) {
 					if (pEdge != NULL_EDGE) {
 						readSDF3OutputSpec(to,pEdge,rate);
 					} else {
-						VERBOSE_DEBUG ("Could not find in edge " << name << " might be reentrancy.");
+                        VERBOSE_PARSER ("Could not find in edge " << name << " might be reentrancy.");
 					}
 				} else
 
@@ -147,7 +150,7 @@ void parse_actor_node (models::Dataflow *to, xmlNodePtr taskNode) {
 						if (pEdge != NULL_EDGE) {
 							readSDF3InputSpec(to,pEdge,rate);
 						} else {
-							VERBOSE_DEBUG ("Could not find out edge " << name << " might be reentrancy.");
+                            VERBOSE_PARSER ("Could not find out edge " << name << " might be reentrancy.");
 						}
 					} else {
 						VERBOSE_FAILURE();
@@ -288,10 +291,10 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr task_node) {
 	//not a loop, not a reentrancy loop !
 	if (sourceName != targetName) return false;
 
-	VERBOSE_DEBUG("a loop Buffer ?");
+    VERBOSE_PARSER("a loop Buffer ?");
 
 	if (preload != "1") {
-		VERBOSE_DEBUG("preload not work :" << preload);
+        VERBOSE_PARSER("preload not work :" << preload);
 		return false;
 	}
 
@@ -370,7 +373,7 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr task_node) {
 
 
 	if (!(foundIn && foundOut)) {
-		VERBOSE_DEBUG("not found ... foundIn=" << foundIn << " foundOut=" << foundOut);
+        VERBOSE_PARSER("not found ... foundIn=" << foundIn << " foundOut=" << foundOut);
 	}
 
 
@@ -391,7 +394,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("App name is: " << to->getAppName());
+    VERBOSE_PARSER("App name is: " << to->getAppName());
 
     // get the sdf/csdf node and the sdfProperties/csdfproperties node
     //--------------------------------------------------------------------------------
@@ -419,7 +422,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("Parsing the tasks");
+    VERBOSE_PARSER("Parsing the tasks");
 
 
     // Generate Vertex list with names, type, and zero reentrancy
@@ -452,7 +455,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
     // If the edge is seen as a reentrancy edge, only set reentrancy to the task
     //--------------------------------------------------------------------------------
 
-    VERBOSE_DEBUG("Parsing the channels");
+    VERBOSE_PARSER("Parsing the channels");
 
     for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
         if (cur_node->type == XML_ELEMENT_NODE) {
@@ -486,7 +489,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
                 }
 
                 if (checkReentrancy(csdf,cur_node)) {
-                    VERBOSE_DEBUG("checkReentrancy(csdf,cur_node) returns TRUE");
+                    VERBOSE_PARSER("checkReentrancy(csdf,cur_node) returns TRUE");
                     // reentrancy edge
                     to->setReentrancyFactor(to->getVertexByName(sourceName),1);
                 } else {
@@ -513,7 +516,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
     }
 
 
-    VERBOSE_DEBUG("Parsing the timings");
+    VERBOSE_PARSER("Parsing the timings");
 
 
     // get task timings
@@ -527,7 +530,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("Parsing the rates");
+    VERBOSE_PARSER("Parsing the rates");
 
 
     // get task phase count and productions
@@ -547,7 +550,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
 models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 
 
-	VERBOSE_DEBUG("Start wrapSDF3Dataflow");
+    VERBOSE_PARSER("Start wrapSDF3Dataflow");
 
 
 	xmlNodePtr AG = nullptr;
@@ -558,7 +561,7 @@ models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 	// Check file is correct
 	//--------------------------------
 
-	VERBOSE_DEBUG("Check file is correct");
+    VERBOSE_PARSER("Check file is correct");
 
 	if (sdf3 == nullptr) {
 		FAILED("Document XML invalide");
@@ -576,25 +579,25 @@ models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 
             if (std::string((const char*)cur_node->name) == std::string("applicationGraph")) {
                 AG = cur_node;
-                VERBOSE_DEBUG("Found ApplicationGraph node.");
+                VERBOSE_PARSER("Found ApplicationGraph node.");
                 parse_ApplicationGraph_node (to, AG);
             } else if (std::string((const char*)cur_node->name) == std::string("architectureGraph")) {
-                VERBOSE_DEBUG("Ignore architectureGraph node.");
+                VERBOSE_PARSER("Ignore architectureGraph node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("mapping")) {
-                VERBOSE_DEBUG("Ignore mapping node.");
+                VERBOSE_PARSER("Ignore mapping node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("systemUsage")) {
-                VERBOSE_DEBUG("Ignore systemUsage node.");
+                VERBOSE_PARSER("Ignore systemUsage node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("storageThroughputTradeOffs")) {
-                VERBOSE_DEBUG("Ignore storageThroughputTradeOffs node.");
+                VERBOSE_PARSER("Ignore storageThroughputTradeOffs node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("messagesSet")) {
-                VERBOSE_DEBUG("Ignore messagesSet node.");
+                VERBOSE_PARSER("Ignore messagesSet node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("settings")) {
-                VERBOSE_DEBUG("Ignore settings node.");
+                VERBOSE_PARSER("Ignore settings node.");
 
             }
         }

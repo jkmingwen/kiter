@@ -143,7 +143,8 @@ std::string  printers::generate_kiter (const models::Dataflow* const  dataflow, 
 		  if (verbose) returnStream << "std::cout << \"generate a task ...\" << std::endl;"  << std::endl;
 		  returnStream << "auto new_vertex = new_graph->addVertex(" << dataflow->getVertexId(t) << ");" << std::endl;
 
-		  returnStream << " new_graph->setVertexName(new_vertex,\"" << dataflow->getVertexName(t) << "\");" << std::endl;
+              returnStream << " new_graph->setVertexName(new_vertex,\"" << dataflow->getVertexName(t) << "\");" << std::endl;
+              returnStream << " new_graph->setVertexType(new_vertex,\"" << dataflow->getVertexType(t) << "\");" << std::endl;
 		  returnStream << " new_graph->setInitPhasesQuantity(new_vertex," <<init_phase_count << ");" << std::endl;
 		  returnStream << " new_graph->setPhasesQuantity(new_vertex," <<phase_count << ");" << std::endl;
 		  returnStream << " new_graph->setReentrancyFactor(new_vertex," << dataflow->getReentrancyFactor(t)<< "); " << std::endl;
@@ -238,12 +239,13 @@ std::string  printers::generate_kiter (const models::Dataflow* const  dataflow, 
 		  returnStream << " new_graph->setEdgeInPhases(new_edge," << in_rates << ");" << std::endl;
 		  returnStream << " new_graph->setEdgeOutPhases(new_edge," << out_rates << ");" << std::endl;
 		  returnStream << " new_graph->setPreload(new_edge," << dataflow->getPreload(c) << ");" << std::endl;
-		  returnStream << " new_graph->setEdgeName(new_edge,\"" << dataflow->getEdgeName(c) << "\");" << std::endl;
+              returnStream << " new_graph->setEdgeName(new_edge,\"" << dataflow->getEdgeName(c) << "\");" << std::endl;
+              returnStream << " new_graph->setEdgeType(new_edge, EDGE_TYPE::" << dataflow->getEdgeTypeStr(c) << "_EDGE);" << std::endl;
 
 		  returnStream << "}" << std::endl;
 
 	    }}
-	  returnStream << std::endl;
+	  returnStream << "return new_graph;" << std::endl;
 	  returnStream << "}"   << std::endl;
 	  return returnStream.str();
 

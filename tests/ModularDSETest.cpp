@@ -152,7 +152,6 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,
-                                        dummy_if,
                                         dummy_nf,
                                         dummy_sc, 1);
 
@@ -184,7 +183,6 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,
-                                        dummy_if,
                                         dummy_nf,
                                         dummy_sc, 1);
 
