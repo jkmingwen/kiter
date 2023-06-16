@@ -94,6 +94,11 @@ namespace algorithms {
                 auto new_configuration = starting_point.getConfiguration();
                 new_configuration[criticalEdgeId] = maxVal;
                 algorithms::dse::TokenConfiguration new_point(df, new_configuration);
+
+
+                /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
+
+
                 return {new_point};
 
             }
@@ -146,6 +151,8 @@ namespace algorithms {
                     algorithms::dse::TokenConfiguration new_token_configuration(current.getDataflow(), new_configuration);
                     next_configurations.push_back(new_token_configuration);
                 }
+
+
 
                 return next_configurations;
             }
