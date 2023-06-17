@@ -146,3 +146,43 @@ based on the symbolic execution and details of TDMA tables,
 generates a valid mapping of the application.
 
 [Source code](https://github.com/katwinkl3/Scheduling-CP)
+
+
+## Experiments
+
+I am currently writting a Modular version of the DSE to do both liveness and throughput-buffering.
+
+### Examples
+
+This command generate a random cycle and run a liveness search with an initial value.
+
+```
+./Release/bin/kiter -psize=4 -ppreloads=0,0,0,0 -pweights=6,20,3,2 -pdurations=1,1,1,1 -gGenerateNormalizedCycle -pinit=1,1,1,2   -aLivenessDSE
+```
+
+This command add FeedbackEdges so the liveness problem become a minimal buffer sizing:
+```
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE
+```
+
+This command is the usual throughput-buffering:
+
+```
+./Release/bin/kiter -f ./benchmarks/IB5CSDF/BlackScholes.xml -athroughputbufferingDSE
+```
+
+It is also possible to store and reuse past exploration now:
+```
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE -plimit=5  > past.txt
+./Release/bin/kiter -f ./benchmarks/sample.xml -aAddFeedbackBuffers -aLivenessDSE -pimport=past.txt -plimit=1
+
+```
+
+# Dataset Generator
+
+The following commands an be used to generate the dataset files for KiterML. However the generation is not really efficient right now. 
+
+```
+./Release/bin/dataset_generator -s 2 -w 20 > dataset_2_20.txt
+./Release/bin/dataset_generator -s 4 -w 30 -t 1 > ./dataset_4_30.txt
+```

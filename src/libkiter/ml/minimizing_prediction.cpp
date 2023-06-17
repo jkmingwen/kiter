@@ -7,11 +7,11 @@
 #include <algorithms/normalization.h>
 #include <models/Dataflow.h>
 
-PreloadDict::PreloadDict(const std::string& filename) {
+PreloadDict::PreloadDict(const std::string &filename) {
     map_ = buildMap(filename);
 }
 
-std::vector<uint8_t> PreloadDict::lookup(const std::vector<uint8_t>& key) const {
+std::vector<uint8_t> PreloadDict::lookup(const std::vector<uint8_t> &key) const {
     std::vector<uint8_t> result = {0};
     auto it = map_.find(key);
 
@@ -23,7 +23,7 @@ std::vector<uint8_t> PreloadDict::lookup(const std::vector<uint8_t>& key) const 
 }
 
 std::unordered_map<std::vector<uint8_t>, std::vector<uint8_t>, KeyHasher, KeyEqual>
-PreloadDict::buildMap(const std::string& filename) {
+PreloadDict::buildMap(const std::string &filename) {
     std::unordered_map<std::vector<uint8_t>, std::vector<uint8_t>, KeyHasher, KeyEqual> map;
 
 
@@ -39,12 +39,12 @@ PreloadDict::buildMap(const std::string& filename) {
 
     int numEntries = fileSize / 8;
 
-    auto* entries = new Entry[numEntries];
+    auto *entries = new Entry[numEntries];
 
-    file.read(reinterpret_cast<char*>(entries), fileSize);
+    file.read(reinterpret_cast<char *>(entries), fileSize);
     file.close();
 
-    for(int i = 0; i < numEntries; ++i) {
+    for (int i = 0; i < numEntries; ++i) {
         std::vector<uint8_t> key(entries[i].dat, entries[i].dat + 4);
         std::vector<uint8_t> val(entries[i].res, entries[i].res + 4);
         map[key] = val;
@@ -53,20 +53,20 @@ PreloadDict::buildMap(const std::string& filename) {
     return map;
 }
 
-std::vector<int> algorithms::get_preload(models::Dataflow*  dataflow, parameters_list_t parameters) {
+std::vector<int> ml::get_preload(models::Dataflow *dataflow, parameters_list_t parameters) {
     // Load the model
     if (!parameters.count("DICT_PATH")) {
-        VERBOSE_ERROR("get_preload: Model path not found!")
-        std::vector<int> res {-1};
+        VERBOSE_ERROR("get_preload: Model path not found!");
+        std::vector<int> res{-1};
         return res;
     }
-    VERBOSE_ASSERT(algorithms::normalize(dataflow), "get_preload: Normalization failed")
+    VERBOSE_ASSERT(algorithms::normalize(dataflow), "get_preload: Normalization failed");
 
     std::vector<uint8_t> weights;
 
     dataflow->getVertices();
-    ForEachVertex(dataflow,v) {
-            weights.push_back(static_cast<uint8_t>(dataflow->getZi(v)));
+    ForEachVertex(dataflow, v) {
+        weights.push_back(static_cast<uint8_t>(dataflow->getZi(v)));
     }
 
     //TODO: this should just reference a singleton
@@ -76,18 +76,3 @@ std::vector<int> algorithms::get_preload(models::Dataflow*  dataflow, parameters
     std::vector<int> res(dict_result.begin(), dict_result.end());
     return res;
 }
-
-//    long input_size = static_cast<long>(weights.size());
-//    std::string model_dir = parameters["MODEL_DIR"];
-//    cppflow::model model(model_dir);
-//    std::vector<float> tensor_data(weights.begin(), weights.end());
-//    auto vec = cppflow::tensor(tensor_data, {1,input_size});
-//
-//    // Run
-//    auto output = model({{"serving_default_dense_input:0",vec}}, {"StatefulPartitionedCall:0"});
-//
-//    // Show the predicted class
-//    int res = static_cast<int>(output[0].get_data<float>()[0]);
-//
-//    return res;
-//}

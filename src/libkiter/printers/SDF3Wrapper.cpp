@@ -21,41 +21,13 @@
 #include <cstring>
 #include <fstream>
 
+
+#define VERBOSE_PARSER(msg) VERBOSE_CUSTOM_DEBUG ("SDF3PARSER", msg)
+
 using std::vector;
 
 #define TXT_XML_ERROR "TXT_XML_ERROR"
 static const char INIT_PERIODIC_SEPARATOR = ';';
-
-template<typename T>
-std::string vectorAsStr(const std::vector<T>& t)
-{
-	 std::stringstream s;
-		for (typename std::vector<T>::size_type idx = 0 ; idx < t.size() ; idx++) {
-			if (idx > 0) {
-				 s << ",";
-			}
-			s << commons::toString(t[idx]);
-		}
-		return s.str();
-}
-
-template<>
-std::string vectorAsStr(const std::vector<TIME_UNIT>& t)
-{
-	 std::stringstream s;
-		for (typename std::vector<TIME_UNIT>::size_type idx = 0 ; idx < t.size() ; idx++) {
-			if (idx > 0) {
-				 s << ",";
-			}
-			TIME_UNIT v = t[idx];
-			if ((std::floor(v)==std::ceil(v))) {
-				s << (unsigned long) (v) ;
-			} else {
-				s << commons::toString(v);
-			}
-		}
-		return s.str();
-}
 
 
 namespace printers {
@@ -169,7 +141,7 @@ void parse_actor_node (models::Dataflow *to, xmlNodePtr taskNode) {
 					if (pEdge != NULL_EDGE) {
 						readSDF3OutputSpec(to,pEdge,rate);
 					} else {
-						VERBOSE_DEBUG ("Could not find in edge " << name << " might be reentrancy.");
+                        VERBOSE_PARSER ("Could not find in edge " << name << " might be reentrancy.");
 					}
 				} else
 
@@ -178,7 +150,7 @@ void parse_actor_node (models::Dataflow *to, xmlNodePtr taskNode) {
 						if (pEdge != NULL_EDGE) {
 							readSDF3InputSpec(to,pEdge,rate);
 						} else {
-							VERBOSE_DEBUG ("Could not find out edge " << name << " might be reentrancy.");
+                            VERBOSE_PARSER ("Could not find out edge " << name << " might be reentrancy.");
 						}
 					} else {
 						VERBOSE_FAILURE();
@@ -319,10 +291,10 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr task_node) {
 	//not a loop, not a reentrancy loop !
 	if (sourceName != targetName) return false;
 
-	VERBOSE_DEBUG("a loop Buffer ?");
+    VERBOSE_PARSER("a loop Buffer ?");
 
 	if (preload != "1") {
-		VERBOSE_DEBUG("preload not work :" << preload);
+        VERBOSE_PARSER("preload not work :" << preload);
 		return false;
 	}
 
@@ -401,7 +373,7 @@ bool checkReentrancy( xmlNodePtr csdf, xmlNodePtr task_node) {
 
 
 	if (!(foundIn && foundOut)) {
-		VERBOSE_DEBUG("not found ... foundIn=" << foundIn << " foundOut=" << foundOut);
+        VERBOSE_PARSER("not found ... foundIn=" << foundIn << " foundOut=" << foundOut);
 	}
 
 
@@ -422,7 +394,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("App name is: " << to->getAppName());
+    VERBOSE_PARSER("App name is: " << to->getAppName());
 
     // get the sdf/csdf node and the sdfProperties/csdfproperties node
     //--------------------------------------------------------------------------------
@@ -450,7 +422,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("Parsing the tasks");
+    VERBOSE_PARSER("Parsing the tasks");
 
 
     // Generate Vertex list with names, type, and zero reentrancy
@@ -483,7 +455,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
     // If the edge is seen as a reentrancy edge, only set reentrancy to the task
     //--------------------------------------------------------------------------------
 
-    VERBOSE_DEBUG("Parsing the channels");
+    VERBOSE_PARSER("Parsing the channels");
 
     for (xmlNodePtr cur_node = csdf->children; cur_node; cur_node = cur_node->next) {
         if (cur_node->type == XML_ELEMENT_NODE) {
@@ -517,7 +489,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
                 }
 
                 if (checkReentrancy(csdf,cur_node)) {
-                    VERBOSE_DEBUG("checkReentrancy(csdf,cur_node) returns TRUE");
+                    VERBOSE_PARSER("checkReentrancy(csdf,cur_node) returns TRUE");
                     // reentrancy edge
                     to->setReentrancyFactor(to->getVertexByName(sourceName),1);
                 } else {
@@ -544,7 +516,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
     }
 
 
-    VERBOSE_DEBUG("Parsing the timings");
+    VERBOSE_PARSER("Parsing the timings");
 
 
     // get task timings
@@ -558,7 +530,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
         }
     }
 
-    VERBOSE_DEBUG("Parsing the rates");
+    VERBOSE_PARSER("Parsing the rates");
 
 
     // get task phase count and productions
@@ -578,7 +550,7 @@ void parse_ApplicationGraph_node (models::Dataflow *to, xmlNodePtr& AG ) {
 models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 
 
-	VERBOSE_DEBUG("Start wrapSDF3Dataflow");
+    VERBOSE_PARSER("Start wrapSDF3Dataflow");
 
 
 	xmlNodePtr AG = nullptr;
@@ -589,7 +561,7 @@ models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 	// Check file is correct
 	//--------------------------------
 
-	VERBOSE_DEBUG("Check file is correct");
+    VERBOSE_PARSER("Check file is correct");
 
 	if (sdf3 == nullptr) {
 		FAILED("Document XML invalide");
@@ -607,25 +579,25 @@ models::Dataflow* xml_to_kiter (xmlDocPtr doc) {
 
             if (std::string((const char*)cur_node->name) == std::string("applicationGraph")) {
                 AG = cur_node;
-                VERBOSE_DEBUG("Found ApplicationGraph node.");
+                VERBOSE_PARSER("Found ApplicationGraph node.");
                 parse_ApplicationGraph_node (to, AG);
             } else if (std::string((const char*)cur_node->name) == std::string("architectureGraph")) {
-                VERBOSE_DEBUG("Ignore architectureGraph node.");
+                VERBOSE_PARSER("Ignore architectureGraph node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("mapping")) {
-                VERBOSE_DEBUG("Ignore mapping node.");
+                VERBOSE_PARSER("Ignore mapping node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("systemUsage")) {
-                VERBOSE_DEBUG("Ignore systemUsage node.");
+                VERBOSE_PARSER("Ignore systemUsage node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("storageThroughputTradeOffs")) {
-                VERBOSE_DEBUG("Ignore storageThroughputTradeOffs node.");
+                VERBOSE_PARSER("Ignore storageThroughputTradeOffs node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("messagesSet")) {
-                VERBOSE_DEBUG("Ignore messagesSet node.");
+                VERBOSE_PARSER("Ignore messagesSet node.");
 
             } else if (std::string((const char*)cur_node->name) == std::string("settings")) {
-                VERBOSE_DEBUG("Ignore settings node.");
+                VERBOSE_PARSER("Ignore settings node.");
 
             }
         }
@@ -708,8 +680,8 @@ void writeLoopbackPorts (xmlTextWriterPtr writer, const models::Dataflow* datafl
             static_cast<unsigned long>(dataflow->getPhasesQuantity(t)), 1) ;
 	const std::vector<TOKEN_UNIT> init_rates        =    std::vector<TOKEN_UNIT> (
             static_cast<unsigned long>(dataflow->getInitPhasesQuantity(t)), 1) ;
-	std::string rates = vectorAsStr(periodic_rates);
-	if (!init_rates.empty()) rates = vectorAsStr(init_rates) + INIT_PERIODIC_SEPARATOR +   rates ;
+	std::string rates = commons::join(periodic_rates, ",");
+	if (!init_rates.empty()) rates = commons::join(init_rates,",") + INIT_PERIODIC_SEPARATOR +   rates ;
 
 	xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
@@ -808,10 +780,10 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) out_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "in");
-									std::string rates_str = vectorAsStr(in_rates);
+									std::string rates_str = commons::join(in_rates, ",");
 									if (not in_init_rates.empty()) {
                                         // Recent change here: insert the string in from of it, should be more efficient
-                                        rates_str.insert(0, vectorAsStr(in_init_rates) + INIT_PERIODIC_SEPARATOR);
+                                        rates_str.insert(0,  commons::join(in_init_rates, ",") + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -828,10 +800,10 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "port");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) in_port.c_str());
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"type", (const xmlChar*) "out");
-									std::string rates_str = vectorAsStr(out_rates);
+									std::string rates_str = commons::join(out_rates, ",");
 									if (not out_init_rates.empty()) {
                                         // Recent change here: insert the string in from of it, should be more efficient
-                                        rates_str.insert(0, vectorAsStr(out_init_rates) + INIT_PERIODIC_SEPARATOR);
+                                        rates_str.insert(0,commons::join(out_init_rates, ",") + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"rate", (const xmlChar*) rates_str.c_str());
 									xmlTextWriterEndElement(writer);
@@ -871,9 +843,9 @@ std::string  generateSDF3XML         (const models::Dataflow* dataflow)  {
 
 									const auto& periodicExecutionTime = dataflow->getVertexPhaseDuration(t);
 									const auto& initExecutionTime = dataflow->getVertexInitPhaseDuration(t);
-									std::string times_str = vectorAsStr(periodicExecutionTime);
+									std::string times_str = commons::join(periodicExecutionTime, ",");
 									if (!initExecutionTime.empty()) {
-                                        times_str.insert(0, vectorAsStr(initExecutionTime) + INIT_PERIODIC_SEPARATOR);
+                                        times_str.insert(0, commons::join(initExecutionTime, ",")  + INIT_PERIODIC_SEPARATOR);
 									}
 									xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "executionTime");
 									xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"time", (const xmlChar*)  times_str.c_str());

@@ -3,16 +3,20 @@
 //
 
 #define BOOST_TEST_MODULE DsePeriodicTest
+
+#include <future>
+#include <thread>
 #include "helpers/test_classes.h"
 #include "helpers/sample.h"
 #include "helpers/random_generator.h"
-#include "algorithms/dse/periodic.h"
+#include "algorithms/dse/dichotomous_search.h"
 
 
 BOOST_FIXTURE_TEST_SUITE( dse_periodic_test , WITH_SAMPLE)
 
 BOOST_AUTO_TEST_CASE( sample_periodic_test )
 {
+    //commons::set_verbose_mode(commons::WARNING_LEVEL);
     parameters_list_t params;
     BOOST_REQUIRE(pipeline_sample);
 
@@ -79,9 +83,67 @@ BOOST_AUTO_TEST_CASE( random_speriodic_test )
 
     VERBOSE_INFO("Running speriodic");
 
+    size_t happy_outcomes = 0;
     for(auto graph : graphs) {
-        algorithms::compute_csdf_dse_speriodic(graph, params);
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        } else if (pid == 0) {
+            // This is the child process.
+            algorithms::compute_csdf_dse_speriodic(graph, params);
+            exit(EXIT_SUCCESS);
+        } else {
+            // This is the parent process.
+            sleep(10); // wait for 10 second
+
+            // Kill the child process after 10 second
+            if (kill(pid, SIGKILL) == -1) {
+                perror("kill");
+                exit(EXIT_FAILURE);
+            }
+
+            // Wait for child process to terminate
+            int status;
+            waitpid(pid, &status, 0);
+            if (WIFSIGNALED(status)) {
+                std::cout << "Child process was killed by signal " << WTERMSIG(status) << std::endl;
+
+            } else if (WIFEXITED(status)) {
+                std::cout << "Child process exited with status " << WEXITSTATUS(status) << std::endl;
+                happy_outcomes += 1;
+            }
+
+            BOOST_TEST_REQUIRE(status == 0);
+
+        }
     }
+
+    BOOST_TEST_REQUIRE(happy_outcomes == graphs.size());
+
+//    for(auto graph : graphs) {
+//
+//        std::cout << "Create thread...";
+//        std::thread exploration_thread([&graph, &params] {
+//            algorithms::compute_csdf_dse_speriodic(graph, params);
+//        });
+//
+//        // Sleep for some time
+//        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//
+//        std::cout << "Kill thread...";
+//        // Stop the thread
+//        if (exploration_thread.joinable()) {
+//            pthread_cancel(exploration_thread.native_handle());
+//            exploration_thread.join();
+//        }
+//
+//        std::cout << "Thread killed...";
+//
+//
+//
+//    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

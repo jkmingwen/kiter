@@ -25,7 +25,7 @@
 #include <boost/version.hpp>
 #include <stdexcept>
 
-#include <commons/howard_cycle_ratio.hpp>
+#include "howard_cycle_ratio.hpp"
 //#include <boost/graph/howard_cycle_ratio.hpp>
 
 #include <commons/commons.h>
@@ -102,8 +102,9 @@ typedef boost::property < boost::vertex_index1_t,      unsigned int,   /* vertex
         boost::property < boost::vertex_predecessor_t, unsigned int ,  /* EventGraphVertex                */
         boost::property < boost::vertex_color_t,       PHASE_INDEX,     /*  vertex_color_t(task's phase)                */
         boost::property < boost::vertex_index2_t,      EXEC_COUNT,    /* vertex_index2_t(occurence d'execution) */
+        boost::property < boost::vertex_distance_t,    TIME_UNIT ,  /* delay */
         boost::property < boost::vertex_discover_time_t, TIME_UNIT    /* vertex_discover_time_t(execution time) */
-        > > > > > > EventGraphVertexProperties;
+        > > > > > > > EventGraphVertexProperties;
 
 typedef boost::property < boost::edge_weight_t,TIME_UNIT, /* edge_weight_t(w)        */ // Weight is TIME_UNIT and must keep it like that !
         boost::property < boost::edge_index_t,ARRAY_INDEX,  /* edge_index_t(channel_id)        */
@@ -176,19 +177,19 @@ private :
 private :
     std::map< SchedulingEvent , EventGraphVertex > schedulingEvent2Vertex;
 public :
-    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId) {
+    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId) const {
     	return getEventGraphVertex(taskId, 1, 1) ;
     }
-    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId, EXEC_COUNT execution) {
+    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId, EXEC_COUNT execution) const {
     	return getEventGraphVertex(taskId, 1, execution) ;
     }
-    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId, PHASE_INDEX phase, EXEC_COUNT execution) {
+    inline EventGraphVertex getEventGraphVertex(ARRAY_INDEX taskId, PHASE_INDEX phase, EXEC_COUNT execution) const {
 
     	//VERBOSE_ASSERT(schedulingEvent2Vertex.size() > taskId, "Task id " << taskId << " is not within the EventGraph");
     	//VERBOSE_ASSERT(schedulingEvent2Vertex[taskId].size() > phase, "Task phase " << phase << " is not within the EventGraph for task " << taskId);
     	//VERBOSE_ASSERT(schedulingEvent2Vertex[taskId][(unsigned int) phase].size() > execution, "Task execution " << execution << " is not within the EventGraph for task " << taskId << " with phase " << phase);
 
-    	EventGraphVertex res= schedulingEvent2Vertex[SchedulingEvent(taskId, phase , execution )];
+    	EventGraphVertex res= schedulingEvent2Vertex.at(SchedulingEvent(taskId, phase , execution ));
 
         VERBOSE_DEBUG_ASSERT(getTaskId(res),   taskId);
         // VERBOSE_DEBUG_ASSERT(getPhase(res),phase); // This can be negative or null now
@@ -196,7 +197,8 @@ public :
         return res;
     }
 protected:
-    inline  BoostEventGraph&             getG                ()                      {return this->g;}
+    inline  const BoostEventGraph&             getG                ()          const            {return this->g;}
+    inline        BoostEventGraph&             getG                ()                           {return this->g;}
 
 public :
     EventGraph       (unsigned int nVertex = 0)       : g(nVertex) , _root(NULL_EventGraphVertex) {VERBOSE_DEBUG_ASSERT(nVertex == 0,TXT_NO_IMPLEMENTATION);}
@@ -263,35 +265,35 @@ public :
     inline  EventGraphVertex                  getSource       (const EventGraphEdge c)          {return (boost::source(c, this->getG()));}
     inline  EventGraphVertex                  getTarget       (const EventGraphEdge c)          {return (boost::target(c, this->getG()));}
 
-    inline  std::pair<EventGraphVertexIterator,EventGraphVertexIterator>      getEvents()           { return boost::vertices(this->getG());}
-    inline  std::pair<EventGraphEdgeIterator,EventGraphEdgeIterator>      getConstraints()           { return boost::edges(this->getG());}
-    inline  std::pair<EventGraphInEdgeIterator,EventGraphInEdgeIterator>    getInputs(EventGraphVertex t) { return boost::in_edges (t,this->getG());}
-    inline  std::pair<EventGraphOutEdgeIterator,EventGraphOutEdgeIterator>    getOutputs(EventGraphVertex t) { return boost::out_edges (t,this->getG());}
-    unsigned int  getTaskId(EventGraphVertex v)                       { return boost::get(boost::get(boost::vertex_index1, this->getG()), v);}
-    PHASE_INDEX  getPhase(EventGraphVertex v)                  { return boost::get(boost::get(boost::vertex_color, this->getG()), v);}
-    EXEC_COUNT  getExecution(EventGraphVertex v)                  { return boost::get(boost::get(boost::vertex_index2, this->getG()), v);}
+    inline  std::pair<EventGraphVertexIterator,EventGraphVertexIterator>      getEvents()    const        { return boost::vertices(this->getG());}
+    inline  std::pair<EventGraphEdgeIterator,EventGraphEdgeIterator>      getConstraints()    const        { return boost::edges(this->getG());}
+    inline  std::pair<EventGraphInEdgeIterator,EventGraphInEdgeIterator>    getInputs(EventGraphVertex t)const  { return boost::in_edges (t,this->getG());}
+    inline  std::pair<EventGraphOutEdgeIterator,EventGraphOutEdgeIterator>    getOutputs(EventGraphVertex t) const { return boost::out_edges (t,this->getG());}
+    unsigned int  getTaskId(EventGraphVertex v)              const          { return boost::get(boost::get(boost::vertex_index1, this->getG()), v);}
+    PHASE_INDEX  getPhase(EventGraphVertex v)         const          { return boost::get(boost::get(boost::vertex_color, this->getG()), v);}
+    EXEC_COUNT  getExecution(EventGraphVertex v)       const            { return boost::get(boost::get(boost::vertex_index2, this->getG()), v);}
 
     void  setStartingTime(EventGraphVertex v, TIME_UNIT s)                  { return boost::put(boost::get(boost::vertex_discover_time, this->getG()), v,s );}
-    TIME_UNIT  getStartingTime(EventGraphVertex v)                  { return boost::get(boost::get(boost::vertex_discover_time, this->getG()), v);}
-    EventGraphVertex  getPrevious(EventGraphVertex v)                  {
+    TIME_UNIT  getStartingTime(EventGraphVertex v)      const             { return boost::get(boost::get(boost::vertex_discover_time, this->getG()), v);}
+    EventGraphVertex  getPrevious(EventGraphVertex v)   const                {
         VERBOSE_DEBUG_ASSERT(boost::get(boost::get(boost::vertex_predecessor, this->getG()), v) != NULL_EventGraphVertex  ,"please fix me");
         return (EventGraphVertex) boost::get(boost::get(boost::vertex_predecessor, this->getG()), v);
     }
     void  setPrevious(EventGraphVertex v,EventGraphVertex p)                  { boost::put(boost::vertex_predecessor, this->getG(), v,p);}
     void setSCC(EventGraphVertex v, unsigned int d)       { boost::put(boost::vertex_potential, this->getG(), v, d);}
-    unsigned int  getSCC(EventGraphVertex v)                        { return boost::get(boost::get(boost::vertex_potential, this->getG()), v);}
-    SchedulingEvent  getSchedulingEvent(EventGraphVertex v){ return SchedulingEvent(getTaskId(v),getPhase(v),getExecution(v));}
-    ARRAY_INDEX getChannelId(EventGraphEdge e)                       { return boost::get(boost::get(boost::edge_index, this->getG()), e);}
+    unsigned int  getSCC(EventGraphVertex v)               const          { return boost::get(boost::get(boost::vertex_potential, this->getG()), v);}
+    SchedulingEvent  getSchedulingEvent(EventGraphVertex v) const { return SchedulingEvent(getTaskId(v),getPhase(v),getExecution(v));}
+    ARRAY_INDEX getChannelId(EventGraphEdge e)     const                   { return boost::get(boost::get(boost::edge_index, this->getG()), e);}
     inline void setChannelId(EventGraphEdge e,ARRAY_INDEX id )                       {  boost::put(boost::edge_index, this->getG(), e, id);}
-    inline TIME_UNIT getWeight(EventGraphEdge e)                       { return boost::get(boost::get(boost::edge_weight, this->getG()), e);} // Weight is TIME_UNIT and must keep it like that !
-    inline bool getStrictness(EventGraphEdge e)                       { return boost::get(boost::get(boost::edge_color, this->getG()), e);}
-    inline TIME_UNIT getFlow(EventGraphEdge e)        { return boost::get(boost::edge_flow, this->getG(), e);}
+    inline TIME_UNIT getWeight(EventGraphEdge e)    const                   { return boost::get(boost::get(boost::edge_weight, this->getG()), e);} // Weight is TIME_UNIT and must keep it like that !
+    inline bool getStrictness(EventGraphEdge e)   const                    { return boost::get(boost::get(boost::edge_color, this->getG()), e);}
+    inline TIME_UNIT getFlow(EventGraphEdge e)  const      { return boost::get(boost::edge_flow, this->getG(), e);}
 
-    inline TIME_UNIT  getDuration(EventGraphEdge e)                     { return boost::get(boost::get(boost::edge_weight2, this->getG()), e);}
-    unsigned int getEventCount() {return (unsigned  int) boost::num_vertices(this->getG());}
-    unsigned int getConstraintsCount() {return (unsigned  int) boost::num_edges(this->getG());}
+    inline TIME_UNIT  getDuration(EventGraphEdge e)   const                  { return boost::get(boost::get(boost::edge_weight2, this->getG()), e);}
+    unsigned int getEventCount() const {return (unsigned  int) boost::num_vertices(this->getG());}
+    unsigned int getConstraintsCount() const {return (unsigned  int) boost::num_edges(this->getG());}
 
-    EventGraphVertex getVertexByEvent(SchedulingEvent se)        {
+    EventGraphVertex getVertexByEvent(SchedulingEvent se)      const   {
         EventGraphVertex res = getEventGraphVertex(se.getTaskId(),se.getTaskPhase(),se.getTaskOc());
         return res;
     }
@@ -513,7 +515,7 @@ public :
 
         cc.clear();
         TIME_UNIT max_cr = boost::minimum_cycle_ratio(this->getG(), vim, ew1, ew2, &cc,TIME_UNIT_LIMITS());
-        VERBOSE_INFO("minimum cycle ratio is " << max_cr);
+        VERBOSE_EVENTGRAPH_DEBUG("minimum cycle ratio is " << max_cr);
         std::pair<TIME_UNIT, TIME_UNIT> cr(.0,.0);
         for (std::vector<models::EventGraphEdge>::iterator itr = cc.begin(); itr != cc.end(); ++itr)
         {
@@ -532,6 +534,7 @@ public :
     std::string printXML    ();
     std::string printTikz    () ;
 
+    EventGraphVertex getFirstEvent() { return 0;};
 };
 void freeStrongConnection ( std::map<unsigned int,EventGraph*>*  ) ;
 std::map<unsigned int,EventGraph*>* StrongConnection(models::EventGraph * g)  ;

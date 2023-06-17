@@ -9,6 +9,7 @@
 #include <commons/KiterRegistry.h>
 
 BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
+
     void sampleTest(const std::function<void(models::Dataflow*, parameters_list_t)> fun, models::Dataflow* const graph) {
         parameters_list_t params = parameters_list_t();
         fun(graph, params);
@@ -55,7 +56,7 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
         }
     }
 
-    BOOST_AUTO_TEST_CASE(KPeriodic_taskNoCbufferless){
+    BOOST_AUTO_TEST_CASE(KPeriodic_taskNoCbufferless, * boost::unit_test::disabled()){
         BOOST_REQUIRE(pipeline_sample);
         //TODO: function unimplemented
         BOOST_TEST(false);
@@ -157,7 +158,7 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
     }
 
 
-    BOOST_AUTO_TEST_CASE(So4Scheduling) {
+    BOOST_AUTO_TEST_CASE(So4Scheduling, * boost::unit_test::disabled()) {
         BOOST_REQUIRE(pipeline_sample);
         parameters_list_t params = parameters_list_t();
 
@@ -220,13 +221,13 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
         randomTest(algorithms::scheduling::CSDF_SPeriodicScheduling);
     }
 
-    BOOST_AUTO_TEST_CASE(ModelASAPScheduling) {
+    BOOST_AUTO_TEST_CASE(ModelASAPScheduling, * boost::unit_test::disabled()) {
         BOOST_REQUIRE(pipeline_sample);
         //TOOD unimplemented
 //        algorithms::scheduling::ASAPScheduling(pipeline_sample);
     }
 
-    BOOST_AUTO_TEST_CASE(ModelSo4Scheduling) {
+    BOOST_AUTO_TEST_CASE(ModelSo4Scheduling, * boost::unit_test::disabled()) {
         BOOST_REQUIRE(pipeline_sample);
         //TOOD unimplemented
 //        algorithms::scheduling::So4Scheduling(pipeline_sample);

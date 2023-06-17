@@ -12,6 +12,7 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -34,7 +35,7 @@
 
 /* Dataflow defintion */
 
-enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, VIRTUAL_EDGE};
+enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, FEEDBACK_EDGE, VIRTUAL_EDGE};
 //enum VERTEX_TYPE {NORMAL_VERTEX, PERIODIC_VERTEX};
 
 typedef  std::string VERTEX_TYPE;
@@ -311,13 +312,17 @@ public :
 	void set_normalize() { normalization_is_done = true;}
 	void set_repetition_vector() { repetition_vector_is_done = true;}
 
-	void reset_computation() { repetition_vector_is_done = false; normalization_is_done = false; readonly = false; }
+	void reset_computation() {
+        repetition_vector_is_done = false;
+        normalization_is_done = false;
+        readonly = false;
+        channelGCDA.clear();
+    }
 
 	bool is_read_only() const {return readonly;}
 	bool is_normalized() const {return normalization_is_done ;}
-	bool has_repetition_vector() const {
-		return repetition_vector_is_done ;
-	}
+	bool has_repetition_vector() const {return repetition_vector_is_done ;}
+
 	bool is_consistent()  {
 		if (!repetition_vector_is_done) computeRepetitionVector(this);
 		return repetition_vector_is_done ;
@@ -368,7 +373,8 @@ inline 	Vertex 				addVertex			() 							{
 
 inline  Vertex                addVertex         (const ARRAY_INDEX id)      {
 	// TODO: fixme too long
-	ForEachVertex(this,v) 	{ if (this->getVertexId(v) >= id) VERBOSE_FAILURE();};
+    //FIXME: I forogt why this check with >= ...
+	ForEachVertex(this,v) 	{ if (this->getVertexId(v) == id) VERBOSE_FAILURE();};
 	return addUnsafeVertex(id);
 
 }
@@ -547,7 +553,7 @@ public :
 
     inline  Vertex              getVertexByName (const std::string s) const {
     	// TODO: FIXME PLEASE!
-    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(TXT_TASK_NOT_FOUND + s);
+    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(std::string(TXT_TASK_NOT_FOUND) + ": " + s);
     }
 
     inline 	const std::string 	getEdgeName	    (const Edge c)		const	{
@@ -594,9 +600,10 @@ public :
     inline std::string           getEdgeTypeStr (const Edge e )    const     {
     	EDGE_TYPE et = this->getEdgeType(e);
     	switch (et) {
-            case VIRTUAL_EDGE : return "VIRTUAL_EDGE";
-    		case NORMAL_EDGE : return "NORMAL_EDGE";
-    		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+            case EDGE_TYPE::NORMAL_EDGE : return "NORMAL";
+            case EDGE_TYPE::BUFFERLESS_EDGE : return "BUFFERLESS";
+            case EDGE_TYPE::FEEDBACK_EDGE : return "FEEDBACK";
+            case EDGE_TYPE::VIRTUAL_EDGE : return "VIRTUAL";
     		default : return "UNKNOWN";
     	}
     }
@@ -673,18 +680,18 @@ public :
     }
     inline  EXEC_COUNT          getEdgeInPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does ot match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does not match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
     	return tmp;
     }
 
     inline  EXEC_COUNT          getEdgeOutInitPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does ot match task init spec");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does not match task init spec");
         return tmp;
     }
     inline  EXEC_COUNT          getEdgeInInitPhasesCount   (const Edge c) const   {
     	EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does ot match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
         return tmp;
     }
 
@@ -692,20 +699,20 @@ public :
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeOutVector   (const Edge c) const   {
     	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does ot match task spec");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does not match task spec");
     	return tmp;
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInVector   (const Edge c)  const  {
     	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does ot match task spec");
+    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does not match task spec");
     	return tmp;
     }
 
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeInitOutVector   (const Edge c) const   {
     	const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does ot match task init spec");
+    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does not match task init spec");
         return tmp;
     }
 
@@ -934,28 +941,19 @@ public :
     return channelGCD;
 
     }
+    inline void precomputeFineGCD()  {
+        { ForEachEdge(this,c) {
+                channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), computeFineGCD(c)));
+        }}
+        this->set_read_only(); // Once precomputed cannot change the graph.
+    }
+
+
     inline   TOKEN_UNIT getFineGCD(Edge c) const {
     	 std::map<ARRAY_INDEX,TOKEN_UNIT >::const_iterator res = channelGCDA.find(this->getEdgeId(c));
     	 if (res != channelGCDA.end()) return res->second;
     	 return computeFineGCD(c);
     }
-
-    inline   TOKEN_UNIT getFineGCD(Edge c)  {
-
-    	//return computeFineGCD(c);
-	       // search in cache
-	       std::map<ARRAY_INDEX,TOKEN_UNIT >::iterator res = channelGCDA.find(this->getEdgeId(c));
-	       if (res != channelGCDA.end()) return res->second;
-
-	       //Compute GCDA
-	       TOKEN_UNIT gcda = computeFineGCD(c);
-	       // add in cache
-	       channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), gcda));
-
-	       return gcda;
-
-	   }
-
 
 /**
  * Normalized access
@@ -982,13 +980,13 @@ public :
 	  return (TOKEN_UNIT) result;
     }
 
- inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  {
+ inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  const {
         TOKEN_UNIT gcda = this->getFineGCD(c);
         TOKEN_UNIT old  = commons::floor(v,gcda);
 
         return normalizeValue(c,old);
     }
- inline TOKEN_UNIT		getNormMop  	(const Edge c)	 {
+ inline TOKEN_UNIT		getNormMop  	(const Edge c)	const {
     TOKEN_UNIT mop= this->getPreload(c);
     return normalizeUnknowValue(c,mop);
 }

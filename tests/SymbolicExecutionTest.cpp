@@ -37,37 +37,35 @@ BOOST_AUTO_TEST_CASE( test_storage_dependency_computation )
 
   // test 1: deadlocked storage distribution
   std::set<Edge> test1_deadlock_expected;
-  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> test1_channel_quantities;
+  std::map<Edge, BufferInfos> test1_channel_quantities;
   TOKEN_UNIT test1_dist_sz = 0;
   // initialise storage distribution that will lead to deadlock
-  test1_channel_quantities[cycle_sample->getEdgeById(1)].second = 3;
-  test1_channel_quantities[cycle_sample->getEdgeById(2)].second = 7;
-  test1_channel_quantities[cycle_sample->getEdgeById(3)].second = 5;
+  test1_channel_quantities[cycle_sample->getEdgeById(1)].buffer_size = 3;
+  test1_channel_quantities[cycle_sample->getEdgeById(2)].buffer_size = 7;
+  test1_channel_quantities[cycle_sample->getEdgeById(3)].buffer_size = 5;
   {ForEachEdge(cycle_sample, e) {
-      test1_channel_quantities[e].first = cycle_sample->getPreload(e);
-      test1_dist_sz += test1_channel_quantities[e].second;
+      test1_channel_quantities[e].preload = cycle_sample->getPreload(e);
+      test1_dist_sz += test1_channel_quantities[e].buffer_size;
     }}
-  StorageDistribution test1_deadlock(cycle_sample->getEdgesCount(),
+  StorageDistribution test1_deadlock(cycle_sample,
                                      0,
-                                     test1_channel_quantities,
-                                     test1_dist_sz);
+                                     test1_channel_quantities);
   test1_deadlock_expected.insert(cycle_sample->getEdgeById(1));
 
   // test 1: periodic storage distribution
   std::set<Edge> test1_periodic_expected;
   test1_dist_sz = 0; // reset for next test
   // inititalise storage distribution with known throughput
-  test1_channel_quantities[cycle_sample->getEdgeById(1)].second = 8;
-  test1_channel_quantities[cycle_sample->getEdgeById(2)].second = 9;
-  test1_channel_quantities[cycle_sample->getEdgeById(3)].second = 5;
+  test1_channel_quantities[cycle_sample->getEdgeById(1)].buffer_size = 8;
+  test1_channel_quantities[cycle_sample->getEdgeById(2)].buffer_size = 9;
+  test1_channel_quantities[cycle_sample->getEdgeById(3)].buffer_size = 5;
   {ForEachEdge(cycle_sample, e) {
-      test1_channel_quantities[e].first = cycle_sample->getPreload(e);
-      test1_dist_sz += test1_channel_quantities[e].second;
+      test1_channel_quantities[e].preload = cycle_sample->getPreload(e);
+      test1_dist_sz += test1_channel_quantities[e].buffer_size;
     }}
-  StorageDistribution test1_periodic(cycle_sample->getEdgesCount(),
+  StorageDistribution test1_periodic(cycle_sample,
                                      0,
-                                     test1_channel_quantities,
-                                     test1_dist_sz);
+                                     test1_channel_quantities);
   test1_periodic_expected.insert(cycle_sample->getEdgeById(1));
   test1_periodic_expected.insert(cycle_sample->getEdgeById(2));
 
@@ -88,38 +86,36 @@ BOOST_AUTO_TEST_CASE( test_storage_dependency_computation )
 
   // test 2: deadlocked storage distribution
   std::set<Edge> test2_deadlock_expected;
-  std::map<Edge, std::pair<TOKEN_UNIT, TOKEN_UNIT>> test2_channel_quantities;
+  std::map<Edge, BufferInfos>  test2_channel_quantities;
   TOKEN_UNIT test2_dist_sz = 0;
   // initialise storage distribution that will lead to deadlock
-  test2_channel_quantities[mult_scc_sample->getEdgeById(1)].second = 7;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(2)].second = 4;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(3)].second = 25;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(4)].second = 36;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(1)].buffer_size = 7;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(2)].buffer_size = 4;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(3)].buffer_size = 25;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(4)].buffer_size = 36;
   {ForEachEdge(mult_scc_sample, e) {
-      test2_channel_quantities[e].first = mult_scc_sample->getPreload(e);
-      test2_dist_sz += test2_channel_quantities[e].second;
+      test2_channel_quantities[e].preload = mult_scc_sample->getPreload(e);
+      test2_dist_sz += test2_channel_quantities[e].buffer_size;
     }}
-  StorageDistribution test2_deadlock(mult_scc_sample->getEdgesCount(),
+  StorageDistribution test2_deadlock(mult_scc_sample,
                                      0,
-                                     test2_channel_quantities,
-                                     test2_dist_sz);
+                                     test2_channel_quantities);
   test2_deadlock_expected.insert(mult_scc_sample->getEdgeById(1));
   // test 2: periodic storage distribution
   std::set<Edge> test2_periodic_expected;
   test2_dist_sz = 0; // reset for next test
   // inititalise storage distribution with known throughput
-  test2_channel_quantities[mult_scc_sample->getEdgeById(1)].second = 9;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(2)].second = 4;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(3)].second = 25;
-  test2_channel_quantities[mult_scc_sample->getEdgeById(4)].second = 36;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(1)].buffer_size = 9;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(2)].buffer_size = 4;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(3)].buffer_size = 25;
+  test2_channel_quantities[mult_scc_sample->getEdgeById(4)].buffer_size = 36;
   {ForEachEdge(mult_scc_sample, e) {
-      test2_channel_quantities[e].first = mult_scc_sample->getPreload(e);
-      test2_dist_sz += test2_channel_quantities[e].second;
+      test2_channel_quantities[e].preload = mult_scc_sample->getPreload(e);
+      test2_dist_sz += test2_channel_quantities[e].buffer_size;
     }}
-  StorageDistribution test2_periodic(mult_scc_sample->getEdgesCount(),
+  StorageDistribution test2_periodic(mult_scc_sample,
                                      0,
-                                     test2_channel_quantities,
-                                     test2_dist_sz);
+                                     test2_channel_quantities);
   test2_periodic_expected.insert(mult_scc_sample->getEdgeById(1));
   test2_periodic_expected.insert(mult_scc_sample->getEdgeById(2));
 

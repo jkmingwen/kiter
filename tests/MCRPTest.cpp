@@ -48,6 +48,7 @@ double MCRP_performance_tester (models::Dataflow* dataflow){
 
     auto start = std::chrono::high_resolution_clock::now();
     std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res = eg->MinCycleRatio();
+	// std::vector<models::EventGraphEdge> * critical_circuit = &(howard_res.second);
     auto elapse = std::chrono::high_resolution_clock::now() - start;
 
 	return elapse.count()/ 1000000;

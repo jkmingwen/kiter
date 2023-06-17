@@ -10,16 +10,10 @@ import pandas as pd
 import psutil
 import seaborn as sns
 
-# sns.set_theme()
-sns.set() # NOTE uncomment for workaround for earlier versions (<0.11.0) of seaborn
+sns.set_theme()
 
-# methods tested: comment out as required
-methods = {"kiter": "red",
-           "speriodic": "purple",
-           "periodic": "green",
-           "sdf3": "black",
-           "symbexec_corrected": "blue",
-           "symbexec_original": "orange"}
+methods = {"KDSE": "red", "DKDSE": "purple"  , "ADKDSE" : "black"  , "PDSE" : "green"}
+method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE", "ADKDSE": "Approx K2DSE"}
 
 
 def load_app_dse(
@@ -29,15 +23,10 @@ def load_app_dse(
     cols=["throughput", "cumulative duration", "storage distribution size"],
 ):
 
-    filename = f"{logdir}/{appname}_dselog_{method}.csv"
+    filename = f"{logdir}/{appname}_{method}.txt"
 
-    try:
-        df = pd.read_csv(filename, usecols=cols, delimiter=";")
-        return df
-    except pd.errors.EmptyDataError:
-        return pd.DataFrame()
-    except FileNotFoundError:
-        return pd.DataFrame()
+    df = pd.read_csv(filename, usecols=cols)
+    return df
 
 
 def extract_pareto(df):
@@ -141,11 +130,11 @@ def plot_app_dse(logdir, appname):
 
         start_time = time.time()
         print("Plot", appname, method)
-
-        cxmax,cymax = plot_dse(df, method, color)
+        
+        cxmax,cymax = plot_dse(df, method_name[method], color)
         xmax = max(xmax, cxmax)
         ymax = max(ymax, cymax)
-
+        
         print("Plotted after", time.time() - start_time, "sec.")
 
     plt.xlabel("Execution time (ms)")
@@ -155,7 +144,7 @@ def plot_app_dse(logdir, appname):
 
     if ymax:
         plt.ylim(bottom=0, top=1.3 * ymax)
-
+        
     if xmax:
         plt.xlim(left=0, right=1.3 * xmax)
 
@@ -180,7 +169,7 @@ def plot_app_pareto(logdir, appname):
 
         start_time = time.time()
         print("Plot", appname, method)
-        cxmax,cymax = plot_pareto(df, method, color)
+        cxmax,cymax = plot_pareto(df, method_name[method], color)
         xmax = max(xmax, cxmax)
         ymax = max(ymax, cymax)
         print("Plotted after", time.time() - start_time, "sec.")
@@ -189,7 +178,7 @@ def plot_app_pareto(logdir, appname):
     plt.ylabel("Period (sec)")
     plt.title(f"{appname}")
     plt.legend(loc="upper left", ncol=2, borderaxespad=0.5)
-
+    
     if ymax:
         plt.ylim(bottom=0, top=1.3 * ymax)
 
@@ -238,17 +227,13 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
             v = df[df["throughput"] >0]["storage distribution size"].min() if "throughput" in df else "-"
             res[m].append(v)
 
-
-    df = pd.DataFrame(res)[["name","speriodic","periodic"]]
-    df["overhead"] = 100 - 100 * (df["periodic"] /  df["speriodic"])
+            
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
     df = df.rename (columns = {
-        "overhead":"Overhead(%)",
-        "name" : "Graph",
-        "speriodic" : "S-Periodic",
-        "periodic" : "1-Periodic",
+        "name" : "Graph"
     })
     colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
-
+               
     latex = df.to_latex(
         float_format="{:0.1f}".format, column_format=colformat, index=False
     )
@@ -257,7 +242,34 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
     fd.write(latex)
     fd.close()
 
+   
+def gen_dsetable(logdir, graphs, outputname="/dev/stdout"):
+    res = { "name" : [] }
+    for m in methods:
+        res[m] = []
+    for i, name in zip(range(1, len(graphs) + 1), graphs):
+        res["name"].append(name)
+        for m in methods:
+            df = load_app_dse(logdir, name, m, cols = ["throughput", "storage distribution size"])
+            v = df["storage distribution size"].count() if "throughput" in df else "-"
+            res[m].append(v)
 
+            
+    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
+    df = df.rename (columns = {
+        "name" : "Graph"
+    })
+    colformat = "|".join([""] + ["l"] * df.index.nlevels + ["r"] * df.shape[1] + [""])
+               
+    latex = df.to_latex(
+        float_format="{:0.1f}".format, column_format=colformat, index=False
+    )
+    latex = latex.replace("NAN","-")
+    fd = open(outputname, 'w')
+    fd.write(latex)
+    fd.close()
+
+   
 def plot_all_pareto(logdir, graphs, outputname=None):
     plot_all(logdir, graphs, plotfunc=plot_app_pareto, outputname=outputname)
 
@@ -289,9 +301,9 @@ if __name__ == "__main__":
         help="location of the output pareto plot file",
         required=False,
     )
-
+    
     parser.add_argument(
-        "--tminsize",
+        "--dsetable",
         type=str,
         help="location of the output minimal buffersize table file",
         required=False,
@@ -320,12 +332,12 @@ if __name__ == "__main__":
         print("Generate pareto output")
         plot_all_pareto(logdir=logdir, graphs=graphs, outputname=args.opareto)
 
+        
 
-
-    if args.tminsize:
+    if args.dsetable:
         print("Generate minimal size table")
-        gen_minsize(logdir=logdir, graphs=graphs, outputname=args.tminsize)
-
+        gen_dsetable(logdir=logdir, graphs=graphs, outputname=args.dsetable)
+        
     endmem = process.memory_info().rss
     print(
         "Memory usage from",

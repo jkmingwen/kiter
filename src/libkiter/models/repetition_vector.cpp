@@ -9,6 +9,9 @@
 #include "repetition_vector.h"
 #include <models/Dataflow.h>
 
+
+#define VERBOSE_RV(msg) VERBOSE_CUSTOM_DEBUG ("RV", msg)
+
 #define CRAZY
 
 
@@ -88,8 +91,9 @@ bool calcFractionsConnectedActors(const models::Dataflow *from, std::map<Vertex,
 
 bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRACT>& fractions, EXEC_COUNT ratePeriod) {
 
-    std::map<Vertex,EXEC_COUNT> repetitionVector;
-    EXEC_COUNT l = 1;
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
+	std::map<Vertex,EXEC_COUNT> repetitionVector;
+	EXEC_COUNT l = 1;
 
     // Find lowest common multiple (lcm) of all denominators
     {ForEachVertex(from,v) {
@@ -110,12 +114,17 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
 
 
     // Find greatest common divisor (gcd)
-    EXEC_COUNT g = repetitionVector.begin()->second;
+    unsigned long long int g = repetitionVector.begin()->second;
 
     {ForEachVertex(from,v) {
             g = std::gcd(g, repetitionVector[v]);
         }}
 
+    if (g <= 0) {
+        VERBOSE_ERROR("g = " << g);
+        VERBOSE_ERROR("repetitionVectorSize = " << commons::toString(repetitionVector.size()));
+        VERBOSE_ERROR("repetitionVector = " << commons::toString(repetitionVector));
+    }
     VERBOSE_ASSERT(g > 0, TXT_NEVER_HAPPEND);
 
     // Minimize the repetition vector using the gcd
@@ -131,19 +140,19 @@ bool calcRepetitionVector(models::Dataflow *from,std::map<Vertex,EXEC_COUNT_FRAC
     // Workaround for repetition vector issues
     EXEC_COUNT subrate = ratePeriod;
     {ForEachVertex(from,v) {
-            subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
-        }}
-    VERBOSE_INFO("SubRate = " << subrate);
+    	subrate =  std::gcd(subrate, repetitionVector[v] / from->getPhasesQuantity(v));
+    }}
+    VERBOSE_RV("SubRate = " << subrate);
 
     {ForEachVertex(from,v) {
             repetitionVector[v] = repetitionVector[v] / subrate;
         }}
 #endif
 
-    VERBOSE_DEBUG("Repetition Vector :");
+    VERBOSE_RV("Repetition Vector :");
     {ForEachVertex(from,v) {
             from->setNi(v,repetitionVector[v]);
-            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+            VERBOSE_RV(from->getVertexName(v) << " \t: " << repetitionVector[v] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[v] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
         }}
 
     return true;
@@ -290,6 +299,7 @@ std::map<models::vertex_id_t ,EXEC_COUNT> generic_calc_repetition_vector(models:
  *
  */
 bool computeRepetitionVector(models::Dataflow *from) {
+    VERBOSE_ASSERT(from->getVerticesCount() > 0, "Empty graph not supported");
 	if (from->has_repetition_vector()) return true;
 	from->set_read_only();
     std::map<Vertex,EXEC_COUNT_FRACT> fractions;
@@ -304,7 +314,7 @@ bool computeRepetitionVector(models::Dataflow *from) {
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }}
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_INFO("Rate Period = " << ratePeriod);
+    VERBOSE_RV("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor
@@ -336,7 +346,7 @@ bool generic_repetition_vector (models::NaiveDataflow *from) {
             ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }
     VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
-    VERBOSE_INFO("Rate Period = " << ratePeriod);
+    VERBOSE_RV("Rate Period = " << ratePeriod);
 
 
     // Calculate firing ratio (as fraction) for each actor
@@ -348,14 +358,14 @@ bool generic_repetition_vector (models::NaiveDataflow *from) {
         }
 
 
-    VERBOSE_INFO("Calc done");
+    VERBOSE_RV("Calc done");
 
     // Calculate repetition vector based on firing ratios
     auto repetitionVector =  generic_calc_repetition_vector(from,fractions, ratePeriod);
-    VERBOSE_INFO("Repetition Vector done");
+    VERBOSE_RV("Repetition Vector done");
     for (auto v : from->getVertices()) {
             from->setNi(v,repetitionVector[from->getVertexId(v)]);
-            VERBOSE_DEBUG(from->getVertexName(v) << " \t: " << repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[from->getVertexId(v)] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
+        VERBOSE_RV(from->getVertexName(v) << " \t: " << repetitionVector[from->getVertexId(v)] / from->getPhasesQuantity(v) << "\tx " << from->getPhasesQuantity(v) << "\t = " << repetitionVector[from->getVertexId(v)] << " \t(" << ((from->getReentrancyFactor(v) > 0)?"lb":"") << ")");
     }
 
     return true;

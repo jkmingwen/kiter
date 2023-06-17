@@ -33,7 +33,7 @@ BOOST_FIXTURE_TEST_SUITE( backpressure_test , WITH_SAMPLE)
         parameters_list_t params;
 
 
-        VERBOSE_INFO("Backpressure: pipeline sample")
+        VERBOSE_INFO("Backpressure: pipeline sample");
         TIME_UNIT period = get_period(pipeline_sample);
         params["PERIOD"] = commons::toString(period);
         algorithms::compute_backpressure_memory_sizing(pipeline_sample, params);

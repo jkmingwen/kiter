@@ -9,21 +9,42 @@
 #include <commons/verbose.h>
 #include <tuple>
 
-
-
-// REALLY STRANGE BUGFIX : For Andrea config (old boost version in fc10)
-namespace std {
-bool operator<(const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& lh, const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& rh)
-{
-  if (lh.m_source == rh.m_source) {return lh.m_target < rh.m_target;} else
-	  {return lh.m_source < rh.m_source;}
-}
-}
 namespace commons {
 
+    std::vector<std::string> parseCsvLine(const std::string& line) {
+        std::vector<std::string> cells;
+        std::string cell;
+        std::istringstream lineStream(line);
+        bool inQuotes = false;
+
+        for(char c : line) {
+            switch(c) {
+                case ',':
+                    if(inQuotes) {
+                        cell += c;
+                    } else {
+                        cells.push_back(cell);
+                        cell = "";
+                    }
+                    break;
+
+                case '\"':
+                    inQuotes = !inQuotes;
+                    break;
+
+                default:
+                    cell += c;
+                    break;
+            }
+        }
+        // Add the last cell
+        cells.push_back(cell);
+        return cells;
+    }
 
 
-TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p) {
+
+    TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p) {
   std::stringstream s;
   s<<std::setprecision((int)p)<<std::setiosflags(std::ios_base::fixed)<<val;
    s>>val;
@@ -35,7 +56,20 @@ std::string toString< std::vector<TOKEN_UNIT> >(const std::vector<TOKEN_UNIT>& v
 {
         return commons::join(v.begin(),v.end(),std::string(","));
 }
+template<>
+std::string toString(const std::vector<std::string>& t) {
 
+        std::stringstream s;
+        s << "{";
+        bool first = true;
+        for (auto myt : t) {
+            if (!first) s << ",";
+            s << "\"" << commons::toString(myt) << "\"";
+            first = false;
+        }
+        s << "}";
+        return s.str();
+    }
 
 template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) {

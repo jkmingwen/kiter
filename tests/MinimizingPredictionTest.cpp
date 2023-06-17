@@ -5,7 +5,7 @@
 #define BOOST_TEST_MODULE MinimizingPredictionTest
 
 #include "helpers/test_classes.h"
-#include "algorithms/ml/minimizing_prediction.h"
+#include <ml/minimizing_prediction.h>
 #include "helpers/sample.h"
 
 BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
@@ -70,6 +70,6 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
             BOOST_ASSERT(false);
         }
 
-        algorithms::get_preload(cycle_sample, params);
+        ml::get_preload(cycle_sample, params);
     }
 BOOST_AUTO_TEST_SUITE_END()

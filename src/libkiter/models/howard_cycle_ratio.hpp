@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <limits>
 
-#include <commons/verbose.h>
+#include "commons/verbose.h"
 
 
 #include <boost/bind.hpp>
@@ -25,7 +25,7 @@
 #include <boost/graph/graph_concepts.hpp>
 
 
-#define VERBOSE_HOWARD(msg)  // VERBOSE_DEBUG(msg);
+#define VERBOSE_HOWARD(msg)   VERBOSE_CUSTOM_DEBUG ("HOWARD", msg)
 
 
 /** @file howard_cycle_ratio.hpp
@@ -138,7 +138,7 @@ namespace boost {
         m_badvc(m_V, false), m_badv(m_badvc.begin(), m_vim),
         m_colcv(m_V),
         m_col_bfs(m_V)
-      {VERBOSE_INFO("m_bound=" << m_bound << " m_cr=" << m_cr);}
+      {VERBOSE_HOWARD("m_bound=" << m_bound << " m_cr=" << m_cr);}
 
 
       /*!
@@ -161,7 +161,7 @@ namespace boost {
         m_badvc(m_V, false), m_badv(m_badvc.begin(), m_vim),
         m_colcv(m_V),
         m_col_bfs(m_V)
-      {VERBOSE_INFO("[Custom] m_bound=" << m_bound << " m_cr=" << m_cr);}
+      {VERBOSE_DEBUG("[Custom] m_bound=" << m_bound << " m_cr=" << m_cr);}
 
 
       /*!
@@ -183,9 +183,9 @@ namespace boost {
         while (try_improve_policy(mcr) && k < MAX_ITERATION); //To avoid infinite loop
 
         if ( k >= MAX_ITERATION) {
-        	VERBOSE_INFO("MCRP : Precision is out" );
+        	VERBOSE_INFO("MCRP : Precision is out k is "<< k << " over " << MAX_ITERATION );
         } else {
-        	VERBOSE_INFO("HOWARD FINSH at iteration " << k << " / " << MAX_ITERATION);
+            VERBOSE_HOWARD("HOWARD FINSH at iteration " << k << " / " << MAX_ITERATION);
         }
 
         const float_t eps_ =  -FloatTraits::epsilon() * cmp_props_t::multiplier;
