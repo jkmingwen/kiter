@@ -5,19 +5,17 @@
 #define BOOST_TEST_MODULE MinimizingPredictionTest
 
 #include "helpers/test_classes.h"
+#include "helpers/random_generator.h"
 #include <ml/minimizing_prediction.h>
-#include "helpers/sample.h"
 
-BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
+BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
 
     BOOST_AUTO_TEST_CASE(minimizing_prediciton_not_found_test)
     {
         parameters_list_t params;
-        params["DICT_PATH"] = "";
-        // Need to change the dictionary path
-        if (params["DICT_PATH"].empty()) {
-            BOOST_ASSERT(false);
-        }
+        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
+
+        if(params["DICT_PATH"].empty()) { return; }
 
         PreloadDict preload_dict(params["DICT_PATH"]);
 
@@ -30,16 +28,12 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
 
     BOOST_AUTO_TEST_CASE(sample_minimizing_prediciton_test)
     {
-        //TODO: testing only --- absolute path badness
         parameters_list_t params;
-        std::string DICT_PATH;
+        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
 
-        // Need to change the dictionary path
-        if (DICT_PATH.empty()) {
-            BOOST_ASSERT(false);
-        }
+        if(params["DICT_PATH"].empty()) { return; }
 
-        PreloadDict preload_dict(DICT_PATH);
+        PreloadDict preload_dict(params["DICT_PATH"]);
         // Perform lookups
         std::vector<uint8_t> weights1 = {19, 9, 28,21};
         std::vector<uint8_t> weights2 = {26, 11, 17, 3};
@@ -58,18 +52,17 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_SAMPLE)
         BOOST_ASSERT(result3 == expected3);
     }
 
+
     BOOST_AUTO_TEST_CASE(random_graph_minimizing_prediction_test)
     {
         //TODO: testing only --- absolute path badness
         parameters_list_t params;
-        params["DICT_PATH"] = "";
+        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
 
 
         // Need to change the dictionary path
-        if (params["DICT_PATH"].empty()) {
-            BOOST_ASSERT(false);
-        }
+        if(params["DICT_PATH"].empty()) { return; }
 
-        ml::get_preload(cycle_sample, params);
+        ml::get_preload(generateDAC2013(), params);
     }
 BOOST_AUTO_TEST_SUITE_END()
