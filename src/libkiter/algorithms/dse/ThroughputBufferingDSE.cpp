@@ -102,7 +102,7 @@ namespace algorithms {
                     VERBOSE_DEBUG("     " << solution.to_csv_line());
                 }
 
-                ModularDSE::NextFuncRes res = {next_configurations, new ThroughputConstraint()};
+                ModularDSE::NextFuncRes res = {next_configurations, {new ThroughputConstraint()}};
                 return res;
             }
 

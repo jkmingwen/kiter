@@ -26,7 +26,7 @@ namespace algorithms {
             // TODO: decide if they are declared here or in the TokenConfiguration
             struct NextFuncRes {
                 std::vector<TokenConfiguration> configs;
-                Constraint* constraints;
+                std::vector<Constraint*> constraints;
             };
 
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;

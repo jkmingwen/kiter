@@ -97,10 +97,12 @@ namespace algorithms {
                 algorithms::dse::TokenConfiguration new_point(df, new_configuration);
 
 
+                std::map<ARRAY_INDEX, TOKEN_UNIT> new_constraint;
+                new_constraint[criticalEdgeId] = maxVal;
                 /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
 
 
-               ModularDSE::NextFuncRes res = {{new_point}, new LivenessConstraint()};
+               ModularDSE::NextFuncRes res = {{new_point}, {new LivenessConstraint(new_constraint)}};
                return res;
             }
 
@@ -155,7 +157,7 @@ namespace algorithms {
 
 
 
-                ModularDSE::NextFuncRes res = {next_configurations, new LivenessConstraint()};
+                ModularDSE::NextFuncRes res = {next_configurations, {new LivenessConstraint()}};
                 return res;
             }
 

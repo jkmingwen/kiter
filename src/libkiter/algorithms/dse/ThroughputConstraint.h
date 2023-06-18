@@ -7,6 +7,7 @@
 
 #include "Constraint.h"
 
+class TokenConfigMap;
 namespace algorithms {
 namespace dse {
 

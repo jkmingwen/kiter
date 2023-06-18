@@ -4,6 +4,7 @@
 
 #include "ModularDSE.h"
 #include "TokenConfiguration.h"
+#include "algorithms/liveness/LivenessConstraint.h"
 
 #define VERBOSE_DSE_THREADS(msg) VERBOSE_CUSTOM_DEBUG ("DSE_THREAD", msg)
 
@@ -97,6 +98,7 @@ namespace algorithms {
                 sandbox.reset_computation();
                 current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
                 auto [next_configurations, next_constraints] = next_func(*current_configuration);
+
                 VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
                 {
@@ -110,6 +112,10 @@ namespace algorithms {
                     results.add(*current_configuration);
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration)) {
+                            auto updated_configuration = TokenConfiguration(next_configuration);
+                            for (const auto& constraint : next_constraints ){
+                                updated_configuration = constraint->apply(updated_configuration);
+                            }
                             job_pool.push(next_configuration);
                         }
                     }

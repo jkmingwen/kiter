@@ -21,6 +21,7 @@ public:
     ~LivenessConstraint() {};
 
     TokenConfiguration apply(const TokenConfiguration& config) override;
+    TokenConfigMap getContainer() {return constraints_;}
 
 private:
     TokenConfigMap constraints_;
