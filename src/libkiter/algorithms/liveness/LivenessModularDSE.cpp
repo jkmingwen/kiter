@@ -6,6 +6,7 @@
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/liveness/LivenessModularDSE.h>
 #include <algorithms/transformation/subgraph.h>
+#include "LivenessConstraint.h"
 
 namespace algorithms {
     namespace dse {
@@ -15,7 +16,7 @@ namespace algorithms {
         private :
 
 
-           static  std::vector<algorithms::dse::TokenConfiguration> liveness_next_func_by_dichotomy(const algorithms::dse::TokenConfiguration& starting_point) {
+           static  algorithms::dse::ModularDSE::NextFuncRes liveness_next_func_by_dichotomy(const algorithms::dse::TokenConfiguration& starting_point) {
 
                 VERBOSE_DEBUG("[start] liveness_next_func_by_dichotomy:" << starting_point.to_csv_line());
 
@@ -99,14 +100,14 @@ namespace algorithms {
                 /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
 
 
-                return {new_point};
-
+               ModularDSE::NextFuncRes res = {{new_point}, new LivenessConstraint()};
+               return res;
             }
 
         public:
             LivenessNextFunc(bool use_dichotomy = true) : use_dichotomy(use_dichotomy) {}
 
-                std::vector<algorithms::dse::TokenConfiguration>  operator()(const algorithms::dse::TokenConfiguration& current) const {
+                algorithms::dse::ModularDSE::NextFuncRes  operator()(const algorithms::dse::TokenConfiguration& current) const {
 
                 VERBOSE_DEBUG("liveness_next_func: Start");
 
@@ -154,7 +155,8 @@ namespace algorithms {
 
 
 
-                return next_configurations;
+                ModularDSE::NextFuncRes res = {next_configurations, new LivenessConstraint()};
+                return res;
             }
 
         private:

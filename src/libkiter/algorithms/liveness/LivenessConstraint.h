@@ -14,9 +14,14 @@ class LivenessConstraint : public Constraint {
 public:
     using TokenConfigMap = std::map<ARRAY_INDEX, TOKEN_UNIT>;
 
-    LivenessConstraint(const TokenConfigMap& map) : constraints_(map){};
+    LivenessConstraint()= default;
+
+    explicit LivenessConstraint(const TokenConfigMap& map) : constraints_(map){};
+
+    ~LivenessConstraint() {};
 
     TokenConfiguration apply(const TokenConfiguration& config) override;
+
 private:
     TokenConfigMap constraints_;
 };

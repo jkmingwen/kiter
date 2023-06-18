@@ -6,6 +6,7 @@
 #include "algorithms/transformation/subgraph.h"
 #include "algorithms/transformation/AddFeedbackBuffers.h"
 #include "algorithms/throughput/symbolic_execution.h"
+#include "ThroughputConstraint.h"
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <printers/stdout.h>
@@ -31,7 +32,7 @@ namespace algorithms {
                 return false;
             }
 
-            std::vector<algorithms::dse::TokenConfiguration>  ThroughputBufferingNext::operator()(const algorithms::dse::TokenConfiguration& current) const {
+            algorithms::dse::ModularDSE::NextFuncRes ThroughputBufferingNext::operator()(const algorithms::dse::TokenConfiguration& current) const {
                 const models::Dataflow* df =  current.getDataflow();
                 const auto& current_configuration = current.getConfiguration();
                 std::vector<algorithms::dse::TokenConfiguration> next_configurations;
@@ -100,7 +101,9 @@ namespace algorithms {
                 for (auto solution : next_configurations) {
                     VERBOSE_DEBUG("     " << solution.to_csv_line());
                 }
-                return next_configurations;
+
+                ModularDSE::NextFuncRes res = {next_configurations, new ThroughputConstraint()};
+                return res;
             }
 
 

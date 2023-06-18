@@ -35,7 +35,6 @@ namespace algorithms {
                 }
             };
 
-
             using PerformanceUnit = PerformanceResult;
             using CostUnit = TOKEN_UNIT;
 

@@ -96,7 +96,7 @@ namespace algorithms {
 
                 sandbox.reset_computation();
                 current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
-                auto next_configurations = next_func(*current_configuration);
+                auto [next_configurations, next_constraints] = next_func(*current_configuration);
                 VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
                 {

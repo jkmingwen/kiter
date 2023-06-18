@@ -16,6 +16,7 @@
 
 #include "TokenConfiguration.h"
 #include "TokenConfigurationSet.h"
+#include "Constraint.h"
 
 namespace algorithms {
     namespace dse {
@@ -23,8 +24,13 @@ namespace algorithms {
         class ModularDSE {
         public:
             // TODO: decide if they are declared here or in the TokenConfiguration
+            struct NextFuncRes {
+                std::vector<TokenConfiguration> configs;
+                Constraint* constraints;
+            };
+
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
-            using NextConfigurationsFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
+            using NextConfigurationsFunc = std::function<NextFuncRes(const TokenConfiguration&)>;
             using StopConditionFunc = std::function<bool(const TokenConfiguration&,const TokenConfigurationSet&)>;
 
             ModularDSE(const models::Dataflow* dataflow,
