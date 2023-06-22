@@ -26,7 +26,7 @@ namespace algorithms {
             // TODO: decide if they are declared here or in the TokenConfiguration
             struct NextFuncRes {
                 std::vector<TokenConfiguration> configs;
-                std::vector<Constraint*> constraints;
+                Constraint* constraints;
             };
 
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
@@ -66,12 +66,13 @@ namespace algorithms {
 
 
             void explore(size_t limit = 0, bool bottom_up = false,
-                         bool realtime_output = false) ;
+                         bool realtime_output = false, bool use_constraints = true) ;
 
         private:
             bool should_stop(size_t idle_threads, size_t explored, size_t limit);
             void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit,
-                                const std::chrono::steady_clock::time_point beginTime, bool bottom_up, bool realtime_output);
+                                const std::chrono::steady_clock::time_point beginTime, bool bottom_up, bool realtime_output,
+                                bool use_constraints);
 
         private:
             const models::Dataflow* dataflow;
@@ -79,6 +80,7 @@ namespace algorithms {
             NextConfigurationsFunc next_func;
             StopConditionFunc stop_func;
             size_t num_threads;
+            Constraint* constraints = nullptr;
 
             std::mutex mtx;
             std::condition_variable cv;

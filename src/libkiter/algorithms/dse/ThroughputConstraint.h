@@ -7,7 +7,8 @@
 
 #include "Constraint.h"
 
-class TokenConfigMap;
+#include <utility>
+
 namespace algorithms {
 namespace dse {
 
@@ -15,13 +16,14 @@ class ThroughputConstraint : public Constraint {
 public:
     using TokenConfigMap = std::map<ARRAY_INDEX, TOKEN_UNIT>;
 
-    ThroughputConstraint()= default;
+    ThroughputConstraint() = default;
 
-    explicit ThroughputConstraint(const TokenConfigMap& map) : constraints_(map){};
+    explicit ThroughputConstraint(TokenConfigMap  map) : constraints_(std::move(map)){};
 
-    ~ThroughputConstraint() {};
+    ~ThroughputConstraint() = default;
 
     TokenConfiguration apply(const TokenConfiguration& config) override;
+    void merge(const Constraint& other) override;
 
 private:
     TokenConfigMap constraints_;

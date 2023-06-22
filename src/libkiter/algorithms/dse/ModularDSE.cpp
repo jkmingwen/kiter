@@ -34,7 +34,8 @@ namespace algorithms {
                                         std::atomic<size_t>& explored, size_t limit,
                                         const std::chrono::steady_clock::time_point beginTime,
                                         bool bottom_up,
-                                        bool realtime_output) {
+                                        bool realtime_output,
+                                        bool use_constraints) {
 
             models::Dataflow sandbox = *this->dataflow;
             std::unique_ptr<TokenConfiguration> current_configuration;
@@ -107,29 +108,36 @@ namespace algorithms {
                     std::unique_lock<std::mutex> lock(mtx);
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
+                    if (use_constraints) {
+                        if (constraints == nullptr) {
+                            constraints = next_constraints;
+                        } else {
+                            constraints->merge(*next_constraints);
+                        }
+                    }
 
                     if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                     results.add(*current_configuration);
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration)) {
-                            auto updated_configuration = TokenConfiguration(next_configuration);
-                            for (const auto& constraint : next_constraints ){
-                                updated_configuration = constraint->apply(updated_configuration);
+                            if (use_constraints) {
+                                auto updated_configuration = constraints->apply(next_configuration);
+                                job_pool.push(updated_configuration);
+                            } else {
+                                job_pool.push(next_configuration);
                             }
-                            job_pool.push(next_configuration);
                         }
                     }
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ".");
                 }
                 cv.notify_all();
-
             }
         }
 
 
 
         void ModularDSE::explore(const size_t limit, bool bottom_up,
-                                 bool realtime_output) {
+                                 bool realtime_output, bool use_constraints) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
@@ -144,7 +152,7 @@ namespace algorithms {
             if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output));
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output, use_constraints));
             }
 
             for (auto& future : futures) {

@@ -101,13 +101,11 @@ namespace algorithms {
                 new_constraint[criticalEdgeId] = maxVal;
                 /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
 
-
-               ModularDSE::NextFuncRes res = {{new_point}, {new LivenessConstraint(new_constraint)}};
-               return res;
+               return {{new_point}, new LivenessConstraint(new_constraint)};
             }
 
         public:
-            LivenessNextFunc(bool use_dichotomy = true) : use_dichotomy(use_dichotomy) {}
+            LivenessNextFunc(bool use_dichotomy = true) : use_dichotomy(use_dichotomy){}
 
                 algorithms::dse::ModularDSE::NextFuncRes  operator()(const algorithms::dse::TokenConfiguration& current) const {
 
@@ -155,10 +153,7 @@ namespace algorithms {
                     next_configurations.push_back(new_token_configuration);
                 }
 
-
-
-                ModularDSE::NextFuncRes res = {next_configurations, {new LivenessConstraint()}};
-                return res;
+                return {next_configurations, {new LivenessConstraint()}};
             }
 
         private:

@@ -7,8 +7,9 @@
 
 #include <algorithms/dse/Constraint.h>
 
-namespace algorithms {
-namespace dse {
+#include <utility>
+
+namespace algorithms::dse {
 
 class LivenessConstraint : public Constraint {
 public:
@@ -16,18 +17,17 @@ public:
 
     LivenessConstraint()= default;
 
-    explicit LivenessConstraint(const TokenConfigMap& map) : constraints_(map){};
+    explicit LivenessConstraint(TokenConfigMap  map) : constraints_(std::move(map)){};
 
-    ~LivenessConstraint() {};
+    ~LivenessConstraint() = default;
 
     TokenConfiguration apply(const TokenConfiguration& config) override;
-    TokenConfigMap getContainer() {return constraints_;}
+    void merge(const Constraint& other) override;
 
 private:
     TokenConfigMap constraints_;
 };
 
-} // namespace dse
-} // namespace algorithms
+} // namespace algorithms::dse
 
 #endif //KITER_LIVENESSCONSTRAINT_H

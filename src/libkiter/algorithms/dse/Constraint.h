@@ -13,6 +13,7 @@ namespace dse {
 class Constraint {
 public:
     virtual TokenConfiguration apply(const TokenConfiguration& config) = 0;
+    virtual void merge(const Constraint& other) = 0;
 };
 
 } // namespace dse
