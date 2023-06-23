@@ -37,12 +37,14 @@ namespace algorithms {
                        PerformanceFunc performance_func,
                        NextConfigurationsFunc next_func,
                        StopConditionFunc stop_func,
-                       size_t num_threads = std::thread::hardware_concurrency())
+                       size_t num_threads = std::thread::hardware_concurrency(),
+                       bool use_constraints = false)
                     : dataflow(dataflow),
                       performance_func(performance_func),
                       next_func(next_func),
                       stop_func(stop_func),
-                      num_threads(num_threads) {
+                      num_threads(num_threads),
+                      use_constraints(use_constraints) {
             }
 
             ModularDSE& operator<<(const TokenConfiguration& config) {
@@ -66,13 +68,12 @@ namespace algorithms {
 
 
             void explore(size_t limit = 0, bool bottom_up = false,
-                         bool realtime_output = false, bool use_constraints = true) ;
+                         bool realtime_output = false) ;
 
         private:
             bool should_stop(size_t idle_threads, size_t explored, size_t limit);
             void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit,
-                                const std::chrono::steady_clock::time_point beginTime, bool bottom_up, bool realtime_output,
-                                bool use_constraints);
+                                const std::chrono::steady_clock::time_point beginTime, bool bottom_up, bool realtime_output);
 
         private:
             const models::Dataflow* dataflow;
@@ -80,6 +81,8 @@ namespace algorithms {
             NextConfigurationsFunc next_func;
             StopConditionFunc stop_func;
             size_t num_threads;
+
+            bool use_constraints;
             Constraint* constraints = nullptr;
 
             std::mutex mtx;

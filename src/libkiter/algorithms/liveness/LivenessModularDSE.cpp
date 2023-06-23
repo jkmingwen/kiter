@@ -209,8 +209,9 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                         size_t timeout,
                                         size_t limit,
                                         std::string  filename,
-                                        bool use_last,
                                         bool use_dichotomy,
+                                        bool use_last,
+                                        bool use_constraints,
                                         algorithms::dse::TokenConfiguration* tc
 ) {
 
@@ -219,7 +220,8 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                             liveness_performance_func,
                                             LivenessNextFunc(use_dichotomy),
                                             liveness_stop_condition,
-                                            thread_count);
+                                            thread_count,
+                                            use_constraints);
 
 
 
@@ -251,6 +253,7 @@ void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params
 
     size_t use_last   = (params.count("use_last") > 0) ? commons::fromString<bool>(params.at("use_last")) : false;
     size_t use_dichotomy   = (params.count("use_dichotomy") > 0) ? commons::fromString<bool>(params.at("use_dichotomy")) : false;
+    size_t use_constraints   = (params.count("WithConstraint") > 0) ? commons::fromString<bool>(params.at("use_dichotomy")) : false;
     size_t realtime_output = (params.count("realtime") > 0) ? commons::fromString<bool>(params.at("realtime")) : false;
     size_t thread_count    = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread")) : 1;
     size_t timeout         = (params.count("timeout") > 0) ? commons::fromString<size_t>(params.at("timeout")) : 0;
@@ -260,7 +263,7 @@ void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params
 
     VERBOSE_ASSERT(params.count("init")  + params.count("import")  != 2, "Please pass your init inside the import file");
 
-    TokenConfigurationSet result = solve_liveness   (dataflow, realtime_output, thread_count, timeout, limit, filename, use_last,use_dichotomy,  tc);
+    TokenConfigurationSet result = solve_liveness   (dataflow, realtime_output, thread_count, timeout, limit, filename, use_last,use_dichotomy, use_constraints,  tc);
 
     delete tc;
 }

@@ -34,8 +34,7 @@ namespace algorithms {
                                         std::atomic<size_t>& explored, size_t limit,
                                         const std::chrono::steady_clock::time_point beginTime,
                                         bool bottom_up,
-                                        bool realtime_output,
-                                        bool use_constraints) {
+                                        bool realtime_output) {
 
             models::Dataflow sandbox = *this->dataflow;
             std::unique_ptr<TokenConfiguration> current_configuration;
@@ -137,7 +136,7 @@ namespace algorithms {
 
 
         void ModularDSE::explore(const size_t limit, bool bottom_up,
-                                 bool realtime_output, bool use_constraints) {
+                                 bool realtime_output) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
@@ -152,7 +151,7 @@ namespace algorithms {
             if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
             for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output, use_constraints));
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output));
             }
 
             for (auto& future : futures) {

@@ -7,6 +7,7 @@
 #include "helpers/test_classes.h"
 #include "helpers/random_generator.h"
 #include "generators/NormalizedCycleGenerator.h"
+#include "algorithms/liveness/LivenessConstraint.h"
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <future>
@@ -31,7 +32,7 @@ std::vector<TokenConfiguration> dummy_if(const models::Dataflow* dataflow) {
     return {algorithms::dse::TokenConfiguration(dataflow, configuration)};
 }
 
-std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& current ) {
+ModularDSE::NextFuncRes dummy_nf(const TokenConfiguration& current ) {
     const models::Dataflow* df =  current.getDataflow();
     std::vector<algorithms::dse::TokenConfiguration> next_configurations;
     const auto& current_configuration = current.getConfiguration();
@@ -44,7 +45,7 @@ std::vector<TokenConfiguration> dummy_nf(const TokenConfiguration& current ) {
         next_configurations.push_back(new_token_configuration);
     }
 
-    return next_configurations;
+    return {next_configurations, new LivenessConstraint()};
 }
 
 bool dummy_sc(const TokenConfiguration& , const TokenConfigurationSet& ) {
@@ -184,7 +185,8 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,
                                         dummy_nf,
-                                        dummy_sc, 1);
+                                        dummy_sc,
+                                        1);
 
         algorithms::dse::TokenConfiguration tc = dummy_if(df).front();
 
