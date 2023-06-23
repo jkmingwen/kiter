@@ -13,7 +13,7 @@ namespace algorithms {
     namespace dse {
         TokenConfiguration::PerformanceResult liveness_performance_func(models::Dataflow* dataflow, const TokenConfiguration& config);
         std::vector<TokenConfiguration> liveness_initial_func(const models::Dataflow* dataflow);
-        std::vector<TokenConfiguration> liveness_next_func(const TokenConfiguration& );
+        ModularDSE::NextFuncRes liveness_next_func(const TokenConfiguration& );
         bool liveness_stop_condition(const TokenConfiguration& , const TokenConfigurationSet&);
 
 
@@ -25,6 +25,7 @@ namespace algorithms {
                                                 std::string  filename = "",
                                                 bool use_dichotomy = false,
                                                 bool use_last = false,
+                                                bool use_constraints = false,
                                                 algorithms::dse::TokenConfiguration* tc = nullptr) ;
 
         void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params);

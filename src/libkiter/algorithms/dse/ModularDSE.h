@@ -16,6 +16,7 @@
 
 #include "TokenConfiguration.h"
 #include "TokenConfigurationSet.h"
+#include "Constraint.h"
 
 namespace algorithms {
     namespace dse {
@@ -23,20 +24,27 @@ namespace algorithms {
         class ModularDSE {
         public:
             // TODO: decide if they are declared here or in the TokenConfiguration
+            struct NextFuncRes {
+                std::vector<TokenConfiguration> configs;
+                Constraint* constraints;
+            };
+
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
-            using NextConfigurationsFunc = std::function<std::vector<TokenConfiguration>(const TokenConfiguration&)>;
+            using NextConfigurationsFunc = std::function<NextFuncRes(const TokenConfiguration&)>;
             using StopConditionFunc = std::function<bool(const TokenConfiguration&,const TokenConfigurationSet&)>;
 
             ModularDSE(const models::Dataflow* dataflow,
                        PerformanceFunc performance_func,
                        NextConfigurationsFunc next_func,
                        StopConditionFunc stop_func,
-                       size_t num_threads = std::thread::hardware_concurrency())
+                       size_t num_threads = std::thread::hardware_concurrency(),
+                       bool use_constraints = false)
                     : dataflow(dataflow),
                       performance_func(performance_func),
                       next_func(next_func),
                       stop_func(stop_func),
-                      num_threads(num_threads) {
+                      num_threads(num_threads),
+                      use_constraints(use_constraints) {
             }
 
             ModularDSE& operator<<(const TokenConfiguration& config) {
@@ -73,6 +81,9 @@ namespace algorithms {
             NextConfigurationsFunc next_func;
             StopConditionFunc stop_func;
             size_t num_threads;
+
+            bool use_constraints;
+            Constraint* constraints = nullptr;
 
             std::mutex mtx;
             std::condition_variable cv;

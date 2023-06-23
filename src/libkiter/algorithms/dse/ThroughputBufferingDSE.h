@@ -32,7 +32,7 @@ namespace algorithms {
         class ThroughputBufferingNext {
         public:
             ThroughputBufferingNext(ThroughputBufferingMode mode, TIME_UNIT max_th) : max_th(max_th), mode(mode)  {}
-            std::vector<algorithms::dse::TokenConfiguration>  operator()(const algorithms::dse::TokenConfiguration& current) const;
+            algorithms::dse::ModularDSE::NextFuncRes operator()(const algorithms::dse::TokenConfiguration& current) const;
         private:
             TIME_UNIT max_th;
             ThroughputBufferingMode mode;

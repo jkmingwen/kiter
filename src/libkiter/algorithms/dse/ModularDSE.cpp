@@ -4,6 +4,7 @@
 
 #include "ModularDSE.h"
 #include "TokenConfiguration.h"
+#include "algorithms/liveness/LivenessConstraint.h"
 
 #define VERBOSE_DSE_THREADS(msg) VERBOSE_CUSTOM_DEBUG ("DSE_THREAD", msg)
 
@@ -96,7 +97,8 @@ namespace algorithms {
 
                 sandbox.reset_computation();
                 current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
-                auto next_configurations = next_func(*current_configuration);
+                auto [next_configurations, next_constraints] = next_func(*current_configuration);
+
                 VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
                 {
@@ -105,18 +107,29 @@ namespace algorithms {
                     std::unique_lock<std::mutex> lock(mtx);
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
+                    if (use_constraints) {
+                        if (constraints == nullptr) {
+                            constraints = next_constraints;
+                        } else {
+                            constraints->merge(*next_constraints);
+                        }
+                    }
 
                     if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                     results.add(*current_configuration);
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration)) {
-                            job_pool.push(next_configuration);
+                            if (use_constraints) {
+                                auto updated_configuration = constraints->apply(next_configuration);
+                                job_pool.push(updated_configuration);
+                            } else {
+                                job_pool.push(next_configuration);
+                            }
                         }
                     }
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ".");
                 }
                 cv.notify_all();
-
             }
         }
 
