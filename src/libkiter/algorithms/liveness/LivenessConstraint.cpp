@@ -6,22 +6,29 @@
 
 namespace algorithms::dse {
 
+    //TODO: copy the old config -- check with constraints, increase if higher
     TokenConfiguration LivenessConstraint::apply(const algorithms::dse::TokenConfiguration &config) {
         const TokenConfigMap& cur_config = config.getConfiguration();
-        TokenConfigMap new_config = constraints_;
+        TokenConfigMap new_config = cur_config;
 
-        for (const auto& entry : cur_config) {
-            ARRAY_INDEX key = entry.first;
-            if (new_config.find(key) == new_config.end()) {
-                auto value = entry.second;
+        for (const auto& entry : constraints_) {
+            long key = entry.first;
+            long value = entry.second;
+
+            auto it = new_config.find(key);
+            if (it != new_config.end()) {
+                if (value > it->second) {
+                    it->second = value;
+                }
+            } else {
                 new_config[key] = value;
             }
         }
 
-        return {config.getDataflow(), new_config};
+       return {config.getDataflow(), new_config};
     }
 
-    void LivenessConstraint::merge(const Constraint& other) {
+    void LivenessConstraint::update(const Constraint& other) {
         try {
             const auto& other_typed = dynamic_cast<const LivenessConstraint&>(other);
             for (const auto& entry : other_typed.constraints_) {
@@ -38,7 +45,7 @@ namespace algorithms::dse {
                 }
             }
         } catch (const std::bad_cast&) {
-            throw std::runtime_error("LivenessConstraint: merge got unexpected argument\n");
+            throw std::runtime_error("LivenessConstraint: update got unexpected argument\n");
         }
     }
 } // namespace algorithms::dse

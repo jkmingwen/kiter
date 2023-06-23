@@ -7,16 +7,15 @@
 
 #include "TokenConfiguration.h"
 
-namespace algorithms {
-namespace dse {
+namespace algorithms::dse {
 
 class Constraint {
 public:
     virtual TokenConfiguration apply(const TokenConfiguration& config) = 0;
-    virtual void merge(const Constraint& other) = 0;
+    virtual void update(const Constraint& other) = 0;
+    virtual void print() = 0;
 };
 
-} // namespace dse
-} // namespace algorithms
+} // namespace algorithms::dse
 
 #endif //KITER_CONSTRAINT_H

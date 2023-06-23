@@ -153,7 +153,7 @@ namespace algorithms {
                     next_configurations.push_back(new_token_configuration);
                 }
 
-                return {next_configurations, {new LivenessConstraint()}};
+                return {next_configurations, new LivenessConstraint()};
             }
 
         private:
@@ -209,8 +209,8 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                         size_t timeout,
                                         size_t limit,
                                         std::string  filename,
-                                        bool use_dichotomy,
                                         bool use_last,
+                                        bool use_dichotomy,
                                         bool use_constraints,
                                         algorithms::dse::TokenConfiguration* tc
 ) {

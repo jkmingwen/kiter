@@ -23,7 +23,7 @@ namespace algorithms {
         }
 
 
-        void ThroughputConstraint::merge(const Constraint& other) {
+        void ThroughputConstraint::update(const Constraint& other) {
             try {
                 const auto& other_typed = dynamic_cast<const ThroughputConstraint&>(other);
                 for (const auto& entry : other_typed.constraints_) {
@@ -40,7 +40,7 @@ namespace algorithms {
                     }
                 }
             } catch (const std::bad_cast&) {
-                throw std::runtime_error("ThroughputConstraint: merge got unexpected argument\n");
+                throw std::runtime_error("ThroughputConstraint: update got unexpected argument\n");
             }
         }
     } // namespace dse

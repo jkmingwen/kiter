@@ -78,8 +78,8 @@ namespace algorithms {
                         current_configuration = std::make_unique<TokenConfiguration>(job_pool.last());
                         job_pool.pop_last();
                     } else {
-                    current_configuration = std::make_unique<TokenConfiguration>(job_pool.top());
-                    job_pool.pop();
+                        current_configuration = std::make_unique<TokenConfiguration>(job_pool.top());
+                        job_pool.pop();
                     };
                     explored++;
 
@@ -111,7 +111,15 @@ namespace algorithms {
                         if (constraints == nullptr) {
                             constraints = next_constraints;
                         } else {
-                            constraints->merge(*next_constraints);
+                            //TODO: this works
+                            constraints = next_constraints;
+                            // TODO: this doesn't
+                            constraints->update(*next_constraints);
+//                            std::cout << "=====================\n";
+//                            constraints->print();
+//                            std::cout << "---------------------\n";
+//                            next_constraints->print();
+//                            std::cout << "=====================\n";
                         }
                     }
 
@@ -121,7 +129,13 @@ namespace algorithms {
                         if (!results.contains(next_configuration)) {
                             if (use_constraints) {
                                 auto updated_configuration = constraints->apply(next_configuration);
-                                job_pool.push(updated_configuration);
+                                job_pool.push(next_configuration);
+//                                std::cout << "=====================\n";
+//                                if (realtime_output) std::cout << next_configuration.to_csv_line() << std::endl;
+//                                std::cout << "---------------------\n";
+//                                constraints->print();
+//                                if (realtime_output) std::cout << updated_configuration.to_csv_line() << std::endl;
+//                                std::cout << "=====================\n";
                             } else {
                                 job_pool.push(next_configuration);
                             }

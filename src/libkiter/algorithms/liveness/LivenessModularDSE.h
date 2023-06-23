@@ -23,8 +23,8 @@ namespace algorithms {
                                                 size_t timeout = 0,
                                                 size_t limit = 0,
                                                 std::string  filename = "",
-                                                bool use_dichotomy = false,
                                                 bool use_last = false,
+                                                bool use_dichotomy = false,
                                                 bool use_constraints = false,
                                                 algorithms::dse::TokenConfiguration* tc = nullptr) ;
 

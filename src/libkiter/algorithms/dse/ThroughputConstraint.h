@@ -23,10 +23,16 @@ public:
     ~ThroughputConstraint() = default;
 
     TokenConfiguration apply(const TokenConfiguration& config) override;
-    void merge(const Constraint& other) override;
+    void update(const Constraint& other) override;
+    void print() override { printMap(constraints_); }
 
 private:
     TokenConfigMap constraints_;
+    void printMap(const std::map<long, long>& myMap) {
+        for (const auto& pair : myMap) {
+            std::cout << pair.first << ": " << pair.second << std::endl;
+        }
+    }
 };
 
 } // namespace dse

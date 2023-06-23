@@ -13,7 +13,7 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
     BOOST_AUTO_TEST_CASE(minimizing_prediciton_not_found_test)
     {
         parameters_list_t params;
-        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
+        params["DICT_PATH"] = "";
 
         if(params["DICT_PATH"].empty()) { return; }
 
@@ -29,7 +29,7 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
     BOOST_AUTO_TEST_CASE(sample_minimizing_prediciton_test)
     {
         parameters_list_t params;
-        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
+        params["DICT_PATH"] = "";
 
         if(params["DICT_PATH"].empty()) { return; }
 
@@ -55,9 +55,8 @@ BOOST_FIXTURE_TEST_SUITE(minimizing_prediction_test, WITH_VERBOSE)
 
     BOOST_AUTO_TEST_CASE(random_graph_minimizing_prediction_test)
     {
-        //TODO: testing only --- absolute path badness
         parameters_list_t params;
-        params["DICT_PATH"] = "/home/jachym/Projects/Kiter/cpp_integration/dict_30_test.bin";
+        params["DICT_PATH"] = "";
 
 
         // Need to change the dictionary path
