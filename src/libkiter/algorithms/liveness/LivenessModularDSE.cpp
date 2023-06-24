@@ -6,7 +6,7 @@
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/liveness/LivenessModularDSE.h>
 #include <algorithms/transformation/subgraph.h>
-#include "LivenessConstraint.h"
+#include <algorithms/dse/Constraint.h>
 
 namespace algorithms {
     namespace dse {
@@ -101,7 +101,7 @@ namespace algorithms {
                 new_constraint[criticalEdgeId] = maxVal;
                 /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
 
-               return {{new_point}, new LivenessConstraint(new_constraint)};
+               return {{new_point}, Constraint(new_constraint)};
             }
 
         public:
@@ -153,7 +153,7 @@ namespace algorithms {
                     next_configurations.push_back(new_token_configuration);
                 }
 
-                return {next_configurations, new LivenessConstraint()};
+                return {next_configurations, Constraint()};
             }
 
         private:

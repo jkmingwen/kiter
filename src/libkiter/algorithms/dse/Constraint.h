@@ -11,9 +11,25 @@ namespace algorithms::dse {
 
 class Constraint {
 public:
-    virtual TokenConfiguration apply(const TokenConfiguration& config) = 0;
-    virtual void update(const Constraint& other) = 0;
-    virtual void print() = 0;
+    using TokenConfigMap = std::map<ARRAY_INDEX, TOKEN_UNIT>;
+
+    Constraint()= default;
+
+    explicit Constraint(TokenConfigMap  map) : constraints_(std::move(map)){};
+
+    ~Constraint() = default;
+
+    TokenConfiguration apply(const TokenConfiguration& config);
+    void update(const Constraint& other);
+    void print() { printMap(constraints_); }
+
+private:
+    TokenConfigMap constraints_;
+    void printMap(const std::map<long, long>& myMap) {
+        for (const auto& pair : myMap) {
+            std::cout << pair.first << ": " << pair.second << std::endl;
+        }
+    }
 };
 
 } // namespace algorithms::dse

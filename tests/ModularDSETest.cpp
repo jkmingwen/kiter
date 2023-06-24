@@ -7,7 +7,7 @@
 #include "helpers/test_classes.h"
 #include "helpers/random_generator.h"
 #include "generators/NormalizedCycleGenerator.h"
-#include "algorithms/liveness/LivenessConstraint.h"
+#include "algorithms/dse/Constraint.h"
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <future>
@@ -45,7 +45,7 @@ ModularDSE::NextFuncRes dummy_nf(const TokenConfiguration& current ) {
         next_configurations.push_back(new_token_configuration);
     }
 
-    return {next_configurations, new LivenessConstraint()};
+    return {next_configurations, Constraint()};
 }
 
 bool dummy_sc(const TokenConfiguration& , const TokenConfigurationSet& ) {

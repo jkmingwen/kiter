@@ -26,7 +26,7 @@ namespace algorithms {
             // TODO: decide if they are declared here or in the TokenConfiguration
             struct NextFuncRes {
                 std::vector<TokenConfiguration> configs;
-                Constraint* constraints;
+                Constraint constraints;
             };
 
             using PerformanceFunc = TokenConfiguration::PerformanceFunc;
@@ -83,7 +83,7 @@ namespace algorithms {
             size_t num_threads;
 
             bool use_constraints;
-            Constraint* constraints = nullptr;
+            Constraint constraints = Constraint();
 
             std::mutex mtx;
             std::condition_variable cv;

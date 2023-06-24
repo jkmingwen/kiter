@@ -4,7 +4,7 @@
 
 #include "ModularDSE.h"
 #include "TokenConfiguration.h"
-#include "algorithms/liveness/LivenessConstraint.h"
+#include "Constraint.h"
 
 #define VERBOSE_DSE_THREADS(msg) VERBOSE_CUSTOM_DEBUG ("DSE_THREAD", msg)
 
@@ -108,19 +108,13 @@ namespace algorithms {
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
                     if (use_constraints) {
-                        if (constraints == nullptr) {
-                            constraints = next_constraints;
-                        } else {
-                            //TODO: this works
-                            constraints = next_constraints;
-                            // TODO: this doesn't
-                            constraints->update(*next_constraints);
+//                            constraints = next_constraints;
+                            constraints.update(next_constraints);
 //                            std::cout << "=====================\n";
 //                            constraints->print();
 //                            std::cout << "---------------------\n";
 //                            next_constraints->print();
 //                            std::cout << "=====================\n";
-                        }
                     }
 
                     if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
@@ -128,8 +122,8 @@ namespace algorithms {
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration)) {
                             if (use_constraints) {
-                                auto updated_configuration = constraints->apply(next_configuration);
-                                job_pool.push(next_configuration);
+                                auto updated_configuration = constraints.apply(next_configuration);
+                                job_pool.push(updated_configuration);
 //                                std::cout << "=====================\n";
 //                                if (realtime_output) std::cout << next_configuration.to_csv_line() << std::endl;
 //                                std::cout << "---------------------\n";
