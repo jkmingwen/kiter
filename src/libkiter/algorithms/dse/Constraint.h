@@ -22,6 +22,9 @@ public:
     TokenConfiguration apply(const TokenConfiguration& config);
     void update(const Constraint& other);
     void print() { printMap(constraints_); }
+    std::string toString() {
+        return commons::toString(constraints_);
+    }
 
 private:
     TokenConfigMap constraints_;
