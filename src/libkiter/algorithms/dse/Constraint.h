@@ -6,32 +6,30 @@
 #define KITER_CONSTRAINT_H
 
 #include "TokenConfiguration.h"
+#include <utility>
+#include <vector>
 
 namespace algorithms::dse {
 
 class Constraint {
 public:
-    using TokenConfigMap = std::map<ARRAY_INDEX, TOKEN_UNIT>;
+  using ConstraintKey = std::pair<std::vector<ARRAY_INDEX>, TIME_UNIT>;
+  using ConstraintValue = TOKEN_UNIT;
+  using TokenConfigMap = std::map<ConstraintKey, ConstraintValue>;
 
-    Constraint()= default;
+  Constraint() = default;
 
-    explicit Constraint(TokenConfigMap  map) : constraints_(std::move(map)){};
+  explicit Constraint(TokenConfigMap map) : constraints_(std::move(map)){};
 
-    ~Constraint() = default;
+  ~Constraint() = default;
 
-    TokenConfiguration apply(const TokenConfiguration& config);
-    void update(const Constraint& other);
-    void print() { printMap(constraints_); }
+  TokenConfiguration apply(const TokenConfiguration &config);
+  void update(const Constraint &other);
 
 private:
-    TokenConfigMap constraints_;
-    void printMap(const std::map<long, long>& myMap) {
-        for (const auto& pair : myMap) {
-            std::cout << pair.first << ": " << pair.second << std::endl;
-        }
-    }
+  TokenConfigMap constraints_;
 };
 
 } // namespace algorithms::dse
 
-#endif //KITER_CONSTRAINT_H
+#endif // KITER_CONSTRAINT_H

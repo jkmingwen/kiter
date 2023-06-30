@@ -7,12 +7,12 @@
 namespace algorithms::dse {
 
 TokenConfiguration Constraint::apply(const algorithms::dse::TokenConfiguration &config) {
-    const TokenConfigMap& cur_config = config.getConfiguration();
-    TokenConfigMap new_config = cur_config;
+    const std::map<ARRAY_INDEX, TOKEN_UNIT>& cur_config = config.getConfiguration();
+    auto new_config = cur_config;
 
     for (const auto& entry : constraints_) {
-        ARRAY_INDEX key = entry.first;
-        TOKEN_UNIT value = entry.second;
+        ARRAY_INDEX key = entry.first.first[0];
+        ConstraintValue value = entry.second;
 
         auto it = new_config.find(key);
         if (it != new_config.end()) {
@@ -29,8 +29,8 @@ TokenConfiguration Constraint::apply(const algorithms::dse::TokenConfiguration &
 
 void Constraint::update(const Constraint& other) {
     for (const auto& entry : other.constraints_) {
-        ARRAY_INDEX key = entry.first;
-        TOKEN_UNIT value = entry.second;
+        ConstraintKey key = entry.first;
+        ConstraintValue value = entry.second;
 
         auto it = constraints_.find(key);
         if (it != constraints_.end()) {

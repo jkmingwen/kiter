@@ -7,6 +7,7 @@
 #include <algorithms/liveness/LivenessModularDSE.h>
 #include <algorithms/transformation/subgraph.h>
 #include <algorithms/dse/Constraint.h>
+#include <utility>
 
 namespace algorithms {
     namespace dse {
@@ -96,10 +97,9 @@ namespace algorithms {
                 new_configuration[criticalEdgeId] = maxVal;
                 algorithms::dse::TokenConfiguration new_point(df, new_configuration);
 
-
-                std::map<ARRAY_INDEX, TOKEN_UNIT> new_constraint;
-                new_constraint[criticalEdgeId] = maxVal;
-                /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
+                Constraint::ConstraintKey key = {{criticalEdgeId}, 0};
+                Constraint::TokenConfigMap new_constraint;
+                new_constraint[key] = maxVal;
 
                return {{new_point}, Constraint(new_constraint)};
             }
