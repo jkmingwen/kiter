@@ -25,7 +25,8 @@ public:
 
   TokenConfiguration apply(const TokenConfiguration &config);
   void update(const Constraint &other);
-  std::string toString() { return commons::toString(constraints_); }
+  // FIXME: printing of the constraints
+  // std::string toString() { return commons::toString(constraints_); }
 
 private:
   TokenConfigMap constraints_;
