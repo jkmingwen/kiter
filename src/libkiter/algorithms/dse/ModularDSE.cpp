@@ -83,7 +83,7 @@ namespace algorithms {
                     };
 
                     if (use_constraints) {
-                        current_configuration = std::make_unique<TokenConfiguration>(constraints.apply(*current_configuration));
+                        current_configuration = std::make_unique<TokenConfiguration>(constraints.apply(*current_configuration, 0)[0]);
                     }
 
                     explored++;
@@ -113,7 +113,8 @@ namespace algorithms {
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
                     if (use_constraints) {
-                        VERBOSE_DEBUG("Update constraints " << constraints.toString());
+                        VERBOSE_DEBUG("Update constraints");
+                        // VERBOSE_DEBUG("Update constraints " << constraints.toString());
                             constraints.update(next_constraints);
 
                     }

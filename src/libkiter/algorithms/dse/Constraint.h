@@ -23,7 +23,7 @@ public:
 
   ~Constraint() = default;
 
-  TokenConfiguration apply(const TokenConfiguration &config);
+  std::vector<TokenConfiguration> apply(const TokenConfiguration &config, TIME_UNIT throughput);
   void update(const Constraint &other);
   // FIXME: printing of the constraints
   // std::string toString() { return commons::toString(constraints_); }

@@ -3,10 +3,12 @@
 //
 
 #include "Constraint.h"
+#include "TokenConfiguration.h"
+#include <vector>
 
 namespace algorithms::dse {
 
-TokenConfiguration Constraint::apply(const algorithms::dse::TokenConfiguration &config) {
+  std::vector<TokenConfiguration> Constraint::apply(const algorithms::dse::TokenConfiguration &config, TIME_UNIT throughput) {
     const std::map<ARRAY_INDEX, TOKEN_UNIT>& cur_config = config.getConfiguration();
     auto new_config = cur_config;
 
@@ -24,7 +26,7 @@ TokenConfiguration Constraint::apply(const algorithms::dse::TokenConfiguration &
         }
     }
 
-   return {config.getDataflow(), new_config};
+   return {{config.getDataflow(), new_config}};
 }
 
 void Constraint::update(const Constraint& other) {
