@@ -21,15 +21,24 @@ public:
 
   explicit Constraint(TokenConfigMap map) : constraints_(std::move(map)){};
 
+  Constraint(const TokenConfiguration &config,
+             std::vector<ARRAY_INDEX> feedback_buffers,
+             TIME_UNIT target_throughput, TOKEN_UNIT min_tokens);
+
   ~Constraint() = default;
 
-  std::vector<TokenConfiguration> apply(const TokenConfiguration &config, TIME_UNIT throughput);
+  std::vector<TokenConfiguration> apply(const TokenConfiguration &config,
+                                        TIME_UNIT throughput);
   void update(const Constraint &other);
   // FIXME: printing of the constraints
   // std::string toString() { return commons::toString(constraints_); }
 
 private:
   TokenConfigMap constraints_;
+  std::vector<std::vector<ARRAY_INDEX>>
+  gen_next_preloads(const TokenConfiguration &config,
+                    std::vector<ARRAY_INDEX> &feedback_buffers,
+                    TOKEN_UNIT min_tokens);
 };
 
 } // namespace algorithms::dse
