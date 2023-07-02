@@ -7,19 +7,25 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdlib>
+#include <map>
+#include <string>
 #include <vector>
 
 namespace algorithms::dse {
 
 void get_combinations(const std::vector<std::pair<int, int>> &ranges,
                       std::vector<ARRAY_INDEX> &indices, size_t level,
-                      std::vector<std::vector<ARRAY_INDEX>> &results) {
+                      std::vector<std::vector<ARRAY_INDEX>> &results,
+                      TOKEN_UNIT min_tokens) {
   if (level == indices.size()) {
-    results.push_back(indices);
+    auto result = std::reduce(indices.begin(), indices.end());
+    if (result == min_tokens) {
+      results.push_back(indices);
+    }
   } else {
     for (int i = ranges[level].first; i <= ranges[level].second; i++) {
       indices[level] = i;
-      get_combinations(ranges, indices, level + 1, results);
+      get_combinations(ranges, indices, level + 1, results, min_tokens);
     }
   }
 }
@@ -36,11 +42,10 @@ Constraint::gen_next_preloads(const TokenConfiguration &config,
   size_t num_feedback_buffers = feedback_buffers.size();
   const std::map<ARRAY_INDEX, TOKEN_UNIT> &cur_config =
       config.getConfiguration();
-  std::vector<ARRAY_INDEX> original_values(num_feedback_buffers, 0);
-  std::vector<ARRAY_INDEX> indices(num_feedback_buffers,
-                                   0); // Initialize indices vector with 0s
+  std::vector<ARRAY_INDEX> indices(num_feedback_buffers, 0); 
   std::vector<std::pair<int, int>> ranges(num_feedback_buffers);
   std::vector<std::vector<ARRAY_INDEX>> preload_combinations;
+  TOKEN_UNIT cur_total = 0;
 
   for (size_t i = 0; i < feedback_buffers.size(); ++i) {
     auto it = cur_config.find(feedback_buffers[i]);
@@ -49,11 +54,11 @@ Constraint::gen_next_preloads(const TokenConfiguration &config,
 
     TOKEN_UNIT cur_tokens = it->second;
 
-    original_values[i] = cur_tokens;
     ranges[i] = {cur_tokens, min_tokens};
+    cur_total += cur_tokens;
   }
 
-  get_combinations(ranges, indices, 0, preload_combinations);
+  get_combinations(ranges, indices, 0, preload_combinations, min_tokens);
 
   return preload_combinations;
 }
@@ -68,6 +73,14 @@ Constraint::Constraint(const TokenConfiguration &config,
   for (auto preload_combination : preload_combinations) {
     ConstraintKey key = {preload_combination, target_throughput};
     constraints_[key] = min_tokens;
+  }
+}
+
+Constraint::Constraint(std::map<ARRAY_INDEX, TOKEN_UNIT> &config_map) {
+  for (const auto &it : config_map) {
+    ConstraintKey key = {{it.first}, 0};
+    ConstraintValue val = it.second;
+    constraints_[key] = val;
   }
 }
 
@@ -114,3 +127,4 @@ void Constraint::update(const Constraint &other) {
 }
 
 } // namespace algorithms::dse
+
