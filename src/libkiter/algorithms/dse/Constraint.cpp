@@ -76,8 +76,7 @@ Constraint::apply(const TokenConfiguration &config) {
   const std::map<ARRAY_INDEX, TOKEN_UNIT> &cur_config =
       config.getConfiguration();
 
-  TIME_UNIT cur_throughput =
-      (config.hasPerformance()) ? config.getPerformance().throughput : 0;
+  TIME_UNIT cur_throughput = (config.hasPerformance()) ? config.getPerformance().throughput : 0;
   std::vector<TokenConfiguration> new_configs;
 
   for (const auto &entry : constraints_) {

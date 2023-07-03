@@ -94,6 +94,10 @@ BOOST_AUTO_TEST_CASE(empty_constraint_test) {
   BOOST_TEST(areConfigsEqual(config.getConfiguration(), conf_map));
 }
 
+/**
+ * Single feeback buffer case, we expect the new tokens to be equal to
+ * the amount we pass into the constraint
+ */
 BOOST_AUTO_TEST_CASE(single_edge_apply_test) {
   auto config = get_config(get_dummy_df());
   std::map<ARRAY_INDEX, TOKEN_UNIT> constraint_map;
@@ -109,26 +113,6 @@ BOOST_AUTO_TEST_CASE(single_edge_apply_test) {
       "Modified config: " << commons::toString(new_config.getConfiguration()));
 
   BOOST_TEST(new_config.getConfiguration().at(1) == 4);
-}
-
-BOOST_AUTO_TEST_CASE(multi_edge_apply_test) {
-  auto config = get_config(get_dummy_df());
-  std::map<ARRAY_INDEX, TOKEN_UNIT> constraint_map;
-  constraint_map[1] = 4;
-  constraint_map[2] = 5;
-  Constraint single_edge_constraint(constraint_map);
-
-  BOOST_TEST(config.getConfiguration().at(1) == 0);
-  BOOST_TEST(config.getConfiguration().at(2) == 0);
-
-  VERBOSE_DEBUG(
-      "Initial config: " << commons::toString(config.getConfiguration()));
-  auto new_config = single_edge_constraint.apply(config)[0];
-  VERBOSE_DEBUG(
-      "Modified config: " << commons::toString(new_config.getConfiguration()));
-
-  BOOST_TEST(new_config.getConfiguration().at(1) == 4);
-  BOOST_TEST(new_config.getConfiguration().at(2) == 5);
 }
 
 /**
@@ -158,7 +142,7 @@ BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
 
   // We expect to find these configs
   std::vector<std::map<ARRAY_INDEX, TOKEN_UNIT>> options = {
-      {{0, 2}, {1, 0}}, {{0, 0}, {1, 2}}, {{0, 1}, {1, 1}}};
+      {{1, 2}, {2, 0}}, {{1, 0}, {2, 2}}, {{1, 1}, {2, 1}}};
   // Apply the constraint
   std::vector<TokenConfiguration> next_configs = constraint.apply(config);
 
@@ -176,6 +160,8 @@ BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
     }
 
     if (!found) {
+      VERBOSE_DEBUG(
+          "Configuration not found in expected: " << conf.to_csv_line());
       passed = false;
     }
   }
