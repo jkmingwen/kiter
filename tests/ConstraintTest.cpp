@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(empty_constraint_test) {
   auto config = get_config(get_dummy_df());
 
   // Apply constraint
-  empty_constraint.apply(config, 0);
+  empty_constraint.apply(config);
 
   // See if configs match
   BOOST_TEST(areConfigsEqual(config.getConfiguration(), conf_map));
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(single_edge_apply_test) {
 
   VERBOSE_DEBUG(
       "Initial config: " << commons::toString(config.getConfiguration()));
-  auto new_config = single_edge_constraint.apply(config, 0)[0];
+  auto new_config = single_edge_constraint.apply(config)[0];
   VERBOSE_DEBUG(
       "Modified config: " << commons::toString(new_config.getConfiguration()));
 
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(multi_edge_apply_test) {
 
   VERBOSE_DEBUG(
       "Initial config: " << commons::toString(config.getConfiguration()));
-  auto new_config = single_edge_constraint.apply(config, 0)[0];
+  auto new_config = single_edge_constraint.apply(config)[0];
   VERBOSE_DEBUG(
       "Modified config: " << commons::toString(new_config.getConfiguration()));
 
@@ -131,58 +131,58 @@ BOOST_AUTO_TEST_CASE(multi_edge_apply_test) {
   BOOST_TEST(new_config.getConfiguration().at(2) == 5);
 }
 
-BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
-  auto config = get_config(get_small_df());
-  std::vector<ARRAY_INDEX> feedback_buffers{1,2};
-  TIME_UNIT tgt_throughput = 0;
-  TOKEN_UNIT min_tokens = 2;
-
-  Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
-
-  VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
-
-  std::vector<std::vector<ARRAY_INDEX>> options = {{2, 0}, {0, 2}, {1, 1}};
-  auto constraint_map = constraint.getMap();
-
-  bool passed = true;
-
-  for(const auto& vec : options) {
-    if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
-      VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
-      passed = false;
-    }
-  }
-
-  BOOST_TEST(passed);
-}
-
-BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_preloaded_test) {
-  auto df = get_small_df();
-  df->setPreload(df->getEdgeById(1), 2);
-  df->setPreload(df->getEdgeById(2), 3);
-  auto config = get_config(df);
-
-  std::vector<ARRAY_INDEX> feedback_buffers{1,2};
-  TIME_UNIT tgt_throughput = 0;
-  TOKEN_UNIT min_tokens = 2;
-
-  Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
-
-  VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
-
-  std::vector<std::vector<ARRAY_INDEX>> options = {{4, 3}, {2, 5}, {3, 4}};
-  auto constraint_map = constraint.getMap();
-
-  bool passed = true;
-  for(const auto& vec : options) {
-    if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
-      VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
-      passed = false;
-    }
-  }
-
-  BOOST_TEST(passed);
-}
+// BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
+//   auto config = get_config(get_small_df());
+//   std::vector<ARRAY_INDEX> feedback_buffers{1,2};
+//   TIME_UNIT tgt_throughput = 0;
+//   TOKEN_UNIT min_tokens = 2;
+//
+//   Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
+//
+//   VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
+//
+//   std::vector<std::vector<ARRAY_INDEX>> options = {{2, 0}, {0, 2}, {1, 1}};
+//   auto constraint_map = constraint.getMap();
+//
+//   bool passed = true;
+//
+//   for(const auto& vec : options) {
+//     if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
+//       VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
+//       passed = false;
+//     }
+//   }
+//
+//   BOOST_TEST(passed);
+// }
+//
+// BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_preloaded_test) {
+//   auto df = get_small_df();
+//   df->setPreload(df->getEdgeById(1), 2);
+//   df->setPreload(df->getEdgeById(2), 3);
+//   auto config = get_config(df);
+//
+//   std::vector<ARRAY_INDEX> feedback_buffers{1,2};
+//   TIME_UNIT tgt_throughput = 0;
+//   TOKEN_UNIT min_tokens = 2;
+//
+//   Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
+//
+//   VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
+//
+//   std::vector<std::vector<ARRAY_INDEX>> options = {{4, 3}, {2, 5}, {3, 4}};
+//   auto constraint_map = constraint.getMap();
+//
+//   bool passed = true;
+//   for(const auto& vec : options) {
+//     if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
+//       VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
+//       passed = false;
+//     }
+//   }
+//
+//   BOOST_TEST(passed);
+// }
 
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -83,7 +83,7 @@ namespace algorithms {
                     };
 
                     if (use_constraints) {
-                        current_configuration = std::make_unique<TokenConfiguration>(constraints.apply(*current_configuration, 0)[0]);
+                        current_configuration = std::make_unique<TokenConfiguration>(constraints.apply(*current_configuration)[0]);
                     }
 
                     explored++;

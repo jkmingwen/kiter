@@ -24,14 +24,9 @@ public:
 
   Constraint(std::map<ARRAY_INDEX, TOKEN_UNIT> &config_map);
 
-  Constraint(const TokenConfiguration &config,
-             std::vector<ARRAY_INDEX> feedback_buffers,
-             TIME_UNIT target_throughput, TOKEN_UNIT min_tokens);
-
   ~Constraint() = default;
 
-  std::vector<TokenConfiguration> apply(const TokenConfiguration &config,
-                                        TIME_UNIT throughput);
+  std::vector<TokenConfiguration> apply(const TokenConfiguration &config);
 
   void update(const Constraint &other);
 
@@ -53,8 +48,9 @@ public:
 private:
   TokenConfigMap constraints_;
 
+  // FIXME: this function is incredibly inefficient
   std::vector<std::vector<ARRAY_INDEX>>
-  gen_next_preloads(const TokenConfiguration &config,
+  gen_next_preloads(const std::map<ARRAY_INDEX, TOKEN_UNIT> &config,
                     std::vector<ARRAY_INDEX> &feedback_buffers,
                     TOKEN_UNIT min_tokens);
 };

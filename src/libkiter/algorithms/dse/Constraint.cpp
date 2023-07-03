@@ -31,7 +31,7 @@ void get_combinations(const std::vector<std::pair<int, int>> &ranges,
 }
 
 std::vector<std::vector<ARRAY_INDEX>>
-Constraint::gen_next_preloads(const TokenConfiguration &config,
+Constraint::gen_next_preloads(const std::map<ARRAY_INDEX, TOKEN_UNIT> &config,
                               std::vector<ARRAY_INDEX> &feedback_buffers,
                               TOKEN_UNIT min_tokens) {
   // If we have one feedback buffer, we return immediately
@@ -40,17 +40,15 @@ Constraint::gen_next_preloads(const TokenConfiguration &config,
   }
 
   size_t num_feedback_buffers = feedback_buffers.size();
-  const std::map<ARRAY_INDEX, TOKEN_UNIT> &cur_config =
-      config.getConfiguration();
-  std::vector<ARRAY_INDEX> indices(num_feedback_buffers, 0); 
+  std::vector<ARRAY_INDEX> indices(num_feedback_buffers, 0);
   std::vector<std::pair<int, int>> ranges(num_feedback_buffers);
   std::vector<std::vector<ARRAY_INDEX>> preload_combinations;
   TOKEN_UNIT cur_total = 0;
 
   for (size_t i = 0; i < feedback_buffers.size(); ++i) {
-    auto it = cur_config.find(feedback_buffers[i]);
+    auto it = config.find(feedback_buffers[i]);
     // The feedback buffer should always have a value in the config
-    assert(it != cur_config.end());
+    assert(it != config.end());
 
     TOKEN_UNIT cur_tokens = it->second;
 
@@ -63,19 +61,6 @@ Constraint::gen_next_preloads(const TokenConfiguration &config,
   return preload_combinations;
 }
 
-Constraint::Constraint(const TokenConfiguration &config,
-                       std::vector<ARRAY_INDEX> feedback_buffers,
-                       TIME_UNIT target_throughput, TOKEN_UNIT min_tokens) {
-
-  auto preload_combinations =
-      Constraint::gen_next_preloads(config, feedback_buffers, min_tokens);
-
-  for (auto preload_combination : preload_combinations) {
-    ConstraintKey key = {preload_combination, target_throughput};
-    constraints_[key] = min_tokens;
-  }
-}
-
 Constraint::Constraint(std::map<ARRAY_INDEX, TOKEN_UNIT> &config_map) {
   for (const auto &it : config_map) {
     ConstraintKey key = {{it.first}, 0};
@@ -84,29 +69,40 @@ Constraint::Constraint(std::map<ARRAY_INDEX, TOKEN_UNIT> &config_map) {
   }
 }
 
-// FIXME: include throughput in the conditions
 std::vector<TokenConfiguration>
-Constraint::apply(const algorithms::dse::TokenConfiguration &config,
-                  [[maybe_unused]] TIME_UNIT throughput) {
+Constraint::apply(const TokenConfiguration &config) {
   const std::map<ARRAY_INDEX, TOKEN_UNIT> &cur_config =
       config.getConfiguration();
-  auto new_config = cur_config;
+
+  TIME_UNIT cur_throughput =
+      (config.hasPerformance()) ? config.getPerformance().throughput : 0;
+  std::vector<TokenConfiguration> new_configs;
 
   for (const auto &entry : constraints_) {
-    ARRAY_INDEX key = entry.first.first[0];
+    ConstraintKey key = entry.first;
     ConstraintValue value = entry.second;
 
-    auto it = new_config.find(key);
-    if (it != new_config.end()) {
-      if (value > it->second) {
-        it->second = value;
+    // Check the throughput
+    if (key.second > cur_throughput)
+      continue;
+
+    auto new_preloads =
+        gen_next_preloads(config.getConfiguration(), key.first, value);
+
+    for (const std::vector<TOKEN_UNIT> &preload : new_preloads) {
+      auto new_config = cur_config;
+      int i = 0;
+
+      for (ARRAY_INDEX id : key.first) {
+        new_config[id] = preload[i];
+        ++i;
       }
-    } else {
-      new_config[key] = value;
+
+      new_configs.push_back({config.getDataflow(), new_config});
     }
   }
 
-  return {{config.getDataflow(), new_config}};
+  return new_configs;
 }
 
 // TODO: add assertion that we never see the same numbers twice
@@ -127,4 +123,3 @@ void Constraint::update(const Constraint &other) {
 }
 
 } // namespace algorithms::dse
-
