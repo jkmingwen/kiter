@@ -11,7 +11,7 @@
 
 using namespace models;
 
-std::map<ARRAY_INDEX,TOKEN_UNIT> compute_alphas(models::Dataflow *from ) {
+std::map<ARRAY_INDEX,TOKEN_UNIT> algorithms::compute_alphas(models::Dataflow *from ) {
 
     // Compute local lcms
     std::map<ARRAY_INDEX,TOKEN_UNIT> lcms;

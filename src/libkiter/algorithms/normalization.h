@@ -28,6 +28,7 @@ namespace algorithms {
 
     bool oldnormalize(models::Dataflow *from);
     std::map<Vertex,TOKEN_UNIT> * rationalNormalize(models::Dataflow *from);
+    std::map<ARRAY_INDEX,TOKEN_UNIT> compute_alphas(models::Dataflow *from ) ;
 
 
 }
