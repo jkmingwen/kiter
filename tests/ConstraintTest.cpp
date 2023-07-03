@@ -131,59 +131,56 @@ BOOST_AUTO_TEST_CASE(multi_edge_apply_test) {
   BOOST_TEST(new_config.getConfiguration().at(2) == 5);
 }
 
-// BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
-//   auto config = get_config(get_small_df());
-//   std::vector<ARRAY_INDEX> feedback_buffers{1,2};
-//   TIME_UNIT tgt_throughput = 0;
-//   TOKEN_UNIT min_tokens = 2;
-//
-//   Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
-//
-//   VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
-//
-//   std::vector<std::vector<ARRAY_INDEX>> options = {{2, 0}, {0, 2}, {1, 1}};
-//   auto constraint_map = constraint.getMap();
-//
-//   bool passed = true;
-//
-//   for(const auto& vec : options) {
-//     if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
-//       VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
-//       passed = false;
-//     }
-//   }
-//
-//   BOOST_TEST(passed);
-// }
-//
-// BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_preloaded_test) {
-//   auto df = get_small_df();
-//   df->setPreload(df->getEdgeById(1), 2);
-//   df->setPreload(df->getEdgeById(2), 3);
-//   auto config = get_config(df);
-//
-//   std::vector<ARRAY_INDEX> feedback_buffers{1,2};
-//   TIME_UNIT tgt_throughput = 0;
-//   TOKEN_UNIT min_tokens = 2;
-//
-//   Constraint constraint(config, feedback_buffers, tgt_throughput, min_tokens);
-//
-//   VERBOSE_DEBUG("Constraint: \n" << constraint.toString());
-//
-//   std::vector<std::vector<ARRAY_INDEX>> options = {{4, 3}, {2, 5}, {3, 4}};
-//   auto constraint_map = constraint.getMap();
-//
-//   bool passed = true;
-//   for(const auto& vec : options) {
-//     if (auto search = constraint_map.find({vec, 0}); search == constraint_map.end()) {
-//       VERBOSE_DEBUG("Not found: " << commons::toString(vec) << "\n");
-//       passed = false;
-//     }
-//   }
-//
-//   BOOST_TEST(passed);
-// }
+/**
+ * We have a graph with two feedback edges, both are set to 0 at the start
+ * We set the minimum tokens required equal to 2, then we get the following
+ * token distributions:
+ * ID -> TOKENS
+ * 1.
+ *   0 -> 2
+ *   1 -> 0
+ * 2.
+ *   0 -> 0
+ *   1 -> 2
+ * 3.
+ *   0 -> 1
+ *   1 -> 1
+ */
+BOOST_AUTO_TEST_CASE(multiple_feedback_edges_ctor_test) {
+  auto config = get_config(get_small_df());
+  bool passed = true;
+  std::vector<ARRAY_INDEX> feedback_buffers{1, 2};
+  TIME_UNIT tgt_throughput = 0;
+  TOKEN_UNIT min_tokens = 2;
+  Constraint constraint({{{feedback_buffers, tgt_throughput}, min_tokens}});
 
+  VERBOSE_DEBUG("Constraint before: \n" << constraint.toString());
+
+  // We expect to find these configs
+  std::vector<std::map<ARRAY_INDEX, TOKEN_UNIT>> options = {
+      {{0, 2}, {1, 0}}, {{0, 0}, {1, 2}}, {{0, 1}, {1, 1}}};
+  // Apply the constraint
+  std::vector<TokenConfiguration> next_configs = constraint.apply(config);
+
+  // Loop over the generated configurations
+  for (const auto &conf : next_configs) {
+    auto map = conf.getConfiguration();
+    bool found = false;
+
+    // Loop over the configs we expect to find, we break if we find a match
+    for (const auto &opt : options) {
+      if (found) {
+        break;
+      }
+      found = areConfigsEqual(map, opt);
+    }
+
+    if (!found) {
+      passed = false;
+    }
+  }
+
+  BOOST_TEST(passed);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
-

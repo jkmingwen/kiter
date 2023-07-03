@@ -71,6 +71,8 @@ Constraint::Constraint(std::map<ARRAY_INDEX, TOKEN_UNIT> &config_map) {
 
 std::vector<TokenConfiguration>
 Constraint::apply(const TokenConfiguration &config) {
+  if(isEmpty()) return {config};
+
   const std::map<ARRAY_INDEX, TOKEN_UNIT> &cur_config =
       config.getConfiguration();
 
