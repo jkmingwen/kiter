@@ -12,7 +12,6 @@ namespace models {
 }
 namespace printers {
         void write_TDMA_file (models::Dataflow* const  dataflow, std::string output_file) ;
-
-};
+}
 
 #endif //KITER_TDMAWRITER_H

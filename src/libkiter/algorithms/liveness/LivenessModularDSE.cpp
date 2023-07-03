@@ -6,7 +6,8 @@
 #include <algorithms/dse/ModularDSE.h>
 #include <algorithms/liveness/LivenessModularDSE.h>
 #include <algorithms/transformation/subgraph.h>
-#include "LivenessConstraint.h"
+#include <algorithms/dse/Constraint.h>
+#include <utility>
 
 namespace algorithms {
     namespace dse {
@@ -96,12 +97,11 @@ namespace algorithms {
                 new_configuration[criticalEdgeId] = maxVal;
                 algorithms::dse::TokenConfiguration new_point(df, new_configuration);
 
+                Constraint::ConstraintKey key = {{criticalEdgeId}, 0};
+                Constraint::TokenConfigMap new_constraint;
+                new_constraint[key] = maxVal;
 
-                std::map<ARRAY_INDEX, TOKEN_UNIT> new_constraint;
-                new_constraint[criticalEdgeId] = maxVal;
-                /// FIXME README TODO The constraint is that the edge criticalEdgeId, MUST BE maxVal at least for liveness !!!!!
-
-               return {{new_point}, new LivenessConstraint(new_constraint)};
+               return {{new_point}, Constraint(new_constraint)};
             }
 
         public:
@@ -153,7 +153,7 @@ namespace algorithms {
                     next_configurations.push_back(new_token_configuration);
                 }
 
-                return {next_configurations, {new LivenessConstraint()}};
+                return {next_configurations, Constraint()};
             }
 
         private:
@@ -209,8 +209,8 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                         size_t timeout,
                                         size_t limit,
                                         std::string  filename,
-                                        bool use_dichotomy,
                                         bool use_last,
+                                        bool use_dichotomy,
                                         bool use_constraints,
                                         algorithms::dse::TokenConfiguration* tc
 ) {

@@ -6,7 +6,7 @@
 #include "algorithms/transformation/subgraph.h"
 #include "algorithms/transformation/AddFeedbackBuffers.h"
 #include "algorithms/throughput/symbolic_execution.h"
-#include "ThroughputConstraint.h"
+#include "Constraint.h"
 #include <algorithms/dse/kperiodic.h>
 #include <algorithms/dse/ModularDSE.h>
 #include <printers/stdout.h>
@@ -102,7 +102,7 @@ namespace algorithms {
                     VERBOSE_DEBUG("     " << solution.to_csv_line());
                 }
 
-                return {next_configurations, new ThroughputConstraint()};
+                return {next_configurations, Constraint()};
             }
 
 
