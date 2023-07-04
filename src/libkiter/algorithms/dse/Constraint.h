@@ -44,6 +44,7 @@ public:
   }
 
   TokenConfigMap getMap() { return constraints_; }
+  bool isEmpty() { return constraints_.empty();}
 
 private:
   TokenConfigMap constraints_;
