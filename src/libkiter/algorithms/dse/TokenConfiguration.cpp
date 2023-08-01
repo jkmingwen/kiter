@@ -72,8 +72,8 @@ namespace algorithms {
                    "feedback quantities,"
                    "critical channels,"
                    "critical feedback,"
-                   "execution time,"
-                   "cumulative time";
+                   "duration,"
+                   "cumulative duration";
         }
 
         size_t TokenConfiguration::csv_header_size() {
@@ -104,9 +104,9 @@ namespace algorithms {
             std::vector<TOKEN_UNIT> criticalEdgeVec = cells[4] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[4], ',');
             // cell[5] - feedback critical
             std::vector<TOKEN_UNIT> criticalFeedbackVec = cells[5] == "-" ?std::vector<TOKEN_UNIT>() : commons::split<TOKEN_UNIT>(cells[5], ',');
-            // cell[6] - execution time
+            // cell[6] - duration
             TIME_UNIT execTime = cells[6] != "-" ? std::stod(cells[6]) : 0;
-            // cell[7] - cumulative time
+            // cell[7] - cumulative duration
             TIME_UNIT cumulTime =  cells[7] != "-" ? std::stod(cells[7]) : 0;
 
 
@@ -192,10 +192,10 @@ namespace algorithms {
             // cell[5] - feedback critical
             output += this->performance_computed? "\"" + feedback_critical_string + "\"" : "-";
             output += ",";
-            // cell[6] - execution time
+            // cell[6] - duration
             output += this->performance_computed and !no_timing? commons::toString(this->executionTime): "-";
             output += ",";
-            // cell[7] - cumulative time
+            // cell[7] - cumulative duration
             output += this->performance_computed and !no_timing? commons::toString(this->cumulativeTime): "-";
 
 
