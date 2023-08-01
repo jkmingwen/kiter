@@ -81,5 +81,5 @@ __pycache__
 ## VSCODE
 /.vscode/
 
-kdse2023_log/
+kdse2023_log*
 compile_commands.json
