@@ -12,10 +12,6 @@ import seaborn as sns
 
 sns.set_theme()
 
-methods = {"KDSE": "red", "DKDSE": "purple"  , "ADKDSE" : "black"  , "PDSE" : "green"}
-method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE", "ADKDSE": "Approx K2DSE"}
-
-
 def load_app_dse(
     logdir,
     appname,
@@ -116,7 +112,7 @@ def plot_pareto(df, dsename=None, dsecolor=None):
     return (x.max(),y.max())
 
 
-def plot_app_dse(logdir, appname):
+def plot_app_dse(logdir, appname, methods):
 
     total_time = time.time()
     ymax = 0
@@ -152,27 +148,31 @@ def plot_app_dse(logdir, appname):
     print("")
 
 
-def plot_app_pareto(logdir, appname):
+def plot_app_pareto(logdir, appname, methods):
 
     total_time = time.time()
     ymax = 0
     xmax = 0
 
-    for method, color in methods.items():
-
+    for method_key in methods.keys():
+        method_name = methods[method_key]["name"]
+        color = methods[method_key]["color"]
         start_time = time.time()
-        print("Load", appname, method)
-        df = load_app_dse(
-            logdir, appname, method, cols=["throughput", "storage distribution size"]
-        )
-        print("Loaded after", time.time() - start_time, "sec.")
+        print("Load", appname, method_key, method_name)
+        try:
+            df = load_app_dse(
+                logdir, appname, method_key, cols=["throughput", "storage distribution size"]
+            )
+            print("Loaded after", time.time() - start_time, "sec.")
+            start_time = time.time()
+            print("Plot", appname, method_name)
+            cxmax, cymax = plot_pareto(df, method_name, color)
+            xmax = max(xmax, cxmax)
+            ymax = max(ymax, cymax)
+            print("Plotted after", time.time() - start_time, "sec.")
+        except:
+            print("Loaded FAILED after", time.time() - start_time, "sec.")
 
-        start_time = time.time()
-        print("Plot", appname, method)
-        cxmax,cymax = plot_pareto(df, method_name[method], color)
-        xmax = max(xmax, cxmax)
-        ymax = max(ymax, cymax)
-        print("Plotted after", time.time() - start_time, "sec.")
 
     plt.xlabel("Storage Distribution")
     plt.ylabel("Period (sec)")
@@ -189,7 +189,7 @@ def plot_app_pareto(logdir, appname):
     print("")
 
 
-def plot_all(logdir, graphs, plotfunc=plot_app_dse, outputname=None):
+def plot_all(logdir, graphs, methods, plotfunc=plot_app_dse, outputname=None):
     total = len(graphs)
     subx = max(1, int(math.sqrt(total)))
     suby = int(total / subx)
@@ -201,9 +201,10 @@ def plot_all(logdir, graphs, plotfunc=plot_app_dse, outputname=None):
     fig = plt.figure(figsize=(suby * 5, subx * 5))
 
     fig.subplots_adjust(hspace=0.4, wspace=0.4)
+
     for i, name in zip(range(1, len(graphs) + 1), graphs):
         _ = fig.add_subplot(subx, suby, i)
-        plotfunc(logdir, name)
+        plotfunc(logdir, name, methods)
 
     print("Tight the layout...")
     fig.tight_layout()
@@ -211,12 +212,14 @@ def plot_all(logdir, graphs, plotfunc=plot_app_dse, outputname=None):
     if outputname:
         print("Save the file:", outputname)
         plt.savefig(outputname)
+        plt.clf()
+        plt.cla()  # Clear axis
+    else :
+        print("Show the plot")
+        plt.show()
 
-    plt.clf()
-    plt.cla()  # Clear axis
 
-
-def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
+def gen_minsize(logdir, graphs, methods, outputname="/dev/stdout"):
     res = { "name" : [] }
     for m in methods:
         res[m] = []
@@ -228,7 +231,7 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
             res[m].append(v)
 
             
-    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
+    df = pd.DataFrame(res)[["name"] + [*methods]]    
     df = df.rename (columns = {
         "name" : "Graph"
     })
@@ -243,19 +246,19 @@ def gen_minsize(logdir, graphs, outputname="/dev/stdout"):
     fd.close()
 
    
-def gen_dsetable(logdir, graphs, outputname="/dev/stdout"):
+def gen_dsetable(logdir, graphs, methods, outputname="/dev/stdout"):
     res = { "name" : [] }
     for m in methods:
-        res[m] = []
+        res[methods[m]["name"]] = []
     for i, name in zip(range(1, len(graphs) + 1), graphs):
         res["name"].append(name)
         for m in methods:
             df = load_app_dse(logdir, name, m, cols = ["throughput", "storage distribution size"])
             v = df["storage distribution size"].count() if "throughput" in df else "-"
-            res[m].append(v)
+            res[methods[m]["name"]].append(v)
 
             
-    df = pd.DataFrame(res)[["name","KDSE","DKDSE", "ADKDSE"]]    
+    df = pd.DataFrame(res)[["name"] + [methods[m]["name"] for m in methods]]    
     df = df.rename (columns = {
         "name" : "Graph"
     })
@@ -268,19 +271,23 @@ def gen_dsetable(logdir, graphs, outputname="/dev/stdout"):
     fd = open(outputname, 'w')
     fd.write(latex)
     fd.close()
+    return df
 
    
 def plot_all_pareto(logdir, graphs, outputname=None):
-    plot_all(logdir, graphs, plotfunc=plot_app_pareto, outputname=outputname)
+    plot_all(logdir, graphs, methods, plotfunc=plot_app_pareto, outputname=outputname)
 
 
 def plot_all_dse(logdir, graphs, outputname=None):
-    plot_all(logdir, graphs, plotfunc=plot_app_dse, outputname=outputname)
+    plot_all(logdir, graphs, methods, plotfunc=plot_app_dse, outputname=outputname)
 
 
 if __name__ == "__main__":
     import argparse
     import glob
+
+    methods = {"KDSE": "red", "DKDSE": "purple"  , "ADKDSE" : "black"  , "PDSE" : "green"}
+    method_name = {"KDSE": "KDSE", "DKDSE": "K2DSE", "PDSE": "PDSE", "ADKDSE": "Approx K2DSE"}
 
     parser = argparse.ArgumentParser(description="Generate DSE Plots")
     parser.add_argument(
@@ -326,17 +333,17 @@ if __name__ == "__main__":
 
     if args.odse:
         print("Generate DSE output")
-        plot_all_dse(logdir=logdir, graphs=graphs, outputname=args.odse)
+        plot_all_dse(logdir=logdir, graphs=graphs, methods=methods, outputname=args.odse)
 
     if args.opareto:
         print("Generate pareto output")
-        plot_all_pareto(logdir=logdir, graphs=graphs, outputname=args.opareto)
+        plot_all_pareto(logdir=logdir, graphs=graphs, methods=methods, outputname=args.opareto)
 
         
 
     if args.dsetable:
         print("Generate minimal size table")
-        gen_dsetable(logdir=logdir, graphs=graphs, outputname=args.dsetable)
+        gen_dsetable(logdir=logdir, graphs=graphs, methods=methods, outputname=args.dsetable)
         
     endmem = process.memory_info().rss
     print(
