@@ -17,8 +17,14 @@ namespace algorithms {
         }
 
         void TokenConfigurationSet::remove(const TokenConfiguration& config) {
-
             size_t erased = this->configurations_by_cost[config.getCost()].erase(config);
+            if (erased != 1) {
+                VERBOSE_ERROR("failed to remove the TokenConfiguration " << config);
+                VERBOSE_ERROR("Content of the Set was:");
+                for (auto xconfig : *this) {
+                    VERBOSE_ERROR("     - " << xconfig);
+                }
+            }
             VERBOSE_ASSERT_EQUALS(1, erased);
 
             // remove empty set

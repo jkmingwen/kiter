@@ -35,8 +35,9 @@ extern int VERBOSE_MODE;
 extern bool VERBOSE_COLOR;
 extern bool VERBOSE_GUESS;
 
-#ifndef __RELEASE_MODE__
 extern std::set<std::string> VERBOSE_CUSTOM_MODES;
+
+#ifndef __RELEASE_MODE__
 
 inline void add_custom_verbose_mode(const std::string m){
 	  VERBOSE_CUSTOM_MODES.insert(m);

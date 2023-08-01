@@ -30,7 +30,7 @@ inline double tock() {
 
 inline void activate_verbose(const std::string p) {
 	if (commons::fromString<int>(p) <= 0) {
-		VERBOSE_INFO("activate_verbose with unsupported value: " << p);
+		VERBOSE_INFO("activate_verbose with custom value: " << p);
 		commons::add_custom_verbose_mode(p);
 		//std::exit(EXIT_FAILURE);
 	} else {

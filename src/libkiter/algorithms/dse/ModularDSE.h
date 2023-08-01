@@ -113,10 +113,9 @@ namespace algorithms {
             };
 
             TokenConfigurationSet job_pool;
-
-            bool stop_exploration = false;
-
+            TokenConfigurationSet in_progress;
             TokenConfigurationSet results;
+            bool stop_exploration = false;
         };
 
 

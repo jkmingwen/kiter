@@ -46,7 +46,7 @@ namespace algorithms {
                     std::unique_lock<std::mutex> lock(mtx);
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " enters its loop (got the lock)");
                     ++idle_threads;
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " increased idle_threads to " << idle_threads
                                             << " and leave the lock.");
 
                     cv.wait_for(lock, std::chrono::milliseconds(1000),
@@ -54,8 +54,9 @@ namespace algorithms {
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                             << " get the lock again, wait_for satisfied stop_exploration="
-                                            << (stop_exploration ? "true" : "false") << " and job_pool.size()="
-                                            << job_pool.size() << ".");
+                                            << (stop_exploration ? "true" : "false")
+                                            << ", job_pool.size()=" << job_pool.size()
+                                            << ", in_progress.size()=" << in_progress.size() << ".");
                     if (should_stop(idle_threads, explored, limit)) {
                         VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                                 << " says we should stop and stop_exploration is "
@@ -67,11 +68,13 @@ namespace algorithms {
                     // ===============================
 
                     --idle_threads;
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " set idle_threads to " << idle_threads);
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " decreased idle_threads to " << idle_threads);
 
                     if (job_pool.empty()) {
-                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " finds the pool empty ");
+                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " found the pool empty ");
                         continue;
+                    } else {
+                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " found a configuration inside the pool.");
                     }
 
                     if (bottom_up) {
@@ -82,6 +85,7 @@ namespace algorithms {
                         job_pool.pop();
                     };
 
+                    // TODO: Constraint can return more than one solution, the rest should be stocked back in the pool.
                     if (use_constraints) {
                         current_configuration = std::make_unique<TokenConfiguration>(constraints.apply(*current_configuration)[0]);
                     }
@@ -90,9 +94,19 @@ namespace algorithms {
 
                     bool stop_decision = stop_func(*current_configuration, results);
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
-                                            << " will release the lock and stop the good work. his decision to stop is  "
+                                            << " will release the lock and start computePerformance. his decision to stop is  "
                                             << (stop_decision ? "true" : "false"));
-                    if (stop_decision) return;
+                    if (stop_decision) {
+
+                        ++idle_threads;
+                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " increased idle_threads to " << idle_threads
+                                                      << " and break itself.");
+
+                        break;
+                    }
+
+                    VERBOSE_ASSERT(!in_progress.contains(*current_configuration), "A thread is already working on this same configuration!");
+                    in_progress.add(*current_configuration);
                 }
                 // lock.unlock();
 
@@ -104,14 +118,18 @@ namespace algorithms {
                 current_configuration->computePerformance(this->performance_func, beginTime, &sandbox);
                 auto [next_configurations, next_constraints] = next_func(*current_configuration);
 
-                VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
+                // VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " is done and need the lock");
 
                 {
+
+
                     // printing add next config phase
                     // ===============================
                     std::unique_lock<std::mutex> lock(mtx);
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done, found " << next_configurations.size() << " new configurations." );
 
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " locks again, computation is done " );
+                    in_progress.remove(*current_configuration);
+
                     if (use_constraints) {
                         VERBOSE_DEBUG("Update constraints");
                         // VERBOSE_DEBUG("Update constraints " << constraints.toString());
@@ -122,14 +140,20 @@ namespace algorithms {
                     if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                     results.add(*current_configuration);
                     for (const auto& next_configuration : next_configurations) {
-                        if (!results.contains(next_configuration)) {
+                        if (!results.contains(next_configuration) && !in_progress.contains(next_configuration)) {
                             job_pool.push(next_configuration);
                         }
                     }
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ".");
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ", in_progress.size()=" << in_progress.size() << ".");
                 }
                 cv.notify_all();
             }
+
+            {
+                std::unique_lock<std::mutex> lock(mtx);
+                VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << "is DEAD DEAD, " << " idle_threads is " << idle_threads);
+            }
+
         }
 
 
@@ -180,6 +204,9 @@ namespace algorithms {
         std::string ModularDSE::print_space(bool no_timing) {
             std::string res = TokenConfiguration::csv_header() + "\n";
             for (auto c : this->results) {
+                res += c.to_csv_line(no_timing) + "\n";
+            }
+            for (auto c : this->in_progress) {
                 res += c.to_csv_line(no_timing) + "\n";
             }
             for (auto c : this->job_pool) {
