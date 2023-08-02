@@ -37,6 +37,7 @@ void findMinimumChannelSz(models::Dataflow *dataflow,
       // initialise channel size to maximum int size
           minChannelSizes[c].preload = dataflow->getPreload(c);
           minChannelSizes[c].buffer_size = INT_MAX; // NOTE (should use ULONG_MAX but it's a really large value)
+          // FIXME: here lies a bug that is known ::gcd should certainly be ::lcm. But also this entire function has to be verified and proved.
       TOKEN_UNIT ratePeriod = (TOKEN_UNIT) std::gcd(dataflow->getEdgeInPhasesCount(c),
                                                             dataflow->getEdgeOutPhasesCount(c));
       

@@ -53,7 +53,7 @@ bool dummy_sc(const TokenConfiguration& , const TokenConfigurationSet& ) {
 }
 
 static const std::string csv_file_content =
-        "storage distribution size,throughput,channel quantities,feedback quantities,critical channels,critical feedback,execution time,cumulative time\n"
+        "storage distribution size,throughput,channel quantities,feedback quantities,critical channels,critical feedback,duration,cumulative duration\n"
         "0,0,\"\",\"0,0,0,0\",\"\",\"\",-,-\n"
         "1,1,\"\",\"0,0,0,1\",\"\",\"\",-,-\n"
         "1,1,\"\",\"0,0,1,0\",\"\",\"\",-,-\n"
@@ -86,7 +86,7 @@ static const std::string csv_file_content =
 
 
 static const std::string csv_file_content_with_timings =
-        "storage distribution size,throughput,channel quantities,feedback quantities,critical channels,critical feedback,execution time,cumulative time\n"
+        "storage distribution size,throughput,channel quantities,feedback quantities,critical channels,critical feedback,duration,cumulative duration\n"
         "0,0,\"\",\"0,0,0,0\",\"\",\"\",0.001835,0.545401\n"
         "1,1,\"\",\"0,0,0,1\",\"\",\"\",0.000393,0.644924\n"
         "1,1,\"\",\"0,0,1,0\",\"\",\"\",0.000294,0.705254\n"
@@ -158,7 +158,15 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         std::vector<algorithms::dse::TokenConfiguration> tc = dummy_if(df);
         dse.add_initial_jobs(tc);
-        dse.explore(10);
+
+        ExplorationParameters params = {
+                .limit = 10,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+
+        dse.explore(params);
 
         // Test the results
         BOOST_REQUIRE_EQUAL(dse.results_size(), 10);
@@ -192,7 +200,14 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
 
         std::istringstream input(csv_file_content_with_timings);
         dse.import_results(input);
-        dse.explore(1);
+        ExplorationParameters params = {
+                .limit = 1,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+
+        dse.explore(params);
 
         // Test the results
         BOOST_REQUIRE_EQUAL(dse.results_size(), 11);

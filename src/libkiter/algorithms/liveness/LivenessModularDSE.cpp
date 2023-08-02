@@ -63,7 +63,7 @@ namespace algorithms {
                         }
                     }}
                 //std::map<ARRAY_INDEX, TOKEN_UNIT> current_configuration = liveness_initial_func(cc_g).getConfiguration();
-                TOKEN_UNIT distance = std::max((TOKEN_UNIT) 1, current_configuration.at(criticalEdgeId)) ;
+                //TOKEN_UNIT distance = std::max((TOKEN_UNIT) 1, current_configuration.at(criticalEdgeId)) ;
 
                 //VERBOSE_INFO("[     ] liveness_next_func_by_dichotomy: starting distance " << distance);
 
@@ -220,7 +220,6 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                             liveness_performance_func,
                                             LivenessNextFunc(use_dichotomy),
                                             liveness_stop_condition,
-                                            thread_count,
                                             use_constraints);
 
 
@@ -235,8 +234,15 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                     dse.add_initial_jobs(liveness_initial_func(dataflow));
             }
 
+            ExplorationParameters params = {
+                    .limit = limit,
+                    .thread_count = thread_count,
+                    .bottom_up = use_last,
+                    .realtime_output = realtime_output,
+                    .return_pareto_only = true,
+            };
             // Run the DSE exploration for a short period of time (e.g., 100 milliseconds)
-            std::future<void> exploration_future = std::async(std::launch::async, [&dse,limit, use_last, realtime_output] { dse.explore(limit, use_last,realtime_output); });
+            std::future<void> exploration_future = std::async(std::launch::async, [&dse,params] { dse.explore(params); });
 
             if (timeout > 0) {
                 std::this_thread::sleep_for(std::chrono::seconds (timeout));

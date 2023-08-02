@@ -15,8 +15,7 @@ namespace algorithms {
             void add(const TokenConfiguration& config);
             void remove(const TokenConfiguration& config);
             bool isDominated(const TokenConfiguration& config);
-            bool isNonMinimal(const TokenConfiguration& newConfig)  ;
-            size_t removeDominatedBy(const TokenConfiguration& newConfig) ;
+            size_t cleanByDominance(const TokenConfiguration& newConfig) ;
             bool contains(const TokenConfiguration& config);
 
             std::string toString() ;

@@ -125,7 +125,7 @@ models::Dataflow* get_critical_cycle_original_edges_from_prime (const models::Da
 }
 
 std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribution_efficiently_from_cc(const StorageDistribution& checkDist, models::Dataflow *dataflow_prime,
-                                                                                                         const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes, bool approx) {
+                                                                                                         const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & , bool approx) {
 
 
     VERBOSE_DEBUG_DSE("Update the dataflow_prime with");

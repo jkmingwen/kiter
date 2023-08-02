@@ -674,53 +674,53 @@ public :
                                                    const DATA_UNIT ts)    {				ASSERT_WRITABLE();
                                        			reset_computation();boost::put(boost::edge_tokensize, this->getG(), c.e, ts);}
     inline  EXEC_COUNT          getEdgeOutPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge (" << this->getEdgeName(c) << ") output spec (" << tmp << ") does not match task spec(" << this->getPhasesQuantity(this->getEdgeTarget(c)) << ")");
-    	return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge (" << this->getEdgeName(c) << ") output spec (" << tmp << ") does not match task spec(" << this->getPhasesQuantity(this->getEdgeTarget(c)) << ")");
+    	return boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
     }
     inline  EXEC_COUNT          getEdgeInPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does not match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
-    	return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does not match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	return boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
     }
 
     inline  EXEC_COUNT          getEdgeOutInitPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does not match task init spec");
-        return tmp;
+    	//EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does not match task init spec");
+        return boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
     }
     inline  EXEC_COUNT          getEdgeInInitPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
-        return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+        return boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
     }
 
     inline  TOKEN_UNIT          getEdgeOut    (const Edge c)  		       const   {return boost::get(get(boost::edge_total_output, this->getG()), c.e);}
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeOutVector   (const Edge c) const   {
-    	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does not match task spec");
-    	return tmp;
+    	//const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does not match task spec");
+    	return boost::get(get(boost::edge_outputs, this->getG()), c.e);
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInVector   (const Edge c)  const  {
-    	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does not match task spec");
-    	return tmp;
+    	//const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does not match task spec");
+    	return boost::get(get(boost::edge_inputs, this->getG()), c.e);
     }
 
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeInitOutVector   (const Edge c) const   {
-    	const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does not match task init spec");
-        return tmp;
+    	//const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does not match task init spec");
+        return boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInitInVector   (const Edge c)  const  {
 
-    	const std::vector<TOKEN_UNIT> & tmp = boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input init spec (" <<   tmp.size() << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
-        return tmp;
+    	//const std::vector<TOKEN_UNIT> & tmp = boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input init spec (" <<   tmp.size() << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+        return boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
 
     }
 
@@ -889,11 +889,11 @@ public :
       }
 
       inline  TIME_UNIT          getVertexDuration    (const Vertex t, EXEC_COUNT k)   const {
-    	  const std::vector<TIME_UNIT>&  vec = boost::get(get(boost::vertex_phaseduration, this->getG()), t.v);
     	  if (k <= 0 ) {
     		  return getVertexInitDuration(t, k + getInitPhasesQuantity(t));
     	  }
-      	return vec.at( (k-1) % vec.size() );
+          const size_t phase_quantity = this->getPhasesQuantity(t);
+          return boost::get(get(boost::vertex_phaseduration, this->getG()), t.v).at( (k-1) % phase_quantity);
       }
 
       inline  TIME_UNIT          getVertexInitDuration    (const Vertex t, EXEC_COUNT k)   const {

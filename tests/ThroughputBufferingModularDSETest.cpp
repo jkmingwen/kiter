@@ -104,7 +104,8 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
         TIME_UNIT target_throughput = throughput_res.throughput;
         std::cout << "Throughput is " << target_throughput << std::endl;
 
-        algorithms::dse::TokenConfigurationSet res = algorithms::dse::solve_throughputbuffering( &g, algorithms::dse::KDSE_MODE, true) ;
+        algorithms::dse::ExplorationParameters params;
+        algorithms::dse::TokenConfigurationSet res = algorithms::dse::solve_throughputbuffering( &g, algorithms::dse::KDSE_MODE, params) ;
 
     }
 
@@ -160,7 +161,8 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
                                         algorithms::dse::ThroughputBufferingStopCondition(target_th, true),
                                         1);
         dse.add_initial_job(tc);
-        dse.explore(0, false, false);
+        algorithms::dse::ExplorationParameters params;
+        dse.explore(params);
         auto cc_sds = dse.getResults();
 
 

@@ -14,7 +14,7 @@ namespace algorithms {
     namespace dse {
         enum ThroughputBufferingMode {
             ASAP_DSE_MODE, // Stuijk2006
-            KDSE_MODE, //  Koh2022
+            KDSE_MODE,     //  Koh2022
             K2DSE_MODE,
             K2DSEA_MODE
         };
@@ -44,14 +44,12 @@ namespace algorithms {
         std::vector<TokenConfiguration> throughputbuffering_initial_func(const models::Dataflow* dataflow);
 
 
+
+
         TokenConfigurationSet solve_throughputbuffering   (models::Dataflow* const  dataflow,
                                                            ThroughputBufferingMode mode,
-                                                bool realtime_output = false,
-                                                size_t thread_count = 1,
-                                                size_t timeout = 0,
-                                                size_t limit = 0,
-                                                std::string  filename = "",
-                                                algorithms::dse::TokenConfiguration* tc = nullptr) ;
+                                                           const ExplorationParameters& params,
+                                                           algorithms::dse::TokenConfiguration* tc = nullptr) ;
 
         void throughputbuffering_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
     }

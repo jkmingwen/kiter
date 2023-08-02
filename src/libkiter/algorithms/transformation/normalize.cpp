@@ -5,7 +5,7 @@
 #include "normalize.h"
 #include "algorithms/normalization.h"
 
-void algorithms::transformation::apply_normalization    (models::Dataflow* const dataflow, parameters_list_t  parameters  ) {
+void algorithms::transformation::apply_normalization    (models::Dataflow* const dataflow, parameters_list_t) {
 
     // Doesnt support init phases.
     { ForEachTask(dataflow,t) {

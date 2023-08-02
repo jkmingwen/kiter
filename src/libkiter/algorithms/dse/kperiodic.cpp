@@ -489,14 +489,19 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
                                  0,
                                  minChannelSizes);
 
+    VERBOSE_DSE("Initial SD: " << initDist.get_csv_line());
+
+
     // initialise modelled graph with lower bound distribution
     {ForEachEdge(dataflow_prime, c) {
             if (dataflow_prime->getEdgeId(c) <= dataflow->getEdgesCount()) { // original channel IDs
                 dataflow_prime->setPreload(c, initDist.getInitialTokens(c));
+                VERBOSE_DSE(" - original channel " << dataflow_prime->getEdgeId(c) << " get preload set to " <<  dataflow_prime->getPreload(c));
             } else {
                 // subtract initial tokens from buffer size to model any initial tokens in buffer
                 dataflow_prime->setPreload(c, (initDist.getChannelQuantity(c) -
                                                initDist.getInitialTokens(c)));
+                VERBOSE_DSE(" - feedback channel " << dataflow_prime->getEdgeId(c) << " get preload set to " <<  dataflow_prime->getPreload(c));
             }
         }}
 
@@ -537,7 +542,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 
     // add initial distribution to list of storage distributions
     StorageDistributionSet checklist;
-    std::chrono::duration<double, std::milli> cumulativeTime; // store timings
+    //std::chrono::duration<double, std::milli> cumulativeTime; // store timings
       {
         methodName = "_kiter";
         checklist = StorageDistributionSet(initDist);

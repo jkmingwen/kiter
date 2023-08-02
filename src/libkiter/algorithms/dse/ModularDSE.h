@@ -21,6 +21,17 @@
 namespace algorithms {
     namespace dse {
 
+
+        struct ExplorationParameters {
+            std::string import_filename = "";
+            size_t limit = 0;
+            size_t timeout_sec = 0;
+            size_t thread_count = 1;
+            bool bottom_up = false;
+            bool realtime_output = false;
+            bool return_pareto_only = false;
+        };
+
         class ModularDSE {
         public:
             // TODO: decide if they are declared here or in the TokenConfiguration
@@ -37,13 +48,11 @@ namespace algorithms {
                        PerformanceFunc performance_func,
                        NextConfigurationsFunc next_func,
                        StopConditionFunc stop_func,
-                       size_t num_threads = std::thread::hardware_concurrency(),
                        bool use_constraints = false)
                     : dataflow(dataflow),
                       performance_func(performance_func),
                       next_func(next_func),
                       stop_func(stop_func),
-                      num_threads(num_threads),
                       use_constraints(use_constraints) {
             }
 
@@ -66,21 +75,17 @@ namespace algorithms {
             size_t job_pool_size () const {return job_pool.size();};
             std::string print_space(bool no_timing = false);
 
-
-            void explore(size_t limit = 0, bool bottom_up = false,
-                         bool realtime_output = false) ;
+            void explore(const ExplorationParameters& exploration_parameters) ;
 
         private:
             bool should_stop(size_t idle_threads, size_t explored, size_t limit);
-            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored, size_t limit,
-                                const std::chrono::steady_clock::time_point beginTime, bool bottom_up, bool realtime_output);
-
+            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored,
+                                const std::chrono::steady_clock::time_point beginTime, const ExplorationParameters& parameters) ;
         private:
             const models::Dataflow* dataflow;
             PerformanceFunc performance_func;
             NextConfigurationsFunc next_func;
             StopConditionFunc stop_func;
-            size_t num_threads;
 
             bool use_constraints;
             Constraint constraints = Constraint();

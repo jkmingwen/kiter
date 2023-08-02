@@ -28,8 +28,8 @@ namespace algorithms {
             VERBOSE_ASSERT_EQUALS(1, erased);
 
             // remove empty set
-            if (this->configurations_by_cost.begin()->second.empty()) {
-                this->configurations_by_cost.erase(this->configurations_by_cost.begin());
+            if (this->configurations_by_cost[config.getCost()].empty()) {
+                this->configurations_by_cost.erase(config.getCost());
             }
         }
 
@@ -74,33 +74,40 @@ namespace algorithms {
             return (this->configurations_by_cost.find(cost) != this->configurations_by_cost.end());
         }
 
-
-        bool TokenConfigurationSet::isNonMinimal(const TokenConfiguration& newConfig)  {
-
-            for (auto config : *this) {
-                if ((newConfig.getCost() > config.getCost() &&
-                     (newConfig.getPerformance().throughput <= config.getPerformance().throughput )))
-                    return true;
-                if (newConfig.getCost() >= config.getCost() &&
-                        newConfig.getPerformance().throughput < config.getPerformance().throughput)
-                    return true;
-            }
-
-
-        }
-
-        size_t TokenConfigurationSet::removeDominatedBy(const TokenConfiguration& newConfig) {
+        size_t TokenConfigurationSet::cleanByDominance(const TokenConfiguration& newConfig) {
 
             size_t removed = 0;
-
+            TokenConfigurationSet to_be_removed;
             for (auto config : *this) {
-                    if (newConfig.getCost() == config.getCost() && // remove existing equal storage dist (size) with lower thr
-                                                                   newConfig.getPerformance().throughput  > config.getPerformance().throughput ) {
-
-                        this->remove(config);
-                        removed ++;
-                    }
+                VERBOSE_DEBUG("Compare config " << config);
+                if (newConfig.getCost() > config.getCost() &&
+                    newConfig.getPerformance().throughput <= config.getPerformance().throughput) {
+                    VERBOSE_DEBUG("Case 1 check");
+                    to_be_removed.add(newConfig);
+                    //this->remove(newConfig);
+                    removed++;
+                } else if (newConfig.getCost() >= config.getCost() &&
+                           newConfig.getPerformance().throughput < config.getPerformance().throughput) {
+                    VERBOSE_DEBUG("Case 2 check");
+                    to_be_removed.add(newConfig);
+                    //this->remove(newConfig);
+                    removed++;
+                } else if (newConfig.getCost() == config.getCost() &&
+                           newConfig.getPerformance().throughput > config.getPerformance().throughput) {
+                    VERBOSE_DEBUG("Case 3 check");
+                    to_be_removed.add(config);
+                    //this->remove(config);
+                    removed++;
+                }
             }
+
+            // Remove them all at once.
+            // TODO: this is slower and takes up space, but help to avoid fixing the iterator to support deletion.
+            for (auto item: to_be_removed) {
+                VERBOSE_DEBUG("Actually remove the item " << item);
+                this->remove(item);
+            }
+
             return removed;
         }
 

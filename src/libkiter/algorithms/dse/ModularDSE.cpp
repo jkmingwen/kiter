@@ -8,17 +8,16 @@
 
 #define VERBOSE_DSE_THREADS(msg) VERBOSE_CUSTOM_DEBUG ("DSE_THREAD", msg)
 
+
 namespace algorithms {
     namespace dse {
-
-
 
         // This needs the lock
         bool ModularDSE::should_stop(size_t idle_threads, size_t explored, size_t limit) {
             if (stop_exploration) {
                 return true;
             }
-            else if (job_pool.empty() && idle_threads == num_threads) {
+            else if (job_pool.empty() && in_progress.empty()) {
                 stop_exploration = true;
                 return true;
             }
@@ -31,10 +30,9 @@ namespace algorithms {
 
 
         void ModularDSE::explore_thread(std::atomic<unsigned int>& idle_threads,
-                                        std::atomic<size_t>& explored, size_t limit,
+                                        std::atomic<size_t>& explored,
                                         const std::chrono::steady_clock::time_point beginTime,
-                                        bool bottom_up,
-                                        bool realtime_output) {
+                                        const ExplorationParameters& parameters) {
 
             models::Dataflow sandbox = *this->dataflow;
             std::unique_ptr<TokenConfiguration> current_configuration;
@@ -50,14 +48,14 @@ namespace algorithms {
                                             << " and leave the lock.");
 
                     cv.wait_for(lock, std::chrono::milliseconds(1000),
-                                [this,&idle_threads] { return stop_exploration || !job_pool.empty() || idle_threads == num_threads; });
+                                [this,&idle_threads] { return stop_exploration || !job_pool.empty() || in_progress.empty(); });
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                             << " get the lock again, wait_for satisfied stop_exploration="
                                             << (stop_exploration ? "true" : "false")
                                             << ", job_pool.size()=" << job_pool.size()
                                             << ", in_progress.size()=" << in_progress.size() << ".");
-                    if (should_stop(idle_threads, explored, limit)) {
+                    if (should_stop(idle_threads, explored, parameters.limit)) {
                         VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                                 << " says we should stop and stop_exploration is "
                                                 << (stop_exploration ? "true" : "false"));
@@ -77,7 +75,7 @@ namespace algorithms {
                         VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " found a configuration inside the pool.");
                     }
 
-                    if (bottom_up) {
+                    if (parameters.bottom_up) {
                         current_configuration = std::make_unique<TokenConfiguration>(job_pool.last());
                         job_pool.pop_last();
                     } else {
@@ -137,8 +135,14 @@ namespace algorithms {
 
                     }
 
-                    if (realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
+                    if (parameters.realtime_output) std::cout << current_configuration->to_csv_line() << std::endl;
                     results.add(*current_configuration);
+
+                    // Keep pareto optimal only
+                    VERBOSE_DEBUG("Clean the result log");
+                    auto deleted = results.cleanByDominance(*current_configuration);
+                    VERBOSE_DEBUG("Removed " << deleted << " items.");
+
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration) && !in_progress.contains(next_configuration)) {
                             job_pool.push(next_configuration);
@@ -158,8 +162,7 @@ namespace algorithms {
 
 
 
-        void ModularDSE::explore(const size_t limit, bool bottom_up,
-                                 bool realtime_output) {
+        void ModularDSE::explore(const ExplorationParameters& exploration_parameters) {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
@@ -171,10 +174,10 @@ namespace algorithms {
 
 
 
-            if (realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
+            if (exploration_parameters.realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
-            for (unsigned int i = 0; i < num_threads; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), limit, beginTime, bottom_up, realtime_output));
+            for (unsigned int i = 0; i < exploration_parameters.thread_count; ++i) {
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), beginTime, exploration_parameters));
             }
 
             for (auto& future : futures) {
