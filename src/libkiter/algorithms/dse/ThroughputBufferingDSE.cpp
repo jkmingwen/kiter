@@ -34,6 +34,9 @@ namespace algorithms {
 
         std::vector<algorithms::dse::TokenConfiguration>
         critical_based_surface_dse_mode(const algorithms::dse::TokenConfiguration &current, bool pareto_only = false) {
+
+            VERBOSE_DEBUG("     critical_based_surface_dse_mode: " << current << " with pareto_only=" << pareto_only);
+
             // K2DSE mode, local search in the cycle to see what increments actually improve this cycle
             // K2DSEA mode, include the pareto_only flag
             const models::Dataflow *df = current.getDataflow();
@@ -52,6 +55,14 @@ namespace algorithms {
                 auto edgeId = cc_g->getEdgeId(e);
                 new_configuration_cc[edgeId] = current.getConfiguration().at(edgeId);
             }
+
+            // Special case, the exploration asked to continue while there is no critical cycle...
+            //VERBOSE_WARNING("Should not happen...");
+            if (cc_g->getVerticesCount() == 0) {
+                VERBOSE_WARNING("Should not happen...");
+                return std::vector<algorithms::dse::TokenConfiguration>();
+            }
+
             algorithms::dse::TokenConfiguration tc(cc_g, new_configuration_cc);
             VERBOSE_DEBUG("Init: " << tc.to_csv_line());
 
@@ -91,6 +102,7 @@ namespace algorithms {
                 }
 
             }
+            VERBOSE_DEBUG("     critical_based_surface_dse_mode finished with " << next_configurations.size() << " new configurations");
             return next_configurations;
         }
 

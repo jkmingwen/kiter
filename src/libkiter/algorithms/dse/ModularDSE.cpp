@@ -139,9 +139,11 @@ namespace algorithms {
                     results.add(*current_configuration);
 
                     // Keep pareto optimal only
-                    VERBOSE_DEBUG("Clean the result log");
-                    auto deleted = results.cleanByDominance(*current_configuration);
-                    VERBOSE_DEBUG("Removed " << deleted << " items.");
+                    if (parameters.return_pareto_only) {
+                        VERBOSE_DEBUG("Clean the result log");
+                        auto deleted = results.cleanByDominance(*current_configuration);
+                        VERBOSE_DEBUG("Removed " << deleted << " items.");
+                    }
 
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration) && !in_progress.contains(next_configuration)) {
