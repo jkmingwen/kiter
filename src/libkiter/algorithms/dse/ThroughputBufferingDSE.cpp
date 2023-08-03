@@ -19,23 +19,42 @@ namespace algorithms {
                                                           const algorithms::dse::TokenConfigurationSet &searched_configs) const {
             const algorithms::dse::TokenConfiguration *best = searched_configs.getBestPerformancePoint();
 
+            bool decision_to_stop = false;
+
             if (best) {
+
+                VERBOSE_DEBUG("new_config = " << new_config);
+                VERBOSE_DEBUG("*best = " << *best);
+                VERBOSE_DEBUG("new_config.dominates(*best) = " << new_config.dominates(*best));
+                VERBOSE_DEBUG("best->getPerformance().throughput = " << best->getPerformance().throughput);
+                VERBOSE_DEBUG("target_th = " << target_th);
+                VERBOSE_DEBUG("surface_only = " << surface_only);
+                VERBOSE_DEBUG("best->getCost() = " << best->getCost());
+                VERBOSE_DEBUG("new_config.getCost() = " << new_config.getCost());
+                VERBOSE_DEBUG("(best->getPerformance().throughput > target_th) = " << (best->getPerformance().throughput > target_th));
+
                 if (surface_only) {
-                    return ((new_config.dominates(*best)) &&
-                            (best->getPerformance().throughput > target_th));
+                    decision_to_stop =  (((best->getCost() < new_config.getCost()) && (new_config.dominates(*best)) &&
+                            (best->getPerformance().throughput > std::numeric_limits<TIME_UNIT>::epsilon() + target_th))); // FIXME: I hate this epsilon hack!
                 } else {
-                    return ((best->getCost() < new_config.getCost()) &&
+                    decision_to_stop =  ((best->getCost() < new_config.getCost()) &&
                             (best->getPerformance().throughput >= target_th));
                 }
             }
 
-            return false;
+            VERBOSE_DEBUG("decision_to_stop = " << decision_to_stop);
+            return decision_to_stop;
         }
 
         std::vector<algorithms::dse::TokenConfiguration>
         critical_based_surface_dse_mode(const algorithms::dse::TokenConfiguration &current, bool pareto_only = false) {
 
             VERBOSE_DEBUG("     critical_based_surface_dse_mode: " << current << " with pareto_only=" << pareto_only);
+            if (current.getPerformance().critical_edges.empty()) {
+                // Special case, the exploration asked to continue while there is no critical cycle...
+                VERBOSE_WARNING("Should not happen...");
+                return std::vector<algorithms::dse::TokenConfiguration>();
+            }
 
             // K2DSE mode, local search in the cycle to see what increments actually improve this cycle
             // K2DSEA mode, include the pareto_only flag
@@ -43,12 +62,18 @@ namespace algorithms {
             const auto &current_configuration = current.getConfiguration();
             std::vector<algorithms::dse::TokenConfiguration> next_configurations;
 
-            const auto target_th = current.getPerformance().throughput;
-            VERBOSE_DEBUG("ThroughputBufferingNext Mode: K2DSE Target throughput: " << target_th << " current:"
-                                                                                    << current.to_csv_line());
+            const auto current_th = current.getPerformance().throughput;
+            VERBOSE_DEBUG("ThroughputBufferingNext Mode: K2DSE Current throughput: " << current_th
+            << " current:" << current.to_csv_line());
 
             // 1. build a minimal graph with the critical edges only.
             models::Dataflow *cc_g = algorithms::build_subgraph(df, current.getPerformance().critical_edges);
+            computeRepetitionVector(cc_g);
+
+            VERBOSE_DEBUG("cc_g created.");
+
+            kperiodic_result_t cc_max_performance = algorithms::compute_Kperiodic_throughput_and_cycles(cc_g);
+            const auto max_cc_th = cc_max_performance.throughput;
             std::map<ARRAY_INDEX, TOKEN_UNIT> new_configuration_cc;
             ForEachEdge(cc_g, e) {
                 if (cc_g->getEdgeType(e) != FEEDBACK_EDGE) continue;
@@ -56,28 +81,47 @@ namespace algorithms {
                 new_configuration_cc[edgeId] = current.getConfiguration().at(edgeId);
             }
 
-            // Special case, the exploration asked to continue while there is no critical cycle...
-            //VERBOSE_WARNING("Should not happen...");
-            if (cc_g->getVerticesCount() == 0) {
-                VERBOSE_WARNING("Should not happen...");
-                return std::vector<algorithms::dse::TokenConfiguration>();
-            }
+
 
             algorithms::dse::TokenConfiguration tc(cc_g, new_configuration_cc);
+
+            VERBOSE_DEBUG("tc created.");
+
+            // To avoid computing the throughput of the initial TC (required to stop the search)
+            // We can use the original graph period. BUT if the repetition vector change, the graph period changes.
+            // TO solve the problem we can rescale the cc period.
+            // current_cc_th = current_th * Ni/Ni';
+            TIME_UNIT current_cc_th = 0;
+            ARRAY_INDEX reference_edge_id = *current.getPerformance().critical_edges.begin();
+            reference_edge_id = cc_g->getVertexId(cc_g->getFirstVertex());
+            const auto df_Ni = df->getNi(df->getVertexById(reference_edge_id));
+            const auto cc_Ni = cc_g->getNi(cc_g->getVertexById(reference_edge_id));
+            current_cc_th = (current_th * df_Ni) / cc_Ni;
+
+
+            // // Instead we could have compute the throughput ...
+            //models::Dataflow sandbox = *cc_g;
+            //sandbox.reset_computation();
+            //auto cc_current_performance = kperiodic_performance_func(&sandbox, tc);
+            //const auto current_cc_th = cc_current_performance.throughput;
+
             VERBOSE_DEBUG("Init: " << tc.to_csv_line());
+            VERBOSE_DEBUG("current_cc_th: " << current_cc_th << " Ni=" << cc_g->getNi(cc_g->getVertexById(reference_edge_id)));
+            VERBOSE_DEBUG("max_cc_th: " << max_cc_th);
+            VERBOSE_DEBUG("current_th: " << current_th<< " Ni=" << df->getNi(df->getVertexById(reference_edge_id)));
 
             // 2. run a dse with target throughout to beat.
             algorithms::dse::ModularDSE dse(cc_g,
                                             kperiodic_performance_func,
-                                            ThroughputBufferingNext(KDSE_MODE, 0.0),
-                                            ThroughputBufferingStopCondition(target_th, true),
+                                            ThroughputBufferingNext(KDSE_MODE),
+                                            ThroughputBufferingStopCondition(current_cc_th, true),
                                             1);
             dse.add_initial_job(tc);
             ExplorationParameters params = {
                     .limit = false,
                     .bottom_up = false,
                     .realtime_output = false,
-                    .return_pareto_only = pareto_only
+                    .return_pareto_only = false
             };
             dse.explore(params);
             auto cc_sds = dse.getResults();
@@ -87,7 +131,7 @@ namespace algorithms {
 
             // 3. any solutions that beat the target are considered.
             for (auto solution: cc_sds) {
-                if (solution.getPerformance().throughput > target_th) {
+                if (solution.getPerformance().throughput > current_cc_th) {
                     VERBOSE_DEBUG("    - KEEP " << solution.to_csv_line());
                     auto new_configuration = current_configuration; // Make a copy of the current configuration
                     for (auto edgeId_tokenSize: solution.getConfiguration()) {
@@ -330,13 +374,13 @@ namespace algorithms {
             // Compute the target throughput
             TIME_UNIT target_throughput = algorithms::compute_Kperiodic_throughput_and_cycles(dataflow).throughput;
             models::Dataflow *dataflow_prime = new models::Dataflow(*dataflow);
-
             algorithms::transformation::generateInplaceFeedbackBuffers(dataflow_prime);
             dataflow_prime->precomputeFineGCD();
+            computeRepetitionVector(dataflow_prime);
             ThroughputBufferingStopCondition throughputbuffering_stop_condition(target_throughput);
             ThroughputBufferingNext throughputbuffering_next_distributions(
-                    (mode == ASAP_DSE_MODE) ? KDSE_MODE : mode,
-                    target_throughput);
+                    (mode == ASAP_DSE_MODE) ? KDSE_MODE : mode
+                    );
 
             algorithms::dse::ModularDSE dse(dataflow_prime,
                                             (mode == ASAP_DSE_MODE) ? asap_performance_func

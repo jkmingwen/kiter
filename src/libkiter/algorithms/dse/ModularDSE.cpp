@@ -13,7 +13,7 @@ namespace algorithms {
     namespace dse {
 
         // This needs the lock
-        bool ModularDSE::should_stop(size_t idle_threads, size_t explored, size_t limit) {
+        bool ModularDSE::should_stop(size_t explored, size_t limit) {
             if (stop_exploration) {
                 return true;
             }
@@ -29,8 +29,7 @@ namespace algorithms {
         }
 
 
-        void ModularDSE::explore_thread(std::atomic<unsigned int>& idle_threads,
-                                        std::atomic<size_t>& explored,
+        void ModularDSE::explore_thread(std::atomic<size_t>& explored,
                                         const std::chrono::steady_clock::time_point beginTime,
                                         const ExplorationParameters& parameters) {
 
@@ -43,19 +42,17 @@ namespace algorithms {
                     // =============================
                     std::unique_lock<std::mutex> lock(mtx);
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " enters its loop (got the lock)");
-                    ++idle_threads;
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " increased idle_threads to " << idle_threads
-                                            << " and leave the lock.");
+                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " leave the lock.");
 
                     cv.wait_for(lock, std::chrono::milliseconds(1000),
-                                [this,&idle_threads] { return stop_exploration || !job_pool.empty() || in_progress.empty(); });
+                                [this] { return stop_exploration || !job_pool.empty() || in_progress.empty(); });
 
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                             << " get the lock again, wait_for satisfied stop_exploration="
                                             << (stop_exploration ? "true" : "false")
                                             << ", job_pool.size()=" << job_pool.size()
                                             << ", in_progress.size()=" << in_progress.size() << ".");
-                    if (should_stop(idle_threads, explored, parameters.limit)) {
+                    if (should_stop(explored, parameters.limit)) {
                         VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id()
                                                 << " says we should stop and stop_exploration is "
                                                 << (stop_exploration ? "true" : "false"));
@@ -65,8 +62,6 @@ namespace algorithms {
                     // Busy phase,   getting a job
                     // ===============================
 
-                    --idle_threads;
-                    VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " decreased idle_threads to " << idle_threads);
 
                     if (job_pool.empty()) {
                         VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " found the pool empty ");
@@ -96,9 +91,7 @@ namespace algorithms {
                                             << (stop_decision ? "true" : "false"));
                     if (stop_decision) {
 
-                        ++idle_threads;
-                        VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " increased idle_threads to " << idle_threads
-                                                      << " and break itself.");
+                        VERBOSE_DSE_THREADS("END OF EXPLORATION: Thread " << std::this_thread::get_id() << " break itself.");
 
                         break;
                     }
@@ -129,7 +122,7 @@ namespace algorithms {
                     in_progress.remove(*current_configuration);
 
                     if (use_constraints) {
-                        VERBOSE_DEBUG("Update constraints");
+                        VERBOSE_DSE_THREADS("Update constraints");
                         // VERBOSE_DEBUG("Update constraints " << constraints.toString());
                             constraints.update(next_constraints);
 
@@ -140,14 +133,17 @@ namespace algorithms {
 
                     // Keep pareto optimal only
                     if (parameters.return_pareto_only) {
-                        VERBOSE_DEBUG("Clean the result log");
+                        VERBOSE_DSE_THREADS("Clean the result log");
                         auto deleted = results.cleanByDominance(*current_configuration);
-                        VERBOSE_DEBUG("Removed " << deleted << " items.");
+                        VERBOSE_DSE_THREADS("Removed " << deleted << " items.");
                     }
 
                     for (const auto& next_configuration : next_configurations) {
                         if (!results.contains(next_configuration) && !in_progress.contains(next_configuration)) {
+                            VERBOSE_DSE_THREADS("Add configuration " << next_configuration);
                             job_pool.push(next_configuration);
+                        } else {
+                            VERBOSE_DSE_THREADS("Ignore configuration " << next_configuration);
                         }
                     }
                     VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << " notify all and will release the lock again, job_pool.size()=" << job_pool.size() << ", in_progress.size()=" << in_progress.size() << ".");
@@ -157,7 +153,7 @@ namespace algorithms {
 
             {
                 std::unique_lock<std::mutex> lock(mtx);
-                VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << "is DEAD DEAD, " << " idle_threads is " << idle_threads);
+                VERBOSE_DSE_THREADS("Thread " << std::this_thread::get_id() << "is finished.");
             }
 
         }
@@ -168,7 +164,6 @@ namespace algorithms {
 
             VERBOSE_INFO("Start to explore");
             std::vector<std::future<void>> futures;
-            std::atomic<unsigned int> idle_threads(0);
             std::atomic<size_t> explored(0);
 
             auto beginTime =  std::chrono::steady_clock::now()
@@ -179,7 +174,7 @@ namespace algorithms {
             if (exploration_parameters.realtime_output) std::cout << TokenConfiguration::csv_header() << std::endl;
 
             for (unsigned int i = 0; i < exploration_parameters.thread_count; ++i) {
-                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(idle_threads), std::ref(explored), beginTime, exploration_parameters));
+                futures.emplace_back(std::async(std::launch::async, &ModularDSE::explore_thread, this, std::ref(explored), beginTime, exploration_parameters));
             }
 
             for (auto& future : futures) {

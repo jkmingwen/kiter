@@ -20,8 +20,10 @@ def load_app_dse(
 ):
 
     filename = f"{logdir}/{appname}_{method}.txt"
-
-    df = pd.read_csv(filename, usecols=cols)
+    if cols :
+        df = pd.read_csv(filename, usecols=cols)
+    else :
+        df = pd.read_csv(filename)
     return df
 
 

@@ -214,7 +214,7 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
                                         bool use_constraints,
                                         algorithms::dse::TokenConfiguration* tc
 ) {
-
+            computeRepetitionVector(dataflow);
             dataflow->precomputeFineGCD();
             algorithms::dse::ModularDSE dse(dataflow,
                                             liveness_performance_func,

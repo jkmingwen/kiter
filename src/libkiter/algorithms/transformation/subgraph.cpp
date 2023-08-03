@@ -44,7 +44,7 @@ namespace algorithms {
             Vertex src_cc = cc_g->getVertexByName(original_source_name);
             Vertex trg_cc = cc_g->getVertexByName(original_target_name);
 
-            Edge e_cc = cc_g->addEdge(src_cc, trg_cc, g->getEdgeId(original_edge), g->getEdgeName(original_edge));
+            Edge e_cc = cc_g->addEdge(src_cc, trg_cc, e_id, g->getEdgeName(original_edge));
             cc_g->setPreload(e_cc, g->getPreload(original_edge));
             cc_g->setEdgeInPhases(e_cc, g->getEdgeInVector(original_edge));
             cc_g->setEdgeOutPhases(e_cc, g->getEdgeOutVector(original_edge));

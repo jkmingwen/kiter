@@ -149,7 +149,7 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         {ForEachEdge(df,c) {
                 df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
         }}
-
+        computeRepetitionVector(df);
 
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,

@@ -54,6 +54,7 @@ namespace algorithms {
                       next_func(next_func),
                       stop_func(stop_func),
                       use_constraints(use_constraints) {
+                VERBOSE_ASSERT(dataflow->has_repetition_vector(), "OK it is a constant dataflow, but at least give me the repetition vector.");
             }
 
             ModularDSE& operator<<(const TokenConfiguration& config) {
@@ -78,8 +79,8 @@ namespace algorithms {
             void explore(const ExplorationParameters& exploration_parameters) ;
 
         private:
-            bool should_stop(size_t idle_threads, size_t explored, size_t limit);
-            void explore_thread(std::atomic<unsigned int>& idle_threads, std::atomic<size_t>& explored,
+            bool should_stop(size_t explored, size_t limit);
+            void explore_thread(std::atomic<size_t>& explored,
                                 const std::chrono::steady_clock::time_point beginTime, const ExplorationParameters& parameters) ;
         private:
             const models::Dataflow* dataflow;

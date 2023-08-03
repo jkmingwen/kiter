@@ -146,6 +146,7 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
 
         // 1. Crete sub graph and init config
         models::Dataflow* cc_g = generateGraph();
+        computeRepetitionVector(cc_g);
         VERBOSE_ASSERT(cc_g, "Graph has not been generated");
         std::map<ARRAY_INDEX, TOKEN_UNIT> new_configuration_cc;
         new_configuration_cc[cc_g->getEdgeId(cc_g->getEdgeByName("channel_1_prime"))] = 8;
@@ -157,7 +158,7 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
         // 2. run a dse with target throughout to beat.
         algorithms::dse::ModularDSE dse(cc_g,
                                         algorithms::dse::kperiodic_performance_func,
-                                        algorithms::dse::ThroughputBufferingNext(algorithms::dse::KDSE_MODE, 0.0),
+                                        algorithms::dse::ThroughputBufferingNext(algorithms::dse::KDSE_MODE),
                                         algorithms::dse::ThroughputBufferingStopCondition(target_th, true),
                                         1);
         dse.add_initial_job(tc);
