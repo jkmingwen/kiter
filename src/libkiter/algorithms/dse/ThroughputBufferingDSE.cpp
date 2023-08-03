@@ -121,7 +121,7 @@ namespace algorithms {
                     .limit = false,
                     .bottom_up = false,
                     .realtime_output = false,
-                    .return_pareto_only = false
+                    .return_pareto_only = pareto_only // very important K2DSEA here requires pareto only
             };
             dse.explore(params);
             auto cc_sds = dse.getResults();
