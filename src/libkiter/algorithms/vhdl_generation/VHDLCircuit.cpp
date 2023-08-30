@@ -221,7 +221,7 @@ std::string VHDLCircuit::printStatus() {
 std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
   std::vector<std::string> actorNames;
   for (auto &comp : this->componentMap) {
-    if ((comp.second).getType() != "Proj" && !(comp.second).isConst()) {
+    if ((comp.second).getType() != "Proj" && !(comp.second).isConst() && (comp.second).getType() != "output_selector") {
       if ((comp.second).getOutputEdges().size() > 1) { // if operator has more than one output
         actorNames.push_back((comp.second).getName());
       }

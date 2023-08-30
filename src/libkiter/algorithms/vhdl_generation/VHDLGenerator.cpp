@@ -43,6 +43,10 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
             VERBOSE_INFO("operator lifespan (" << newComp.getType() << "): " << opLifespan);
             if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
               std::vector<TIME_UNIT> opLifespans{1};
+              if (newComp.getType() == "input_selector" || newComp.getType() == "output_selector") {
+                // NOTE need to parameterise these in the future if we want variable input/outputs
+                opLifespans = std::vector<TIME_UNIT>{1,1}; // special case for input and output selectors, which are CSDF components
+              }
               dataflow->setVertexDuration(actor, opLifespans);
             } else {
               std::vector<TIME_UNIT> opLifespans{opLifespan};
@@ -190,6 +194,9 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
     } else if (op.first == "delay") {
       generateDelayOperator(circuit.getFirstComponentByType(op.first),
                             compDir, compRefDir, operatorFreq);
+    } else if (op.first == "input_selector" || op.first == "output_selector") {
+      generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
+                                          compDir, compRefDir, operatorFreq);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir, operatorFreq);
@@ -487,6 +494,33 @@ void algorithms::generateDelayOperator(VHDLComponent comp, std::string compDir,
   generateFPCOperator(comp.getImplementationName(), compDir, referenceDir, operatorFreq);
 }
 
+void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp, std::string compDir,
+                                                     std::string referenceDir, int operatorFreq) {
+  std::ofstream vhdlOutput;
+  std::string entityName = comp.getType();
+  VERBOSE_DEBUG("entity name: " << entityName);
+  std::string componentName = entityName + "_implementation";
+  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
+                                  "$COMPONENT_NAME", "$OP_LIFESPAN",
+                                  "$AXM_TYPE"};
+  std::string opInputCount = std::to_string(comp.getInputPorts().size());
+
+  // generate input selector implementation
+  vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
+  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+  std::string fileContent;
+  if (operatorRef.is_open()) {
+    while (std::getline(operatorRef, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    operatorRef.close();
+    vhdlOutput.close();
+  } else {
+    VERBOSE_ERROR ("Reference file for " << entityName + " with " + opInputCount
+                   << " inputs does not exist/not found!"); // TODO turn into assert
+  }
+}
+
 // Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(std::string compImplementationName, std:: string compDir,
                                      std::string referenceDir, int operatorFreq) {
@@ -627,9 +661,9 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int
     }
     vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
 }
-void
-algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, std::map<std::string, int> &operatorMap,
-                                     bool noOperators, std::ofstream &vhdlOutput) {// component declaration
+
+void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, std::map<std::string, int> &operatorMap,
+                                          bool noOperators, std::ofstream &vhdlOutput) {// component declaration
     vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
     if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
       std::map<int, int> constOutputs;
@@ -645,6 +679,9 @@ algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, st
           } else if (op.first == "const_value" ||
                      circuit.getFirstComponentByType(op.first).isConst()) {
             constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+          } else if (op.first == "input_selector" || op.first == "output_selector") {
+            vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
           } else {
             vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
                        << std::endl;
@@ -1437,14 +1474,14 @@ std::string algorithms::generateFPCToI2SSignalNames(int id) {
 std::string algorithms::generateComponent(VHDLComponent comp) {
   std::stringstream outputStream;
   std::string componentName;
-  if (comp.getType() == "const_value") {
+  if (comp.getType() == "const_value") { // TODO verify if this check is still necessary since const_val is already checked prior to this function call
     componentName = comp.getType();
   } else {
     componentName = comp.getType();
   }
   int numInputPorts;
   int numOutputPorts;
-  // TODO assert that component is not an INPUT/OUTPUT
+  // TODO assert that component is not an INPUT/OUTPUT (not sure if still necessary given earlier checks)
   numInputPorts = comp.getInputPorts().size();
   numOutputPorts = comp.getOutputPorts().size();
   // every component requires clock and reset ports
@@ -1477,6 +1514,57 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
     if (comp.getType() == "const_value") {
       portName = "    out";
     }
+    outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "ram_width - 1 downto 0);\n" << std::endl;
+    }
+  }
+
+  outputStream << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp) {
+  std::stringstream outputStream;
+  std::string componentName;
+  if (comp.getType() == "input_selector") {
+    componentName = comp.getType();
+  } else if (comp.getType() == "output_selector") {
+    componentName = comp.getType();
+  } else {
+    VERBOSE_ERROR("Invalid component type called for component generator: "
+                  << comp.getType());
+  }
+  int numInputPorts;
+  int numOutputPorts;
+  // TODO assert that component is not an INPUT/OUTPUT (not sure if still necessary given earlier checks)
+  numInputPorts = comp.getInputPorts().size();
+  numOutputPorts = comp.getOutputPorts().size();
+  // every component requires clock and reset ports
+  outputStream << "component " << componentName << " is" << std::endl;
+  outputStream << "generic ( num_phases : integer );" << std::endl;
+  outputStream << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << std::endl;
+  // Specify ready, valid, and data ports for each input port:
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    op_in";
+    outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                 << "ram_width - 1 downto 0);\n"
+                 << std::endl;
+  }
+
+  // Specify ready, valid, and data ports for each output port:
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    op_out";
     outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
                  << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
     if (i + 1 == numOutputPorts) {
@@ -1812,6 +1900,11 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
                      << "    " << "ram_width => ram_width,\n"
                      << "    " << "ram_init => " << std::to_string(ramInitVal) << ",\n"
                      << "    " << "ram_depth => " << std::to_string(ramDepthVal)
+                     << "\n)\n" << std::endl;
+      }
+      if (opName == "input_selector" || opName == "output_selector") {
+        outputStream << "generic map (\n"
+                     << "    " << "num_phases => 2"
                      << "\n)\n" << std::endl;
       }
       outputStream << "port map (\n"

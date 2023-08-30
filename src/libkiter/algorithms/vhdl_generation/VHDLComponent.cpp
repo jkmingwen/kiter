@@ -44,7 +44,12 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
   std::string compType = dataflow->getVertexType(a);
-  std::string baseCompType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
+  std::string baseCompType;
+  if (compType == "input_selector" || compType == "output_selector") {
+    baseCompType = compType;
+  } else {
+    baseCompType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
+  }
   lifespan = 0;
   implementationName = "default";
   isMixedType = false;
