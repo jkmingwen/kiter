@@ -38,7 +38,9 @@ namespace algorithms {
   void generateDelayOperator(VHDLComponent comp, std::string compDir,
                              std::string referenceDir, int operatorFreq);
   void generateInputOutputSelectorOperator(VHDLComponent comp, std::string compDir,
-                                     std::string referenceDir, int operatorFreq);
+                                           std::string referenceDir, int operatorFreq,
+                                           std::map<int, int> inputCounts,
+                                           std::map<int, int> outputCounts);
   void generateFPCOperator(std::string compImplementationName, std::string compDir,
                            std::string referenceDir, int operatorFreq);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
@@ -73,7 +75,9 @@ namespace algorithms {
   std::string generateI2SToFPCSignalNames(int id);
   std::string generateFPCToI2SSignalNames(int id);
   std::string generateComponent(VHDLComponent comp);
-  std::string generateInputOutputSelectorComponent(VHDLComponent comp);
+  std::string generateInputOutputSelectorComponent(VHDLComponent comp,
+                                                   std::map<int, int> inputCounts,
+                                                   std::map<int, int> outputCounts);
   std::string generateDelayComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);

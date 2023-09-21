@@ -57,6 +57,7 @@ class VHDLCircuit {
 
   int getOperatorLifespan(const std::string &opType) const;
   std::string getOperatorImplementationName(const std::string &opType) const;
+  std::map<int, int> getNumInputs(const  std::string &opType) const;
   std::map<int, int> getNumOutputs(const  std::string &opType) const;
   std::vector<std::string> getConnectionNameFromComponents(const std::string &srcActorName,
                                                            const std::string &dstActorName) const;

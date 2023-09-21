@@ -44,8 +44,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
             if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
               std::vector<TIME_UNIT> opLifespans{1};
               if (newComp.getType() == "input_selector" || newComp.getType() == "output_selector") {
-                // NOTE need to parameterise these in the future if we want variable input/outputs
-                opLifespans = std::vector<TIME_UNIT>{1,1}; // special case for input and output selectors, which are CSDF components
+                opLifespans = dataflow->getVertexPhaseDuration(actor); // special case for input and output selectors, which are CSDF components
               }
               dataflow->setVertexDuration(actor, opLifespans);
             } else {
@@ -178,8 +177,10 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
   // Generate VHDL files for individual components
   for (auto const &op : operatorMap) {
     VERBOSE_INFO( "Generate VHDL component file for " << op.first );
-    // track number of outputs for cases where operator can have different number of outputs
+    // track number of inputs/outputs for cases where operator can have different number of inputs/outputs
+    std::map<int, int> inputCounts;
     std::map<int, int> outputCounts;
+    inputCounts = circuit.getNumInputs(op.first);
     outputCounts = circuit.getNumOutputs(op.first);
     if (op.first == "Proj") {
       generateSplitterOperators(compDir, compRefDir, outputCounts);
@@ -196,7 +197,8 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
                             compDir, compRefDir, operatorFreq);
     } else if (op.first == "input_selector" || op.first == "output_selector") {
       generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
-                                          compDir, compRefDir, operatorFreq);
+                                          compDir, compRefDir, operatorFreq,
+                                          inputCounts, outputCounts);
     } else {
       generateOperator(circuit.getFirstComponentByType(op.first),
                        compDir, compRefDir, operatorFreq);
@@ -495,29 +497,156 @@ void algorithms::generateDelayOperator(VHDLComponent comp, std::string compDir,
 }
 
 void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp, std::string compDir,
-                                                     std::string referenceDir, int operatorFreq) {
+                                                     std::string referenceDir, int operatorFreq,
+                                                     std::map<int, int> inputCounts,
+                                                     std::map<int, int> outputCounts) {
   std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
   VERBOSE_DEBUG("entity name: " << entityName);
-  std::string componentName = entityName + "_implementation";
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
-                                  "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$AXM_TYPE"};
-  std::string opInputCount = std::to_string(comp.getInputPorts().size());
-
-  // generate input selector implementation
-  vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
-  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
-  std::string fileContent;
-  if (operatorRef.is_open()) {
-    while (std::getline(operatorRef, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
+  std::string componentName;
+  std::string wordsToReplace[] = {"$COMPONENT_NAME", "$PORT_LIST", "$PROCESS_BEHAVIOUR",
+                                  "$VALID_SIGNAL_ROUTING", "$DATA_SIGNAL_ROUTING",
+                                  "$READY_SIGNAL_ROUTING"};
+  int opPortCount = 0;
+  std::string portList;
+  std::string processBehaviour;
+  std::string validSignalRouting;
+  std::string dataSignalRouting;
+  std::string readySignalRouting;
+  if (entityName == "input_selector") {
+    for (auto &ports : inputCounts) {
+      componentName = entityName + "_" + std::to_string(ports.first);
+      for (int i = 0; i < ports.first; i++) {
+        std::string phaseConditional = "if (current_phase = " + std::to_string(i) + ") then\n";
+        std::string validSigRoute = "op_out_valid_0 <= op_in_valid_0 when (current_phase = 0) else\n";
+        std::string dataSigRoute = "op_out_data_0 <= op_in_data_0 when (current_phase = 0) else\n";
+        if (i > 0) {
+          phaseConditional = "elsif (current_phase = " + std::to_string(i) + ") then\n";
+          validSigRoute = "op_in_valid_" + std::to_string(i) + " when (current_phase = " + std::to_string(i) + ") else\n";
+          dataSigRoute = "op_in_data_" + std::to_string(i) + " when (current_phase = " + std::to_string(i) + ") else\n";
+          if (i + 1 == ports.first) {
+            validSigRoute += "'0';\n";
+            dataSigRoute += "\"0000000000000000000000000000000000\";\n";
+          }
+        }
+        portList += "op_in_ready_" + std::to_string(i) + " : out std_logic;\n"
+          + "op_in_valid_" + std::to_string(i) + " : in std_logic;\n"
+          + "op_in_data_" + std::to_string(i) + " : in std_logic_vector(33 downto 0);\n";
+        processBehaviour += phaseConditional
+          + "        if (op_in_valid_" + std::to_string(i) + " = '1' and op_out_ready_0 = '1') then\n"
+          + "            next_phase <= (current_phase + 1) mod num_phases;\n"
+          + "        end if;\n";
+        if (i + 1 == ports.first) {
+          processBehaviour += "    end if;\n";
+        }
+        validSignalRouting += validSigRoute;
+        dataSignalRouting += dataSigRoute;
+        readySignalRouting += "op_in_ready_" + std::to_string(i)
+          + " <= op_out_ready_0 when (current_phase = " + std::to_string(i) + ") else\n"
+          + "'0';\n";
+      }
+      // generate input selector implementation
+      vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
+      std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+      std::string fileContent;
+      std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
+                                                             {"$PORT_LIST", portList},
+                                                             {"$PROCESS_BEHAVIOUR", processBehaviour},
+                                                             {"$VALID_SIGNAL_ROUTING", validSignalRouting},
+                                                             {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
+                                                             {"$READY_SIGNAL_ROUTING", readySignalRouting}};
+      if (operatorRef.is_open()) {
+        while (std::getline(operatorRef, fileContent)) {
+          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+            size_t pos = fileContent.find(word);
+            if (pos != std::string::npos) {
+              fileContent.replace(pos, word.length(),
+                                  replacementWords[word]);
+            }
+          }
+          vhdlOutput << fileContent << std::endl;
+        }
+        operatorRef.close();
+        vhdlOutput.close();
+        // reset strings for next iteration
+        portList.clear();
+        processBehaviour.clear();
+        validSignalRouting.clear();
+        dataSignalRouting.clear();
+        readySignalRouting.clear();
+      } else {
+        VERBOSE_ERROR ("Reference file for " << entityName + " with " + std::to_string(ports.first)
+                       << " inputs does not exist/not found!"); // TODO turn into assert
+      }
     }
-    operatorRef.close();
-    vhdlOutput.close();
   } else {
-    VERBOSE_ERROR ("Reference file for " << entityName + " with " + opInputCount
-                   << " inputs does not exist/not found!"); // TODO turn into assert
+    for (auto &ports : outputCounts) {
+      componentName = entityName + "_" + std::to_string(ports.first);
+      for (int i = 0; i < ports.first; i++) {
+        std::string phaseConditional = "if (current_phase = " + std::to_string(i) + ") then\n";
+        std::string readySignalRoute = "op_in_ready_0 <= op_out_ready_0 when (current_phase = 0) else\n";
+        if (i > 0) {
+          phaseConditional = "elsif (current_phase = " + std::to_string(i) + ") then\n";
+          readySignalRoute = "op_out_ready_" + std::to_string(i) + " when (current_phase = " + std::to_string(i) + ") else\n";
+          if (i + 1 == ports.first) {
+            readySignalRoute += "'0';\n";
+          }
+        }
+        portList += "op_out_ready_" + std::to_string(i) + " : in std_logic;\n"
+          + "op_out_valid_" + std::to_string(i) + " : out std_logic;\n"
+          + "op_out_data_" + std::to_string(i) + " : out std_logic_vector(33 downto 0)";
+        processBehaviour += phaseConditional
+          + "        if (op_in_valid_0 = '1' and op_out_ready_" + std::to_string(i) + " = '1') then\n"
+          + "            next_phase <= (current_phase + 1) mod num_phases;\n"
+          + "        end if;\n";
+        validSignalRouting += "op_out_valid_" + std::to_string(i)
+          + " <= op_in_valid_0 when (current_phase = " + std::to_string(i) + ") else\n"
+          + "'0';\n";
+        dataSignalRouting += "op_out_data_" + std::to_string(i)
+          + " <= op_in_data_0 when (current_phase = " + std::to_string(i) + ") else\n"
+          + "\"0000000000000000000000000000000000\";\n";
+        readySignalRouting += readySignalRoute;
+        if (i + 1 == ports.first) { // last output port
+          portList += "\n";
+          processBehaviour += "end if;\n";
+        } else {
+          portList += ";\n";
+        }
+      }
+      // generate output selector implementation
+      vhdlOutput.open(compDir + componentName + ".vhd"); // instantiate VHDL file
+      std::ifstream operatorRef(referenceDir + entityName + ".vhd");
+      std::string fileContent;
+      std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
+                                                             {"$PORT_LIST", portList},
+                                                             {"$PROCESS_BEHAVIOUR", processBehaviour},
+                                                             {"$VALID_SIGNAL_ROUTING", validSignalRouting},
+                                                             {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
+                                                             {"$READY_SIGNAL_ROUTING", readySignalRouting}};
+      if (operatorRef.is_open()) {
+        while (std::getline(operatorRef, fileContent)) {
+          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
+            size_t pos = fileContent.find(word);
+            if (pos != std::string::npos) {
+              fileContent.replace(pos, word.length(),
+                                  replacementWords[word]);
+            }
+          }
+          vhdlOutput << fileContent << std::endl;
+        }
+        operatorRef.close();
+        vhdlOutput.close();
+        // reset strings for next iteration
+        portList.clear();
+        processBehaviour.clear();
+        validSignalRouting.clear();
+        dataSignalRouting.clear();
+        readySignalRouting.clear();
+      } else {
+        VERBOSE_ERROR ("Reference file for " << entityName + " with " + std::to_string(ports.first)
+                       << " inputs does not exist/not found!"); // TODO turn into assert
+      }
+    }
   }
 }
 
@@ -669,7 +798,9 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
       std::map<int, int> constOutputs;
       for (auto const &op : operatorMap) {
         if (op.first != "INPUT" && op.first != "OUTPUT") {
+          std::map<int, int> inputCounts;
           std::map<int, int> outputCounts;
+          inputCounts = circuit.getNumInputs(op.first);
           outputCounts = circuit.getNumOutputs(op.first);
           if (op.first == "Proj") {
             vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
@@ -680,7 +811,8 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
                      circuit.getFirstComponentByType(op.first).isConst()) {
             constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
           } else if (op.first == "input_selector" || op.first == "output_selector") {
-            vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first))
+            vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first),
+                                                               inputCounts, outputCounts)
                        << std::endl;
           } else {
             vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
@@ -1529,54 +1661,91 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   return outputStream.str();
 }
 
-std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp) {
+std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp,
+                                                             std::map<int, int> inputCounts,
+                                                             std::map<int, int> outputCounts) {
   std::stringstream outputStream;
-  std::string componentName;
-  if (comp.getType() == "input_selector") {
-    componentName = comp.getType();
-  } else if (comp.getType() == "output_selector") {
-    componentName = comp.getType();
-  } else {
-    VERBOSE_ERROR("Invalid component type called for component generator: "
-                  << comp.getType());
-  }
+  std::string componentName = comp.getType();
   int numInputPorts;
   int numOutputPorts;
-  // TODO assert that component is not an INPUT/OUTPUT (not sure if still necessary given earlier checks)
-  numInputPorts = comp.getInputPorts().size();
-  numOutputPorts = comp.getOutputPorts().size();
-  // every component requires clock and reset ports
-  outputStream << "component " << componentName << " is" << std::endl;
-  outputStream << "generic ( num_phases : integer );" << std::endl;
-  outputStream << "port (\n"
-               << "    " << "clk : in std_logic;\n"
-               << "    " << "rst : in std_logic;\n"
-               << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    std::string portName = "    op_in";
-    outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-                 << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-                 << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-                 << "ram_width - 1 downto 0);\n"
-                 << std::endl;
-  }
+  if (componentName == "input_selector") {
+    for (auto &i : inputCounts) {
+      int numInputPorts = i.first;
+      int numOutputPorts = 1; // NOTE we assume that all input selectors have 1 output
+      std::string compNumberedName = componentName + "_" + std::to_string(numInputPorts);
+      // every component requires clock and reset ports
+      outputStream << "component " << compNumberedName << " is" << std::endl;
+      outputStream << "generic ( num_phases : integer );" << std::endl;
+      outputStream << "port (\n"
+                   << "    " << "clk : in std_logic;\n"
+                   << "    " << "rst : in std_logic;\n"
+                   << std::endl;
+      // Specify ready, valid, and data ports for each input port:
+      for (auto i = 0; i < numInputPorts; i++) {
+        std::string portName = "    op_in";
+        outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                     << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                     << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                     << "ram_width - 1 downto 0);\n"
+                     << std::endl;
+      }
 
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    op_out";
-    outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                 << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-    if (i + 1 == numOutputPorts) {
-      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                   << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                   << "ram_width - 1 downto 0);\n" << std::endl;
+      // Specify ready, valid, and data ports for each output port:
+      for (auto i = 0; i < numOutputPorts; i++) {
+        std::string portName = "    op_out";
+        outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                     << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+        if (i + 1 == numOutputPorts) {
+          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+        } else {
+          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0);\n" << std::endl;
+        }
+      }
+      outputStream << "); end component;\n" << std::endl;
     }
+  } else if (componentName == "output_selector") { // generate for output selector
+    for (auto &i : outputCounts) {
+      int numInputPorts = 1; // NOTE we assume that all output selectors have 1 input
+      int numOutputPorts = i.first;
+      std::string compNumberedName = componentName + "_" + std::to_string(numOutputPorts);
+      // every component requires clock and reset ports
+      outputStream << "component " << compNumberedName << " is" << std::endl;
+      outputStream << "generic ( num_phases : integer );" << std::endl;
+      outputStream << "port (\n"
+                   << "    " << "clk : in std_logic;\n"
+                   << "    " << "rst : in std_logic;\n"
+                   << std::endl;
+      // Specify ready, valid, and data ports for each input port:
+      for (auto i = 0; i < numInputPorts; i++) {
+        std::string portName = "    op_in";
+        outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                     << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                     << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                     << "ram_width - 1 downto 0);\n"
+                     << std::endl;
+      }
+
+      // Specify ready, valid, and data ports for each output port:
+      for (auto i = 0; i < numOutputPorts; i++) {
+        std::string portName = "    op_out";
+        outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                     << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+        if (i + 1 == numOutputPorts) {
+          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+        } else {
+          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                       << "ram_width - 1 downto 0);\n" << std::endl;
+        }
+      }
+      outputStream << "); end component;\n" << std::endl;
+    }
+  } else {
+    VERBOSE_ERROR("Invalid component: " << componentName);
   }
 
-  outputStream << "); end component;\n" << std::endl;
   return outputStream.str();
 }
 
@@ -1881,6 +2050,12 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
       } else if (op.second.getType() == "Proj") {
         opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
+      } else if (op.second.getType() == "input_selector") {
+        opName = "input_selector_" + std::to_string((op.second).getInputPorts().size());
+        componentName = opName;
+      } else if (op.second.getType() == "output_selector") {
+        opName = "output_selector_" + std::to_string((op.second).getOutputPorts().size());
+        componentName = opName;
       } else {
         componentName = opName;
       }
@@ -1902,9 +2077,15 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
                      << "    " << "ram_depth => " << std::to_string(ramDepthVal)
                      << "\n)\n" << std::endl;
       }
-      if (opName == "input_selector" || opName == "output_selector") {
+      if (op.second.getType() == "input_selector") {
         outputStream << "generic map (\n"
-                     << "    " << "num_phases => 2"
+                     << "    " << "num_phases => "
+                     << std::to_string((op.second).getInputPorts().size())
+                     << "\n)\n" << std::endl;
+      } else if (op.second.getType() == "output_selector") {
+        outputStream << "generic map (\n"
+                     << "    " << "num_phases => "
+                     << std::to_string((op.second).getOutputPorts().size())
                      << "\n)\n" << std::endl;
       }
       outputStream << "port map (\n"
@@ -2012,7 +2193,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
                      << "    " << sigPrefix << "out_valid_" << std::to_string(outPortCount)
                      << " => " << sendSigs[VALID] << ",\n"
                      << "    " << sigPrefix << "out_data_" << std::to_string(outPortCount)
-                     << " => " << sendSigs[DATA] << lineEnder
+                     << " => " << sendSigs[DATA] << lineEnder << "\n"
                      << std::endl;
         outPortCount++;
         iteration++;

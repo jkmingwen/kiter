@@ -71,6 +71,18 @@ std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType
 }
 
 // return output counts for each occurance of the given operator
+std::map<int, int> VHDLCircuit::getNumInputs(const std::string &opType) const {
+  std::map<int, int> inputCounts; // number of outputs, and their occurances
+  for (auto &comp : this->componentMap) {
+    if (comp.second.getType() == opType) {
+      inputCounts[(comp.second.getInputPorts()).size()]++;
+    }
+  }
+
+  return inputCounts;
+}
+
+// return output counts for each occurance of the given operator
 std::map<int, int> VHDLCircuit::getNumOutputs(const std::string &opType) const {
   std::map<int, int> outputCounts; // number of outputs, and their occurances
   // std::vector<int> outputCounts;
