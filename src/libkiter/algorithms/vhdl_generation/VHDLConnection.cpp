@@ -18,6 +18,8 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   dataTypeWidth = 34; // assume data type is float (using FloPoCo float representation)
   srcPort = dataflow->getEdgeInputPortName(e);
   dstPort = dataflow->getEdgeOutputPortName(e);
+  inputVector = dataflow->getEdgeInVector(e);
+  outputVector = dataflow->getEdgeOutVector(e);
 }
 
 Edge VHDLConnection::getEdge()  const{
@@ -52,6 +54,14 @@ TOKEN_UNIT VHDLConnection::getInitialTokenCount()  const{
 
 int VHDLConnection::getTypeWidth()  const{
   return this->dataTypeWidth;
+}
+
+std::vector<TOKEN_UNIT> VHDLConnection::getInputVector() const {
+  return this->inputVector;
+}
+
+std::vector<TOKEN_UNIT> VHDLConnection::getOutputVector() const {
+  return this->outputVector;
 }
 
 void VHDLConnection::setName(std::string newName) {

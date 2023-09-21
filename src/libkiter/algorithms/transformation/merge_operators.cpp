@@ -73,9 +73,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     vInDegree.push_back(dataflow->getVertexInDegree(v));
     vOutDegree.push_back(dataflow->getVertexOutDegree(v));
   }
-  for (auto i : vInDegree) {
-    VERBOSE_INFO(i);
-  }
   VERBOSE_ASSERT(std::equal(vInDegree.begin() + 1, vInDegree.end(), vInDegree.begin()),
                  "Every actor to be merged needs to have the same number of inputs.");
   VERBOSE_ASSERT(std::equal(vOutDegree.begin() + 1, vOutDegree.end(), vOutDegree.begin()),
@@ -113,7 +110,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
           }
         }}
       {ForOutputEdges(dataflow, dataflow->getVertexByName(actorName), outEdge) {
-          std::string edgeName = dataflow->getEdgeName(outEdge);
           Vertex outputActor = dataflow->getEdgeTarget(outEdge);
           // NOTE assuming here that there's only ever 1 output edge per vertice
           outEdgeNames.push_back(dataflow->getEdgeName(outEdge));

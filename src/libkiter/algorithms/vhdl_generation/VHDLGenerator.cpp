@@ -2160,6 +2160,24 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
         }
         assert(op.second.getArgOrder().size() == inputSignals.size()); // make sure we retrieved the right number of inputSignal names
       }
+      if (op.second.getType() == "output_selector") { // NOTE workaround to retain ordering of ports for output selector
+        // we don't clear the outputSignal vector as we're just shuffling around the names
+        for (auto &i : op.second.getOutputEdges()) {
+          for (auto &conn : circuit.getConnectionMap()) { // find VHDL connection corresponding to edge
+            if (conn.second.getName() == i) {
+              for (int exec = 0; exec < conn.second.getInputVector().size(); exec++) {
+                if (conn.second.getInputVector().at(exec) == 1) { // the position of the exec rate of 1 determines its order in the output signal vector
+                  if (conn.second.getInitialTokenCount() || !isBufferless) {
+                    outputSignals.at(exec) = conn.second.getSrcPort();
+                  } else {
+                    outputSignals.at(exec) = i;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
       for (auto &inPort : inputSignals) {
         std::vector<std::string> receiveSigs(3);
         std::string sigPrefix = "op_";

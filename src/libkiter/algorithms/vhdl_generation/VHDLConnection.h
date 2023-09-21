@@ -30,6 +30,8 @@ class VHDLConnection {
   TOKEN_UNIT getBufferSize() const;
   TOKEN_UNIT getInitialTokenCount() const;
   int getTypeWidth() const;
+  std::vector<TOKEN_UNIT> getInputVector() const;
+  std::vector<TOKEN_UNIT> getOutputVector() const;
   void setName(std::string newName);
   void setId(ARRAY_INDEX newId);
   void setBufferSize(TOKEN_UNIT size);
@@ -46,5 +48,7 @@ class VHDLConnection {
   int dataTypeWidth;
   std::string srcPort;
   std::string dstPort;
+  std::vector<TOKEN_UNIT> inputVector;
+  std::vector<TOKEN_UNIT> outputVector;
 };
 #endif /* VHDL_CONNECTION_H_ */
