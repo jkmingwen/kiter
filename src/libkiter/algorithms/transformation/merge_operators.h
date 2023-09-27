@@ -47,8 +47,18 @@ namespace algorithms {
                      std::string actorName, std::vector<TOKEN_UNIT> execRates);
   std::string replaceActorName(std::string originalName, const std::string& toReplace,
                                const std::string& replacement);
-}
 
+  // Merge strategies
+  std::vector<std::vector<ARRAY_INDEX>> greedyMerge(models::Dataflow* const dataflow);
+  void smartMerge(models::Dataflow* const dataflow);
+
+  std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
+                                                  "fp_sqrt", "fp_diff", "fp_pow",
+                                                  "int_add", "int_diff", "int_prod",
+                                                  "float2int", "int2float", "fp_floor",
+                                                  "int_max", "int_min", "fp_max",
+                                                  "fp_min", "fp_abs" };
+}
 ADD_TRANSFORMATION(MergeOperators,
                    transformation_t({ "MergeOperators" , "Identify operators (via a given merging strategy) and merge into a single occurance.", algorithms::transformation::merge_operators}));
 

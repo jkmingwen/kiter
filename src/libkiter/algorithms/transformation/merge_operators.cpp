@@ -280,16 +280,65 @@ std::string algorithms::replaceActorName(std::string originalName, const std::st
     return originalName;
 }
 
-// helper function for comparing ordering of channels (via channel name rather than ID)
-// int algorithms::getChannelNumber(std::string channelName) {
-//   std::string prefix = "channel_";
+std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* const dataflow) {
+  std::vector<std::vector<ARRAY_INDEX>> matchingOperators;
+  std::vector<ARRAY_INDEX> tmpMatches;
+  std::map<std::string, int> opCounts;
 
-//   VERBOSE_DEBUG_ASSERT(channelName.find("channel_") != std::string::npos,
-//                        "Cannot identify channel number if channel name doesn't start with specified prefix");
-//   channelName.replace(channelName.find(prefix), prefix.length(), ""); // remove prefix
-//   channelName.erase(channelName.find("_"));
-//   VERBOSE_DEBUG_ASSERT(channelName.find_first_not_of("0123456789") == std::string::npos,
-//                        "Channel number extracted is not a number");
+  // track counts of each type of operator in dataflow graph
+  {ForEachVertex(dataflow, v) {
+      VHDLComponent op(dataflow, v);
+      if (std::find(mergeableOperators.begin(),
+                    mergeableOperators.end(),
+                    op.getType()) != mergeableOperators.end()) {
+        opCounts[op.getType()]++;
+      }
+    }}
+  // each vertex type with multiple occurances gets stored in a vector
+  for (auto &types : opCounts) {
+    if (types.second > 1) {
+      {ForEachVertex(dataflow, v) {
+          VHDLComponent op(dataflow, v);
+          if (op.getType() == types.first) {
+            tmpMatches.push_back(dataflow->getVertexId(v));
+          }
+        }}
+      matchingOperators.push_back(tmpMatches);
+      tmpMatches.clear();
+    }
+  }
 
-//   return std::stoi(channelName);
-// }
+  return matchingOperators;
+}
+
+void algorithms::smartMerge(models::Dataflow* const dataflow) {
+  abstractDepGraph absDepGraph(dataflow); // initialise abstract dependency graph
+  std::map<ARRAY_INDEX, Actor> actorMap;
+  {ForEachVertex(dataflow, v) {
+      VERBOSE_INFO("Actor ID: " << dataflow->getVertexId(v));
+      actorMap[dataflow->getVertexId(v)] = Actor(dataflow, v);
+      VERBOSE_INFO("\n");
+    }}
+  VERBOSE_INFO("Actor map size: " << actorMap.size());
+  VERBOSE_INFO("Initialising states:");
+  State prevState(dataflow, actorMap);
+  State currState(dataflow, actorMap);
+  VERBOSE_INFO("Set current state time to 0:");
+  currState.setTimeElapsed(0);
+  // VERBOSE_INFO("Actor at 1: " << actorMap[1].printStatus(dataflow));
+  // actorMap[1].computeCausalDeps(dataflow, prevState, absDepGraph);
+  VERBOSE_INFO("Actor at 4: " << actorMap[4].printStatus(dataflow));
+  actorMap[4].computeCausalDeps(dataflow, prevState, absDepGraph);
+  {ForEachVertex(dataflow, v) {
+      // while (actorMap[dataflow->getVertexId(v)].isReadyForExec(currState)) {
+      //   VERBOSE_DEBUG("Actor " << dataflow->getVertexId(t)
+      //                 << " ready to fire; looking for causal dependencies" << std::endl);
+      actorMap[1].computeCausalDeps(dataflow, prevState, absDepGraph);
+      VERBOSE_INFO("Compute causal deps for Actor ID: " << dataflow->getVertexId(v));
+      actorMap.at(dataflow->getVertexId(v)).computeCausalDeps(dataflow, prevState, absDepGraph);
+      //   actorMap[dataflow->getVertexId(v)].execStart(dataflow, currState);
+      //   currState.updateState(dataflow, actorMap);
+      // }
+    }}
+  return;
+}
