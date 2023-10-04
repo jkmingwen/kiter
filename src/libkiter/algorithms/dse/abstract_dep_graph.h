@@ -33,6 +33,9 @@ class abstractDepGraph {
   void dfsTranspose(ARRAY_INDEX startId,
                     std::map<ARRAY_INDEX, bool> &visitedActors,
                     std::vector<ARRAY_INDEX> &sccActors);
+  void computeExecTime(models::Dataflow* const dataflow,
+                       ARRAY_INDEX vId,
+                       std::map<ARRAY_INDEX, int> &execTimes);
   std::string printStatus();
  private:
   std::map<ARRAY_INDEX, std::map<ARRAY_INDEX, bool>> abstractDependencyGraph;

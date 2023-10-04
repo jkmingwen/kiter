@@ -208,6 +208,43 @@ void abstractDepGraph::computeCycles(models::Dataflow* const dataflow,
   visited[startActor] = false;
 }
 
+// Computes the execution times of each execution in the abstract dependency graph
+/* Performs a breadth-first search, incrementing the time by adding the given actor's
+   execution time to its parent's. Note that this function has been designed to be
+   called on the root nodes in the abstract dependency graph. */
+void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
+                                       ARRAY_INDEX vId,
+                                       std::map<ARRAY_INDEX, int> &execTimes) {
+  std::map<ARRAY_INDEX, bool> visited;
+  std::list<ARRAY_INDEX> visitQueue;
+  {ForEachVertex(dataflow, v) { // initialise visit queue to avoid visiting same actors twice
+      visited[dataflow->getVertexId(v)] = false;
+    }}
+  visited[vId] = true;
+  visitQueue.push_back(vId);
+  execTimes[vId] = 0;
+
+  while (!visitQueue.empty()) {
+    vId = visitQueue.front();
+    visitQueue.pop_front();
+
+    for (auto &adj : this->abstractDependencyGraph[vId]) {
+      if (adj.second) { // this vertex is adjacent to vId
+        if (!visited[adj.first]) {
+          visited[adj.first] = true;
+          visitQueue.push_back(adj.first);
+          int opLifespan = 1; // TODO set exec time to that of operator
+          if (execTimes[adj.first] <= execTimes[vId] + opLifespan) { // always set to any higher existing computed exec time
+            execTimes[adj.first] = execTimes[vId] + opLifespan;
+          }
+        }
+      }
+    }
+  }
+
+  return;
+}
+
 std::string abstractDepGraph::printStatus() {
   std::stringstream outputStream;
 

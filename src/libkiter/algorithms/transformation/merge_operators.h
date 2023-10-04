@@ -15,7 +15,7 @@
 #include <commons/commons.h>
 #include <models/Dataflow.h>
 #include <commons/KiterRegistry.h>
-
+#include "../dse/abstract_dep_graph.h"
 
 
 namespace models {
@@ -50,7 +50,9 @@ namespace algorithms {
 
   // Merge strategies
   std::vector<std::vector<ARRAY_INDEX>> greedyMerge(models::Dataflow* const dataflow);
-  void smartMerge(models::Dataflow* const dataflow);
+  std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow);
+  void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
+                            abstractDepGraph &g);
 
   std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                   "fp_sqrt", "fp_diff", "fp_pow",
@@ -58,6 +60,7 @@ namespace algorithms {
                                                   "float2int", "int2float", "fp_floor",
                                                   "int_max", "int_min", "fp_max",
                                                   "fp_min", "fp_abs" };
+  std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 }
 ADD_TRANSFORMATION(MergeOperators,
                    transformation_t({ "MergeOperators" , "Identify operators (via a given merging strategy) and merge into a single occurance.", algorithms::transformation::merge_operators}));
