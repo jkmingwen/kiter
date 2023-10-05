@@ -27,6 +27,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   std::string dirName = "./"; // use current directory as default
   std::string outputName = dataflow->getGraphName() + "_merged" + ".xml"; // use graph name as default
   std::string mergeStrategy = "greedy";
+  int operatorFreq = 125; // default target operator frequency is 125MHz
 
   if (params.find("OUTPUT_DIR") != params.end()) {
     outputSpecified = true;
@@ -37,6 +38,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     outputSpecified = true;
     outputName = params["OUTPUT_NAME"] + ".xml";
   }
+  outputName = dirName + outputName; // set output file path
   if (params.find("MERGE_STRATEGY") != params.end()) {
     if (std::find(mergeStrategies.begin(),
                   mergeStrategies.end(),
@@ -52,7 +54,13 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   if (!mergeStrategySpecified) {
     VERBOSE_INFO("No merge strategy specified, defaulting to greedy merge.");
   }
-  outputName = dirName + outputName; // set output file path
+  // check if operator frequencies have been specified
+  if (params.find("FREQUENCY") != params.end()) {
+    VERBOSE_INFO("Operator frequency set to " << params["FREQUENCY"]);
+    operatorFreq = std::stoi(params["FREQUENCY"]);
+  } else {
+    VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
+  }
 
   VERBOSE_INFO("Beginning to merge operators...");
   int isOffset = 0;
@@ -62,7 +70,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   if (mergeStrategy == "greedy") {
     mergeVectorIds = greedyMerge(dataflow);
   } else if (mergeStrategy == "smart") {
-    mergeVectorIds = smartMerge(dataflow);
+    mergeVectorIds = smartMerge(dataflow, operatorFreq);
   }
   for (auto &ids : mergeVectorIds) { // repeatedly call generateMergedGraph for each group of actors
     std::vector<Vertex> mergeVector;
@@ -332,7 +340,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
   return matchingOperators;
 }
 
-std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* const dataflow) {
+std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* const dataflow, int operatorFreq) {
   std::vector<std::vector<ARRAY_INDEX>> matchingOperators;
   std::vector<std::string> typesToMerge;
   std::map<std::string, std::vector<ARRAY_INDEX>> mergeableIds;
@@ -342,16 +350,33 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   std::map<int, std::vector<ARRAY_INDEX>> executionTime; // execution time, vector of vertex IDs
   std::vector<std::string> outputActorNames;
   std::map<std::string, int> opCounts;
+  VHDLCircuit circuit;
+  circuit.setOperatorFreq(operatorFreq);
 
-  // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   {ForEachVertex(dataflow, v) {
       VHDLComponent op(dataflow, v);
+      circuit.addComponent(op);
+      // check for occurances of mergeable operator types
       if (std::find(mergeableOperators.begin(),
                     mergeableOperators.end(),
                     op.getType()) != mergeableOperators.end()) {
         opCounts[op.getType()]++;
       }
+      // update execution time in dataflow according to component operator type
+      TIME_UNIT opLifespan = circuit.getOperatorLifespan(op.getType());
+      VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
+      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
+        std::vector<TIME_UNIT> opLifespans{1};
+        if (op.getType() == "input_selector" || op.getType() == "output_selector") {
+          opLifespans = dataflow->getVertexPhaseDuration(v); // special case for input and output selectors, which are CSDF components
+        }
+        dataflow->setVertexDuration(v, opLifespans);
+      } else {
+        std::vector<TIME_UNIT> opLifespans{opLifespan};
+        dataflow->setVertexDuration(v, opLifespans);
+      }
     }}
+  // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   for (auto &types : opCounts) {
     if (types.second > 1) {
       typesToMerge.push_back(types.first);
