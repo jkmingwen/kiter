@@ -73,10 +73,13 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     mergeVectorIds = smartMerge(dataflow, operatorFreq);
   }
   for (auto &ids : mergeVectorIds) { // repeatedly call generateMergedGraph for each group of actors
+    VERBOSE_DEBUG("Actors to merge:");
     std::vector<Vertex> mergeVector;
     // storing IDs and retrieving vertices just before merging is the only way I've been able to get this to work
     for (auto &id : ids) {
       mergeVector.push_back(dataflow->getVertexById(id));
+      VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
+                   << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
     }
     generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
   }
@@ -153,7 +156,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   }
 
   dataflow->reset_computation(); // necessary to edit dataflow graph
-  VERBOSE_INFO("Adding merged operator");
   // Number of input/output selectors added should be equal to the input/output counts of the merged operators
   size_t inDeg = dataflow->getVertexInDegree(vertices.front());
   size_t outDeg = dataflow->getVertexOutDegree(vertices.front());
@@ -420,7 +422,8 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
       opMerged[type] = false;
     }
     for (auto &id : e.second) {
-      VERBOSE_DEBUG("\t" << id);
+      VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
+                   << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
       VHDLComponent op(dataflow, dataflow->getVertexById(id));
       if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) != typesToMerge.end() &&
           !opMerged[op.getType()]) {
