@@ -206,9 +206,10 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
 
     // new edge from input selector to merged actor
     std::string edgeType = (inDataTypes[i]).begin()->first; // our current VHDL generation implementation uses the first input edge type to determine arithmetic type
-    // use edge count to avoid edge name conflicts
-    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgesCount() + 1) + "_" + edgeType;
-    Edge outEdge = dataflow->addEdge(new_is, mergedActor, outEdgeName);
+    // use edge ID to avoid edge name conflicts
+    Edge outEdge = dataflow->addEdge(new_is, mergedActor);
+    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(outEdge)) + "_" + edgeType;
+    dataflow->setEdgeName(outEdge, outEdgeName);
     dataflow->setEdgeInPhases(outEdge, execRates);
     dataflow->setEdgeOutPhases(outEdge, {1});
     dataflow->setEdgeInputPortName(outEdge, "in_" + outEdgeName);
@@ -233,8 +234,9 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     dataflow->setVertexType(new_os, "output_selector");
     // connect merged actors to output selector
     std::string edgeType = (outDataTypes[i]).begin()->first;
-    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgesCount() + 1) + "_" + edgeType;
-    Edge mergedToOS = dataflow->addEdge(mergedActor, new_os, outEdgeName);
+    Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
+    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS)) + "_" + edgeType;
+    dataflow->setEdgeName(mergedToOS, outEdgeName);
     dataflow->setEdgeInPhases(mergedToOS, {1});
     dataflow->setEdgeOutPhases(mergedToOS, execRates);
     dataflow->setEdgeInputPortName(mergedToOS, "in_" + outEdgeName);
