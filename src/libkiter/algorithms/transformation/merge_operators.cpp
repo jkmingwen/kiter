@@ -434,7 +434,9 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   }
 
   for (auto &ids : mergeableIds) {
-    matchingOperators.push_back(ids.second);
+    if (ids.second.size() > 1) { // only add to merge list if there's more than one operator
+      matchingOperators.push_back(ids.second);
+    }
   }
 
   return matchingOperators;
