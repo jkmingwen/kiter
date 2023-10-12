@@ -886,8 +886,6 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
     }
 
     // Define and generate signal names
-    int inCount = 0;
-    int outCount = 0;
     bool isTopInput;
     bool isTopOutput;
     bool hasInputDelay;
@@ -895,53 +893,31 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
     for (auto &connection : circuit.getConnectionMap()) {
       int inputId = -1;
       int outputId = -1;
-      // TODO statically set name of connection (port/name) then just check accordingly
-      if (isBufferless) {
-        if (connection.second.getInitialTokenCount()) { // account for different signal names when channel has initial token count
-          for (auto &sig : inSignalNames) {
-            if (connection.second.getSrcPort() == sig.second) {
-              isTopInput = true;
-              inputId = sig.first;
-              break;
-            }
-          }
-          for (auto &sig : outSignalNames) {
-            if (connection.second.getDstPort() == sig.second) {
-              isTopOutput = true;
-              outputId = sig.first;
-              break;
-            }
-          }
-        } else {
-          for (auto &sig : inSignalNames) {
-            if (connection.second.getName() == sig.second) {
-              isTopInput = true;
-              inputId = sig.first;
-              break;
-            }
-          }
-          for (auto &sig : outSignalNames) {
-            if (connection.second.getName() == sig.second) {
-              isTopOutput = true;
-              outputId = sig.first;
-              break;
-            }
-          }
+      std::string inActorSigName;
+      std::string outActorSigName;
+      // Identify when the connection is for a (top-level) input/output actor
+      if (!isBufferless || connection.second.getInitialTokenCount()) {
+        /* we use port names for signals when there's going to be
+           a FIFO buffer placed along it - this happens when it is
+           a buffered design or when the channel has initial tokens */
+        inActorSigName = connection.second.getSrcPort();
+        outActorSigName = connection.second.getDstPort();
+      } else { // no FIFO buffer
+        inActorSigName = connection.second.getName();
+        outActorSigName = connection.second.getName();
+      }
+      for (auto &sig : inSignalNames) {
+        if (inActorSigName == sig.second) {
+          isTopInput = true;
+          inputId = sig.first;
+          break;
         }
-      } else {
-        for (auto &sig : inSignalNames) {
-          if (connection.second.getSrcPort() == sig.second) {
-            isTopInput = true;
-            inputId = sig.first;
-            break;
-          }
-        }
-        for (auto &sig : outSignalNames) {
-          if (connection.second.getDstPort() == sig.second) {
-            isTopOutput = true;
-            outputId = sig.first;
-            break;
-          }
+      }
+      for (auto &sig : outSignalNames) {
+        if (outActorSigName == sig.second) {
+          isTopOutput = true;
+          outputId = sig.first;
+          break;
         }
       }
 
