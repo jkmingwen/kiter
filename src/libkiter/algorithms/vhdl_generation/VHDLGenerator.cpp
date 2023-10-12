@@ -1000,37 +1000,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
       // only generate signal names for non-input/output ports
       if (!noOperators) {
         if (isNotTopInOut) {
-          if (isBufferless) {
-            if (connection.second.getInitialTokenCount()) { // if there are initial tokens, separate send/receive signals required due to buffers between components
-              std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
-              std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
-              dataSignals.push_back(sendSignals[DATA]);
-              dataSignals.push_back(receiveSignals[DATA]);
-              validReadySignals.push_back(sendSignals[VALID]);
-              validReadySignals.push_back(receiveSignals[VALID]);
-              validReadySignals.push_back(sendSignals[READY]);
-              validReadySignals.push_back(receiveSignals[READY]);
-            } else {
-              std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
-              dataSignals.push_back(signalNames[DATA]);
-              validReadySignals.push_back(signalNames[VALID]);
-              validReadySignals.push_back(signalNames[READY]);
-            }
-          } else {
-            // separate send/receive signals required due to buffers between components
-            std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
-            std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
-            dataSignals.push_back(sendSignals[DATA]);
-            dataSignals.push_back(receiveSignals[DATA]);
-            validReadySignals.push_back(sendSignals[VALID]);
-            validReadySignals.push_back(receiveSignals[VALID]);
-            validReadySignals.push_back(sendSignals[READY]);
-            validReadySignals.push_back(receiveSignals[READY]);
-          }
-        }
-      } else {
-        if (isBufferless) { // TODO I suspect this is redundant --- check to see if this is the case
-          if (connection.second.getInitialTokenCount()) { // if there are initial tokens, separate send/receive signals required due to buffers between components
+          if (!isBufferless || connection.second.getInitialTokenCount()) { // separate send/receive signals required due to buffers between components
             std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
             std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
             dataSignals.push_back(sendSignals[DATA]);
@@ -1045,8 +1015,9 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
             validReadySignals.push_back(signalNames[VALID]);
             validReadySignals.push_back(signalNames[READY]);
           }
-        } else {
-          // separate send/receive signals required due to buffers between components
+        }
+      } else {
+        if (!isBufferless || connection.second.getInitialTokenCount()) { // separate send/receive signals required due to buffers between components
           std::vector<std::string> sendSignals(generateSendSigNames(connection.second.getSrcPort(), circuit));
           std::vector<std::string> receiveSignals(generateReceiveSigNames(connection.second.getDstPort(), circuit));
           dataSignals.push_back(sendSignals[DATA]);
@@ -1055,6 +1026,11 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
           validReadySignals.push_back(receiveSignals[VALID]);
           validReadySignals.push_back(sendSignals[READY]);
           validReadySignals.push_back(receiveSignals[READY]);
+        } else {
+          std::vector<std::string> signalNames(generateSendSigNames(connection.second.getName(), circuit));
+          dataSignals.push_back(signalNames[DATA]);
+          validReadySignals.push_back(signalNames[VALID]);
+          validReadySignals.push_back(signalNames[READY]);
         }
       }
     }
