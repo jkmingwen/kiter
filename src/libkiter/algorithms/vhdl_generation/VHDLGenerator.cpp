@@ -878,7 +878,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
                          "Input component (" << op.second.getName() << ") should only have 1 output port");
           inSignalNames[op.second.getIOId()] = op.second.getOutputPorts().front();
         } else if (op.second.getType() == "OUTPUT") {
-          VERBOSE_ASSERT(op.second.getOutputPorts().size() == 1,
+          VERBOSE_ASSERT(op.second.getInputPorts().size() == 1,
                          "Output component (" << op.second.getName() << ") should only have 1 input port");
           outSignalNames[op.second.getIOId()] = op.second.getInputPorts().front();
         }
