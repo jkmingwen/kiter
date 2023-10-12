@@ -836,9 +836,12 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
         (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) || !isBufferless) { // we will always have FIFO buffers if the bufferless flag is false
       vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
     }
-    // Track top-level input and output signals
-    std::vector<std::string> inSignalNames;
-    std::vector<std::string> outSignalNames;
+    /* Track top-level input and output signals
+       These are mapped such that
+       input/output ID -> output/input signal name */
+    // we expect each input/output component to only have 1 output/input signal respectively
+    std::map<int, std::string> inSignalNames;
+    std::map<int, std::string> outSignalNames;
     if (isBufferless) { // no FIFO buffers between components
       // NOTE Using a really roundabout method here to look for buffers with initial token counts; it's probably possible to reduce the number of nested loops
       for (auto &op : circuit.getComponentMap()) {
@@ -847,9 +850,9 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
             for (auto &conn : circuit.getConnectionMap()) {
               if (conn.second.getName() == i) { // check if given edge has initial tokens
                 if (conn.second.getInitialTokenCount()) {
-                  inSignalNames.push_back(conn.second.getSrcPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
+                  inSignalNames[op.second.getIOId()] = conn.second.getSrcPort(); // use port names for signals if there are initial tokens as FIFO buffer will be used
                 } else {
-                  inSignalNames.push_back(i); // if not, edge names will be used as signal names
+                  inSignalNames[op.second.getIOId()] = i; // if not, edge names will be used as signal names
                 }
               }
             }
@@ -859,9 +862,9 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
             for (auto &conn : circuit.getConnectionMap()) {
               if (conn.second.getName() == i) { // check if given edge has initial tokens
                 if (conn.second.getInitialTokenCount()) {
-                  outSignalNames.push_back(conn.second.getDstPort()); // use port names for signals if there are initial tokens as FIFO buffer will be used
+                  outSignalNames[op.second.getIOId()] = conn.second.getDstPort(); // use port names for signals if there are initial tokens as FIFO buffer will be used
                 } else {
-                  outSignalNames.push_back(i); // if not, edge names will be used as signal names
+                  outSignalNames[op.second.getIOId()] = i; // if not, edge names will be used as signal names
                 }
               }
             }
@@ -871,13 +874,13 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
     } else { // use port names to generate signals to/from FIFO buffers
       for (auto &op : circuit.getComponentMap()) {
         if (op.second.getType() == "INPUT") {
-          for (auto &i : op.second.getOutputPorts()) {
-            inSignalNames.push_back(i);
-          }
+          VERBOSE_ASSERT(op.second.getOutputPorts().size() == 1,
+                         "Input component (" << op.second.getName() << ") should only have 1 output port");
+          inSignalNames[op.second.getIOId()] = op.second.getOutputPorts().front();
         } else if (op.second.getType() == "OUTPUT") {
-          for (auto &i : op.second.getInputPorts()) {
-            outSignalNames.push_back(i);
-          }
+          VERBOSE_ASSERT(op.second.getOutputPorts().size() == 1,
+                         "Output component (" << op.second.getName() << ") should only have 1 input port");
+          outSignalNames[op.second.getIOId()] = op.second.getInputPorts().front();
         }
       }
     }
@@ -890,30 +893,64 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
     bool hasInputDelay;
     bool hasOutputDelay;
     for (auto &connection : circuit.getConnectionMap()) {
+      int inputId = -1;
+      int outputId = -1;
+      // TODO statically set name of connection (port/name) then just check accordingly
       if (isBufferless) {
         if (connection.second.getInitialTokenCount()) { // account for different signal names when channel has initial token count
-          isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
-                                 connection.second.getSrcPort()) != inSignalNames.end();
-          isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
-                                  connection.second.getDstPort()) != outSignalNames.end();
+          for (auto &sig : inSignalNames) {
+            if (connection.second.getSrcPort() == sig.second) {
+              isTopInput = true;
+              inputId = sig.first;
+              break;
+            }
+          }
+          for (auto &sig : outSignalNames) {
+            if (connection.second.getDstPort() == sig.second) {
+              isTopOutput = true;
+              outputId = sig.first;
+              break;
+            }
+          }
         } else {
-          isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
-                                 connection.second.getName()) != inSignalNames.end();
-          isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
-                                  connection.second.getName()) != outSignalNames.end();
+          for (auto &sig : inSignalNames) {
+            if (connection.second.getName() == sig.second) {
+              isTopInput = true;
+              inputId = sig.first;
+              break;
+            }
+          }
+          for (auto &sig : outSignalNames) {
+            if (connection.second.getName() == sig.second) {
+              isTopOutput = true;
+              outputId = sig.first;
+              break;
+            }
+          }
         }
       } else {
-        isTopInput = std::find(inSignalNames.begin(), inSignalNames.end(),
-                               connection.second.getSrcPort()) != inSignalNames.end();
-        isTopOutput = std::find(outSignalNames.begin(), outSignalNames.end(),
-                                connection.second.getDstPort()) != outSignalNames.end();
+        for (auto &sig : inSignalNames) {
+          if (connection.second.getSrcPort() == sig.second) {
+            isTopInput = true;
+            inputId = sig.first;
+            break;
+          }
+        }
+        for (auto &sig : outSignalNames) {
+          if (connection.second.getDstPort() == sig.second) {
+            isTopOutput = true;
+            outputId = sig.first;
+            break;
+          }
+        }
       }
 
       if (isTopInput) {
+        VERBOSE_ASSERT (inputId > -1, "Top input connection found but ID not valid (ID: " << inputId << ")");
         std::vector<std::string> signalNames(3);
-        signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inCount);
-        signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inCount);
-        signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inCount);
+        signalNames[VALID] = circuit.getName() + "_in_valid_" + std::to_string(inputId);
+        signalNames[READY] = circuit.getName() + "_in_ready_" + std::to_string(inputId);
+        signalNames[DATA] = circuit.getName() + "_in_data_" + std::to_string(inputId);
         if (isBufferless && !noOperators) {
           if (connection.second.getInitialTokenCount()) {
             hasInputDelay = true;
@@ -931,13 +968,14 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
             circuit.addInputPort(connection.second.getSrcPort(), signalNames);
           }
         }
-        inCount++;
+        isTopInput = false; // reset for next iteration
       }
       if (isTopOutput) {
+        VERBOSE_ASSERT (outputId > -1, "Top output connection found but ID not valid (ID: " << inputId << ")");
         std::vector<std::string> signalNames(3);
-        signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outCount);
-        signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outCount);
-        signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outCount);
+        signalNames[VALID] = circuit.getName() + "_out_valid_" + std::to_string(outputId);
+        signalNames[READY] = circuit.getName() + "_out_ready_" + std::to_string(outputId);
+        signalNames[DATA] = circuit.getName() + "_out_data_" + std::to_string(outputId);
         if (isBufferless && !noOperators) {
           if (connection.second.getInitialTokenCount()) {
             hasOutputDelay = true;
@@ -956,7 +994,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
             circuit.addOutputPort(connection.second.getDstPort(), signalNames);
           }
         }
-        outCount++;
+        isTopOutput = false; // reset for next iteration
       }
     }
 

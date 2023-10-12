@@ -25,6 +25,7 @@ class VHDLComponent {
   Vertex getActor()const;
   std::string getName()const;
   ARRAY_INDEX getId()const;
+  int getIOId()const;
   const std::vector<std::string>& getInputPorts()const;
   const std::vector<std::string>& getOutputPorts()const;
   const std::vector<std::string>& getInputEdges()const;
@@ -44,6 +45,7 @@ class VHDLComponent {
   void setLifespan(int lifespan);
   void setImplementationName(std::string newName);
   void convConstIntToFloat();
+  void setIOId(int id);
   std::string printStatus() const ;
 
  private:
@@ -73,5 +75,6 @@ class VHDLComponent {
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp
+  int ioId; // if it is of type input/output it will be assigned an ID according to their name (this is so we can assign 0->L, 1-R, etc.)
 };
 #endif /* VHDL_COMPONENT_H_ */

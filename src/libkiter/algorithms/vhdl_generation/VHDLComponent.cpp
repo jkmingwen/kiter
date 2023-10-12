@@ -49,6 +49,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     baseCompType = compType;
   } else {
     baseCompType = compType.substr(0, compType.find("_")); // NOTE assuming a naming convention of "type_id"
+    if (baseCompType == "INPUT" || baseCompType == "OUTPUT") {
+      // store IDs of input/output actors for signal matching in generateVHDLArchitecture
+      ioId = std::stoi(compType.substr(compType.find("_") + 1, std::string::npos));
+    }
   }
   lifespan = 0;
   implementationName = "default";
@@ -208,6 +212,12 @@ ARRAY_INDEX VHDLComponent::getId() const {
   return this->id;
 }
 
+int VHDLComponent::getIOId() const {
+  VERBOSE_ASSERT((this->getType() == "INPUT" || this->getType() == "OUTPUT"),
+                 "Trying to get I/O ID for a component that hasn't been declared as type input/output.");
+  return this->ioId;
+}
+
 int VHDLComponent::getLifespan() const {
   return this->lifespan;
 }
@@ -281,6 +291,12 @@ void VHDLComponent::setLifespan(int lifespan) {
 
 void VHDLComponent::setImplementationName(std::string newName) {
   this->implementationName = newName;
+}
+
+void VHDLComponent::setIOId(int id) {
+  VERBOSE_ASSERT((this->getType() == "INPUT" || this->getType() == "OUTPUT"),
+                 "Trying to set I/O ID for a component that hasn't been declared as type input/output.");
+  this->ioId = id;
 }
 
 std::string VHDLComponent::printStatus() const  {
