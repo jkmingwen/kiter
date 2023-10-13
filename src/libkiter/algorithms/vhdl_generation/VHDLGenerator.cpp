@@ -2231,11 +2231,13 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
           receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
         }
         // ram width/depth, reset, and clock mappings
+        TOKEN_UNIT bufferPadding = 0;
+        if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
         outputStream << "fifo_" + std::to_string(bufferCount)
                      << " : " << bCompName << "\n"
                      <<"generic map (\n"
                      << "    " << "ram_width => ram_width,\n"
-                     << "    " << "ram_depth => " << buffer.second.getBufferSize() << ",\n"
+                     << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
                      << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
                      << std::endl;
         outputStream << "port map (\n"
@@ -2273,11 +2275,13 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
             receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
           }
           // ram width/depth, reset, and clock mappings
+          TOKEN_UNIT bufferPadding = 0;
+          if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
           outputStream << "fifo_" + std::to_string(bufferCount)
                        << " : " << bCompName << "\n"
                        <<"generic map (\n"
                        << "    " << "ram_width => ram_width,\n"
-                       << "    " << "ram_depth => " << buffer.second.getBufferSize() << ",\n"
+                       << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
                        << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
                        << std::endl;
           outputStream << "port map (\n"

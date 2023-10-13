@@ -13,7 +13,7 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   connectionName = dataflow->getEdgeName(e);
   id = dataflow->getEdgeId(e);
   dataType = "float"; // assuming only data type is float for now
-  bufferSize = dataflow->getPreload(e) + 1; // NOTE +1 of initial tokens is likely minimum buffer size; can replace with buffer size from XML after DSE in future
+  bufferSize = dataflow->getPreload(e); // we set the buffer size to the amount of initial tokens as there's no separate notion of buffer size and initial tokens in SDF model
   initialTokenCount = dataflow->getPreload(e);
   dataTypeWidth = 34; // assume data type is float (using FloPoCo float representation)
   srcPort = dataflow->getEdgeInputPortName(e);
