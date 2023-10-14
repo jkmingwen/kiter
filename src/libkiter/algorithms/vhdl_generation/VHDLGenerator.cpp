@@ -82,6 +82,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   std::string topDir      = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
   std::string componentDir = topDir + "/components/";
   std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
+  std::string tbDir = topDir + "/testbenches/";
   int operatorFreq = 125; // default target operator frequency is 125MHz
 
   // check for specified directory
@@ -90,10 +91,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     outputDirSpecified = true;
     topDir = param_list["OUTPUT_DIR"] + "/";
     componentDir = topDir + "/components/";
+    tbDir = topDir + "/testbenches/";
     VERBOSE_INFO("Update output directory to " << topDir);
 
     // This creates both topDir and componentDir directories
     std::filesystem::create_directories(componentDir);
+    std::filesystem::create_directories(tbDir);
   } else {
       VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory.");
   }
@@ -159,6 +162,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
         generateCircuit(tmp, topDir, bufferless);
         generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
+        generateTestbench(tbDir, referenceDir);
         printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
                                 dataflow);
         VERBOSE_INFO("VHDL files generated in: " << topDir);
@@ -719,6 +723,44 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                              << ".vhd does not exist/not found!"); // TODO turn into assert
 
     }
+  }
+}
+
+void algorithms::generateTestbench(std::string tbDirectory,
+                                   std::string refDirectory) {
+  std::ofstream vhdlOutput;
+  std::string tbName = "tb_audio_in_out";
+  std::string memFileName = "audio_test0";
+  std::ifstream refFile;
+  std::string fileContent;
+  std::string tbRefDirectory = refDirectory + "/testbenches/";
+
+  // generate testbench
+  vhdlOutput.open(tbDirectory + tbName + ".vhd"); // instantiate VHDL file
+  refFile.open(tbRefDirectory + tbName + ".vhd");
+  if (refFile.is_open()) {
+    while (std::getline(refFile, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    refFile.close();
+    vhdlOutput.close();
+  } else {
+    VERBOSE_ERROR ("Reference file for " << tbName
+                   << ".vhd does not exist/not found!");
+  }
+
+  // generate .mem file
+  vhdlOutput.open(tbDirectory + memFileName + ".mem"); // instantiate VHDL file
+  refFile.open(tbRefDirectory + memFileName + ".mem");
+  if (refFile.is_open()) {
+    while (std::getline(refFile, fileContent)) {
+      vhdlOutput << fileContent << std::endl;
+    }
+    refFile.close();
+    vhdlOutput.close();
+  } else {
+    VERBOSE_ERROR ("Reference file for " << memFileName
+                   << ".mem does not exist/not found!");
   }
 }
 

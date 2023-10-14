@@ -45,6 +45,7 @@ namespace algorithms {
                            std::string referenceDir, int operatorFreq);
   void generateOperator(VHDLComponent comp, std::string componentDirectory,
                         std::string referenceDir, int operatorFreq);
+  void generateTestbench(std::string tbDirectory, std::string refDirectory);
 
 
     // GenerateCircuit helper functions
