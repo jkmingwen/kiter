@@ -14,6 +14,9 @@
 #include "VHDLConnection.h"
 #include "VHDLComponent.h"
 
+VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow,
+                                  bool bufferless, int operatorFreq);
+
 namespace models {
   class Dataflow;
 }

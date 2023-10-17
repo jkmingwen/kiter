@@ -9,6 +9,7 @@
 #include "merge_operators.h"
 #include "../vhdl_generation/VHDLComponent.h"
 #include "../vhdl_generation/VHDLCircuit.h"
+#include "../vhdl_generation/VHDLGenerator.h"
 #include "../throughput/actor.h"
 #include "../throughput/state.h"
 #include "../dse/buffer_sizing.h"
@@ -16,6 +17,7 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "singleOutput.h"
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
@@ -62,23 +64,53 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
 
-  VERBOSE_INFO("Beginning to merge operators...");
+  // check and adjust for any operators with multiple I/Os
+  // the merge function currently only works with operators with the same number of inputs/outputs
+  VHDLCircuit tmp = generateCircuitObject(dataflow, true, operatorFreq); // set bufferless to true -- inconsequential in this use case
+  while (tmp.getMultiOutActors().size() > 0) {
+
+    VERBOSE_INFO("getMultiOutActors is not empty");
+    /*  This block remove multiIO actors and replace them  */
+    for (std::string actorName: tmp.getMultiOutActors()) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("singleOutput actor " << actorName);
+      try {
+        singleOutput(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    VERBOSE_INFO("Regenerate Circuit");
+    tmp = generateCircuitObject(dataflow, true, operatorFreq); // set bufferless to true -- inconsequential in this use case
+  }
+  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
+
+  // Begin merge operation
   int isOffset = 0;
   int osOffset = 0;
-
   std::vector<std::vector<ARRAY_INDEX>> mergeVectorIds;
   if (mergeStrategy == "greedy") {
     mergeVectorIds = greedyMerge(dataflow);
   } else if (mergeStrategy == "smart") {
     mergeVectorIds = smartMerge(dataflow, operatorFreq);
   }
+  VERBOSE_DEBUG("Merge actors generated using merge strategy: " << mergeStrategy);
+  // just for debugging purposes
+  for (auto &ids : mergeVectorIds) {
+    VERBOSE_DEBUG("\tMerge group:");
+    for (auto &id : ids) {
+      VERBOSE_DEBUG("\t\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
+                    << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
+    }
+  }
   for (auto &ids : mergeVectorIds) { // repeatedly call generateMergedGraph for each group of actors
-    VERBOSE_DEBUG("Actors to merge:");
+    VERBOSE_DEBUG("\tMerging:");
     std::vector<Vertex> mergeVector;
     // storing IDs and retrieving vertices just before merging is the only way I've been able to get this to work
     for (auto &id : ids) {
       mergeVector.push_back(dataflow->getVertexById(id));
-      VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
+      VERBOSE_DEBUG("\t\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
                    << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
     }
     generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
