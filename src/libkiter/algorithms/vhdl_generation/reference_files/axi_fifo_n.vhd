@@ -58,7 +58,7 @@ begin
   variable tmp_write_index : natural;
   variable tmp_read_index : natural;
   begin
-    if buffer_rst = '1' then
+    if buffer_rst = '0' then
     
       read_index <= 0;
       write_index <= ram_init;
@@ -74,7 +74,10 @@ begin
       else 
         fifo_empty <= '0';
       end if;
-       
+      
+      for i in 0 to ram_depth - 1 loop
+            ram(i) <= (others => '0');
+      end loop;
       
     elsif rising_edge(buffer_clk) then
     
