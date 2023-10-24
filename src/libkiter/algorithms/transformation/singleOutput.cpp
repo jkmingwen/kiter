@@ -43,7 +43,7 @@ void algorithms::transformation::singleOutput    (models::Dataflow* const datafl
           ARRAY_INDEX cnt = 0;
           while (dataflow->getVertexOutDegree(t) > 1) {
 
-              VERBOSE_DEBUG("remove outputs..");
+            VERBOSE_DEBUG("remove outputs..");
 
             // add a Duplicate
             std::string newDupName = dataflow->getVertexName(t);
@@ -60,13 +60,13 @@ void algorithms::transformation::singleOutput    (models::Dataflow* const datafl
             dataflow->setVertexType(newDup, "Proj");
             //connect one to duplicate from the task
 
-              VERBOSE_DEBUG("Create new edge from source");
+            VERBOSE_DEBUG("Create new edge from source");
             Edge ne = dataflow->addEdge(t, newDup);
             // get one of the port names, and strip in/out to get port id and thus name edge
             dataflow->setEdgeInPhases(ne, {1});
             dataflow->setEdgeOutPhases(ne, {1});
 
-              VERBOSE_DEBUG("Collect edges");
+            VERBOSE_DEBUG("Collect edges");
             Edge c1;
             Edge c2;
             int cnt = 0;
@@ -91,14 +91,16 @@ void algorithms::transformation::singleOutput    (models::Dataflow* const datafl
               }}
             // workaround for manual channel naming
             std::string neName = "channel_" + commons::toString(dataflow->getEdgeId(ne)) + "_0_" + dataflow->getVertexName(t) + "_" + c1_type; // NOTE assuming here that all outputs are the same type
-              VERBOSE_DEBUG("Setting new output edge name to " << neName);
+            VERBOSE_DEBUG("Setting new output edge name to " << neName);
             dataflow->setEdgeName(ne, neName);
             dataflow->setEdgeInputPortName(ne, "in_" + neName);
             dataflow->setEdgeOutputPortName(ne, "out_" + neName);
 
 
-              VERBOSE_DEBUG("Create new edge to targets");
-            Edge nc1 = dataflow->addEdge(newDup,  dataflow->getEdgeTarget(c1));
+            VERBOSE_DEBUG("Create new edge to targets");
+            Edge nc1 = dataflow->addEdge(newDup, dataflow->getEdgeTarget(c1));
+            VERBOSE_DEBUG("\tSet preload of " << dataflow->getPreload(c1) << " based on edge: " << dataflow->getEdgeName(c1));
+            dataflow->setPreload(nc1, dataflow->getPreload(c1));
             dataflow->setEdgeInPhases(nc1, {1});
             dataflow->setEdgeOutPhases(nc1, {1});
             // workaround for manual channel naming
@@ -151,6 +153,8 @@ void algorithms::transformation::singleOutput    (models::Dataflow* const datafl
               std::replace(verticesToMerge.begin(), verticesToMerge.end(), nc1OriginalName, nc1NewName);
             }
             Edge nc2 = dataflow->addEdge(newDup,  dataflow->getEdgeTarget(c2));
+            VERBOSE_DEBUG("\tSet preload of " << dataflow->getPreload(c2) << " based on edge: " << dataflow->getEdgeName(c2));
+            dataflow->setPreload(nc2, dataflow->getPreload(c2));
             dataflow->setEdgeInPhases(nc2, {1});
             dataflow->setEdgeOutPhases(nc2, {1});
             // workaround for manual channel naming
