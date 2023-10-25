@@ -2273,8 +2273,8 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
           receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
         }
         // ram width/depth, reset, and clock mappings
-        TOKEN_UNIT bufferPadding = 0;
-        if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
+        TOKEN_UNIT bufferPadding = 1;
+        // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
         outputStream << "fifo_" + std::to_string(bufferCount)
                      << " : " << bCompName << "\n"
                      <<"generic map (\n"
@@ -2317,8 +2317,8 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
             receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
           }
           // ram width/depth, reset, and clock mappings
-          TOKEN_UNIT bufferPadding = 0;
-          if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
+          TOKEN_UNIT bufferPadding = 1;
+          // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
           outputStream << "fifo_" + std::to_string(bufferCount)
                        << " : " << bCompName << "\n"
                        <<"generic map (\n"
