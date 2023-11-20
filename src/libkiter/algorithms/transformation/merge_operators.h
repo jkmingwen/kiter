@@ -49,8 +49,10 @@ namespace algorithms {
                                const std::string& replacement);
 
   // Merge strategies
-  std::vector<std::vector<ARRAY_INDEX>> greedyMerge(models::Dataflow* const dataflow);
-  std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow, int operatorFreq);
+  std::vector<std::vector<ARRAY_INDEX>> greedyMerge(models::Dataflow* const dataflow,
+                                                    int operatorFreq);
+  std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow,
+                                                   int operatorFreq);
   void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
                             abstractDepGraph &g);
 
