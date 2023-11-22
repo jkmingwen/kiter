@@ -244,7 +244,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::string edgeType = (inDataTypes[i]).begin()->first; // our current VHDL generation implementation uses the first input edge type to determine arithmetic type
     // use edge ID to avoid edge name conflicts
     Edge outEdge = dataflow->addEdge(new_is, mergedActor);
-    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(outEdge)) + "_" + edgeType;
+    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(outEdge) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(outEdge, outEdgeName);
     dataflow->setEdgeInPhases(outEdge, execRates);
     dataflow->setEdgeOutPhases(outEdge, {1});
@@ -271,7 +271,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     // connect merged actors to output selector
     std::string edgeType = (outDataTypes[i]).begin()->first;
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
-    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS)) + "_" + edgeType;
+    std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(mergedToOS, outEdgeName);
     dataflow->setEdgeInPhases(mergedToOS, {1});
     dataflow->setEdgeOutPhases(mergedToOS, execRates);
@@ -339,12 +339,14 @@ void algorithms::addReentrancy(models::Dataflow* const dataflow, Vertex v,
 // from https://stackoverflow.com/questions/5343190/how-do-i-replace-all-instances-of-a-string-with-another-string
 std::string algorithms::replaceActorName(std::string originalName, const std::string& toReplace,
                                          const std::string& replacement) {
-    size_t pos = 0;
-    while ((pos = originalName.find(toReplace, pos)) != std::string::npos) {
-      originalName.replace(pos, toReplace.length(), replacement);
-      pos += replacement.length();
+  size_t startPos = originalName.find("_");
+  if (startPos != std::string::npos) { // we only replace occurances of toReplace after the first "_" delimiter
+    while ((startPos = originalName.find(toReplace, startPos)) != std::string::npos) {
+      originalName.replace(startPos, toReplace.length(), replacement);
+      startPos += replacement.length();
     }
-    return originalName;
+  }
+  return originalName;
 }
 
 std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* const dataflow,
