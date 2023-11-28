@@ -215,6 +215,13 @@ namespace algorithms {
             return res;
         }
 
+
+        void ModularDSE::import_results(TokenConfigurationSet& database) {
+            for (TokenConfiguration res : database) {
+                results.add(res);
+            }
+        }
+
         void ModularDSE::import_results(std::istream& input) {
             std::string line;
             std::getline(input, line); // Skip header line

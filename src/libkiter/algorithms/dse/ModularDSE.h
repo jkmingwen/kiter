@@ -68,6 +68,7 @@ namespace algorithms {
 
             void import_results(std::istream& input);
             void import_results(const std::string& filename);
+            void import_results(TokenConfigurationSet& database);
             void add_initial_job(const TokenConfiguration& tc) ;
             void add_initial_jobs(const std::vector<TokenConfiguration>& tc) ;
             void stop() ;
