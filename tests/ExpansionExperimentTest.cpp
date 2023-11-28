@@ -7,6 +7,7 @@
 #include "helpers/sample.h"
 #include "helpers/random_generator.h"
 #include "algorithms/experiments/expansion_experiment.h"
+#include "algorithms/normalization.h"
 
 
 BOOST_FIXTURE_TEST_SUITE( expansion_experiment_test , WITH_SAMPLE)
@@ -39,7 +40,9 @@ BOOST_FIXTURE_TEST_SUITE( expansion_experiment_test , WITH_SAMPLE)
 
         VERBOSE_INFO("Generating expansion on random graphs");
         for(auto graph : graphs) {
-            algorithms::generate_expansion(graph, params);
+            if (algorithms::normalize(graph)) {
+                algorithms::generate_expansion(graph, params);
+            }
         }
     }
 

@@ -141,6 +141,8 @@ BOOST_FIXTURE_TEST_SUITE( test_suite_create_naive_dataflow , WITH_VERBOSE)
 
         BOOST_REQUIRE_EQUAL( g->getVerticesCount(), 2 );
         BOOST_REQUIRE_EQUAL( g->getEdgesCount(), 1 );
+        BOOST_REQUIRE_EQUAL( g->getEdgeId(g->getFirstEdge()), e2 );
+
 
         g->removeVertex(g->getVertexById(v3));
 

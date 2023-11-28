@@ -42,8 +42,8 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
         }
 
         VERBOSE_INFO("TDMA schedule on random");
-        for(auto graph : graphs) {
-            //algorithms::scheduling::TDMASchedule(graph, params);
-        }
+        //for(auto graph : graphs) {
+        //  algorithms::scheduling::TDMASchedule(graph, params);
+        //}
     }
 BOOST_AUTO_TEST_SUITE_END()
