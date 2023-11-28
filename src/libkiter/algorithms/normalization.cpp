@@ -43,7 +43,7 @@ std::map<ARRAY_INDEX,TOKEN_UNIT> algorithms::compute_alphas(models::Dataflow *fr
     return alphas;
 }
 
-bool setNormalizationFromAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX,TOKEN_UNIT>&  alphas) {
+void setNormalizationFromAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX,TOKEN_UNIT>&  alphas) {
 
     {ForEachEdge(to, c) {
         ARRAY_INDEX cid = to->getEdgeId(c);
@@ -63,8 +63,6 @@ bool setNormalizationFromAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX
         to->setZi(Ti, Zi);
         to->setZi(Tj, Zj);
     }}
-
-    return true;
 }
 
 
@@ -77,16 +75,16 @@ bool checkAlphas(models::Dataflow *to, const std::map<ARRAY_INDEX,TOKEN_UNIT>&  
                     TOKEN_UNIT alpha_c = alphas.at(cid);
                     TOKEN_UNIT Uj = to->getEdgeOut(c);
                     TOKEN_UNIT Zj = alpha_c *  Uj;
-                    if (Zt == 0) Zt = Zj;
-                    VERBOSE_ASSERT_EQUALS(Zt, Zj);
+                    if (Zt == 0) {Zt = Zj;}
+                    if (Zt != Zj) return false; // Inconsistent graph
             }}
             { ForOutputEdges(to,t, c) {
                     ARRAY_INDEX cid = to->getEdgeId(c);
                     TOKEN_UNIT alpha_c = alphas.at(cid);
                     TOKEN_UNIT Ui = to->getEdgeIn(c);
                     TOKEN_UNIT Zi = alpha_c *  Ui;
-                    if (Zt == 0) Zt = Zi;
-                    VERBOSE_ASSERT_EQUALS(Zt, Zi);
+                    if (Zt == 0) {Zt = Zi;}
+                    if (Zt != Zi) return false; // Inconsistent graph
                 }}
         }}
         return true;
@@ -279,10 +277,10 @@ bool algorithms::setNormalization(models::Dataflow *to, std::map<Vertex,TOKEN_UN
              TOKEN_UNIT Ui = to->getEdgeIn(c);
              TOKEN_UNIT Uj = to->getEdgeOut(c);
 
-            VERBOSE_ASSERT(Zi > 0,"Fail detetion for Fail normalization");
-            VERBOSE_ASSERT(Ui > 0,"Fail detetion for Fail normalization");
-            VERBOSE_ASSERT(Zj > 0,"Fail detetion for Fail normalization");
-            VERBOSE_ASSERT(Uj > 0,"Fail detetion for Fail normalization");
+            VERBOSE_ASSERT(Zi > 0,"Fail detection for Fail normalization");
+            VERBOSE_ASSERT(Ui > 0,"Fail detection for Fail normalization");
+            VERBOSE_ASSERT(Zj > 0,"Fail detection for Fail normalization");
+            VERBOSE_ASSERT(Uj > 0,"Fail detection for Fail normalization");
 
              const TOKEN_FRACT result_i =  TOKEN_FRACT(Zi , Ui);
              const TOKEN_FRACT result_j =  TOKEN_FRACT(Zj , Uj);
@@ -304,7 +302,7 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
 
     if (from->getEdgesCount() <= 0 ) {
 
-        std::map<Vertex,TOKEN_UNIT> * res = new  std::map<Vertex,TOKEN_UNIT>();
+        auto * res = new  std::map<Vertex,TOKEN_UNIT>();
         {ForEachVertex(from,v) {
         	(*res)[v] = 1;
         }}
@@ -315,14 +313,14 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
 
     std::map<Edge,TOKEN_FRACT> alphas; //! Liste des alphas (coefficient multiplicateur de normalisation)
 
-    // ** Construction de la liste des tâches à voir
-    std::set<Vertex> total_a_voir;
-    std::set<Vertex> prochains_a_voir;
+    // ** Construct the list of vertex to process
+    std::set<Vertex> to_process;
+    std::set<Vertex> next_to_process;
     {ForEachVertex(from,pVertex) {
-        total_a_voir.insert(pVertex);
+        to_process.insert(pVertex);
     }}
-    VERBOSE_ASSERT(total_a_voir.size() > 0,TXT_NEVER_HAPPEND);
-    VERBOSE_DEBUG("total_a_voir built : size = " << total_a_voir.size());
+    VERBOSE_ASSERT(!to_process.empty(), TXT_NEVER_HAPPEND);
+    VERBOSE_DEBUG("to_process built : size = " << to_process.size());
 
     // ** Set First Edge
     Edge firstc       = from->getFirstEdge();
@@ -333,21 +331,21 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
     alphas[firstc]       = TOKEN_FRACT(1,std::gcd(infirst,outfirst)); // 1 / gcd , the minimum value
 
     // ** set to view source and target, remove in to view list
-    prochains_a_voir.insert(sourcefirst);
-    if (targetfirst != sourcefirst)  prochains_a_voir.insert(targetfirst);
-    total_a_voir.erase(sourcefirst);
-    total_a_voir.erase(targetfirst);
+    next_to_process.insert(sourcefirst);
+    if (targetfirst != sourcefirst)  next_to_process.insert(targetfirst);
+    to_process.erase(sourcefirst);
+    to_process.erase(targetfirst);
 
     VERBOSE_DEBUG("First done");
 
     VERBOSE_DEBUG("alphas size = " << alphas.size());
 
     // ** Parcours des liens connexes
-    while (prochains_a_voir.size() > 0) {
+    while (next_to_process.size() > 0) {
 
         // ** get next
-        Vertex t = * prochains_a_voir.begin();
-        prochains_a_voir.erase(t);
+        Vertex t = * next_to_process.begin();
+        next_to_process.erase(t);
         VERBOSE_DEBUG("traitement de la tâche : " << from->getVertexName(t));
 
         // ** set ZI_REF (and check already computed alpha with ZI ref)
@@ -443,35 +441,35 @@ std::map<Vertex,TOKEN_UNIT> * algorithms::rationalNormalize(models::Dataflow *fr
         {ForConnectedEdges(from,t,pEdge) {
             Vertex source     = from->getEdgeSource(pEdge);
             Vertex target     = from->getEdgeTarget(pEdge);
-            if (total_a_voir.find(source) != total_a_voir.end())     prochains_a_voir.insert(source);
-            if (total_a_voir.find(target) != total_a_voir.end())     prochains_a_voir.insert(target);
-            total_a_voir.erase(source);
-            total_a_voir.erase(target);
+            if (to_process.find(source) != to_process.end())     next_to_process.insert(source);
+            if (to_process.find(target) != to_process.end())     next_to_process.insert(target);
+            to_process.erase(source);
+            to_process.erase(target);
         }}
 
 
         // en cas d'absence de connex on chop deux nouvelles tâches
-        if ((prochains_a_voir.size() <= 0) && (total_a_voir.size() > 0)) {
+        if ((next_to_process.size() <= 0) && (to_process.size() > 0)) {
             {ForEachEdge(from,pEdge) {
                 Vertex source     = from->getEdgeSource(pEdge);
                 Vertex target     = from->getEdgeTarget(pEdge);
-                 if (total_a_voir.find(source) != total_a_voir.end())
-                 if (total_a_voir.find(target) != total_a_voir.end()) {
+                 if (to_process.find(source) != to_process.end())
+                 if (to_process.find(target) != to_process.end()) {
                      TOKEN_UNIT infirst   = from->getEdgeIn(pEdge);
                      TOKEN_UNIT outfirst  = from->getEdgeOut(pEdge);
                      alphas[pEdge]       = TOKEN_FRACT(1,std::gcd(infirst,outfirst)); // 1 / gcd , the minimum value
 
                      // ** set to view source and target, remove in to view list
-                     prochains_a_voir.insert(source);
-                     if (source != target)  prochains_a_voir.insert(target);
-                     total_a_voir.erase(source);
-                     if (source != target)  total_a_voir.erase(target);
+                     next_to_process.insert(source);
+                     if (source != target)  next_to_process.insert(target);
+                     to_process.erase(source);
+                     if (source != target)  to_process.erase(target);
                      break;
                  }
             }}
         }
 
-    } // end of  while (prochains_a_voir.size() > 0)
+    } // end of  while (next_to_process.size() > 0)
 
     bool sol = true;
 
@@ -555,18 +553,19 @@ bool algorithms::normalize (models::Dataflow *from) {
 
     from->set_read_only();
 
-    bool res;
-
     // Generate alphas
     std::map<ARRAY_INDEX,TOKEN_UNIT> alphas = compute_alphas(from);
 
-    //Check alphas
-    VERBOSE_ASSERT(checkAlphas(from, alphas), "Normalization failed");
+    bool consistent = checkAlphas(from, alphas);
 
-    // Set alphas
-    res = setNormalizationFromAlphas(from,alphas);
-    if (res) from->set_normalize();
-    return res;
+    if (!consistent) {
+        VERBOSE_ERROR( "Normalization failed");
+    } else {
+        setNormalizationFromAlphas(from,alphas);
+        from->set_normalize();
+        VERBOSE_INFO( "Normalization finished");
+    }
+    return consistent;
 
 }
 
