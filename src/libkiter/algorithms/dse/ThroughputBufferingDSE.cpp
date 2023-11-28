@@ -49,6 +49,11 @@ namespace algorithms {
         std::vector<algorithms::dse::TokenConfiguration>
         critical_based_surface_dse_mode(const algorithms::dse::TokenConfiguration &current, bool pareto_only = false) {
 
+
+            // TODO FIXME This is a hack to test something
+            static std::map<std::set<TokenConfiguration::EdgeIdentifier>,std::pair<TIME_UNIT,TokenConfigurationSet>> database;
+
+
             VERBOSE_DEBUG("     critical_based_surface_dse_mode: " << current << " with pareto_only=" << pareto_only);
             if (current.getPerformance().critical_edges.empty()) {
                 // Special case, the exploration asked to continue while there is no critical cycle...
@@ -116,6 +121,12 @@ namespace algorithms {
                                             ThroughputBufferingNext(KDSE_MODE),
                                             ThroughputBufferingStopCondition(current_cc_th, true),
                                             1);
+            TIME_UNIT database_coverage = -1.0; // Lower than the zero coverage
+
+            if (database.contains(current.getPerformance().critical_edges)) {
+                dse.import_results(database[current.getPerformance().critical_edges].second);
+                database_coverage = database[current.getPerformance().critical_edges].first;
+            }
             dse.add_initial_job(tc);
             ExplorationParameters params = {
                     .limit = false,
@@ -123,9 +134,22 @@ namespace algorithms {
                     .realtime_output = false,
                     .return_pareto_only = pareto_only // very important K2DSEA here requires pareto only
             };
-            dse.explore(params);
+
+            // We only need to run the DSE if the cache is not sufficient.
+            if (database_coverage < current_cc_th) {
+                dse.explore(params);
+            } else {
+                VERBOSE_INFO("Time saved, we skip the DSE database_coverage= " << database_coverage << " current_cc_th=" << current_cc_th);
+            }
             auto cc_sds = dse.getResults();
 
+            if (database.contains(current.getPerformance().critical_edges)) {
+                VERBOSE_INFO("previous DSE for this point was " << database[current.getPerformance().critical_edges].first
+                << "," <<  database[current.getPerformance().critical_edges].second.size()
+                << " new one is " << current_cc_th << "," <<  cc_sds.size());
+            }
+            database[current.getPerformance().critical_edges] = std::pair<TIME_UNIT,TokenConfigurationSet>(std::max(database_coverage,current_cc_th), cc_sds);
+            VERBOSE_INFO("Database size is " << database.size());
 
             VERBOSE_DEBUG("End of local search:");
 
