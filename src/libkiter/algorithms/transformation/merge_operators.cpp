@@ -342,8 +342,17 @@ std::string algorithms::replaceActorName(std::string originalName, const std::st
   size_t startPos = originalName.find("_");
   if (startPos != std::string::npos) { // we only replace occurances of toReplace after the first "_" delimiter
     while ((startPos = originalName.find(toReplace, startPos)) != std::string::npos) {
-      originalName.replace(startPos, toReplace.length(), replacement);
-      startPos += replacement.length();
+      if (startPos + toReplace.length() < originalName.length()) {
+        if (originalName.substr(startPos + toReplace.length(), 3) != "Dup") {
+          originalName.replace(startPos, toReplace.length(), replacement);
+          startPos += replacement.length();
+        } else {
+          startPos += toReplace.length(); // we ignore this occurance if it ends with a DupN
+        }
+      } else { // if it's the last occurance, then we replace it
+        originalName.replace(startPos, toReplace.length(), replacement);
+        startPos += replacement.length();
+      }
     }
   }
   return originalName;
