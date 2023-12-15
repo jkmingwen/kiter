@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 
 
 
-entity axi_fifo_n is
+entity hs_fifo_n is
   generic (
     ram_width : natural;
     ram_init  : natural := 0;
@@ -14,19 +14,19 @@ entity axi_fifo_n is
     buffer_clk : in std_logic;
     buffer_rst : in std_logic;
 
-    -- axi input interface
+    -- hs input interface
     buffer_in_ready : out std_logic;
     buffer_in_valid : in std_logic;
     buffer_in_data : in std_logic_vector(ram_width - 1 downto 0);
 
-    -- axi output interface
+    -- hs output interface
     buffer_out_ready : in std_logic;
     buffer_out_valid : out std_logic;
     buffer_out_data : out std_logic_vector(ram_width - 1 downto 0)
     );
-end axi_fifo_n;
+end hs_fifo_n;
 
-architecture rtl of axi_fifo_n is
+architecture rtl of hs_fifo_n is
     -- This is the RAM of the buffer.
     type ram_type is array (0 to ram_depth - 1) of std_logic_vector (ram_width - 1 downto 0);
     signal ram : ram_type;

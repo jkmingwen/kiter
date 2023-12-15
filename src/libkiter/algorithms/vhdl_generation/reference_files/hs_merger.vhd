@@ -1,10 +1,10 @@
--- Takes in two inputs (following AXI conventions), sending to output at the
+-- Takes in two inputs (following HS conventions), sending to output at the
 -- same time. Will store input if they don't arrive at the same time; will only
 -- output once both inputs are provided.
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity axi_merger is
+entity hs_merger is
   generic (bit_width : integer);
   port ( clk        : in std_logic;
          reset      : in std_logic;
@@ -21,9 +21,9 @@ entity axi_merger is
          out_valid  : out std_logic;
          out_data_0 : out std_logic_vector (bit_width-1 downto 0);
          out_data_1 : out std_logic_vector (bit_width-1 downto 0) );
-end axi_merger;
+end hs_merger;
 
-architecture Behavioral of axi_merger is
+architecture Behavioral of hs_merger is
   signal temp_data_0   : std_logic_vector (bit_width-1 downto 0);
   signal temp_data_1   : std_logic_vector (bit_width-1 downto 0);
   signal is_in_ready_0 : std_logic := '1';

@@ -8,7 +8,7 @@ use ieee.numeric_std.all;
 
 
 
-entity axi_fifo is
+entity hs_fifo is
   generic (
     ram_width : natural;
     ram_depth : natural;
@@ -19,19 +19,19 @@ entity axi_fifo is
     buffer_clk : in std_logic;
     buffer_rst : in std_logic;
 
-    -- axi input interface
+    -- hs input interface
     buffer_in_ready : out std_logic;
     buffer_in_valid : in std_logic;
     buffer_in_data : in std_logic_vector(ram_width - 1 downto 0);
 
-    -- axi output interface
+    -- hs output interface
     buffer_out_ready : in std_logic;
     buffer_out_valid : out std_logic;
     buffer_out_data : out std_logic_vector(ram_width - 1 downto 0)
     );
-end axi_fifo;
+end hs_fifo;
 
-architecture simulation of axi_fifo is
+architecture simulation of hs_fifo is
 
 
 begin
@@ -43,7 +43,7 @@ begin
   gen_fifo_zero: if (ram_depth = 0) generate
 
     -- instance
-    DUT : entity work.axi_fifo_zero
+    DUT : entity work.hs_fifo_zero
       generic map ( ram_width => ram_width
                     )
       port map ( buffer_clk        => buffer_clk,
@@ -61,7 +61,7 @@ begin
   gen_fifo_one: if (ram_depth = 1) generate
 
     -- instance
-    DUT : entity work.axi_fifo_one
+    DUT : entity work.hs_fifo_one
       generic map ( ram_width => ram_width ,
                     ram_init => ram_init
                     )
@@ -80,7 +80,7 @@ begin
   gen_fifo_n: if (ram_depth > 1) generate
 
     -- instance
-    DUT : entity work.axi_fifo_n
+    DUT : entity work.hs_fifo_n
       generic map ( ram_width => ram_width ,
                     ram_depth => ram_depth ,
                     ram_init => ram_init

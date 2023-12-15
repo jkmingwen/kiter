@@ -215,7 +215,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit, std::string compDir,
       break;
     }
   }
-  generateAXIInterfaceComponents(compDir, compRefDir, isBufferless);
+  generateHSInterfaceComponents(compDir, compRefDir, isBufferless);
   generateAudioInterfaceComponents(compDir, compRefDir, operatorFreq);
 
 }
@@ -274,44 +274,11 @@ void algorithms::generateConstOperator(std::string compDir,
   }
 }
 
-// Generate type conversion operators
-void algorithms::generateConversionOperators(VHDLComponent comp, std::string compDir,
-                                             std::string referenceDir) {
-  std::ofstream vhdlOutput;
-  std::string entityName = comp.getType();
-  std::string axiInterfaceName = "axi_" + entityName;
-  vhdlOutput.open(compDir + entityName + ".vhd");
-  std::ifstream operatorRef(referenceDir + entityName + ".vhd");
-  std::string fileContent;
-  // generate conversion operator
-  if (operatorRef.is_open()) {
-    while (std::getline(operatorRef, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    operatorRef.close();
-    vhdlOutput.close();
-  } else {
-      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
-  }
-  // generate AXI interface for conversion operator
-  vhdlOutput.open(compDir + axiInterfaceName + ".vhd");
-  std::ifstream interfaceRef(referenceDir + axiInterfaceName + ".vhd");
-  if (interfaceRef.is_open()) {
-    while (std::getline(interfaceRef, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    interfaceRef.close();
-    vhdlOutput.close();
-  } else {
-      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
-  }
-}
-
-// Generate AXI splitter components for the Proj components in the circuit (defined by number of outputs)
+// Generate splitter components for the Proj components in the circuit (defined by number of outputs)
 void algorithms::generateSplitterOperators(std::string compDir, std::string referenceDir,
                                            std::map<int, int> outputCounts) {
   std::ofstream vhdlOutput;
-  std::string operatorFileName = "axi_splitter";
+  std::string operatorFileName = "hs_splitter";
   std::string wordsToReplace[] = {"$NUM_OUTPUTS", "$OUTPUT_PORTS", "$OUT_READY_SIGS",
                                   "$OUT_DATA_MAPPING", "$OUT_VALID_MAPPING"};
   for (auto &i : outputCounts) {
@@ -370,13 +337,13 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
                                           std::string referenceDir) {
   std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
-  std::string componentName = entityName + "_component"; // just need a distinct name for the component instantiation in the AXI interface declaration in VHDL
+  std::string componentName = entityName + "_component"; // just need a distinct name for the component instantiation in the HS interface declaration in VHDL
   vhdlOutput.open(compDir + entityName + "_op.vhd"); // write operator implementation
   std::ifstream operatorRef(referenceDir + entityName + "_op.vhd");
   std::string fileContent;
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$AXM_TYPE"};
+                                  "$HSM_TYPE"};
   std::string opInputCount = std::to_string(comp.getInputPorts().size());
   // generate select operator
   if (operatorRef.is_open()) {
@@ -390,18 +357,18 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
       VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
 
   }
-  std::string axmType = "";
+  std::string hsmType = "";
   if (comp.getType() == "select2") {
-    axmType = "_three";
+    hsmType = "_three";
   }
   std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                          {"$FLOPOCO_OP_NAME", entityName + "_op"},
                                                          {"$COMPONENT_NAME", componentName},
-                                                         {"$OP_LIFESPAN", std::to_string(1)}, // AXI interface requires lifespan to be >0
-                                                         {"$AXM_TYPE", axmType}};
-  // generate AXI interface for select operator
+                                                         {"$OP_LIFESPAN", std::to_string(1)}, // HS interface requires lifespan to be >0
+                                                         {"$HSM_TYPE", hsmType}};
+  // generate HS interface for select operator
   vhdlOutput.open(compDir + entityName + ".vhd");
-  std::ifstream interfaceRef(referenceDir + "flopoco_axi_interface"
+  std::ifstream interfaceRef(referenceDir + "flopoco_hs_interface"
                              + "_" + opInputCount + ".vhd");
   if (interfaceRef.is_open()) {
     while (std::getline(interfaceRef, fileContent)) {
@@ -417,8 +384,8 @@ void algorithms::generateRoutingOperators(VHDLComponent comp, std::string compDi
     interfaceRef.close();
     vhdlOutput.close();
   } else {
-     VERBOSE_ERROR ("AXI interface file for " << "flopoco_axi_interface_" + opInputCount
-              << ".vhd does not exist/not found!"); // TODO turn into assert
+     VERBOSE_ERROR ("HS interface file for " << "flopoco_hs_interface_" + opInputCount
+                    << ".vhd does not exist/not found!"); // TODO turn into assert
   }
 }
 
@@ -456,7 +423,7 @@ void algorithms::generateFloorOperator(VHDLComponent comp, std::string compDir,
     std::string componentName = entityName + "_implementation";
     std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                     "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                    "$AXM_TYPE"};
+                                    "$HSM_TYPE"};
     std::string implementationName = c + "_flopoco";
     std::string lifespan = "1";
     if (operatorFreq == 250) {
@@ -468,14 +435,14 @@ void algorithms::generateFloorOperator(VHDLComponent comp, std::string compDir,
     }
     generateFPCOperator(implementationName, compDir, referenceDir, operatorFreq);
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface_1.vhd");
+    std::ifstream operatorRef(referenceDir + "flopoco_hs_interface_1.vhd");
     std::string fileContent;
     std::string operatorName = implementationName + "_f" + std::to_string(operatorFreq);
     std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                            {"$FLOPOCO_OP_NAME", operatorName},
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", lifespan},
-                                                           {"$AXM_TYPE", "_one"}};
+                                                           {"$HSM_TYPE", "_one"}};
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
         for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
@@ -490,7 +457,7 @@ void algorithms::generateFloorOperator(VHDLComponent comp, std::string compDir,
       operatorRef.close();
       vhdlOutput.close();
     } else {
-      VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_1.vhd does not exist/not found!"); // TODO turn into assert
+      VERBOSE_ERROR ("Reference file for " << "flopoco_hs_interface_1.vhd does not exist/not found!"); // TODO turn into assert
     }
   }
 }
@@ -675,7 +642,7 @@ void algorithms::generateFPCOperator(std::string compImplementationName, std:: s
   }
 }
 
-// Generate AXI interface for each FloPoCo operator
+// Generate HS interface for each FloPoCo operator
 void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                   std::string referenceDir, int operatorFreq) {
   std::ofstream vhdlOutput;
@@ -683,26 +650,26 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
   std::string componentName = entityName + "_implementation";
   std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
                                   "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$AXM_TYPE"};
+                                  "$HSM_TYPE"};
   std::string opInputCount = std::to_string(comp.getInputPorts().size());
 
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
     // generate flopoco operators
     generateFPCOperator(comp.getImplementationName(), compDir, referenceDir, operatorFreq); // generate FloPoCo operator
     vhdlOutput.open(compDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_axi_interface" +
+    std::ifstream operatorRef(referenceDir + "flopoco_hs_interface" +
                               + "_" + opInputCount + ".vhd");
     std::string fileContent;
     std::string operatorName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
-    std::string axmType = "";
+    std::string hsmType = "";
     if (comp.getInputPorts().size() == 1) {
-      axmType = "_one";
+      hsmType = "_one";
     }
     std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                            {"$FLOPOCO_OP_NAME", operatorName},
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", std::to_string(comp.getLifespan())},
-                                                           {"$AXM_TYPE", axmType}};
+                                                           {"$HSM_TYPE", hsmType}};
     if (operatorRef.is_open()) {
       while (std::getline(operatorRef, fileContent)) {
         for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
@@ -719,7 +686,7 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
     } else {
 
 
-        VERBOSE_ERROR ("Reference file for " << "flopoco_axi_interface_" + opInputCount
+        VERBOSE_ERROR ("Reference file for " << "flopoco_hs_interface_" + opInputCount
                                              << ".vhd does not exist/not found!"); // TODO turn into assert
 
     }
@@ -1114,7 +1081,6 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
 
 
 
-// Generate AXI interface for each FloPoCo operator
 void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const std::string &referenceDir,
                                                const std::string &outputDir) {
   int i2sBitWidth = 24;
@@ -1834,7 +1800,7 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   std::stringstream outputStream;
 
   // every component requires clock and reset ports
-  outputStream << "component axi_fifo is\n"
+  outputStream << "component hs_fifo is\n"
                << "generic (\n"
                << "    " << "ram_width : natural;\n"
                << "    " << "ram_depth : natural;\n"
@@ -1858,7 +1824,6 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   return outputStream.str();
 }
 
-// generate one AXI splitter component for each corresponding Proj component (defined by number of outputs)
 std::string algorithms::generateConstComponents(std::map<int, int> outputCounts) {
   std::stringstream outputStream;
   std::string componentName;
@@ -1893,14 +1858,14 @@ std::string algorithms::generateConstComponents(std::map<int, int> outputCounts)
   return outputStream.str();
 }
 
-// generate one AXI splitter component for each corresponding Proj component (defined by number of outputs)
+// generate one HS splitter component for each corresponding Proj component (defined by number of outputs)
 // TODO find a way to generalise splitter component and generation
 std::string algorithms::generateSplitterComponents(std::map<int, int> outputCounts) {
   std::stringstream outputStream;
   std::string componentName;
   for (auto &i : outputCounts) {
-    componentName = "axi_splitter_" + std::to_string(i.first);
-    int numInputPorts = 1; // NOTE hardcoded here that AXI splitter components all have 1 input
+    componentName = "hs_splitter_" + std::to_string(i.first);
+    int numInputPorts = 1; // NOTE hardcoded here that HS splitter components all have 1 input
     int numOutputPorts = i.first;
     // every component requires clock and reset ports
     outputStream << "component " << componentName << " is\n"
@@ -1940,21 +1905,21 @@ std::string algorithms::generateSplitterComponents(std::map<int, int> outputCoun
   return outputStream.str();
 }
 
-// Copy FloPoCo-AXI interface component specification from reference files to generated subdirectory
-void algorithms::generateAXIInterfaceComponents(std::string compDir,
+// Copy FloPoCo-HS interface component specification from reference files to generated subdirectory
+void algorithms::generateHSInterfaceComponents(std::string compDir,
                                                 std::string referenceDir,
                                                 bool isBufferless) {
   std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
-  // TODO only produce the AXI component files if necessary; right now, we're just writing every file
-  std::vector<std::string> componentNames = {"axi_merger", "countdown",
-                                             "store_send", "axi_merger_negate",
-                                             "axi_merger_one", "axi_merger_three"};
+  // TODO only produce the HS component files if necessary; right now, we're just writing every file
+  std::vector<std::string> componentNames = {"hs_merger", "countdown",
+                                             "store_send", "hs_merger_negate",
+                                             "hs_merger_one", "hs_merger_three"};
   if (!isBufferless) {
-    componentNames.push_back("axi_fifo");
-    componentNames.push_back("axi_fifo_n");
-    componentNames.push_back("axi_fifo_one");
-    componentNames.push_back("axi_fifo_zero");
+    componentNames.push_back("hs_fifo");
+    componentNames.push_back("hs_fifo_n");
+    componentNames.push_back("hs_fifo_one");
+    componentNames.push_back("hs_fifo_zero");
   }
 
   for (const auto &component : componentNames) {
@@ -2080,7 +2045,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
         opName = op.second.getType() + "_" + std::to_string((op.second).getOutputPorts().size());
         componentName = "const_value_" + std::to_string((op.second).getOutputPorts().size());
       } else if (op.second.getType() == "Proj") {
-        opName = "axi_splitter_" + std::to_string((op.second).getOutputPorts().size());
+        opName = "hs_splitter_" + std::to_string((op.second).getOutputPorts().size());
         componentName = opName;
       } else if (op.second.getType() == "input_selector") {
         opName = "input_selector_" + std::to_string((op.second).getInputPorts().size());
@@ -2257,7 +2222,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
   // buffer port mappings
   if (!isBufferless) {
     int bufferCount = 0;
-    std::string bCompName = "axi_fifo";
+    std::string bCompName = "hs_fifo";
     std::string bName = "buffer";
     for (auto &buffer : circuit.getConnectionMap()) {
       // only generate buffer between non-input/output components
@@ -2300,7 +2265,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
     }
   } else {
     int bufferCount = 0;
-    std::string bCompName = "axi_fifo";
+    std::string bCompName = "hs_fifo";
     std::string bName = "buffer";
     for (auto &buffer : circuit.getConnectionMap()) {
       // only generate buffer between non-input/output components

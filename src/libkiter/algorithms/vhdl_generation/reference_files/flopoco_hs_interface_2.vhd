@@ -24,7 +24,7 @@ architecture connections of $ENTITY_NAME is
   constant operator_lifespan : integer := $OP_LIFESPAN;
   constant bit_width : integer := 34;
   -- lower-level component declaration;
-  component axi_merger$AXM_TYPE is
+  component hs_merger$HSM_TYPE is
     generic (bit_width : integer);
     port ( clk        : in std_logic;
            reset      : in std_logic;
@@ -73,12 +73,12 @@ architecture connections of $ENTITY_NAME is
   -- internal signals
   signal cd_in_ready, cd_in_valid, cd_trigger_store,
     ss_can_store : std_logic;
-  signal axm_out_data0, axm_out_data1,
+  signal hsm_out_data0, hsm_out_data1,
     flopoco_out_result : std_logic_vector (bit_width-1 downto 0);
 
 begin
 
-  axm: axi_merger$AXM_TYPE
+  hsm: hs_merger$HSM_TYPE
     generic map ( bit_width => bit_width )
     port map ( clk        => clk,
                reset      => rst,
@@ -90,12 +90,12 @@ begin
                in_data_1  => op_in_data_1,
                out_ready  => cd_in_ready,
                out_valid  => cd_in_valid,
-               out_data_0 => axm_out_data0,
-               out_data_1 => axm_out_data1 );
+               out_data_0 => hsm_out_data0,
+               out_data_1 => hsm_out_data1 );
 
   $COMPONENT_NAME : $FLOPOCO_OP_NAME port map ( clk => clk,
-                                                 X => axm_out_data0,
-                                                 Y => axm_out_data1,
+                                                 X => hsm_out_data0,
+                                                 Y => hsm_out_data1,
                                                  R => flopoco_out_result );
 
   cd: countdown port map ( clk           => clk,

@@ -4,7 +4,7 @@
 --
 -- Create Date: 07/29/2021 05:08:17 PM
 -- Design Name:
--- Module Name: axi_fifo_one - Behavioral
+-- Module Name: hs_fifo_one - Behavioral
 -- Project Name:
 -- Target Devices:
 -- Tool Versions:
@@ -32,7 +32,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 
-entity axi_fifo_one is
+entity hs_fifo_one is
   generic (
     ram_width : natural;
     ram_init  : natural := 0
@@ -41,19 +41,19 @@ entity axi_fifo_one is
     buffer_clk : in std_logic;
     buffer_rst : in std_logic;
 
-    -- axi input interface
+    -- hs input interface
     buffer_in_ready : out std_logic;
     buffer_in_valid : in std_logic;
     buffer_in_data : in std_logic_vector(ram_width - 1 downto 0);
 
-    -- axi output interface
+    -- hs output interface
     buffer_out_ready : in std_logic;
     buffer_out_valid : out std_logic;
     buffer_out_data : out std_logic_vector(ram_width - 1 downto 0)
     );
-end axi_fifo_one;
+end hs_fifo_one;
 
-architecture rtl of axi_fifo_one is
+architecture rtl of hs_fifo_one is
 
   -- single value ram
   signal present: std_logic := '0';

@@ -30,8 +30,6 @@ namespace algorithms {
                          int operatorFreq);
   void generateConstOperator(std::string compDir, std::string referenceDir,
                              std::map<int, int> outputCounts);
-  void generateConversionOperators(VHDLComponent comp, std::string compDir,
-                                   std::string referenceDir);
   void generateSplitterOperators(std::string compDir, std::string referenceDir,
                                  std::map<int, int> outputCounts);
   void generateRoutingOperators(VHDLComponent comp, std::string compDir,
@@ -86,9 +84,9 @@ namespace algorithms {
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);
-  void generateAXIInterfaceComponents(std::string componentDir,
-                                      std::string referenceDir,
-                                      bool isBufferless);
+  void generateHSInterfaceComponents(std::string componentDir,
+                                     std::string referenceDir,
+                                     bool isBufferless);
   void generateAudioInterfaceComponents(std::string componentDir,
                                         std::string referenceDir,
                                         int operatorFreq);
