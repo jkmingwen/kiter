@@ -113,15 +113,9 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
       VERBOSE_DEBUG("\t\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
                    << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
     }
-    if (dataflow->getVertexType(dataflow->getVertexById(ids.front())) == "prod") {
-      generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
-    }
+    generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
   }
 
-  if (outputSpecified) { // only write output file if output directory specified
-    VERBOSE_INFO("Merged graph:" << outputName);
-    printers::writeSDF3File(outputName, dataflow);
-  }
 }
 
 /* Given a graph and a vector of vertices, return a new graph where
