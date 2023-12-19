@@ -21,26 +21,11 @@
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
-  // TODO produce vector of operators to merge by operator type
-  // TODO iteratively call generateMergedGraph
-  bool changeDetected = true;
-  bool outputSpecified = false;
   bool mergeStrategySpecified = false;
-  std::string dirName = "./"; // use current directory as default
   std::string outputName = dataflow->getGraphName() + "_merged" + ".xml"; // use graph name as default
   std::string mergeStrategy = "greedy";
   int operatorFreq = 125; // default target operator frequency is 125MHz
 
-  if (params.find("OUTPUT_DIR") != params.end()) {
-    outputSpecified = true;
-    dirName = params["OUTPUT_DIR"];
-    VERBOSE_INFO("DIR NAME: " << dirName);
-  }
-  if (params.find("OUTPUT_NAME") != params.end()) {
-    outputSpecified = true;
-    outputName = params["OUTPUT_NAME"] + ".xml";
-  }
-  outputName = dirName + outputName; // set output file path
   if (params.find("MERGE_STRATEGY") != params.end()) {
     if (std::find(mergeStrategies.begin(),
                   mergeStrategies.end(),
