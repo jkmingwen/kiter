@@ -32,20 +32,6 @@ std::set<std::string> nonEvalOps = { // operators that can't be evaluated
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
-  bool outputSpecified = false;
-  std::string dirName = "./"; // use current directory as default
-  std::string outputName = dataflow->getGraphName() + "_simplified" + ".xml"; // use graph name as default
-
-  if (params.find("OUTPUT_DIR") != params.end()) {
-    outputSpecified = true;
-    dirName = params["OUTPUT_DIR"];
-    VERBOSE_INFO("DIR NAME: " << dirName);
-  }
-  if (params.find("OUTPUT_NAME") != params.end()) {
-    outputSpecified = true;
-    outputName = params["OUTPUT_NAME"] + ".xml";
-  }
-  outputName = dirName + outputName; // set output file path
 
   VERBOSE_INFO("Beginning iterative evaluation...");
   // Bruno Edit: I removed the cached dataflow, now directly output to the original one
@@ -160,17 +146,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
       }
     }}
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
-  if (outputSpecified) { // only write output file if output directory specified
-    VERBOSE_INFO("Simplified graph:" << outputName);
-    printers::writeSDF3File(outputName, dataflow_prime);
-  } else {
-    // Edit Bruno: Leave it to the system
-    // std::cout << printers::generateSDF3XML(dataflow_prime) << std::endl;
-  }
 }
+
 bool is_number(const std::string &s) {
     return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
 }
+
 // returns true if all input vertices to the given vertex have numeric values
 bool algorithms::checkForNumericInputs(models::Dataflow* const dataflow, Vertex v) {
   bool allInputNum = true;
