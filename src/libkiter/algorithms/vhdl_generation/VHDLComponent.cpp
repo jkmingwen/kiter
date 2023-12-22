@@ -63,14 +63,18 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     std::string argFromName = dataflow->getVertexName(a);
     size_t pos = argFromName.find("_");
     argFromName.erase(0, pos + 1); // first ID before '_' is name of actor
-    std::string argName;
-    while ((pos = argFromName.find("_")) != std::string::npos) {
-      argName = argFromName.substr(0, pos);
-      argOrder.push_back(argName);
-      argFromName.erase(0, pos + 1);
-      if (argFromName.find("_") == std::string::npos) { // last element from split string
-        argOrder.push_back(argFromName);
+    if (argFromName.find("_") != std::string::npos) { // actor has more than 1 argument
+      std::string argName;
+      while ((pos = argFromName.find("_")) != std::string::npos) {
+        argName = argFromName.substr(0, pos);
+        argOrder.push_back(argName);
+        argFromName.erase(0, pos + 1);
+        if (argFromName.find("_") == std::string::npos) { // last element from split string
+          argOrder.push_back(argFromName);
+        }
       }
+    } else { // actor has single argument
+      argOrder.push_back(argFromName);
     }
   }
 
