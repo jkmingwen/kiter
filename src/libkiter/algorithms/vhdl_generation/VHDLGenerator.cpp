@@ -895,8 +895,8 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
     }
 
     // Define and generate signal names
-    bool isTopInput;
-    bool isTopOutput;
+    bool isTopInput = false;
+    bool isTopOutput = false;
     bool hasInputDelay;
     bool hasOutputDelay;
     for (auto &connection : circuit.getConnectionMap()) {

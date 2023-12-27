@@ -26,7 +26,7 @@ std::set<std::string> trigOps = {
 };
 
 std::set<std::string> nonEvalOps = { // operators that can't be evaluated
-  "select2"
+  "select2", "input_selector", "output_selector"
 };
 
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
