@@ -127,7 +127,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   std::map<int, std::vector<std::string>> inPorts;
   std::map<int, std::vector<std::string>> outEdges;
   std::map<int, std::vector<std::string>> outPorts;
-  std::map<int, std::map<std::string, int>> inDataTypes;
   std::map<int, std::map<std::string, int>> outDataTypes;
   std::vector<std::string> actorNames; // we track these to replace with the name of the output selector
 
@@ -143,7 +142,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     size_t pos = actorBaseName.find("_");
     actorNames.push_back(actorBaseName.substr(0, pos));
     argOrder[actorCount] = actorInfo.getArgOrder();
-    inDataTypes[actorCount] = actorInfo.getInputTypes();
     outDataTypes[actorCount] = actorInfo.getOutputTypes();
     for (auto a : actorInfo.getArgOrder()) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
       std::string actorName = dataflow->getVertexName(v);
@@ -220,10 +218,26 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     }
 
     // new edge from input selector to merged actor
-    std::string edgeType = (inDataTypes[i]).begin()->first; // our current VHDL generation implementation uses the first input edge type to determine arithmetic type
+    std::string edgeType = "";
+    std::map<std::string, int> inputDataTypes;
+    {ForInputEdges(dataflow, new_is, inEdge) {
+        std::string inEdgeName = dataflow->getEdgeName(inEdge);
+        if (inEdgeName.substr(inEdgeName.rfind("_") + 1) == "vect") {
+          inputDataTypes["real_vect"]++;
+        } else {
+          inputDataTypes[inEdgeName.substr(inEdgeName.rfind("_") + 1)]++;
+        }
+      }}
+    if (inputDataTypes.size() > 1) {
+      VERBOSE_WARNING(inputDataTypes[i].size() << " input types on input selector " << isId << "; setting to real.");
+      edgeType = "real"; // TODO make this not hard-coded
+    } else {
+      edgeType = inputDataTypes.begin()->first;
+    }
     // use edge ID to avoid edge name conflicts
     Edge outEdge = dataflow->addEdge(new_is, mergedActor);
     std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(outEdge) + dataflow->getEdgesCount()) + "_" + edgeType;
+    VERBOSE_WARNING("Output edge from input selector " << isId << "set to: " << outEdgeName);
     dataflow->setEdgeName(outEdge, outEdgeName);
     dataflow->setEdgeInPhases(outEdge, execRates);
     dataflow->setEdgeOutPhases(outEdge, {1});
