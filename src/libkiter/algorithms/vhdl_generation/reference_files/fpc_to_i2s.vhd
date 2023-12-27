@@ -19,7 +19,7 @@ architecture Behavioral of fpc_to_i2s is
   constant fp_bit_width : integer := 34;
   constant i2s_bit_width : integer := 24;
     -- lower-level component declaration;
-component axi_merger_one is
+component hs_merger_one is
   generic (bit_width : integer);
   port ( clk        : in std_logic;
          reset      : in std_logic;
@@ -70,11 +70,11 @@ end component;
     -- internal signals
   signal dly_in_ready, dly_in_valid, dly_trigger_store,
     ss_can_store : std_logic;
-  signal axm_out_data0 : std_logic_vector (fp_bit_width-1 downto 0);
+  signal hsm_out_data0 : std_logic_vector (fp_bit_width-1 downto 0);
   signal flopoco_out_result : std_logic_vector (i2s_bit_width-1 downto 0);
 begin
 
-  axm: axi_merger_one
+  hsm: hs_merger_one
     generic map ( bit_width => fp_bit_width )
     port map ( clk        => clk,
                reset      => rst,
@@ -83,7 +83,7 @@ begin
                in_data_0  => op_in_data_0,
                out_ready  => dly_in_ready,
                out_valid  => dly_in_valid,
-               out_data => axm_out_data0);
+               out_data => hsm_out_data0);
 
   dly: countdown port map ( clk           => clk,
                         reset         => rst,
@@ -93,7 +93,7 @@ begin
                         trigger_store => dly_trigger_store );
 
   ss: store_send
-    generic map ( data_bit_width => i2s_bit_width ) -- NOTE different from axm merger bit width
+    generic map ( data_bit_width => i2s_bit_width ) -- NOTE different from hsm merger bit width
     port map ( clk           => clk,
                trigger_store => dly_trigger_store,
                out_ready     => op_out_ready_0,
@@ -106,7 +106,7 @@ begin
   out_audio : fp2fix_and_scaleup
     port map ( clk => clk,
                rst => rst,
-               fp_in => axm_out_data0,
+               fp_in => hsm_out_data0,
                i2s_out => flopoco_out_result );
 
 end Behavioral;
