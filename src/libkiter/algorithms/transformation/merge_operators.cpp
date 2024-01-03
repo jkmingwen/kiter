@@ -229,7 +229,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
         }
       }}
     if (inputDataTypes.size() > 1) {
-      VERBOSE_WARNING(inputDataTypes[i].size() << " input types on input selector " << isId << "; setting to real.");
+      VERBOSE_WARNING(inputDataTypes.size() << " input types on input selector " << isId << "; setting to real.");
       edgeType = "real"; // TODO make this not hard-coded
     } else {
       edgeType = inputDataTypes.begin()->first;
