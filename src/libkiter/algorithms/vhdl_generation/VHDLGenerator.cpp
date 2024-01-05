@@ -23,90 +23,91 @@
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferless,
                                   int operatorFreq) {
 
-    VHDLCircuit circuit;
-    std::string circuitName = dataflow->getGraphName();
-    // replace prohibited characters with underscores
-    std::replace(circuitName.begin(), circuitName.end(), '-', '_');
-    std::replace(circuitName.begin(), circuitName.end(), '.', '_');
-    circuit.setName(circuitName);
-    circuit.setOperatorFreq(operatorFreq);
-    VERBOSE_DEBUG( "circuit name: " << circuitName );
+  VHDLCircuit circuit;
+  std::string circuitName = dataflow->getGraphName();
+  // replace prohibited characters with underscores
+  std::replace(circuitName.begin(), circuitName.end(), '-', '_');
+  std::replace(circuitName.begin(), circuitName.end(), '.', '_');
+  circuit.setName(circuitName);
+  circuit.setOperatorFreq(operatorFreq);
+  VERBOSE_DEBUG( "circuit name: " << circuitName );
 
 
 
-    // populate circuit object with components and connections based on dataflow
-    {ForEachVertex(dataflow, actor) {
-            VHDLComponent newComp(dataflow, actor);
-            circuit.addComponent(newComp);
-            // update execution time in dataflow according to component operator type
-            TIME_UNIT opLifespan = circuit.getOperatorLifespan(newComp.getType());
-            VERBOSE_INFO("operator lifespan (" << newComp.getType() << "): " << opLifespan);
-            if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-              std::vector<TIME_UNIT> opLifespans{1};
-              if (newComp.getType() == "input_selector" || newComp.getType() == "output_selector") {
-                opLifespans = dataflow->getVertexPhaseDuration(actor); // special case for input and output selectors, which are CSDF components
-              }
-              dataflow->setVertexDuration(actor, opLifespans);
-            } else {
-              std::vector<TIME_UNIT> opLifespans{opLifespan};
-              dataflow->setVertexDuration(actor, opLifespans);
-            }
-        }}
-    {ForEachEdge(dataflow, edge) {
-            VHDLConnection newConn(dataflow, edge);
-            circuit.addConnection(newConn);
-        }}
-    for (auto &comp : circuit.getComponentMap()) { // convert any int constant values that are supplying fp components into fp representation
-        if (comp.second.isConst() && comp.second.getDataType() == "int") {
-            std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
-            for (auto &i : dstComps) {
-                if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
-                    VERBOSE_WARNING("The destination component, " << i.getName()
-                                                                  << " has mixed input types; casting the binary representation of the value provided by "
-                                                                  << comp.second.getName() << " as a float");
-                    circuit.convConstIntToFloat(comp.first);
-                }
-            }
+  // populate circuit object with components and connections based on dataflow graph
+  {ForEachVertex(dataflow, actor) {
+      VHDLComponent newComp(dataflow, actor);
+      circuit.addComponent(newComp);
+      // update execution time in dataflow according to component operator type
+      TIME_UNIT opLifespan = circuit.getOperatorLifespan(newComp.getType()); // TODO automatically set lifespan to 1 for operators without specified lifespan
+      VERBOSE_INFO("operator lifespan (" << newComp.getType() << "): " << opLifespan);
+      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
+        std::vector<TIME_UNIT> opLifespans{1};
+        // input and output selectors have multiple phases of execution and so need a vector of lifespans
+        if (newComp.getType() == "input_selector" || newComp.getType() == "output_selector") {
+          opLifespans = dataflow->getVertexPhaseDuration(actor);
         }
+        dataflow->setVertexDuration(actor, opLifespans);
+      } else {
+        std::vector<TIME_UNIT> opLifespans{opLifespan};
+        dataflow->setVertexDuration(actor, opLifespans);
+      }
+    }}
+  {ForEachEdge(dataflow, edge) {
+      VHDLConnection newConn(dataflow, edge);
+      circuit.addConnection(newConn);
+    }}
+  for (auto &comp : circuit.getComponentMap()) { // convert any int constant values that are supplying fp components into fp representation
+    if (comp.second.isConst() && comp.second.getDataType() == "int") {
+      std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
+      for (auto &i : dstComps) {
+        if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
+          VERBOSE_WARNING("The destination component, " << i.getName()
+                          << " has mixed input types; casting the binary representation of the value provided by "
+                          << comp.second.getName() << " as a float");
+          circuit.convConstIntToFloat(comp.first);
+        }
+      }
     }
+  }
 
-    return circuit;
+  return circuit;
 
 }
-void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_t param_list) {
 
+// Generates VHDL code in a specified output directory
+void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_t param_list) {
 
   bool outputDirSpecified = false;
   bool bufferless = false;
-
-  std::string topDir      = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // default output directory
+  // default directories/parameters defined here
+  // TODO remove unnecessary defaults
+  std::string topDir      = "./" + dataflow->getGraphName() + "_vhdl_gen/"; // where VHDL files will be generated
   std::string componentDir = topDir + "/components/";
-  std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
   std::string tbDir = topDir + "/testbenches/";
-  int operatorFreq = 125; // default target operator frequency is 125MHz
+  std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
+  int operatorFreq = 125; // clock frequency VHDL operators are designed to run at (in MHz)
 
-  // check for specified directory
+  // check for specified VHDL output directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
-
     outputDirSpecified = true;
     topDir = param_list["OUTPUT_DIR"] + "/";
     componentDir = topDir + "/components/";
     tbDir = topDir + "/testbenches/";
     VERBOSE_INFO("Update output directory to " << topDir);
 
-    // This creates both topDir and componentDir directories
+    // create both topDir and componentDir directories
     std::filesystem::create_directories(componentDir);
-    std::filesystem::create_directories(tbDir);
   } else {
-      VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory.");
+    VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory.");
   }
 
-  // check if FIFO buffers should be generated
+  // check if FIFO buffers should be generated in VHDL implementation
   if (param_list.find("BUFFERLESS") != param_list.end()) {
-      VERBOSE_INFO("Bufferless mode activated");
-      bufferless = true;
+    VERBOSE_INFO("Bufferless mode activated");
+    bufferless = true;
   } else {
-      VERBOSE_INFO("Please use '-p BUFFERLESS=t'  to generate VHDL without FIFO buffers");
+    VERBOSE_INFO("Please use '-p BUFFERLESS=t'  to generate VHDL without FIFO buffers");
   }
 
   // check if operator frequencies have been specified
@@ -125,52 +126,51 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_INFO("Default reference in used, you can use -p REFERENCE_DIR=/path/to/reference_directory/ to set reference directory");
   }
 
-
   VERBOSE_INFO ("Looking in " << referenceDir << " for VHDL generation reference files");
-
   if (!std::filesystem::is_directory(referenceDir)) {
       VERBOSE_ERROR("Reference directory is not found.");
       VERBOSE_FAILURE();
   }
 
-    VHDLCircuit tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
-    while (tmp.getMultiOutActors().size() > 0) {
+  // VHDLCircuit object specifies operators and how they're connected
+  VHDLCircuit tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
+  while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
-        VERBOSE_INFO("getMultiOutActors is not empty");
+    VERBOSE_INFO("getMultiOutActors is not empty");
 
-        /*  This block remove multiIO actors and replace them  */
-        for (std::string actorName: tmp.getMultiOutActors()) {
-            parameters_list_t parameters;
-            parameters["name"] = actorName;
-            VERBOSE_INFO("singleOutput actor " << actorName);
-            try {
-                algorithms::transformation::singleOutput(dataflow, parameters);
-            } catch (...) {
-                VERBOSE_WARNING("actor missing!");
-            }
-        }
-
-        VERBOSE_INFO("Regenerate Circuit");
-        tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
+    /*  This block removes multiIO actors and replaces them with a router that splits their output */
+    for (std::string actorName: tmp.getMultiOutActors()) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("singleOutput actor " << actorName);
+      try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
+        algorithms::transformation::singleOutput(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
     }
 
-    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
-    VERBOSE_INFO("Output Circuit");
+    VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)"); // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
+    tmp = generateCircuitObject(dataflow, bufferless, operatorFreq);
+  }
+
+  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
+  VERBOSE_INFO("Output Circuit");
 
 
-    if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-        generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
-        generateCircuit(tmp, topDir, bufferless);
-        generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
-        generateTestbench(tbDir, referenceDir);
-        printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
-                                dataflow);
-        VERBOSE_INFO("VHDL files generated in: " << topDir);
-    } else {
-        VERBOSE_WARNING("No VHDL files created.");
-    }
+  if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
+    generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
+    generateCircuit(tmp, topDir, bufferless);
+    generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
+    std::filesystem::copy(referenceDir + "/testbenches/", tbDir);
+    printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
+                            dataflow);
+    VERBOSE_INFO("VHDL files generated in: " << topDir);
+  } else {
+    VERBOSE_WARNING("No VHDL files created.");
+  }
 
-    std::cout << tmp.printStatus() << std::endl;
+  std::cout << tmp.printStatus() << std::endl;
 
 }
 
@@ -690,44 +690,6 @@ void algorithms::generateOperator(VHDLComponent comp, std::string compDir,
                                              << ".vhd does not exist/not found!"); // TODO turn into assert
 
     }
-  }
-}
-
-void algorithms::generateTestbench(std::string tbDirectory,
-                                   std::string refDirectory) {
-  std::ofstream vhdlOutput;
-  std::string tbName = "tb_audio_in_out";
-  std::string memFileName = "audio_test0";
-  std::ifstream refFile;
-  std::string fileContent;
-  std::string tbRefDirectory = refDirectory + "/testbenches/";
-
-  // generate testbench
-  vhdlOutput.open(tbDirectory + tbName + ".vhd"); // instantiate VHDL file
-  refFile.open(tbRefDirectory + tbName + ".vhd");
-  if (refFile.is_open()) {
-    while (std::getline(refFile, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    refFile.close();
-    vhdlOutput.close();
-  } else {
-    VERBOSE_ERROR ("Reference file for " << tbName
-                   << ".vhd does not exist/not found!");
-  }
-
-  // generate .mem file
-  vhdlOutput.open(tbDirectory + memFileName + ".mem"); // instantiate VHDL file
-  refFile.open(tbRefDirectory + memFileName + ".mem");
-  if (refFile.is_open()) {
-    while (std::getline(refFile, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    refFile.close();
-    vhdlOutput.close();
-  } else {
-    VERBOSE_ERROR ("Reference file for " << memFileName
-                   << ".mem does not exist/not found!");
   }
 }
 
