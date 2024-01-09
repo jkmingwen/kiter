@@ -10,12 +10,21 @@
 
 VHDLCircuit::VHDLCircuit() {}
 
+/**
+   Insert a component into the circuit. Components with mixed input types will trigger a scan
+   of the current components in the circuit to ensure that the right data types are provided.
+
+   @param newComp VHDLComponent to add to the circuit.
+ */
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
   newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
   newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
-  this->operatorMap[newComp.getType()]++; // track operators used in circuit
+  this->operatorMap[newComp.getType()]++; // keep track of counts of operator types present in circuit
+  if (newComp.hasMixedType()) {
+    this->refreshComponentMap();
+  }
 }
 
 void VHDLCircuit::addInputPort(std::string portName,
@@ -259,12 +268,21 @@ std::vector<VHDLComponent> VHDLCircuit::getDstComponents(const VHDLComponent &sr
   return dstComponents;
 }
 
-// converts a constant value int type to float
-void VHDLCircuit::convConstIntToFloat(Vertex v) {
-  VERBOSE_ASSERT(this->componentMap.find(v) != this->componentMap.end(), "Specified constant value component doesn't exist in this circuit's component map");
-  if (this->componentMap.at(v).getDataType() == "fp") {
-    VERBOSE_WARNING("\t" << this->componentMap.at(v).getName() << " is already a float, bypassing conversion");
-  } else {
-    this->componentMap.at(v).convConstIntToFloat();
+void VHDLCircuit::refreshComponentMap() {
+  for (auto &dstComp : this->componentMap) {
+    if (dstComp.second.hasMixedType() && dstComp.second.getDataType() == "fp") {
+      // convert any input args of integer constant values to floating point
+      const std::vector<std::string>& dstInEdges = dstComp.second.getInputEdges();
+      for (auto &srcComp : this->componentMap) {
+        for (auto &outEdge : srcComp.second.getOutputEdges()) {
+          if (std::find(dstInEdges.begin(), dstInEdges.end(), outEdge) != dstInEdges.end()) {
+            if (srcComp.second.isConst() && srcComp.second.getDataType() == "int") {
+              srcComp.second.setFPValue(static_cast<float>(srcComp.second.getIntValue()));
+              srcComp.second.setDataType("fp");
+            }
+          }
+        }
+      }
+    }
   }
 }

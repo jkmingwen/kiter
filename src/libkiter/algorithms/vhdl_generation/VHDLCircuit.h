@@ -69,7 +69,7 @@ class VHDLCircuit {
 
   void setName(std::string);
   void setOperatorFreq(int freq);
-  void convConstIntToFloat(Vertex v);
+  void refreshComponentMap();
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;

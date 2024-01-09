@@ -8,29 +8,6 @@
 #include <models/Dataflow.h>
 #include "VHDLComponent.h"
 
-// returns binary representation of float
-// adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
-std::string floatToBinary(float f)
-{
-  std::stringstream outputStream;
-  size_t size = sizeof(f);
-  unsigned char * p = (unsigned char *) &f;
-  p += size-1;
-  while (size--)
-  {
-    int n;
-    for (n=0; n<8; n++)
-    {
-      char bit = ('0' + (*p & 128 ? 1 : 0));
-      outputStream << bit;
-      *p <<= 1;
-    }
-    p--;
-  }
-
-  return outputStream.str();
-}
-
 VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   actor = a;
   componentName = dataflow->getVertexName(a);
@@ -101,12 +78,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }
     if (dataType == "real") { // const is of type float
       fpValue = numericValue;
-      std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
-      binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
     } else if (dataType == "int") {
       std::string::size_type sz;
       intValue = std::stoi(baseCompType, &sz);
-      binaryValue = std::bitset<34>(intValue).to_string(); // NOTE assuming unsigned binary representation here
     } // TODO add else for edge cases
     isConstVal = true;
     componentType = "const_value";
@@ -175,25 +149,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }
     if (dataType == "real") { // const is of type float
       fpValue = numericValue;
-      std::string fpcFloatPrefix = (numericValue ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
-      binaryValue = fpcFloatPrefix + floatToBinary(numericValue);
     } else if (dataType == "int") {
       std::string::size_type sz;
       intValue = std::stoi(baseCompType, &sz);
-      binaryValue = std::bitset<34>(intValue).to_string(); // NOTE assuming unsigned binary representation here
     } // TODO add else for edge cases
     isConstVal = true;
     componentType = "const_value";
   }
-}
-
-// converts a constant value int type to float
-void VHDLComponent::convConstIntToFloat() {
-  assert(this->isConst() && this->getDataType() == "int"); // only works on constant int value components
-  this->fpValue = static_cast<float>(this->intValue);
-  this->dataType = "fp";
-  std::string fpcFloatPrefix = (this->fpValue ? "01" : "00");
-  this->binaryValue = fpcFloatPrefix + floatToBinary(this->fpValue);
 }
 
 Vertex VHDLComponent::getActor() const {
@@ -257,6 +219,10 @@ const std::map<std::string, int>& VHDLComponent::getOutputTypes() const{
   return this->outputTypes;
 }
 
+void VHDLComponent::setDataType(std::string newType) {
+  this->dataType = newType;
+}
+
 std::string VHDLComponent::getDataType() const{
   return this->dataType;
 }
@@ -269,8 +235,20 @@ bool VHDLComponent::hasMixedType() const{
   return this->isMixedType;
 }
 
-std::string VHDLComponent::getBinaryValue() const{
-  return this->binaryValue;
+void VHDLComponent::setFPValue(float newVal) {
+  this->fpValue = newVal;
+}
+
+void VHDLComponent::setIntValue(int newVal) {
+  this->intValue = newVal;
+}
+
+float VHDLComponent::getFPValue() const {
+  return this->fpValue;
+}
+
+int VHDLComponent::getIntValue() const {
+  return this->intValue;
 }
 
 void VHDLComponent::setName(std::string newName) {
@@ -342,7 +320,6 @@ std::string VHDLComponent::printStatus() const  {
     } else if (this->dataType == "int") {
       outputStream <<"\t\tValue: " << this->intValue << std::endl;
     } // TODO add else for edge cases
-    outputStream << "\t\tBinary rep: " << this->binaryValue << std::endl;
   } else {
     outputStream << " N" << std::endl;
   }

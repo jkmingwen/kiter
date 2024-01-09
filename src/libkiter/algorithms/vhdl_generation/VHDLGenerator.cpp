@@ -57,22 +57,49 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  for (auto &comp : circuit.getComponentMap()) { // convert any int constant values that are supplying fp components into fp representation
-    if (comp.second.isConst() && comp.second.getDataType() == "int") {
-      std::vector<VHDLComponent> dstComps = circuit.getDstComponents(comp.second);
-      for (auto &i : dstComps) {
-        if (i.hasMixedType() && i.getDataType() == "fp") { // operators with mixed inputs are set to FP by default
-          VERBOSE_WARNING("The destination component, " << i.getName()
-                          << " has mixed input types; casting the binary representation of the value provided by "
-                          << comp.second.getName() << " as a float");
-          circuit.convConstIntToFloat(comp.first);
-        }
-      }
-    }
-  }
 
   return circuit;
+}
 
+/**
+   Generate the binary representation of a VHDLComponent's
+   numerical value.
+
+   @param comp Only works on a VHDLComponent of type "const_val".
+
+   @return A string representing the binary form of the value
+   transmitted by the given component. A null string is
+   returned if the given component has a data type that is
+   not fp/real/int.
+ */
+std::string binaryValue(VHDLComponent const comp) {
+  std::stringstream outputStream;
+  // adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
+  if (comp.getDataType() == "fp" || comp.getDataType() == "real") {
+    float fpVal = comp.getFPValue();
+    std::string fpcFloatPrefix = (fpVal ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
+    size_t size = sizeof(fpVal);
+    unsigned char *p = (unsigned char *) &fpVal;
+    p += size-1;
+    while (size--) {
+      int n;
+      for (n=0; n<8; n++)
+        {
+          char bit = ('0' + (*p & 128 ? 1 : 0));
+          outputStream << bit;
+          *p <<= 1;
+        }
+      p--;
+    }
+    return (fpcFloatPrefix + outputStream.str());
+  } else if (comp.getDataType() == "int") {
+    return std::bitset<34>(comp.getIntValue()).to_string(); // NOTE assuming unsigned binary representation here
+  } else {
+    VERBOSE_WARNING("Representing the value a VHDLComponent of type "
+                    << comp.getType() << " (data type: " << comp.getDataType()
+                    << ") as a binary is not supported.");
+    return NULL;
+  }
 }
 
 // Generates VHDL code in a specified output directory
@@ -159,10 +186,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
+    const auto copyOptions = std::filesystem::copy_options::update_existing
+      | std::filesystem::copy_options::recursive;
     generateOperators(tmp, componentDir, referenceDir, bufferless, operatorFreq);
     generateCircuit(tmp, topDir, bufferless);
     generateAudioInterfaceWrapper(tmp, referenceDir, topDir);
-    std::filesystem::copy(referenceDir + "/testbenches/", tbDir);
+    std::filesystem::copy(referenceDir + "/testbenches/", tbDir, copyOptions);
     printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
                             dataflow);
     VERBOSE_INFO("VHDL files generated in: " << topDir);
@@ -2024,7 +2053,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
       if (op.second.isConst()) { // NOTE binary representation of const_val operators set here
         outputStream << "generic map (\n"
                      << "    " << "value => " << "\""
-                     << op.second.getBinaryValue() << "\"" << "\n)\n"
+                     << binaryValue(op.second) << "\"" << "\n)\n"
                      << std::endl;
       }
       if (opName == "delay") {

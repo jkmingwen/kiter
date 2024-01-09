@@ -15,8 +15,6 @@ namespace models {
   class Dataflow;
 }
 
-std::string floatToBinary(float f); // for binary representation of constant value components
-
 class VHDLComponent {
  public:
   // VHDLComponent();
@@ -32,11 +30,15 @@ class VHDLComponent {
   const std::vector<std::string>& getOutputEdges()const;
   std::string getType()const;
   int getLifespan()const;
-  std::string getBinaryValue()const;
+  void setFPValue(float newVal);
+  void setIntValue(int newVal);
+  float getFPValue() const;
+  int getIntValue() const;
   std::string getImplementationName()const;
   const std::vector<std::string>& getArgOrder() const;
   const std::map<std::string, int>& getInputTypes() const;
   const std::map<std::string, int>& getOutputTypes() const;
+  void setDataType(std::string newType);
   std::string getDataType() const ;
   bool isConst() const;
   bool hasMixedType() const;
@@ -44,7 +46,6 @@ class VHDLComponent {
   void setId(ARRAY_INDEX newId);
   void setLifespan(int lifespan);
   void setImplementationName(std::string newName);
-  void convConstIntToFloat();
   void setIOId(int id);
   std::string printStatus() const ;
 
@@ -63,7 +64,6 @@ class VHDLComponent {
   std::string dataType; // TODO add operator type ("fp/int")
   float fpValue;
   int intValue;
-  std::string binaryValue; // binary representation of 'value'
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
                                       "vslider"}; // NOTE temporary workaround to handle UI components

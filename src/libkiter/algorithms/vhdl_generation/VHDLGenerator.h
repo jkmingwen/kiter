@@ -16,13 +16,13 @@
 
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow,
                                   bool bufferless, int operatorFreq);
+std::string binaryValue(VHDLComponent const comp);
 
 namespace models {
   class Dataflow;
 }
 
 namespace algorithms {
-  enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
