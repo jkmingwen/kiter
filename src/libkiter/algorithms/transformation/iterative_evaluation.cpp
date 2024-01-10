@@ -40,7 +40,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
 
   while (changeDetected) {
     VERBOSE_INFO("");
-    VERBOSE_INFO("Starting new iteration of iterative evaluation:")
+    VERBOSE_INFO("Starting new iteration of iterative evaluation:");
     changeDetected = false;
       {ForEachVertex(dataflow_prime, v) {
           std::string opName = dataflow_prime->getVertexType(v);

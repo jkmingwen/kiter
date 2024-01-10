@@ -35,6 +35,8 @@ std::pair<models::Dataflow *, std::map<Edge, Edge> > genGraphWFeedbackEdgesWithP
             dataflow_prime->setPreload(new_edge, 0);
             dataflow_prime->setEdgeName(new_edge,
                                         dataflow_prime->getEdgeName(c) + "_prime");
+            dataflow_prime->setEdgeInputPortName(new_edge, dataflow_prime->getEdgeOutputPortName(c)+ "_prime");
+            dataflow_prime->setEdgeOutputPortName(new_edge, dataflow_prime->getEdgeInputPortName(c)+ "_prime");
             dataflow_prime->setEdgeType(new_edge, EDGE_TYPE::FEEDBACK_EDGE);
 
             matching[original_edge] = c;

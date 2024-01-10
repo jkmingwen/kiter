@@ -701,11 +701,27 @@ void writeChannel (xmlTextWriterPtr writer, const models::Dataflow* dataflow, co
 
 	const std::string edge_name = dataflow->getEdgeName(e);
 	const std::string edge_srcActor = dataflow->getVertexName(dataflow->getEdgeSource(e));
-	const std::string edge_srcPort = dataflow->getEdgeInputPortName(e);
 	const std::string edge_dstActor =dataflow->getVertexName(dataflow->getEdgeTarget(e));
-	const std::string edge_dstPort = dataflow->getEdgeOutputPortName(e);
-	const DATA_UNIT edge_size = dataflow->getTokenSize(e);
+    const DATA_UNIT edge_size = dataflow->getTokenSize(e);
 	const TOKEN_UNIT edge_initialTokens = dataflow->getPreload(e);
+
+    // TODO: The following code (~10 lines) is a workaround to avoid empty names for ports.
+    //       It exists because past code base did not support port names.
+    //       In the future port names should be mandatory the same way channel names are.
+
+    std::string edge_srcPort = dataflow->getEdgeInputPortName(e);
+    std::string edge_dstPort = dataflow->getEdgeOutputPortName(e);
+
+    if (edge_srcPort == "") {
+        edge_srcPort = "in_" + commons::toString(dataflow->getEdgeId(e));
+        VERBOSE_WARNING("default port name '" << edge_srcPort << "' used, this may create duplicates.");
+    }
+    if (edge_dstPort == "") {
+        edge_dstPort = "out_" + commons::toString(dataflow->getEdgeId(e));
+        VERBOSE_WARNING("default port name '" << edge_dstPort << "' used, this may create duplicates.");
+    }
+
+
 	xmlTextWriterSetIndent(writer,3); xmlTextWriterStartElement(writer,(const xmlChar*) "channel");
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"name", (const xmlChar*) edge_name.c_str());
 	xmlTextWriterWriteAttribute	(writer,(const xmlChar*)"srcActor", (const xmlChar*) edge_srcActor.c_str());

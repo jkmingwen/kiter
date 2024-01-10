@@ -346,6 +346,13 @@ inline	 Edge addEdge(const Vertex from, const Vertex to, const  ARRAY_INDEX id, 
 	return ne;
 }
 
+inline	 Edge addEdge(const Vertex from, const Vertex to, const  ARRAY_INDEX id, const std::string& name, const std::string& inPort, const std::string& outPort) {
+        Edge ne = addEdge(from , to , id);
+        this->setEdgeName(ne,name);
+        this->setEdgeInputPortName(ne, inPort);
+        this->setEdgeOutputPortName(ne, outPort);
+        return ne;
+}
 inline	 Edge addEdge(const Vertex from, const Vertex to, const std::string& name) {
 	Edge ne = addEdge(from , to);
 	this->setEdgeName(ne,name);

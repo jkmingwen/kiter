@@ -310,11 +310,13 @@ bool computeRepetitionVector(models::Dataflow *from) {
 
     // Compute period of repetition for rate vectors (dangerous way ...)
     {ForEachEdge(from,c) {
+        VERBOSE_ASSERT_GreaterThan(from->getEdgeInPhasesCount(c), 0);
+        VERBOSE_ASSERT_GreaterThan(from->getEdgeOutPhasesCount(c), 0);
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeInPhasesCount(c));
     	ratePeriod = std::lcm(ratePeriod,from->getEdgeOutPhasesCount(c));
     }}
-    VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
     VERBOSE_RV("Rate Period = " << ratePeriod);
+    VERBOSE_ASSERT(ratePeriod > 0 , TXT_NEVER_HAPPEND);
 
 
     // Calculate firing ratio (as fraction) for each actor
