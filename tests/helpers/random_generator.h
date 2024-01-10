@@ -17,7 +17,7 @@ models::Dataflow* generate_random_graph (int num_actor,
 					 int num_buffers,
 					 int max_phases,
 					 int max_weight,
-					 int max_duration) {
+					 int max_duration, int seed = 123) {
 	
 	RandomGeneratorConfiguration config;
 	config.min_vertices_count      = num_actor;
@@ -29,7 +29,7 @@ models::Dataflow* generate_random_graph (int num_actor,
 	config.max_phase_quantity      = max_phases;
 
 	RandomGenerator generator (config);
-	models::Dataflow * dataflow = generator.generate();
+	models::Dataflow * dataflow = generator.generate(seed);
 
 	return dataflow;
 }

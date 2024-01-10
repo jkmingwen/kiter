@@ -15,7 +15,7 @@
 //#warning "You don't have Gurobi installed."
 #endif
 
-// TODO : Terrible to write the modle with gurobi, need to do differently !
+// TODO : Terrible to write the model with gurobi, need to be done differently !
 bool            commons::GLPSol::solveWithGurobi      () {
 #ifdef __GUROBILIB__
 

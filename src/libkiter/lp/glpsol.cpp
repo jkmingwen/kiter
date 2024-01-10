@@ -373,7 +373,7 @@ bool GLPSol::solve(const GLPParameters& params) {
 	printValues();
 	return true;
 }
-void GLPSol::writeMPSProblem() { // TODO : HUGE BUG FROM GENERRATION TO FIX
+void GLPSol::writeMPSProblem() { // TODO : HUGE BUG FROM GENERATION TO FIX
 	generateGLPKProblem();
 
 	// Ecriture du probleme

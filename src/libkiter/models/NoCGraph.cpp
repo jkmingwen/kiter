@@ -210,8 +210,6 @@ void NoCGraph::findLeastCostPath(int u, int d, bool visited[], int path[], int &
 	visited[u] = false;
 }
 
-
-
 std::vector<int> NoCGraph::findPathDijkstra(int u, int d)
 {
 	u += MESH_SIZE;
@@ -231,38 +229,36 @@ std::vector<int> NoCGraph::findPathDijkstra(int u, int d)
 	// Mark the current node and store it in path[]
 	cost_vec[u] = 0;
 
-	for(int i = 0; i < V ; i++)
-	{
+	for(int i = 0; i < V ; i++) {
+
+        // Find the vertex with shortest distance (vid)
 		int vid = -1;
 		int max_dist = INT_MAX;
-		for(int j = 0; j < (int)cost_vec.size(); j++)
-		{
-			if(visited[j])
-			{
-				continue;
-			}
-			if(max_dist > cost_vec[j])
-			{
+		for(int j = 0; j < (int)cost_vec.size(); j++) {
+			if(visited[j]) { continue;}
+			if(max_dist > cost_vec[j]) {
 				max_dist = cost_vec[j];
 				vid = j;
 			}
 		}
 
-		//std::cout << "marking " <<  vid << " visited\n";
-		if(vid < 0)
-			continue;
+        // We reached the destination.
+        if (vid == d) break;
 
+        // FIXME What is this case ?
+		if(vid < 0) continue;
+
+        // remove from the Q
 		visited[vid] = true;
-		for (auto j : adj[vid])
-		{
+
+		for (auto j : adj[vid]) {
 			auto dst = j;
 			if(visited[dst]) continue;
 
 			int alt = cost_vec[vid] + 1;
 			int myutil = linkUtil[getMapIndex(vid, dst)];
 
-			if((alt == cost_vec[dst] && myutil < link_util[dst]) || (alt < cost_vec[dst]))
-			{
+			if((alt == cost_vec[dst] && myutil < link_util[dst]) || (alt < cost_vec[dst])) {
 				cost_vec[dst] = alt;
 				prev[dst] = vid;
 				link_util[dst] = myutil;

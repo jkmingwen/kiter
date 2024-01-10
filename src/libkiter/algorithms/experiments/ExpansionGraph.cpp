@@ -71,7 +71,7 @@ void ExpansionGraph::generate_E2_Edge(models::Dataflow * const dataflow , EXEC_C
 }
 
 
-void algorithm1(EXEC_COUNT x, double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcdk, EXEC_COUNT maxX, EXEC_COUNT maxY) {
+void algorithm1(EXEC_COUNT x, double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcdk) {
 
 	VERBOSE_INFO("algorithm1");
 
@@ -79,13 +79,13 @@ void algorithm1(EXEC_COUNT x, double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,
 
 	VERBOSE_INFO("g=" << g);
 
-	double yg0 = (Tx * x - g0 * gcdk) / Ty;
-	double yf0 = (Tx * x - f0 * gcdk) / Ty;
-	double Tyyg0 = Ty * yg0;
-	double Tyyf0 = Ty * yf0;
+	double yg0 = (static_cast<double>(Tx * x) - g0 * static_cast<double>(gcdk)) / static_cast<double>(Ty);
+	double yf0 = (static_cast<double>(Tx * x) - f0 * static_cast<double>(gcdk)) / static_cast<double>(Ty);
+	double Tyyg0 = static_cast<double>(Ty) * yg0;
+	double Tyyf0 = static_cast<double>(Ty) * yf0;
 
-	EXEC_COUNT start = std::ceil ( Tyyg0 );
-	EXEC_COUNT stop  = std::floor ( Tyyf0 );
+	EXEC_COUNT start = static_cast<EXEC_COUNT>(std::ceil(Tyyg0));
+	EXEC_COUNT stop  = static_cast<EXEC_COUNT>(std::floor(Tyyf0));
 
 
 	VERBOSE_INFO("yg0=" << yg0);
@@ -115,17 +115,11 @@ void algorithm1(EXEC_COUNT x, double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,
 		VERBOSE_INFO("u0=" << u0);
 		VERBOSE_INFO("v0=" << v0);
 
-
-		for (EXEC_COUNT k = 0, counter = u0 ; counter <= maxY ; counter = u0 + (++k * gcdk)/g) {
-			VERBOSE_INFO("k=" << k << " with counter =" << counter);
-		}
-
-
 	}
 
 }
 
-void algorithm2(double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcdk, EXEC_COUNT maxX, EXEC_COUNT maxY) {
+void algorithm2(double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcdk, EXEC_COUNT maxX, EXEC_COUNT ) {
 	VERBOSE_INFO("Algorithm 2 Starts");
 	// Algorithm 2
 		if (g0 >= 1 + f0) {
@@ -142,8 +136,8 @@ void algorithm2(double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcd
 				double gx0 =  (double) g0 +  (double) shift;
 				double fx0 =  (double) f0 +  (double) shift;
 
-				TOKEN_UNIT floorgx0 = (TOKEN_UNIT) std::floor(gx0);
-				TOKEN_UNIT ceilfx0 = (TOKEN_UNIT) std::ceil(fx0);
+				auto floorgx0 = (TOKEN_UNIT) std::floor(gx0);
+				auto ceilfx0 = (TOKEN_UNIT) std::ceil(fx0);
 
 				if (floorgx0 == ceilfx0) {
 					// Take (x,y) for every y
@@ -162,7 +156,7 @@ void algorithm2(double f0, double g0, TOKEN_UNIT Tx,TOKEN_UNIT Ty,TOKEN_UNIT gcd
 				VERBOSE_INFO ("Run algorithm 1 :  x =" << x);
 
 				// Algorithm 1
-				algorithm1( x, f0,  g0,  Tx, Ty, gcdk,  maxX,  maxY);
+				algorithm1( x, f0,  g0,  Tx, Ty, gcdk);
 
 			}
 

@@ -5,6 +5,8 @@
  *      Author: toky
  */
 
+#include <models/Dataflow.h>
+
 #ifndef NORMALIZATION_H_
 #define NORMALIZATION_H_
 namespace commons { class GLPSol;   }
@@ -24,15 +26,10 @@ namespace algorithms {
     bool check_validity (models::Dataflow *from, std::map<Vertex,TOKEN_UNIT> *  normalization );
     bool setNormalization(models::Dataflow *to, std::map<Vertex,TOKEN_UNIT> *  normalization);
 
-    std::map<Vertex,TOKEN_UNIT> * gcdNormalize(models::Dataflow *from);
+    bool oldnormalize(models::Dataflow *from);
     std::map<Vertex,TOKEN_UNIT> * rationalNormalize(models::Dataflow *from);
-    std::map<Vertex,TOKEN_UNIT> * newRationalNormalize(models::Dataflow *from);
-    std::map<Vertex,TOKEN_UNIT> * sdfNormalize(models::Dataflow *from);
+    std::map<ARRAY_INDEX,TOKEN_UNIT> compute_alphas(models::Dataflow *from ) ;
 
-
-    std::map<Vertex,TOKEN_UNIT> * alphaNormalize(models::Dataflow *from);
-    std::map<Vertex,TOKEN_UNIT> * tmpNormalize(models::Dataflow *from,bool);
-    std::map<Vertex,TOKEN_UNIT> * oldNormalize(models::Dataflow *from);
 
 }
 

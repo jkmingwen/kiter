@@ -39,14 +39,14 @@ namespace algorithms {
   std::set<Edge> computePeriodicStorageDeps(models::Dataflow* const dataflow,
                                             State &currState,
                                             State &prevState,
-                                            std::map<ARRAY_INDEX, Actor> actorMap,
+                                            ActorMap_t &actorMap,
                                             ARRAY_INDEX minRepActorId,
                                             EXEC_COUNT minRepFactor,
                                             TOKEN_UNIT minRepActorExecCount,
                                             bool useCorrectedStorDepDetection);
   std::set<Edge> computeDeadlockStorageDeps(models::Dataflow* const dataflow,
                                             State &s,
-                                            std::map<ARRAY_INDEX, Actor> actorMap,
+                                            ActorMap_t &actorMap,
                                             bool useCorrectedStorDepDetection);
   std::string printStatus(models::Dataflow* const dataflow, State &s);
 

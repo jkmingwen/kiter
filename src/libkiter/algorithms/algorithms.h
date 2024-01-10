@@ -9,7 +9,7 @@
 #define SRC_LIBKITER_ALGORITHMS_ALGORITHMS_H_
 
 #include <algorithms/dse/kperiodic.h>
-#include <algorithms/dse/periodic.h>
+#include <algorithms/dse/dichotomous_search.h>
 #include <algorithms/transformation/merging.h>
 #include <algorithms/transformations.h>
 #include <algorithms/symbolic_execution.h>

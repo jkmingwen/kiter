@@ -10,15 +10,12 @@
 #include <commons/verbose.h>
 #include <lp/glpsol.h>
 #include <models/Dataflow.h>
-#include <models/EventGraph.h>
-#include <algorithms/buffersizing.h>
-#include <algorithms/normalization.h>
 #include <algorithms/buffersizing/periodic.h>
 #include <algorithms/throughput/kperiodic.h>
 
 
 
-void algorithms::compute_csdf_1periodic_memory   (models::Dataflow* const  dataflow, parameters_list_t params) {
+BufferSizingResult algorithms::compute_csdf_1periodic_memory   (models::Dataflow* const  dataflow, parameters_list_t params) {
     VERBOSE_INFO("Please note you can specify the ILP and GENONLY parameter flags.");
 
     TIME_UNIT period    = commons::get_parameter<TIME_UNIT>(params, "PERIOD", 0.0) ;
@@ -45,15 +42,8 @@ void algorithms::compute_csdf_1periodic_memory   (models::Dataflow* const  dataf
 
 	  /// END $$$$$$$$$$$$$$$ This part compute a period if none provided
 
-	BufferSizingResult sizing_res = periodic_memory_sizing_csdf (dataflow, period, solve_ilp, gen_only);
-	if (sizing_res.is_valid()) {
-		std::cout << "Total buffer size : " << sizing_res.total_size()
-				  << " + 2 * " << dataflow->getVerticesCount() << " = "
-				  <<  sizing_res.total_size() + 2 * dataflow->getVerticesCount() << std::endl ;
-		 std::cout << "1Periodic size is " <<  sizing_res.total_size() << std::endl;
-	} else {
-		std::cout << "No solution" << std::endl;
-	}
+	return periodic_memory_sizing_csdf (dataflow, period, solve_ilp, gen_only);
+
 }
 
 BufferSizingResult algorithms::periodic_memory_sizing_csdf   (models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool ilp_solving, bool gen_only) {

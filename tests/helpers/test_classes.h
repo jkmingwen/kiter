@@ -7,7 +7,7 @@
 
 #ifndef TESTS_TEST_HELPER_H_
 #define TESTS_TEST_HELPER_H_
-
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/test/included/unit_test.hpp>
 #include <commons/verbose.h>
 

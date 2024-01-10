@@ -89,7 +89,7 @@ if find "${SDF3_CUSTOM_ROOT}"/sdf3/build/release/*/bin/sdf3analysis-csdf; then
 fi
 
 
-if "${SDF3ANALYSIS_CUSTOM}"  2>&1 | grep -q version; then
+if COARSE=false USE_SCC=false SDF3LOGDIR=  "${SDF3ANALYSIS_CUSTOM}"  2>&1 | grep -q version; then
     echo "Binary found, we assume it is done.";
 else
     rm -rf "${SDF3_CUSTOM_ROOT}";
@@ -108,7 +108,7 @@ if find "${SDF3_CUSTOM_ROOT}"/sdf3/build/release/*/bin/sdf3analysis-csdf; then
     echo "EXECUTABLE FOUND SDF3ANALYSIS_CUSTOM=${SDF3ANALYSIS_CUSTOM} !"
 fi
 
-if "${SDF3ANALYSIS_CUSTOM}" 2>&1 | grep -q version; then
+if COARSE=false USE_SCC=false SDF3LOGDIR= "${SDF3ANALYSIS_CUSTOM}" 2>&1 | grep -q version; then
     echo "Script finished and binary is found.";
 else
     echo "Error at the end of the script.";

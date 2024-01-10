@@ -9,8 +9,6 @@
 #define BOOST_TEST_MODULE PerformanceTest
 #include "helpers/test_classes.h"
 #include <models/Dataflow.h>
-#include <generators/RandomGenerator.h>
-#include <algorithms/normalization.h>
 #include <chrono>
 
 long generate_pipeline_with_names (int iter) {

@@ -12,7 +12,7 @@
 #include <models/Dataflow.h>
 #include "scc.h"
 
-std::map<int, std::vector<ARRAY_INDEX>> algorithms::computeSCCKosaraju(models::Dataflow* const dataflow) {
+std::map<int, std::vector<ARRAY_INDEX>> algorithms::computeSCCKosaraju(const models::Dataflow* const dataflow) {
   std::map<ARRAY_INDEX, bool> visitedActors;
   std::stack<ARRAY_INDEX> dfsOrder;
   std::vector<ARRAY_INDEX> sccActors;
@@ -49,7 +49,7 @@ std::map<int, std::vector<ARRAY_INDEX>> algorithms::computeSCCKosaraju(models::D
 }
 
 // Performs a DFS on dataflow graph, tracks order of actors finished --- helper function for Kosaraju's algorithm
-void algorithms::computeDFSStack(models::Dataflow* const dataflow,
+void algorithms::computeDFSStack(const models::Dataflow* const dataflow,
                                  ARRAY_INDEX startId,
                                  std::map<ARRAY_INDEX, bool> &visitedActors,
                                  std::stack<ARRAY_INDEX> &dfsOrder) {
@@ -66,7 +66,7 @@ void algorithms::computeDFSStack(models::Dataflow* const dataflow,
 }
 
 // Computes the DFS of the transpose of the given graph, storing actors that belong to the same SCC in a vector
-void algorithms::dfsTranspose(models::Dataflow* const dataflow, ARRAY_INDEX startId,
+void algorithms::dfsTranspose(const models::Dataflow* const dataflow, ARRAY_INDEX startId,
                   std::map<ARRAY_INDEX, bool> &visitedActors,
                   std::vector<ARRAY_INDEX> &sccActors) {
   Vertex startActor = dataflow->getVertexById(startId);

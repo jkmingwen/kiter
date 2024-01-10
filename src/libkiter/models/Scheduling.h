@@ -11,6 +11,7 @@
 #include <models/Dataflow.h>
 #include <set>
 #include <map>
+#include <utility>
 #include <vector>
 
 typedef std::vector<TIME_UNIT> static_task_schedule_t;
@@ -20,7 +21,7 @@ struct task_schedule_t {
 	static_task_schedule_t initial_starts;
 	periodic_task_schedule_t periodic_starts;
 	task_schedule_t ()  :  initial_starts(), periodic_starts() {}
-	task_schedule_t (static_task_schedule_t is, periodic_task_schedule_t ps) : initial_starts(is), periodic_starts(ps) {}
+	task_schedule_t (static_task_schedule_t is, periodic_task_schedule_t ps) : initial_starts(std::move(is)), periodic_starts(std::move(ps)) {}
 };
 
 class scheduling_t {
@@ -28,10 +29,10 @@ private :
 	std::map<ARRAY_INDEX, task_schedule_t> _data;
 public:
 	void set (ARRAY_INDEX i, task_schedule_t ts) {
-		_data[i] = ts;
+		_data[i] = std::move(ts);
 	}
 
-	ARRAY_INDEX size () {
+	size_t size () {
 		return _data.size();
 	}
 	//task_schedule_t operator [](ARRAY_INDEX i) const {return _data[i];}
@@ -62,13 +63,13 @@ private :
 public :
 	Scheduling (const models::Dataflow* dataflow, TIME_UNIT omega, scheduling_t tasks_schedule
 	 ,critical_circuit_t critical_edges
-	) : _period(omega), _dataflow(dataflow), _tasks_schedule(tasks_schedule)
-	 , _critical_edges (critical_edges)
+	) : _period(omega), _dataflow(dataflow), _tasks_schedule(std::move(tasks_schedule))
+	 , _critical_edges (std::move(critical_edges))
 	{
 
 	}
 	Scheduling (const models::Dataflow* dataflow, TIME_UNIT omega, scheduling_t tasks_schedule
-			) : _period(omega), _dataflow(dataflow), _tasks_schedule(tasks_schedule), _critical_edges ()
+			) : _period(omega), _dataflow(dataflow), _tasks_schedule(std::move(tasks_schedule)), _critical_edges ()
 	{
 
 	}
@@ -94,9 +95,9 @@ public :
 
 	void verbose_print () const;
 	std::string asText () const;
-	std::string asASCII (int line_size) const;
-	std::string asASCIINew (int line_size) const;
-	std::string asASCIINewNew (int line_size) const;
+	std::string asASCII (size_t line_size) const;
+	//std::string asASCIINew (int line_size) const;
+	//std::string asASCIINewNew (int line_size) const;
 	bool is_valid_schedule () const;
 
 };

@@ -1007,7 +1007,7 @@ void taskAndNoCMapping(const models::Dataflow* input, models::Dataflow* to, Vert
 	 */
 	VERBOSE_INFO ( "srjkvr-mapping " << commons::toString(core_mapping) ) ;
 	std::cout << "SRJKVR";
-	for(ARRAY_INDEX i = 1; i < core_mapping.size()-1; i++)
+	for(size_t i = 1; i < core_mapping.size()-1; i++)
 		std::cout << "," << core_mapping[i];
 	std::cout << "\n";
 }
@@ -2096,7 +2096,7 @@ static NoCGraph * createNoCGraph (const NoC * noc) {
 
 	NoCGraph* g = new NoCGraph(noc->size()*2);
 	for (auto edge : noc->getEdges()) {
-		g->addEdge(edge.src, edge.dst);
+		g->addEdge((int) edge.src, (int) edge.dst);
 	}
 	return g;
 }
@@ -2383,7 +2383,7 @@ void algorithms::software_noc_bufferless(models::Dataflow* const  dataflow, para
 
 		for (TIME_UNIT time = 0 ; time < 50 ; time ++) {
 			bool execute = false;
-			for (ARRAY_INDEX sidx = 0 ; sidx < starts.size() ; sidx++) {
+			for (ARRAY_INDEX sidx = 0 ; sidx < (ARRAY_INDEX) starts.size() ; sidx++) {
 				TIME_UNIT s = starts[sidx];
 				TIME_UNIT duration = to->getVertexDuration(v, 1 + (sidx % to->getPhasesQuantity(v))); // TODO : unsupported init phases
 				TIME_UNIT normalize = (time > s) ? (time - s) - ((time - s) / period) : (time - s);

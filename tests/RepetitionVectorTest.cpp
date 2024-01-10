@@ -11,12 +11,11 @@
 #include "helpers/random_generator.h"
 #include <chrono>
 
-#define MAX_ITER 30
-#define MAX_PHASE_COUNT 5
 
 BOOST_FIXTURE_TEST_SUITE( repetition_vector_test , WITH_SAMPLE)
 
 long generate_repetition_vector (models::Dataflow* dataflow){
+    dataflow->reset_computation();
 	auto start = std::chrono::high_resolution_clock::now();
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow), "Could not compute Repeptition vector");
 	auto elapse = std::chrono::high_resolution_clock::now() - start;
@@ -27,7 +26,6 @@ long generate_repetition_vector (models::Dataflow* dataflow){
 
 BOOST_AUTO_TEST_CASE( sample_repetition_vector_test )
 {
-
 	BOOST_REQUIRE(pipeline_sample);
 	Vertex a = pipeline_sample->getVertexByName("a");
 	Vertex b = pipeline_sample->getVertexByName("b");
@@ -40,20 +38,39 @@ BOOST_AUTO_TEST_CASE( sample_repetition_vector_test )
 }
 
 
+#define MAX_ITER 30
+#define MAX_PHASE_COUNT 5
+
 BOOST_AUTO_TEST_CASE( generate_repetition_vector_performance_test )
 {
 
-	// std::cout << "" << "actor number"
-	// 		<< ", " << "buffer number"
-	// 		<<", " <<  "repetition vector" << std::endl;
+    commons::set_verbose_mode(commons::INFO_LEVEL);
 
-	// for (int i = MAX_ITER/10; i <= MAX_ITER; i += MAX_ITER/10) {
-	// 	int buf_num = std::rand() % (i/2) + i; 
-	// 	models::Dataflow*  g = generate_random_graph(i, buf_num, MAX_PHASE_COUNT, i, i);
-	// 	std::cout << "" << i
-	// 		<< ", " << buf_num
-	// 		<< ", " << generate_repetition_vector(g);
-	// }
+    VERBOSE_INFO("Start performance test.");
+
+
+    std::vector<models::Dataflow *> graphs;
+
+    for (int i = 10; i <= 300; i += 50) {
+
+        int buf_num = std::rand() % (i / 2) + i;
+
+        VERBOSE_INFO("generate graph " << i << " with " << buf_num);
+
+        models::Dataflow *g = generate_random_graph(i, buf_num, MAX_PHASE_COUNT, 2, 1);
+        graphs.push_back(g);
+    }
+
+
+	 std::cout << "" << "actor number"
+	 		<< ", " << "buffer number"
+	 		<<", " <<  "repetition vector" << std::endl;
+
+	 for (auto g : graphs) {
+         std::cout << "" << g->getVerticesCount()
+	 		<< ", " << g->getEdgesCount()
+	 		<< ", " << generate_repetition_vector(g) << std::endl;
+	 }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
