@@ -12,6 +12,7 @@
 #include <numeric>
 #include <iostream>
 #include <sstream>
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/graph/graph_utility.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -34,7 +35,7 @@
 
 /* Dataflow defintion */
 
-enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, VIRTUAL_EDGE};
+enum EDGE_TYPE   {NORMAL_EDGE, BUFFERLESS_EDGE, FEEDBACK_EDGE, VIRTUAL_EDGE};
 //enum VERTEX_TYPE {NORMAL_VERTEX, PERIODIC_VERTEX};
 
 typedef  std::string VERTEX_TYPE;
@@ -161,10 +162,10 @@ struct Edge	  {
 
 /* TODO MEMORY : INVALID READ SIZE HERE */
 
-inline 	Vertex 	it2Vertex(vertex_iterator   in) 		{return Vertex(*in);}
-inline 	Edge 	it2Edge  (edge_iterator     in) 	 	{return Edge(*in);}
-inline 	Edge 	it2Edge  (in_edge_iterator  in) 	  	{return Edge(*in);}
-inline 	Edge 	it2Edge  (out_edge_iterator in) 	  	{return Edge(*in);}
+inline 	Vertex 	it2Vertex(vertex_iterator   in) 		{return {*in};}
+inline 	Edge 	it2Edge  (edge_iterator     in) 	 	{return {*in};}
+inline 	Edge 	it2Edge  (in_edge_iterator  in) 	  	{return {*in};}
+inline 	Edge 	it2Edge  (out_edge_iterator in) 	  	{return {*in};}
 
 
 
@@ -204,60 +205,60 @@ struct tie {
 
 #define ForEachVertex(g,p)															       \
 		Vertex p;	   																       \
-		std::pair<Vertex::iterator,Vertex::iterator> p##res = g->getVertices();		       \
+		std::pair<Vertex::iterator,Vertex::iterator> p##res = (g)->getVertices();		       \
 		Vertex::iterator  p##count = p##res.first;													       \
 		Vertex::iterator  p##_end = p##res.second;													       \
-		if (p##count != p##_end)  p = it2Vertex(p##count);				     			   \
-		for (;p##count != p##_end; p = it2Vertex(++p##count))
+		if (p##count != p##_end)  (p) = it2Vertex(p##count);				     			   \
+		for (;p##count != p##_end; (p) = it2Vertex(++p##count))
 
 #define ForEachEdge(g,p)															       \
 		Edge p;	   																	       \
-		std::pair<Edge::iterator,Edge::iterator> p##res = g->getEdges();			       \
+		std::pair<Edge::iterator,Edge::iterator> p##res = (g)->getEdges();			       \
 		Edge::iterator p##count = p##res.first;													       \
 		Edge::iterator p##_end = p##res.second;													       \
-		if (p##count != p##_end)  p = it2Edge(p##count);				     			   \
-		for (;p##count != p##_end; p = it2Edge(++p##count))
+		if (p##count != p##_end)  (p) = it2Edge(p##count);				     			   \
+		for (;p##count != p##_end; (p) = it2Edge(++p##count))
 
 #define ForInputEdges(g,parent,p)													       \
 		Edge p;	   																	       \
-		std::pair<in_edge_iterator,in_edge_iterator> p##res =  g->getInputEdges(parent);   \
+		std::pair<in_edge_iterator,in_edge_iterator> p##res =  (g)->getInputEdges(parent);   \
 		in_edge_iterator p##count = p##res.first;													       \
 		in_edge_iterator p##_end = p##res.second;													       \
-		if (p##count != p##_end)  p = it2Edge(p##count);				     			   \
-	    for (;p##count++ != p##_end; p =  (p##count != p##_end)?it2Edge(p##count):Edge())
+		if (p##count != p##_end)  (p) = it2Edge(p##count);				     			   \
+	    for (;p##count++ != p##_end; (p) =  (p##count != p##_end)?it2Edge(p##count):Edge())
 
 #define ForOutputEdges(g,parent,p)													       \
 		Edge p;	   																	       \
-		std::pair<out_edge_iterator,out_edge_iterator> p##res =  g->getOutputEdges(parent);\
+		std::pair<out_edge_iterator,out_edge_iterator> p##res =  (g)->getOutputEdges(parent);\
 		out_edge_iterator p##count = p##res.first;													       \
 		out_edge_iterator p##_end = p##res.second;													       \
-		if (p##count != p##_end)  p = it2Edge(p##count);				     			   \
-		for (;p##count++ != p##_end; p =  (p##count != p##_end)?it2Edge(p##count):Edge())
+		if (p##count != p##_end)  (p) = it2Edge(p##count);				     			   \
+		for (;p##count++ != p##_end; (p) =  (p##count != p##_end)?it2Edge(p##count):Edge())
 
 // TODO gerer le cas du noeud sans arc
 #define ForConnectedEdges(g,parent,p)                                                      \
         Edge p;                                                                            \
-        std::pair<Edge::iterator,Edge::iterator> p##res = g->getEdges();                   \
+        std::pair<Edge::iterator,Edge::iterator> p##res = (g)->getEdges();                   \
         Edge::iterator p##count = p##res.first;                                                           \
         Edge::iterator p##_end = p##res.second;                                                           \
-        if (p##count != p##_end)  p = it2Edge(p##count);                                   \
-        for (;p##count != p##_end; p = it2Edge(++p##count))                                \
-        if ((g->getEdgeSource(p) == parent) || (g->getEdgeTarget(p) == parent))
+        if (p##count != p##_end)  (p) = it2Edge(p##count);                                   \
+        for (;p##count != p##_end; (p) = it2Edge(++p##count))                                \
+        if ((g->getEdgeSource(p) == parent) || ((g)->getEdgeTarget(p) == parent))
 
 #define ForEachPhase(g,v,p)\
-        EXEC_COUNT __max##p = g->getPhasesQuantity(v);\
-        for(EXEC_COUNT p = 1 ; p <= __max##p;p++)
+        EXEC_COUNT __max##p = (g)->getPhasesQuantity(v);\
+        for(EXEC_COUNT p = 1 ; (p) <= __max##p;(p)++)
 
 #define NULL_VERTEX	 Vertex()
 #define NULL_EDGE	 Edge  ()
 
 #define ASSERT_WRITABLE() if (readonly) FAILED("ASSERT_WRITABLE FAILED");
-#define ASSERT_NOT_NORMALIZED() if (normalizationisdone) FAILED("ASSERT_NOT_NORMALIZED FAILED");
-#define ASSERT_NOT_REPETITION_VECTOR() if (repetitionvectorisdone) FAILED("ASSERT_NOT_REPETITION_VECTOR FAILED");
+#define ASSERT_NOT_NORMALIZED() if (normalization_is_done) FAILED("ASSERT_NOT_NORMALIZED FAILED");
+#define ASSERT_NOT_REPETITION_VECTOR() if (repetition_vector_is_done) FAILED("ASSERT_NOT_REPETITION_VECTOR FAILED");
 
 #define ASSERT_NOT_WRITABLE() if (!readonly) FAILED("ASSERT_NOT_WRITABLE FAILED");
-#define ASSERT_NORMALIZED() if (!normalizationisdone) FAILED("ASSERT_NORMALIZED FAILED");
-#define ASSERT_REPETITION_VECTOR() if (!repetitionvectorisdone) FAILED("ASSERT_REPETITION_VECTOR FAILED");
+#define ASSERT_NORMALIZED() if (!normalization_is_done) FAILED("ASSERT_NORMALIZED FAILED");
+#define ASSERT_REPETITION_VECTOR() if (!repetition_vector_is_done) FAILED("ASSERT_REPETITION_VECTOR FAILED");
 
 namespace models {
 
@@ -265,8 +266,8 @@ class Dataflow {
 
 private :
 	bool          readonly;
-	bool          normalizationisdone;
-	bool          repetitionvectorisdone;
+	bool          normalization_is_done;
+	bool          repetition_vector_is_done;
 	BoostDataflow g;
     std::string   graph_name;
     std::string   graph_type;
@@ -282,8 +283,8 @@ private :
 	/* all about getters */
 public:
 	inline  Edge                    getFirstEdge        ()                  const   {return it2Edge(boost::edges(this->getG()).first);}
-	inline  Vertex					getEdgeSource		(const Edge c)		const	{return Vertex(boost::source(c.e, this->getG()));}
-	inline  Vertex					getEdgeTarget		(const Edge c)		const	{return Vertex(boost::target(c.e, this->getG()));}
+	inline  Vertex					getEdgeSource		(const Edge c)		const	{return {boost::source(c.e, this->getG())};}
+	inline  Vertex					getEdgeTarget		(const Edge c)		const	{return {boost::target(c.e, this->getG())};}
 	inline  ARRAY_INDEX			    getVerticesCount 	()					const	{return (unsigned int) boost::num_vertices(this->getG());}
 	inline  ARRAY_INDEX  			getEdgesCount		()					const	{return (unsigned int) boost::num_edges(this->getG());}
 	inline  unsigned int			getVertexDegree		(const Vertex t)	const	{return (unsigned int) boost::degree(t.v,this->getG());}
@@ -298,9 +299,9 @@ protected:
 
 
 public :
-	Dataflow		(unsigned int nVertex = 0)		: readonly(false), normalizationisdone(false), repetitionvectorisdone(false),
-	g(nVertex), graph_name(""),graph_type(""),app_name(""), graph_id(0) ,  auto_vertex_num (1) , auto_edge_num (1) ,
-	normalized_period(0), noc (0,0) {
+	Dataflow		(unsigned int nVertex = 0)		: readonly(false), normalization_is_done(false), repetition_vector_is_done(false),
+                                                        g(nVertex), graph_name(""), graph_type(""), app_name(""), graph_id(0) , auto_vertex_num (1) , auto_edge_num (1) ,
+                                                        normalized_period(0), noc (0,0) {
 		VERBOSE_ASSERT(nVertex == 0,TXT_NO_IMPLEMENTATION);
 	}
 
@@ -308,19 +309,23 @@ public :
 	void       setNoC(NoC& noc) { this->noc = noc; };
 
 	void set_read_only() {readonly = true;}
-	void set_normalize() {normalizationisdone = true;}
-	void set_repetition_vector() {repetitionvectorisdone = true;}
+	void set_normalize() { normalization_is_done = true;}
+	void set_repetition_vector() { repetition_vector_is_done = true;}
 
-	void reset_computation() {repetitionvectorisdone = false; normalizationisdone = false; readonly = false; }
+	void reset_computation() {
+        repetition_vector_is_done = false;
+        normalization_is_done = false;
+        readonly = false;
+        channelGCDA.clear();
+    }
 
 	bool is_read_only() const {return readonly;}
-	bool is_normalized() const {return normalizationisdone ;}
-	bool has_repetition_vector() const {
-		return repetitionvectorisdone ;
-	}
+	bool is_normalized() const {return normalization_is_done ;}
+	bool has_repetition_vector() const {return repetition_vector_is_done ;}
+
 	bool is_consistent()  {
-		if (!repetitionvectorisdone) computeRepetitionVector(this);
-		return repetitionvectorisdone ;
+		if (!repetition_vector_is_done) computeRepetitionVector(this);
+		return repetition_vector_is_done ;
 	}
 
 public :
@@ -335,13 +340,13 @@ inline	 Edge addEdge(const Vertex from, const Vertex to, const  ARRAY_INDEX id) 
 	return addEdgeUnsafe(from , to , id);
 }
 
-inline	 Edge addEdge(const Vertex from, const Vertex to, const  ARRAY_INDEX id, const std::string name) {
+inline	 Edge addEdge(const Vertex from, const Vertex to, const  ARRAY_INDEX id, const std::string& name) {
 	Edge ne = addEdge(from , to , id);
 	this->setEdgeName(ne,name);
 	return ne;
 }
 
-inline	 Edge addEdge(const Vertex from, const Vertex to, const std::string name) {
+inline	 Edge addEdge(const Vertex from, const Vertex to, const std::string& name) {
 	Edge ne = addEdge(from , to);
 	this->setEdgeName(ne,name);
 	return ne;
@@ -368,18 +373,19 @@ inline 	Vertex 				addVertex			() 							{
 
 inline  Vertex                addVertex         (const ARRAY_INDEX id)      {
 	// TODO: fixme too long
-	ForEachVertex(this,v) 	{ if (this->getVertexId(v) >= id) VERBOSE_FAILURE();};
+    //FIXME: I forogt why this check with >= ...
+	ForEachVertex(this,v) 	{ if (this->getVertexId(v) == id) VERBOSE_FAILURE();};
 	return addUnsafeVertex(id);
 
 }
 
-inline  Vertex                addVertex         (const ARRAY_INDEX id, const std::string name)      {
+inline  Vertex                addVertex         (const ARRAY_INDEX id, const std::string& name)      {
 	Vertex nt = addVertex(id);
 	this->setVertexName(nt,name);
 	return nt;
 
 }
-inline  Vertex                addVertex         (const std::string name)      {
+inline  Vertex                addVertex         (const std::string& name)      {
 	Vertex nt = addVertex();
 	this->setVertexName(nt,name);
 	return nt;
@@ -390,7 +396,7 @@ inline  Vertex                addUnsafeVertex         (const ARRAY_INDEX id)    
 
 	ASSERT_WRITABLE();
 	reset_computation();
-	Vertex nt = Vertex(boost::add_vertex(this->getG()));
+	auto nt = Vertex(boost::add_vertex(this->getG()));
 	this->setVertexId(nt,id);
 	//this->setVertexName(nt,"Vertex" + std::to_string(this->getVertexId(nt)));
 	this->setInitPhasesQuantity(nt,0);
@@ -502,13 +508,13 @@ public :
 
 public :
     void setFilename (std::string f) {filename = f;}
-    std::string getFilename () const { return filename;}
+    const std::string& getFilename () const { return filename;}
 public:
-    inline  void                setGraphName    (const std::string name)    {					ASSERT_WRITABLE();
+    inline  void                setGraphName    (const std::string& name)    {					ASSERT_WRITABLE();
 	reset_computation();this->graph_name = name;}
-    inline  void                setAppName    (const std::string name)    {					ASSERT_WRITABLE();
+    inline  void                setAppName    (const std::string& name)    {					ASSERT_WRITABLE();
 	reset_computation();this->app_name = name;}
-    inline  void                setGraphType    (const std::string name)    {					ASSERT_WRITABLE();
+    inline  void                setGraphType    (const std::string& name)    {					ASSERT_WRITABLE();
 	reset_computation();this->graph_type = name;}
     inline  const std::string   getGraphName    ()                      const     {return this->graph_name;}
     inline  const std::string   getGraphType   ()                      const     {return this->graph_type;}
@@ -521,7 +527,8 @@ public:
 public :
     inline  ARRAY_INDEX         getMaxEdgeId 	()      const     		{return auto_edge_num; }
     inline  ARRAY_INDEX         getMaxVertexId  ()      const           {return auto_vertex_num; }
-    inline  void                setVertexName   (const Vertex t,
+
+     inline  void                setVertexName   (const Vertex t,
                                                  const std::string name){
     	ASSERT_WRITABLE();
     	reset_computation();
@@ -535,7 +542,7 @@ public :
     	boost::put(boost::vertex_name, this->getG(), t.v, name);
     }
     /*
-     * TODO: Be careful tasks can be unamed from now.
+     * TODO: Be careful tasks can be unnamed from now.
      */
     inline  const std::string   getVertexName   (const Vertex t)      const {
 
@@ -547,7 +554,7 @@ public :
 
     inline  Vertex              getVertexByName (const std::string s) const {
     	// TODO: FIXME PLEASE!
-    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(TXT_TASK_NOT_FOUND + s);
+    	ForEachVertex(this,pVertex) {if (this->getVertexName(pVertex) == s)return pVertex;};throw std::out_of_range(std::string(TXT_TASK_NOT_FOUND) + ": " + s);
     }
 
     inline 	const std::string 	getEdgeName	    (const Edge c)		const	{
@@ -594,8 +601,10 @@ public :
     inline std::string           getEdgeTypeStr (const Edge e )    const     {
     	EDGE_TYPE et = this->getEdgeType(e);
     	switch (et) {
-    		case NORMAL_EDGE : return "NORMAL_EDGE";
-    		case  BUFFERLESS_EDGE : return "BUFFERLESS_EDGE";
+            case EDGE_TYPE::NORMAL_EDGE : return "NORMAL";
+            case EDGE_TYPE::BUFFERLESS_EDGE : return "BUFFERLESS";
+            case EDGE_TYPE::FEEDBACK_EDGE : return "FEEDBACK";
+            case EDGE_TYPE::VIRTUAL_EDGE : return "VIRTUAL";
     		default : return "UNKNOWN";
     	}
     }
@@ -666,53 +675,53 @@ public :
                                                    const DATA_UNIT ts)    {				ASSERT_WRITABLE();
                                        			reset_computation();boost::put(boost::edge_tokensize, this->getG(), c.e, ts);}
     inline  EXEC_COUNT          getEdgeOutPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge (" << this->getEdgeName(c) << ") output spec (" << tmp << ") does not match task spec(" << this->getPhasesQuantity(this->getEdgeTarget(c)) << ")");
-    	return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge (" << this->getEdgeName(c) << ") output spec (" << tmp << ") does not match task spec(" << this->getPhasesQuantity(this->getEdgeTarget(c)) << ")");
+    	return boost::get(get(boost::edge_outputs, this->getG()), c.e).size();
     }
     inline  EXEC_COUNT          getEdgeInPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does ot match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
-    	return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input spec  (" << tmp << ") does not match task spec (" << this->getPhasesQuantity(this->getEdgeSource(c)) << ")");
+    	return boost::get(get(boost::edge_inputs, this->getG()), c.e).size();
     }
 
     inline  EXEC_COUNT          getEdgeOutInitPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does ot match task init spec");
-        return tmp;
+    	//EXEC_COUNT tmp = boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == tmp, "Edge output init spec does not match task init spec");
+        return boost::get(get(boost::edge_init_outputs, this->getG()), c.e).size();
     }
     inline  EXEC_COUNT          getEdgeInInitPhasesCount   (const Edge c) const   {
-    	EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does ot match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
-        return tmp;
+    	//EXEC_COUNT tmp =  boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == tmp, "Edge input init spec (" << tmp << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+        return boost::get(get(boost::edge_init_inputs, this->getG()), c.e).size();
     }
 
     inline  TOKEN_UNIT          getEdgeOut    (const Edge c)  		       const   {return boost::get(get(boost::edge_total_output, this->getG()), c.e);}
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeOutVector   (const Edge c) const   {
-    	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does ot match task spec");
-    	return tmp;
+    	//const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_outputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output spec does not match task spec");
+    	return boost::get(get(boost::edge_outputs, this->getG()), c.e);
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInVector   (const Edge c)  const  {
-    	const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does ot match task spec");
-    	return tmp;
+    	//const std::vector<TOKEN_UNIT> &       tmp = boost::get(get(boost::edge_inputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input spec does not match task spec");
+    	return boost::get(get(boost::edge_inputs, this->getG()), c.e);
     }
 
 
     inline const std::vector<TOKEN_UNIT> &         getEdgeInitOutVector   (const Edge c) const   {
-    	const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does ot match task init spec");
-        return tmp;
+    	//const std::vector<TOKEN_UNIT> & tmp =  boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeTarget(c)) == (EXEC_COUNT) tmp.size(), "Edge output init spec does not match task init spec");
+        return boost::get(get(boost::edge_init_outputs, this->getG()), c.e);
     }
 
     inline const std::vector<TOKEN_UNIT> &          getEdgeInitInVector   (const Edge c)  const  {
 
-    	const std::vector<TOKEN_UNIT> & tmp = boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
-    	VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input init spec (" <<   tmp.size() << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
-        return tmp;
+    	//const std::vector<TOKEN_UNIT> & tmp = boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
+    	//VERBOSE_DEBUG_ASSERT(this->getInitPhasesQuantity(this->getEdgeSource(c)) == (EXEC_COUNT) tmp.size(), "Edge input init spec (" <<   tmp.size() << ") does not match task init spec (" << this->getInitPhasesQuantity(this->getEdgeSource(c)) << ")");
+        return boost::get(get(boost::edge_init_inputs, this->getG()), c.e);
 
     }
 
@@ -841,7 +850,7 @@ public :
 
 
     inline Edge               getInputEdgeByPortName         (const Vertex t,
-                                                                    const std::string   name) const {
+                                                                    const std::string&   name) const {
           {ForInputEdges(this,t,pChannel) {
               if (getEdgeOutputPortName(pChannel) == name) return pChannel;
           }}
@@ -849,7 +858,7 @@ public :
           }
 
       inline Edge               getOutputEdgeByPortName         (const Vertex t,
-                                                                    const std::string   name)  const{
+                                                                    const std::string&   name)  const{
           {ForOutputEdges(this,t,pChannel) {
               if (getEdgeInputPortName(pChannel) == name) return pChannel;
           }}
@@ -881,11 +890,11 @@ public :
       }
 
       inline  TIME_UNIT          getVertexDuration    (const Vertex t, EXEC_COUNT k)   const {
-    	  const std::vector<TIME_UNIT>&  vec = boost::get(get(boost::vertex_phaseduration, this->getG()), t.v);
     	  if (k <= 0 ) {
     		  return getVertexInitDuration(t, k + getInitPhasesQuantity(t));
     	  }
-      	return vec.at( (k-1) % vec.size() );
+          const size_t phase_quantity = this->getPhasesQuantity(t);
+          return boost::get(get(boost::vertex_phaseduration, this->getG()), t.v).at( (k-1) % phase_quantity);
       }
 
       inline  TIME_UNIT          getVertexInitDuration    (const Vertex t, EXEC_COUNT k)   const {
@@ -933,28 +942,19 @@ public :
     return channelGCD;
 
     }
+    inline void precomputeFineGCD()  {
+        { ForEachEdge(this,c) {
+                channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), computeFineGCD(c)));
+        }}
+        this->set_read_only(); // Once precomputed cannot change the graph.
+    }
+
+
     inline   TOKEN_UNIT getFineGCD(Edge c) const {
     	 std::map<ARRAY_INDEX,TOKEN_UNIT >::const_iterator res = channelGCDA.find(this->getEdgeId(c));
     	 if (res != channelGCDA.end()) return res->second;
     	 return computeFineGCD(c);
     }
-
-    inline   TOKEN_UNIT getFineGCD(Edge c)  {
-
-    	//return computeFineGCD(c);
-	       // search in cache
-	       std::map<ARRAY_INDEX,TOKEN_UNIT >::iterator res = channelGCDA.find(this->getEdgeId(c));
-	       if (res != channelGCDA.end()) return res->second;
-
-	       //Compute GCDA
-	       TOKEN_UNIT gcda = computeFineGCD(c);
-	       // add in cache
-	       channelGCDA.insert(std::pair<ARRAY_INDEX,TOKEN_UNIT> (this->getEdgeId(c), gcda));
-
-	       return gcda;
-
-	   }
-
 
 /**
  * Normalized access
@@ -981,13 +981,13 @@ public :
 	  return (TOKEN_UNIT) result;
     }
 
- inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  {
+ inline TOKEN_UNIT      normalizeUnknowValue (const Edge c, const TOKEN_UNIT v)  const {
         TOKEN_UNIT gcda = this->getFineGCD(c);
         TOKEN_UNIT old  = commons::floor(v,gcda);
 
         return normalizeValue(c,old);
     }
- inline TOKEN_UNIT		getNormMop  	(const Edge c)	 {
+ inline TOKEN_UNIT		getNormMop  	(const Edge c)	const {
     TOKEN_UNIT mop= this->getPreload(c);
     return normalizeUnknowValue(c,mop);
 }

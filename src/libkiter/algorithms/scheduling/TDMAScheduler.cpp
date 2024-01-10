@@ -22,7 +22,7 @@
 		long s_r = src / rows, s_c = src % cols;
 		long d_r = des / rows, d_c = des % cols;
 
-		return abs(s_r-d_r) + abs(s_c-d_c) + 1;
+		return labs(s_r-d_r) + labs(s_c-d_c) + 1;
 	}
 
 
@@ -39,7 +39,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 		std::ifstream f2;
 		f2.open(taskmap_filename);
 		bool flag = false;
-		long hyperperiod;
+		long hyperperiod = 0;
 		while(f2 >> l2)
 		{
 			std::stringstream ss(l2);
@@ -78,7 +78,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 			{
 				std::string substr;
 				std::getline( ss, substr, ',' );
-				tl.push_back(std::atol(substr.c_str()));
+				tl.push_back(std::strtol(substr.c_str(),0,0));
 			}
 			//get system specs, i.e. rows, cols and number of banks
 			if(count == 0)
@@ -102,7 +102,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 
 			//cout << "ll:" << p_id << "," << src << "," << dest << "," << duration << "," << /*p_id << "," <<*/ b_id << endl;
 			std::vector<long> deps;
-			for (long tl_i = 5; tl_i < tl.size(); tl_i++)
+			for (unsigned long tl_i = 5; tl_i < tl.size(); tl_i++)
 			{
 				long item = tl[tl_i];
 				deps.push_back((long)item);
@@ -112,7 +112,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 			//insert packet into the data structure
 			//packets[p_id] = [src, dest, b_id, duration, deps];
 			packet_struct elem(task_map[src], task_map[dest], b_id, duration, deps);
-			if(p_id != packets.size())
+			if(p_id != (long) packets.size())
 				std::cout << "PACKET ID DOES NOT MATCH SEQUENTIALLY\n";
 			packets.push_back(elem);
 
@@ -161,7 +161,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 		//add cycle value and the packet into the heapqueue
 		std::priority_queue<pq_struct> myheap;
 		std::vector<std::vector<long>> packet_profile(packets.size(), std::vector<long>(4, -1));
-		for (long pkt_id=0; pkt_id < packets.size(); pkt_id++)
+		for (long pkt_id=0; pkt_id < (long) packets.size(); pkt_id++)
 		{
 			pq_struct pq_elem(0, pkt_id, false);
 			myheap.push(pq_elem);
@@ -171,7 +171,6 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 		//prlong myheap
 
 
-		long SYSTEM_CYCLE = 0;
 		while (myheap.size() != 0)
 		{
 			pq_struct pq_elem = myheap.top();
@@ -273,7 +272,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 		long exec_time = 0, throughput = 0;
 
 		printf("depsdone,computedone,slotwait,transferdone,src,dest,compute,\n");
-		for(long p_id = 0; p_id < packets.size(); ++p_id)
+		for(long p_id = 0; p_id < (long) packets.size(); ++p_id)
 		{
 			if(p_id%hyperperiod == 0)
 			{
@@ -298,7 +297,7 @@ void algorithms::scheduling::TDMAScheduler::write_tdma_schedule (std::string slo
 			std::cout << "pkt_id=" << p_id << "," << packet_profile[p_id][DEPS] << "," << packet_profile[p_id][COMP] << "," << packet_profile[p_id][SLOT] << "," << packet_profile[p_id][DATA] << "," << src << "," << dest << "," << comp << std::endl;
 		}
 
-		std::cout << "thro=" << (float)throughput/iter_count << ",exec_time=" << (float)exec_time/iter_count << std::endl;
+		std::cout << "thro=" << (float)throughput/(float)iter_count << ",exec_time=" << (float)exec_time/(float)iter_count << std::endl;
 		return;
 	}
 

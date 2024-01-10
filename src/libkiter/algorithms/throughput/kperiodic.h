@@ -62,8 +62,8 @@ ADD_TRANSFORMATION(NKPeriodicThroughput,
 		transformation_t({ "NKPeriodicThroughput" , "Optimal Throughput evaluation of CSDF by using N-periodic method.", algorithms::compute_NKperiodic_throughput}));
 
 
-ADD_TRANSFORMATION(PrintKPeriodicScheduling,
-		transformation_t({ "PrintKPeriodicScheduling" , "Print KPeriodicScheduling", algorithms::print_kperiodic_scheduling})
+ADD_PRINTER(PrintKPeriodicScheduling,
+		printer_t({ "PrintKPeriodicScheduling" , "Print KPeriodicScheduling", algorithms::print_kperiodic_scheduling})
 );
 
 #endif /* KPERIODIC_H_ */

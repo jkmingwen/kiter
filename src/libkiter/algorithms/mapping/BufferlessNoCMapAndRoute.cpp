@@ -149,14 +149,14 @@ static Vertex removeCycleEdges (models::Dataflow* to, const std::vector<ARRAY_IN
 	std::vector<ARRAY_INDEX> vertexId;
 
 
-	for(auto i = 0; i < prog_order.size(); i++)
+	for(size_t i = 0; i < prog_order.size(); i++)
 	{
 		auto vid = prog_order[i];
 		Vertex v = to->getVertexById(vid);
 		if(!visited[vid])
 			DFSUtil_PgmOrder(v, visited, to, removeEdgeId,cyclen_per_vtxid);
 	}
-	for(auto i = 0; i < removeEdgeId.size(); i++)
+	for(size_t i = 0; i < removeEdgeId.size(); i++)
 	{
 		auto e = to->getEdgeById( removeEdgeId[i] );
 		auto src = to->getEdgeSource(e);

@@ -143,7 +143,8 @@ std::string  printers::generate_kiter (const models::Dataflow* const  dataflow, 
 		  if (verbose) returnStream << "std::cout << \"generate a task ...\" << std::endl;"  << std::endl;
 		  returnStream << "auto new_vertex = new_graph->addVertex(" << dataflow->getVertexId(t) << ");" << std::endl;
 
-		  returnStream << " new_graph->setVertexName(new_vertex,\"" << dataflow->getVertexName(t) << "\");" << std::endl;
+              returnStream << " new_graph->setVertexName(new_vertex,\"" << dataflow->getVertexName(t) << "\");" << std::endl;
+              returnStream << " new_graph->setVertexType(new_vertex,\"" << dataflow->getVertexType(t) << "\");" << std::endl;
 		  returnStream << " new_graph->setInitPhasesQuantity(new_vertex," <<init_phase_count << ");" << std::endl;
 		  returnStream << " new_graph->setPhasesQuantity(new_vertex," <<phase_count << ");" << std::endl;
 		  returnStream << " new_graph->setReentrancyFactor(new_vertex," << dataflow->getReentrancyFactor(t)<< "); " << std::endl;
@@ -238,12 +239,13 @@ std::string  printers::generate_kiter (const models::Dataflow* const  dataflow, 
 		  returnStream << " new_graph->setEdgeInPhases(new_edge," << in_rates << ");" << std::endl;
 		  returnStream << " new_graph->setEdgeOutPhases(new_edge," << out_rates << ");" << std::endl;
 		  returnStream << " new_graph->setPreload(new_edge," << dataflow->getPreload(c) << ");" << std::endl;
-		  returnStream << " new_graph->setEdgeName(new_edge,\"" << dataflow->getEdgeName(c) << "\");" << std::endl;
+              returnStream << " new_graph->setEdgeName(new_edge,\"" << dataflow->getEdgeName(c) << "\");" << std::endl;
+              returnStream << " new_graph->setEdgeType(new_edge, EDGE_TYPE::" << dataflow->getEdgeTypeStr(c) << "_EDGE);" << std::endl;
 
 		  returnStream << "}" << std::endl;
 
 	    }}
-	  returnStream << std::endl;
+	  returnStream << "return new_graph;" << std::endl;
 	  returnStream << "}"   << std::endl;
 	  return returnStream.str();
 
@@ -820,7 +822,7 @@ static EXEC_COUNT sum_qt(models::Dataflow* const  dataflow) {
 	return total;
 }
 
-void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list_t ) {
+void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list_t) {
 
 	bool consistent = dataflow->is_consistent();
 
@@ -860,7 +862,7 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 				<< std::setw(8) << "VertexId"
 				<< ")"
 				<< std::setw(9) << "InEdges"
-				<< std::setw(9) << "OutEdges"
+                << std::setw(9) << "OutEdges"
 				<< std::setw(16) << "TotalDuration"
 				<< std::setw(20)<< "RepetitionFactor"
 				<< std::setw(16)<< "PhaseQuantity"
@@ -873,7 +875,7 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
                       << std::setw(8) << dataflow->getVertexId(t)
                       << ")"
 					  << std::setw(9) << dataflow->getVertexInDegree(t)
-					  << std::setw(9) << dataflow->getVertexOutDegree(t)
+                      << std::setw(9) << dataflow->getVertexOutDegree(t)
                       << std::setw(16) << dataflow->getVertexTotalDuration(t)
                       << std::setw(20)<< (consistent ? commons::toString(dataflow->getNi(t)) : "N/A")
                       << std::setw(16)<< dataflow->getPhasesQuantity(t)
@@ -894,27 +896,31 @@ void printers::printInfos    (models::Dataflow* const  dataflow, parameters_list
 
 		std::cout <<  std::setw(name_len) << "ChannelName"
 				<< " ("
-				<< std::setw(10) << "ChannelId"
+				<< std::setw(9) << "ChannelId"
 				<< ")"
-				<< std::setw(10) << "Source"
-				<< std::setw(10) << "Target"
+				<< std::setw(6) << "Source"
+				<< std::setw(6) << "Target"
 				<< std::setw(10) << "TotalIn"
-				<< std::setw(10) << "TotalOut"
-				<< std::setw(15) << "InitialMarking"
-				<< std::setw(20) << "Route"
+                << std::setw(10) << "TotalOut"
+                << std::setw(10) << "StepSize"
+                << std::setw(10) << "Preload"
+                << std::setw(10) << "Type"
+				<< std::setw(15) << "Route"
 				<< std::endl;
 
 		{ForEachChannel(dataflow,c) {
 			std::cout << std::setw(name_len) << dataflow->getEdgeName(c)
                       << " ("
-					  << std::setw(10) << dataflow->getEdgeId(c)
+					  << std::setw(9) << dataflow->getEdgeId(c)
 					  << ")"
-					  << std::setw(10) << dataflow->getVertexId(dataflow->getEdgeSource(c))
-					  << std::setw(10) <<dataflow->getVertexId(dataflow->getEdgeTarget(c))
+					  << std::setw(6) << dataflow->getVertexId(dataflow->getEdgeSource(c))
+					  << std::setw(6) <<dataflow->getVertexId(dataflow->getEdgeTarget(c))
 					  << std::setw(10) << dataflow->getEdgeIn(c)
 					  << std::setw(10) << dataflow->getEdgeOut(c)
-					  << std::setw(15) << dataflow->getPreload(c)
-					  << std::setw(20) << commons::toString(dataflow->getRoute(c))
+                      << std::setw(10) << dataflow->getFineGCD(c)
+                      << std::setw(10) << dataflow->getPreload(c)
+                      << std::setw(10) << dataflow->getEdgeTypeStr(c)
+					  << std::setw(15) << commons::toString(dataflow->getRoute(c))
 					  << std::endl;
 
 
@@ -987,4 +993,3 @@ std::string printers::Scheduling2Tikz    (const models::Scheduling& scheduling) 
 	  return returnStream.str();
 
 }
-

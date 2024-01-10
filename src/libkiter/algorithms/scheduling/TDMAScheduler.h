@@ -83,8 +83,7 @@ class TDMAScheduler {
 	//checking if packet processing done
 	bool isDepsDone(std::vector<long> deps, long cycles)
 	{
-		for(long i = 0; i < deps.size(); i++)
-		{
+		for(size_t i = 0; i < deps.size(); i++) {
 			long d = deps[i];
 			if(isPktDone[d] == -1)
 			//if (isPktDone.find(d) == isPktDone.end()) //if an entry for compute is not present, then the packets has not been sent. Thus not ready.

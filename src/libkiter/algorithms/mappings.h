@@ -8,6 +8,7 @@
 #ifndef _MAPPINGS_H_
 #define _MAPPINGS_H_
 
+#include <models/NoC.h>
 #include <commons/commons.h>
 #include <commons/KiterRegistry.h>
 

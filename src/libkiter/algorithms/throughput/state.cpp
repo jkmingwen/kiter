@@ -20,7 +20,7 @@ State::State()
 
 // construct state using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap) {
+             ActorMap_t& actorMap) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
     }}
@@ -34,7 +34,7 @@ State::State(models::Dataflow* const dataflow,
 
 // construct state with bounded buffers using current graph and actor map information
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap,
+             ActorMap_t& actorMap,
              std::map<Edge, TOKEN_UNIT> &bufferSizes) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // use dataflow preloads initialising for token counts in state
@@ -50,7 +50,7 @@ State::State(models::Dataflow* const dataflow,
 }
 
 State::State(models::Dataflow* const dataflow,
-             std::map<ARRAY_INDEX, Actor> actorMap,
+             ActorMap_t& actorMap,
              StorageDistribution &storDist) {
   {ForEachEdge(dataflow, e) {
       currentTokens[e] = dataflow->getPreload(e); // TODO look into why getInitialTokens not working
@@ -88,12 +88,12 @@ TOKEN_UNIT State::getBufferSpace(Edge e) const {
 }
 
 // returns list of amount of time left for executions for actor
-std::list<std::pair<TIME_UNIT, PHASE_INDEX>> State::getRemExecTime(Vertex a) const {
+const std::list<std::pair<TIME_UNIT, PHASE_INDEX>>& State::getRemExecTime(Vertex a) const {
   return executingActors.at(a);
 }
 
 // returns entire execution queue
-std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>> State::getExecQueue() {
+const std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>>& State::getExecQueue() {
   return this->executingActors;
 }
 
@@ -140,7 +140,7 @@ void State::setTimeElapsed(TIME_UNIT time) {
 
 // update phase count for each actor and token counts per channel
 void State::updateState(models::Dataflow* const dataflow,
-                        std::map<ARRAY_INDEX, Actor> actorMap) {
+                        ActorMap_t& actorMap) {
   {ForEachTask(dataflow, t) {
       setPhase(t, actorMap[dataflow->getVertexId(t)].getPhase());
     }}
@@ -257,11 +257,11 @@ StateList::StateList() {
 
 }
 
-StateList::StateList(State s) {
+StateList::StateList(State &s) {
   this->visitedStates.push_back(s);
 }
 
-bool StateList::addState(State s) {
+bool StateList::addState(State &s) {
   this->repeatedState = std::find(this->visitedStates.begin(),
                                   this->visitedStates.end(),
                                   s);
@@ -296,7 +296,7 @@ TIME_UNIT StateList::computeThroughput() {
 }
 
 // Get index of state
-int StateList::computeIdx(State s){
+long StateList::computeIdx(State& s){
   auto i = std::find(this->visitedStates.begin(), this->visitedStates.end(), s);
   if (i != this->visitedStates.end()) {
     return std::distance(this->visitedStates.begin(), i);

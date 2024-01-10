@@ -18,9 +18,9 @@ namespace models {
 namespace printers {
 
 std::string           generateSDF3XML       (const models::Dataflow* dataflow)  ;
-models::Dataflow*     parseSDF3XML          (const std::string data) ;
+models::Dataflow*     parseSDF3XML          (const std::string& data) ;
 models::Dataflow*     readSDF3File          (const std::string f) ;
-void                  writeSDF3File         (const std::string f, const models::Dataflow* ) ;
+void                  writeSDF3File         (const std::string& f, const models::Dataflow* ) ;
 
 } // end of namespace commons
 

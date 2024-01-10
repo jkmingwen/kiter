@@ -19,10 +19,6 @@ namespace algorithms {
 	namespace transformation {
 		models::Dataflow* modelNoCMapping(models::Dataflow* const  dataflow) ;
 
-
-		void merge_tasks    (models::Dataflow* const dataflow, parameters_list_t  parameters  );
-
-
 		void compare_sdf3_throughput (models::Dataflow* const  dataflow, parameters_list_t) ;
 
 		void remove_task (models::Dataflow* const  dataflow, parameters_list_t params);

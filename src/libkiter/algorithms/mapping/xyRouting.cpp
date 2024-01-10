@@ -8,7 +8,7 @@
 #include <algorithms/mappings.h>
 #include <models/NoC.h>
 
-void algorithms::mapping::xyRouting (models::Dataflow* const  dataflow, parameters_list_t params) {	
+void algorithms::mapping::xyRouting (models::Dataflow* const  dataflow, parameters_list_t) {
 
     VERBOSE_INFO("xyRouting");
     // std::vector<edge_id_t> memoize_vec;

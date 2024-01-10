@@ -5,31 +5,13 @@
  *      Author: katwinkl3
  */
 
-#include <models/Dataflow.h>
+#include <commons/KiterRegistry.h>
+#include <printers/TDMAWriter.h>
 #include <algorithms/mappings.h>
-#include <stdio.h>
-#include <string.h>
-#include <libxml/parser.h>
-#include <libxml/tree.h>
+#include <utility>
 
-void algorithms::mapping::generateTDMA (models::Dataflow* const  dataflow, parameters_list_t params) {
-
-    xmlDocPtr doc = xmlNewDoc(BAD_CAST"1.0");
-	xmlNodePtr root = xmlNewNode(NULL,BAD_CAST"tdma");
-    xmlNewProp(root,BAD_CAST"slots",BAD_CAST"1");
-    xmlDocSetRootElement(doc,root);
-
-    {ForEachEdge(dataflow,e){
-        long* r;
-        (*r) = dataflow->getRoute(e)[0];
-        const unsigned char* rid = (unsigned char*)r;
-        xmlNodePtr rule = xmlNewNode(NULL,BAD_CAST"rule");
-        xmlNewProp(rule,BAD_CAST"id",rid);
-        xmlNewProp(rule,BAD_CAST"slot",BAD_CAST"0");
-    }}
-
-    xmlSaveFile("../../../../benchmarks/tdmaeg.xml",doc);
-	xmlFreeDoc(doc);
-
+void algorithms::mapping::generateTDMA (models::Dataflow* const  dataflow, parameters_list_t params_list) {
+    std::string output_file = commons::get_parameter(std::move(params_list), "output", "");
+    printers::write_TDMA_file (dataflow, output_file);
 }
 

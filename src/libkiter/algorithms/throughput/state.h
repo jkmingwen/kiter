@@ -16,25 +16,24 @@ namespace models {
   class Dataflow;
 }
 
-class Actor;
 
 class State {
  public:
   State();
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap);
+        ActorMap_t& actorMap);
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap,
+        ActorMap_t& actorMap,
         std::map<Edge, TOKEN_UNIT> &bufferSizes);
   State(models::Dataflow* const dataflow,
-        std::map<ARRAY_INDEX, Actor> actorMap,
+        ActorMap_t& actorMap,
         StorageDistribution &storDist);
   PHASE_INDEX getPhase(Vertex a) const; // returns current phase of actor
   TOKEN_UNIT getTokens(Edge e) const; // returns current tokens in edge
   TOKEN_UNIT getBufferSize(Edge e) const; // returns maximum token capacity of edge
   TOKEN_UNIT getBufferSpace(Edge e) const; // returns amount of space left in buffer
-  std::list<std::pair<TIME_UNIT, PHASE_INDEX>> getRemExecTime(Vertex a) const; // returns amount of time left for execution
-  std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>> getExecQueue();
+  const std::list<std::pair<TIME_UNIT, PHASE_INDEX>>& getRemExecTime(Vertex a) const; // returns amount of time left for execution
+  const std::map<Vertex, std::list<std::pair<TIME_UNIT, PHASE_INDEX>>>& getExecQueue();
   void removeFrontExec(Vertex a);
   TIME_UNIT getTimeElapsed() const; // returns total elapsed time in state
   void setPhase(Vertex a, PHASE_INDEX newPhase);
@@ -44,7 +43,7 @@ class State {
   void advanceRemExecTime(Vertex a, TIME_UNIT timeStep);
   void setTimeElapsed(TIME_UNIT time);
   void updateState(models::Dataflow* const dataflow,
-                   std::map<ARRAY_INDEX, Actor> actorMap); // updates state with current status of graph
+                   ActorMap_t& actorMap); // updates state with current status of graph
   TIME_UNIT advanceTime();
   TIME_UNIT advanceTimeWithMod();
   bool hasBoundedBuffers();
@@ -68,11 +67,11 @@ class State {
 class StateList {
 public:
   StateList();
-  StateList(State s);
-  bool addState(State s);
+  StateList(State& s);
+  bool addState(State& s);
   std::list<State>::iterator getRepeatedState();
   TIME_UNIT computeThroughput();
-  int computeIdx(State s);
+  long computeIdx(State& s);
 
 private:
   std::list<State> visitedStates;

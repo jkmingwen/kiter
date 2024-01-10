@@ -167,48 +167,48 @@ static std::vector<Vertex> addPathNode(models::Dataflow* d, Edge c, route_t list
 
 static router_xbar_usage_t build_router_xbar_usage (const models::Dataflow* const  dataflow) {
 
-	router_xbar_usage_t router_xbar_usage;
+    router_xbar_usage_t router_xbar_usage;
 
-	for (auto v : dataflow->vertices()) {
-				ARRAY_INDEX tid = dataflow->getVertexId(v);
-				auto current_mapping =  (dataflow->getMapping(v));
-				VERBOSE_ASSERT(current_mapping >= 0, "UNSUPPORTED CASE, EVERY TASK NEED TO BE MAPPED");
-				VERBOSE_ASSERT(dataflow->getNoC().hasEdge(current_mapping) xor dataflow->getNoC().hasNode(current_mapping), "UNSUPPORTED CASE, NOC NODE AND NOC EDGE WITH SIMILAR ID : " << current_mapping);
+    for (auto v : dataflow->vertices()) {
+        ARRAY_INDEX tid = dataflow->getVertexId(v);
+        auto current_mapping =  (dataflow->getMapping(v));
+        VERBOSE_ASSERT(current_mapping >= 0, "UNSUPPORTED CASE, EVERY TASK NEED TO BE MAPPED AND THE TASK " << tid << " IS NOT!");
+        VERBOSE_ASSERT(dataflow->getNoC().hasEdge(current_mapping) xor dataflow->getNoC().hasNode(current_mapping), "UNSUPPORTED CASE, NOC NODE AND NOC EDGE WITH SIMILAR ID : " << current_mapping);
 
-				VERBOSE_DEBUG("Process task " << tid << " - " << dataflow->getVertexName(v) << " mapped to " << current_mapping);
+        VERBOSE_DEBUG("Process task " << tid << " - " << dataflow->getVertexName(v) << " mapped to " << current_mapping);
 
-				if (dataflow->getNoC().hasEdge(current_mapping)) {
-					VERBOSE_DEBUG("  - Is a NoC Edge: add to links_usage");
-				} else if (dataflow->getNoC().hasNode(current_mapping)) {
-					VERBOSE_DEBUG("  - Is a NoC Node: add to router_usage and router_xbar_usage");
-					if (dataflow->getNoC().getNode(current_mapping).type == NetworkNodeType::Router) {
+        if (dataflow->getNoC().hasEdge(current_mapping)) {
+            VERBOSE_DEBUG("  - Is a NoC Edge: add to links_usage");
+        } else if (dataflow->getNoC().hasNode(current_mapping)) {
+            VERBOSE_DEBUG("  - Is a NoC Node: add to router_usage and router_xbar_usage");
+            if (dataflow->getNoC().getNode(current_mapping).type == NetworkNodeType::Router) {
 
-						VERBOSE_ASSERT(dataflow->getVertexInDegree(v) == 1, "The NoC has not been modelled has expected, every NoCRouter-task should have one input NoCEdge Task. The task " << dataflow->getVertexName(v) << " has " << dataflow->getVertexInDegree(v));
-						VERBOSE_ASSERT(dataflow->getVertexOutDegree(v) == 1, "The NoC has not been modelled has expected, every NoCRouter-task should have one output NoCEdge Task. The task " << dataflow->getVertexName(v) << " has " << dataflow->getVertexOutDegree(v));
+                VERBOSE_ASSERT(dataflow->getVertexInDegree(v) == 1, "The NoC has not been modelled has expected, every NoCRouter-task should have one input NoCEdge Task. The task " << dataflow->getVertexName(v) << " has " << dataflow->getVertexInDegree(v));
+                VERBOSE_ASSERT(dataflow->getVertexOutDegree(v) == 1, "The NoC has not been modelled has expected, every NoCRouter-task should have one output NoCEdge Task. The task " << dataflow->getVertexName(v) << " has " << dataflow->getVertexOutDegree(v));
 
-						Vertex inputEdgeTask = dataflow->getEdgeSource(*(dataflow->getInputEdges(v).first));
-						Vertex outputEdgeTask = dataflow->getEdgeTarget(*(dataflow->getOutputEdges(v).first));
+                Vertex inputEdgeTask = dataflow->getEdgeSource(*(dataflow->getInputEdges(v).first));
+                Vertex outputEdgeTask = dataflow->getEdgeTarget(*(dataflow->getOutputEdges(v).first));
 
-						edge_id_t input_edge = dataflow->getMapping(inputEdgeTask);
-						edge_id_t output_edge = dataflow->getMapping(outputEdgeTask);
+                edge_id_t input_edge = dataflow->getMapping(inputEdgeTask);
+                edge_id_t output_edge = dataflow->getMapping(outputEdgeTask);
 
-						VERBOSE_ASSERT(dataflow->getNoC().hasEdge(dataflow->getMapping(inputEdgeTask)), "The NoC has bot been modelled has expected, every  NoCEdge Task should be properly mapped");
-						VERBOSE_ASSERT(dataflow->getNoC().hasEdge(dataflow->getMapping(outputEdgeTask)), "The NoC has bot been modelled has expected, every  NoCEdge Task should be properly mapped");
+                VERBOSE_ASSERT(dataflow->getNoC().hasEdge(dataflow->getMapping(inputEdgeTask)), "The NoC has bot been modelled has expected, every  NoCEdge Task should be properly mapped");
+                VERBOSE_ASSERT(dataflow->getNoC().hasEdge(dataflow->getMapping(outputEdgeTask)), "The NoC has bot been modelled has expected, every  NoCEdge Task should be properly mapped");
 
-						router_xbar_usage[current_mapping].push_back( std::tuple<edge_id_t,edge_id_t,ARRAY_INDEX> (input_edge, output_edge, tid) );
+                router_xbar_usage[current_mapping].push_back( std::tuple<edge_id_t,edge_id_t,ARRAY_INDEX> (input_edge, output_edge, tid) );
 
-					}else {
-						VERBOSE_DEBUG("!! SKIP because node is not a ROUTER ");
-					}
-				} else {
-					VERBOSE_DEBUG("!! SKIP because not found in the NoC ");
-				}
-			}
+            }else {
+                VERBOSE_DEBUG("!! SKIP because node is not a ROUTER ");
+            }
+        } else {
+            VERBOSE_DEBUG("!! SKIP because not found in the NoC ");
+        }
+    }
 
-			return (router_xbar_usage);
+    return (router_xbar_usage);
 }
 
-static std::vector<std::set<ARRAY_INDEX>> get_overlaps (models::Dataflow* const  dataflow) {
+std::vector<std::set<ARRAY_INDEX>> get_overlaps (models::Dataflow* const  dataflow) {
 
 	router_xbar_usage_t router_xbar_usage = build_router_xbar_usage (dataflow);
 
@@ -240,7 +240,7 @@ static std::vector<std::set<ARRAY_INDEX>> get_overlaps (models::Dataflow* const 
 
 
 
-void algorithms::ModelNoCConflictFreeCommunication(models::Dataflow* const  dataflow, parameters_list_t   param_list ) {
+void algorithms::ModelNoCConflictFreeCommunication(models::Dataflow* const  dataflow, parameters_list_t ) {
 
 	conflictEtype conflictEdges; //stores details of flows that share noc edges
 	conflictConfigs configs; //stores the details of the router configs that are shared

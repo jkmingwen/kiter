@@ -35,16 +35,16 @@ extern int VERBOSE_MODE;
 extern bool VERBOSE_COLOR;
 extern bool VERBOSE_GUESS;
 
-#ifndef __RELEASE_MODE__
 extern std::set<std::string> VERBOSE_CUSTOM_MODES;
-#endif
+
+#ifndef __RELEASE_MODE__
 
 inline void add_custom_verbose_mode(const std::string m){
-#ifndef __RELEASE_MODE__
 	  VERBOSE_CUSTOM_MODES.insert(m);
-#endif
 }
-
+#else
+inline void add_custom_verbose_mode(const std::string ){}
+#endif
 const int  MIN_LEVEL     =   0;
 const int  MAX_LEVEL     =  10;
 
@@ -80,13 +80,14 @@ void myterminate(int);
 #define BLUE_COLOR   (commons::VERBOSE_COLOR?"\033[1;34m":"")
 #define RESET_COLOR  (commons::VERBOSE_COLOR?"\033[0m":"")
 #include <string>
-const inline std::string _verbosegetFilename(const std::string s) { return s.substr(s.find_last_of("/\\")+1);}
+// const inline std::string _verbosegetFilename(const std::string s) { return s.substr(s.find_last_of("/\\")+1);}
+const inline std::string _verbosegetFilename(const std::string s) { return s;}
 #define __SHOW_LEVEL "[ "<< __RELEASE__ <<"  " << _verbosegetFilename(__FILE__) << ":" << __LINE__ << "]" << RESET_COLOR << " "
 
 #ifdef __RELEASE_MODE__
-#define EXIT_ON_FAILURE(msg)  /*int* toto = NULL; *toto = 1;*/ exit(EXIT_FAILURE)
+#define EXIT_ON_FAILURE(msg)  /*int* toto = NULL; *toto = 1;*/ abort()
 #else
-#define EXIT_ON_FAILURE(msg)  {throw new std::runtime_error(msg);} exit(EXIT_FAILURE)
+#define EXIT_ON_FAILURE(msg)  { abort();}
 
 #endif
 
@@ -99,32 +100,31 @@ static inline bool  VERBOSE_IS_PB()                      { return (commons::VERB
 static inline bool  VERBOSE_IS_ILP()                     { return (commons::VERBOSE_MODE >= commons::ILP_LEVEL)         ;}
 
 #ifndef __RELEASE_MODE__
-#define VERBOSE_EXTRA_DEBUG(m)   if (VERBOSE_IS_EXTRA_DEBUG())      std::cerr << BLUE_COLOR   << "[X]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ; //PRINT_STATE();
+#define VERBOSE_EXTRA_DEBUG(m)   if (VERBOSE_IS_EXTRA_DEBUG())      std::cerr << BLUE_COLOR   << "[X]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"  //PRINT_STATE();
 #define VERBOSE_CUSTOM_DEBUG(code,m) if (commons::VERBOSE_CUSTOM_MODES.count(code)) {VERBOSE_DEBUG(m);}
-#define VERBOSE_DEBUG(m)   if (VERBOSE_IS_DEBUG())      std::cerr << BLUE_COLOR   << "[D]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ; //PRINT_STATE();
-#define VERBOSE_ILP(m)     if (VERBOSE_IS_ILP())        std::cerr << PURPLE_COLOR << "[L]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ;
+#define VERBOSE_DEBUG(m)   if (VERBOSE_IS_DEBUG())      std::cerr << BLUE_COLOR   << "[D]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" //PRINT_STATE();
+#define VERBOSE_ILP(m)     if (VERBOSE_IS_ILP())        std::cerr << PURPLE_COLOR << "[L]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"
 #define VERBOSE_DEBUG_ASSERT(test,mess)  if (!(test)) {VERBOSE_ERROR("Assertion failed : " << #test);VERBOSE_ERROR(mess);  ERROR();}
 #define VERBOSE_DEBUG_ASSERT_CONTAIN(a,b)   if (!(a | b)) {VERBOSE_ERROR("Assertion failed : " << #a << "(=" << a << ") ==" << #b << "(=" << b << ")"); ERROR();}
 #define VERBOSE_DEBUG_ASSERT_EQUALS(a,b)   if (a != b) {VERBOSE_ERROR("Assertion failed : " << #a << "(=" << a << ") ==" << #b << "(=" << b << ")"); ERROR();}
 #define VERBOSE_DEBUG_ASSERT_GreaterThan(a,b)   if (a <= b) {VERBOSE_ERROR("Assertion failed : " << #a << "(=" << a << ") >" << #b << "(=" << b << ")"); ERROR();}
 #define VERBOSE_DEBUG_ASSERT_GreaterEqualThan(a,b)  if (a < b)  {VERBOSE_ERROR("Assertion failed : " << #a << "(=" << a << ") >=" << #b << "(=" << b << ")"); ERROR();}
 #else
-#define VERBOSE_EXTRA_DEBUG(m)   ;
-#define VERBOSE_CUSTOM_DEBUG(code,m)   ;
-#define VERBOSE_CUSTOM(m)   ;
-#define VERBOSE_DEBUG(m)   ;
-#define VERBOSE_ILP(m)     ;
-#define VERBOSE_DEBUG_ASSERT(test,mess)      ;
-#define VERBOSE_DEBUG_ASSERT_CONTAIN(a,b)    ;
-#define VERBOSE_DEBUG_ASSERT_EQUALS(a,b)     ;
-#define VERBOSE_DEBUG_ASSERT_GreaterThan(a,b);
-#define VERBOSE_DEBUG_ASSERT_GreaterEqualThan(a,b) ;
+#define VERBOSE_EXTRA_DEBUG(m)   {}
+#define VERBOSE_CUSTOM_DEBUG(code,m) {}
+#define VERBOSE_CUSTOM(m) {}
+#define VERBOSE_DEBUG(m) {}
+#define VERBOSE_ILP(m) {}
+#define VERBOSE_DEBUG_ASSERT(test,mess) {}
+#define VERBOSE_DEBUG_ASSERT_CONTAIN(a,b) {}
+#define VERBOSE_DEBUG_ASSERT_EQUALS(a,b) {}
+#define VERBOSE_DEBUG_ASSERT_GreaterThan(a,b) {}
+#define VERBOSE_DEBUG_ASSERT_GreaterEqualThan(a,b) {}
 #endif
 
-#define VERBOSE_INFO(m)    if (VERBOSE_IS_INFO())    	std::cerr << GREEN_COLOR  << "[I]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ; //PRINT_STATE();
-#define VERBOSE_WARNING(m) if (VERBOSE_IS_WARNING())    std::cerr << YELLOW_COLOR << "[W]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ;
-#define VERBOSE_ERROR(m)   if (VERBOSE_IS_ERROR())      std::cerr << RED_COLOR    << "[E]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n" ;
-#define VERBOSE_DSE(m)     if (VERBOSE_IS_PB())         std::cerr << PURPLE_COLOR << "[DSE] " << RESET_COLOR << m;
+#define VERBOSE_INFO(m)    if (VERBOSE_IS_INFO())    	std::cerr << GREEN_COLOR  << "[I]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"  //PRINT_STATE();
+#define VERBOSE_WARNING(m) if (VERBOSE_IS_WARNING())    std::cerr << YELLOW_COLOR << "[W]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"
+#define VERBOSE_ERROR(m)   if (VERBOSE_IS_ERROR())      std::cerr << RED_COLOR    << "[E]" << __SHOW_LEVEL << m << std::string(20,' ') << "\n"
 
 #define VERBOSE_ASSERT(test,mess) if (!(test)) {VERBOSE_ERROR("Assertion failed : " << #test);VERBOSE_ERROR(mess);  ERROR();}
 #define VERBOSE_ASSERT_CONTAIN(a,b) if (!(a | b)) {VERBOSE_ERROR("Assertion failed : " << #a << "(=" << a << ") ==" << #b << "(=" << b << ")"); ERROR();}
@@ -135,7 +135,7 @@ static inline bool  VERBOSE_IS_ILP()                     { return (commons::VERB
 
 
 #ifndef __RELEASE_MODE__
-#define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("Internal Error"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("Internal Error");}
+#define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("VERBOSE_BAD_PROGRAMMING"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("VERBOSE_BAD_PROGRAMMING");}
 #else
 #define VERBOSE_BAD_PROGRAMMING() {VERBOSE_ERROR("Internal Error"); VERBOSE_BACKTRACE(); std::cerr << std::flush; EXIT_ON_FAILURE("Internal Error");}
 #endif
@@ -143,7 +143,7 @@ static inline bool  VERBOSE_IS_ILP()                     { return (commons::VERB
 #define VERBOSE_FAILURE()   VERBOSE_BAD_PROGRAMMING();
 #define FAILED(MESSAGE)     {VERBOSE_ERROR(MESSAGE); std::cerr << std::flush; VERBOSE_BACKTRACE(); EXIT_ON_FAILURE(MESSAGE);}
 
-#define VERBOSE_BACKTRACE() commons::print_trace(__FILE__,__LINE__);
+#define VERBOSE_BACKTRACE() commons::print_trace(__FILE__,__LINE__)
 
 
 

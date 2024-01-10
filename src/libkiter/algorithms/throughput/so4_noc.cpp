@@ -7,100 +7,13 @@
  */
 
 #include <models/Dataflow.h>
-#include <libxml/parser.h>
-#include <filesystem>
 #include <iostream>
-#include <fstream>
 #include "actor.h"
 #include "state.h"
 #include "so4_noc.h"
-#include "../../models/Scheduling.h"
+#include <models/Scheduling.h>
+#include <printers/so4nocWriter.h>
 #include "../scc.h"
-#include "../buffersizing/periodic_fixed.h"
-
-std::tuple<std::map<ARRAY_INDEX, long>, long> generateConditions(models::Dataflow* const dataflow, std::string filename, std::set<ARRAY_INDEX> new_edges){
-  std::map<ARRAY_INDEX, long> condition; // dataflow edge : [slot]
-  long slots = 0;
-  std::filesystem::path file(filename);
-  if (file.extension() == ".xml"){
-    std::map<edge_id_t, long> condition_param; //noc edge id : slot
-    xmlDocPtr doc =  xmlParseFile(filename.c_str()); //TODO: error handling and shift into separate function
-    xmlNodePtr tdma_node;
-    for (xmlNodePtr cur_node = doc->children; cur_node; cur_node = cur_node->next) {
-      if (cur_node->type == XML_ELEMENT_NODE) {
-        if (std::string((const char*)cur_node->name) == std::string("tdma")) tdma_node = cur_node;
-      }
-    }
-    const char* temp = (const char*) tdma_node->properties->children->content;
-    slots = atoi(temp); //TODO: change to strtol
-    for (xmlNodePtr cur_node = tdma_node->children; cur_node; cur_node = cur_node->next) {
-      if (cur_node->type == XML_ELEMENT_NODE) {
-        if (std::string((const char*)cur_node->name) == std::string("rule")) {
-          long eid;
-          long s;
-          char *ss1, *ss2;
-          for (xmlAttrPtr cur_attr = cur_node->properties; cur_attr; cur_attr = cur_attr->next){
-            if (strcmp((const char*)cur_attr->name,"slot") == 0){
-              temp = (const char*) cur_attr->children->content;
-              s = strtol(temp, &ss1, 10);
-            }
-            if (strcmp((const char*)cur_attr->name,"id") == 0){
-              temp = (const char*) cur_attr->children->content;
-              eid = strtol(temp, &ss2, 10);
-            }
-          }
-          condition_param.insert({eid,s});
-        }
-      }
-    }
-    xmlFreeDoc(doc);
-    {ForEachEdge(dataflow,e){
-      if (dataflow->getEdgeType(e) == VIRTUAL_EDGE){
-        condition.insert({dataflow->getEdgeId(e), -1});
-      } else {
-        condition.insert({dataflow->getEdgeId(e), condition_param[dataflow->getRoute(e)[0]]});
-      }
-      // if (new_edges.find(dataflow->getEdgeId(e)) != new_edges.end()){
-      //   condition.insert({dataflow->getEdgeId(e), -1});
-      // } else {
-      //   condition.insert({dataflow->getEdgeId(e), condition_param[dataflow->getRoute(e)[0]]});
-      // }
-    }}
-  }
-  if (file.extension() == ".txt"){
-    std::map<std::pair<long, long>, long> condition_param; //noc edge id : slot
-    std::string line;
-    std::ifstream readfile(filename);
-    while (getline (readfile, line)) {
-      std::istringstream ss(line);
-      std::string subline;
-      std::vector<long> vals = {};
-      while(std::getline(ss, subline, ',')) {
-        if (subline != "src" & subline != "dest" & subline != "slot"){
-          vals.push_back(std::stol(subline));
-        }
-      }
-      if (vals[2] > slots){
-        slots = vals[2];
-      }
-      condition_param.insert({{vals[0]+dataflow->getNoC().size(), vals[1]+dataflow->getNoC().size()}, vals[2]});
-    }
-    readfile.close();
-    {ForEachEdge(dataflow,e){
-      if (dataflow->getEdgeType(e) == VIRTUAL_EDGE){
-        condition.insert({dataflow->getEdgeId(e), -1}); //actually has no use
-      } else {
-        if (condition_param.find({ dataflow->getMapping(dataflow->getEdgeSource(e)), dataflow->getMapping(dataflow->getEdgeTarget(e)) }) != condition_param.end()){
-          condition.insert({dataflow->getEdgeId(e), condition_param[{dataflow->getMapping(dataflow->getEdgeSource(e)), dataflow->getMapping(dataflow->getEdgeTarget(e))}] });
-        } else {
-          std::cout << "Missing TDMA rule for edge " << dataflow->getEdgeId(e) << "src=" << dataflow->getMapping(dataflow->getEdgeSource(e)) << " dest=" << dataflow->getMapping(dataflow->getEdgeTarget(e))<< std::endl;
-          condition.insert({dataflow->getEdgeId(e), 0});
-        }
-      }
-    }}
-  }
-  return {condition, slots+1};
-}
 
 std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(models::Dataflow* const dataflow,
                                        std::pair<ARRAY_INDEX, EXEC_COUNT> &minActorInfo, scheduling_t schedule, std::string filename, std::set<ARRAY_INDEX> new_edges) {
@@ -111,7 +24,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   ARRAY_INDEX minRepActorId;
   TOKEN_UNIT minRepActorExecCount = 0;
   TIME_UNIT timeStep; // total time passed
-  int periodic_state_idx; // idx of first periodic state in statelist
+  size_t periodic_state_idx; // idx of first periodic state in statelist
   TIME_UNIT thr;
   bool end_check = false; //
   int actors_left = 0;
@@ -123,30 +36,31 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
 
   std::map<ARRAY_INDEX, long> condition;
   long slots;
-  std::tie(condition, slots) = generateConditions(dataflow, filename, new_edges);
+  std::tie(condition, slots) = printers::generateConditions(dataflow, filename, new_edges);
 
-  std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>> *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
-  std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>> *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
+  //auto *buffer = new std::map<TIME_UNIT, std::map<ARRAY_INDEX, std::pair<long, bool>>>();; //slot: [channel (actor's edge): {tokens released, if actor needs to execute}]
+  auto *n_buffer = new std::deque<std::pair<TIME_UNIT, std::pair<ARRAY_INDEX, long>>>();; //[timeslot, channel, token]
   scheduling_t task_schedule; // {vertex_id : {time_unit: [time_unit]}}
-  ARRAY_INDEX skip_edge = 0;
-  ARRAY_INDEX skip_vertex = 0;
-  TIME_UNIT skip_time = 0;
+  //ARRAY_INDEX skip_edge = 0;
+  //ARRAY_INDEX skip_vertex = 0;
+  //TIME_UNIT skip_time = 0;
   TIME_UNIT curr_step = 0;
   std::map<ARRAY_INDEX, std::vector<std::vector<TIME_UNIT>>> starts; //{task idx : [[state 0 starts], [state 1 ...]]}
   std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> state_start = {};  //{task idx : [ starts]},
-  bool periodic_state = false;
+  //bool periodic_state = false;
   // initialise actors
-  std::map<ARRAY_INDEX, Actor> actorMap;
+
+  ActorMap_t actorMap (static_cast<unsigned long>(dataflow->getMaxVertexId() + 1));
   {ForEachTask(dataflow, t) {
-      actorMap[dataflow->getVertexId(t)] = Actor(dataflow, t);
+      actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))] = Actor(dataflow, t);
     }}
   State prevState(dataflow, actorMap);
   State currState(dataflow, actorMap);
   {ForEachTask(dataflow, t) {
       // track actor with lowest repetition factor (determines when states are stored)
-      if (actorMap[dataflow->getVertexId(t)].getRepFactor() < minRepFactor) {
-        minRepFactor = actorMap[dataflow->getVertexId(t)].getRepFactor();
-        minRepActorId = actorMap[dataflow->getVertexId(t)].getId();
+      if (actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getRepFactor() < minRepFactor) {
+        minRepFactor = actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getRepFactor();
+        minRepActorId = actorMap[static_cast<unsigned long>(dataflow->getVertexId(t))].getId();
       }
     }}
 
@@ -191,7 +105,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
       }}
 
     // set preload from ended firings
-    int cast_out_idx;
+    size_t cast_out_idx;
     for (cast_out_idx = 0; cast_out_idx < (*n_buffer).size(); ++cast_out_idx){
       if ((*n_buffer)[cast_out_idx].first <= curr_step){
         Edge e = dataflow->getEdgeById((*n_buffer)[cast_out_idx].second.first);
@@ -278,7 +192,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   TIME_UNIT minThroughput = LONG_MAX; // NOTE should technically be LDBL_MAX cause TIME_UNIT is of type long double
 
   scheduling_t scheduling_result;
-  int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
+  size_t line_size = param_list.count("LINE") ? commons::fromString<size_t>(param_list["LINE"]) : 80;
 
   // Temp fix to turn graph into 1 SCC
   std::set<ARRAY_INDEX> new_edges = {};//add_vbuffers(dataflow, param_list);
@@ -321,7 +235,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
     TIME_UNIT omega = 1.0 / minThroughput ;
     models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
 
-    std::cout << res.asASCII(linesize);
+    std::cout << res.asASCII(line_size);
     std::cout << res.asText();
     // std::cout << printers::Scheduling2Tikz(res);
 
@@ -345,7 +259,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   temp_df->is_consistent();
 
   models::Scheduling res = models::Scheduling(dataflow, omega, scheduling_result);
-  std::cout << res.asASCII(linesize);
+  std::cout << res.asASCII(line_size);
   std::cout << res.asText();
 
   std::cout << "So4 throughput is  " << minThroughput << std::endl;

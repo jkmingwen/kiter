@@ -12,15 +12,16 @@
 #include <algorithms/normalization.h>
 #include <algorithms/buffersizing/backpressure.h>
 
-void algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t params) {
+BufferSizingResult algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t params) {
 
+    BufferSizingResult res;
 
 	VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
 
     // STEP 1 - Compute normalized period
     TIME_UNIT PERIOD = 0 ;
 	if (params.find("PERIOD")!= params.end() ) PERIOD =  commons::fromString<TIME_UNIT>(params["PERIOD"]);
-	VERBOSE_ASSERT (PERIOD > 0, "The PERIOD must be defined");
+    VERBOSE_ASSERT_GreaterThan(PERIOD, 0);
 
 
 	// STEP 0 - Need the repetition vector
@@ -308,7 +309,7 @@ void algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  da
 		}}
 	} else {
 		VERBOSE_ERROR("Linear solving fail.");
-		return;
+        return res;
 	}
 
 
@@ -366,16 +367,16 @@ void algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  da
 
 		const TIME_UNIT bsize_beta =   - (beta_f_prod - beta_f_cons);
 		const TOKEN_UNIT bsize = commons::ceil(bsize_beta,dataflow->computeFineGCD(e));
+        res.add_edge_size(dataflow->getEdgeId(e), bsize);
 		total_buffer_size += bsize;
 
         VERBOSE_INFO(dataflow->getEdgeName(e) << " :" << bsize_beta << " => " << bsize );
 		VERBOSE_DEBUG(dataflow->getEdgeName(e) << " : " << std::setw(10) << beta_f_cons << "   -   "  << std::setw(10)<< beta_f_prod<<"   =   "  << std::setw(10)<< bsize_beta << " ceiled by "<< dataflow->computeFineGCD(e) << " ==> "  << std::setw(10)<< bsize );
 	}}
 
-	VERBOSE_INFO("Loopback buffers : " << dataflow->getVerticesCount());
-	std::cout << "Total buffer size : " << total_buffer_size
-			<< " + 2 * " << dataflow->getVerticesCount() << " = "
-			<< total_buffer_size + 2 * dataflow->getVerticesCount() << std::endl ;
+    res.set_validity(true);
+    res.set_total_size(total_buffer_size);
+
 
 	if (VERBOSE_IS_DEBUG()) {
 		VERBOSE_INFO("Interlude 1 : print production file for each buffer");
@@ -590,8 +591,10 @@ void algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  da
 			myfile.close();
 
 		}}
+
 	}
 
+    return res;
 
 
 

@@ -97,6 +97,7 @@ std::set<Edge> abstractDepGraph::computeStorageDependenciesSCC(models::Dataflow*
   }
 
   VERBOSE_DEBUG("Number of SCCs in abstract dependency graph: " << sccMap.size() << std::endl);
+  if (VERBOSE_IS_DEBUG())
   for (auto const& actorList : sccMap) {
     VERBOSE_DEBUG("\tSCC ID: " << actorList.first << std::endl);
     for (auto const& actorId : actorList.second) {

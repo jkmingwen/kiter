@@ -8,7 +8,7 @@
 #include <models/Dataflow.h>
 #include <algorithms/mappings.h>
 
-void algorithms::mapping::createNoC (models::Dataflow* const  dataflow, parameters_list_t params) {	
+void algorithms::mapping::createNoC (models::Dataflow* const  dataflow, parameters_list_t ) {
 
     VERBOSE_INFO("createNoC");
 	int mesh_row = (int)ceil(sqrt((double) dataflow->getVerticesCount()));

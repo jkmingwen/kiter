@@ -63,14 +63,14 @@ void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_
 		 models::Scheduling CSDF_SPeriodicScheduling       (const models::Dataflow* const dataflow) ;
 		 void SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
-		 models::Scheduling ASAPScheduling       (const models::Dataflow* const dataflow) ;
+		 models::Scheduling ASAPScheduling       (models::Dataflow* dataflow) ;
 		 void ASAPScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 		 models::Scheduling So4Scheduling       (const models::Dataflow* const dataflow) ;
 		 void So4Scheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
-	}
-}
+	} // end of scheduling namespace
+} // end of algorithm namespace
 
 
 // Recent stuff

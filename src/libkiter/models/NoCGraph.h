@@ -80,7 +80,7 @@ class NoCGraph
 
 	void generateAllShortestPaths();
 	int getMapIndex(int x, int y) const {return V + (x*V + y);}
-	std::pair<int,int> getMapIndexPair(int index) {  return {(index - V)/V, (index - V)%V}; }
+	std::pair<int,int> getMapIndexPair(long index) {  return {(index - V)/V, (index - V)%V}; }
 	int getPathLength(int src, int dst)
 	{
 		if(src == dst)

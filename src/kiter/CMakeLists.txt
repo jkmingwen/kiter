@@ -1,23 +1,12 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-FIND_PACKAGE(GUROBI)
 
-#
-#  ######### SOURCES ##########
-#
-
-SET ( kiter_sources  main.cpp )
-INCLUDE_DIRECTORIES(${KITER_INCLUDE_DIR})
-INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
-
-#  ######### EXEC ##########
-
-ADD_EXECUTABLE         (kiter  ${kiter_sources})
-TARGET_LINK_LIBRARIES  (kiter  libkiter -lz)
+ADD_EXECUTABLE         (kiter  kiter.cpp)
+TARGET_LINK_LIBRARIES  (kiter  PRIVATE ${KITER_LIBRARIES} -lz)
+TARGET_INCLUDE_DIRECTORIES(kiter  PRIVATE ${KITER_INCLUDE_DIR} )
 INSTALL(TARGETS kiter DESTINATION bin)
 
-if(GUROBI_FOUND)
- ADD_EXECUTABLE         (kiter_gurobi  ${kiter_sources})
- TARGET_LINK_LIBRARIES  (kiter_gurobi  libkiter_gurobi -lz)
-endif(GUROBI_FOUND)
-
+ADD_EXECUTABLE         (dataset_generator  dataset_generator.cpp)
+TARGET_LINK_LIBRARIES  (dataset_generator  PRIVATE ${KITER_LIBRARIES} -lz)
+TARGET_INCLUDE_DIRECTORIES(dataset_generator  PRIVATE ${KITER_INCLUDE_DIR} )
+INSTALL(TARGETS dataset_generator DESTINATION bin)

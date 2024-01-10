@@ -27,15 +27,8 @@
 #include <map>
 #include <vector>
 #include <cstdlib>
-#include <boost/functional/hash.hpp>
-#include <boost/graph/detail/edge.hpp>
 #include <commons/basic_types.h>
 #include <array>
-
-namespace boost {struct bidirectional_tag;}
-namespace std {
-bool operator<(const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& lh, const boost::detail::edge_desc_impl<boost::bidirectional_tag, unsigned int>& rh);
-}
 
 
 // Naively inspired from https://en.cppreference.com/w/cpp/language/operators
@@ -152,7 +145,7 @@ public:
        	const V zero = 0;
 
        	// Break value into mixed-fraction form, w/ always-nonnegative remainder
-       	BOOST_ASSERT(this->d > zero);
+        VERBOSE_ASSERT(this->d > zero, "always-nonnegative remainder");
        	V  q = this->n / this->d, r = this->n % this->d;
        	while(r < zero)  { r += this->d; --q; }
 
@@ -316,6 +309,8 @@ template<class Type>
 	for (Type it = IteratingContain->begin(); it != IteratingContain->end() ; it++) {delete (*it).second;};
 }
 
+
+
 // from http://stackoverflow.com/questions/4442658/c-parse-int-from-string
 template<class T>
     T fromString(const std::string& s)
@@ -325,6 +320,25 @@ template<class T>
      stream >> t;
      return t;
 }
+
+
+template<typename T>
+std::vector<T> split(const std::string &s, const char &delim) {
+    std::vector<T> elems;
+    std::stringstream ss(s);
+    std::string item;
+    while(std::getline(ss, item, delim)) {
+        elems.push_back(commons::fromString<T>(item));
+    }
+    return elems;
+}
+
+//// This cannot be done easily without breaking calls
+//template< typename T >
+//std::vector<T> fromString(const std::string& s)
+//{
+//    return commons::split<T> (s, ',');
+//}
 
 template<>
 char *fromString<char*>(const std::string& str);
@@ -372,8 +386,20 @@ template<typename T>
 	 return s.str();
 }
 
+template<typename T, typename Q>
+    std::string toString(const std::map<T,Q>& v)
+    {
+        std::ostringstream stream;
+        for (auto item : v) {
+            stream << commons::toString<T>(item.first) << ":" << commons::toString<Q>(item.second) << " ";
+        }
+        return stream.str();
+    }
 
-template<>
+    template<>
+    std::string toString(const std::vector<std::string>& t);
+
+    template<>
     std::string toString(const std::set<long  int, std::less<long  int>, std::allocator<long  int> >& t) ;
 template<>
     std::string toString(const std::set<long unsigned int, std::less<long unsigned int>, std::allocator<long unsigned int> >& t) ;
@@ -423,6 +449,43 @@ Str join(It begin, const It end, const Str &sep)
   return result.str();
 }
 
+template <class T>
+std::string  join(const std::vector<T>& vec, const std::string  &sep) {
+    return join(vec.begin(),vec.end(), sep);
+}
+
+// // This should not be necessary
+//
+//    template<typename T>
+//    std::string vectorAsStr(const std::vector<T>& t)
+//    {
+//        std::stringstream s;
+//        for (typename std::vector<T>::size_type idx = 0 ; idx < t.size() ; idx++) {
+//            if (idx > 0) {
+//                s << ",";
+//            }
+//            s << commons::toString(t[idx]);
+//        }
+//        return s.str();
+//    }
+//
+//    template<>
+//    std::string vectorAsStr(const std::vector<TIME_UNIT>& t)
+//    {
+//        std::stringstream s;
+//        for (typename std::vector<TIME_UNIT>::size_type idx = 0 ; idx < t.size() ; idx++) {
+//            if (idx > 0) {
+//                s << ",";
+//            }
+//            TIME_UNIT v = t[idx];
+//            if ((std::floor(v)==std::ceil(v))) {
+//                s << (unsigned long) (v) ;
+//            } else {
+//                s << commons::toString(v);
+//            }
+//        }
+//        return s.str();
+//    }
 
 
 inline bool isInteger(TIME_UNIT v){
@@ -497,16 +560,6 @@ inline std::string ConvertRGBtoHex(int r, int g, int b) {
 TIME_UNIT roundIt(TIME_UNIT val,TIME_UNIT p);
 //
 
-template<typename T>
- std::vector<T> split(const std::string &s, const char &delim) {
-	 std::vector<T> elems;
-	 std::stringstream ss(s);
-	 std::string item;
-	 while(std::getline(ss, item, delim)) {
-		 elems.push_back(commons::fromString<T>(item));
-	 }
-	 return elems;
- }
 std::vector<std::string> splitSDF3List(const std::string &s);
 
 int fibo (int index);
@@ -577,6 +630,12 @@ VALUE_TYPE get_parameter ( parameters_list_t params , std::string name , VALUE_T
 
 	 return value;
 }
+
+
+
+    std::vector<std::string> parseCsvLine(const std::string& line) ;
+
+
 
 }// end of commons namespace
 
