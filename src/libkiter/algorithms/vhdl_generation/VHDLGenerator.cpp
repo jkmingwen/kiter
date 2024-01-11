@@ -5,6 +5,7 @@
  *      Author: jkmingwen
  */
 
+#include <bitset>
 #include <set>
 #include <string>
 #include <filesystem>
@@ -68,14 +69,15 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
    @param comp Only works on a VHDLComponent of type "const_val".
 
    @return A string representing the binary form of the value
-   transmitted by the given component. A null string is
+   transmitted by the given component. An empty string is
    returned if the given component has a data type that is
    not fp/real/int.
  */
 std::string binaryValue(VHDLComponent const comp) {
-  std::stringstream outputStream;
+  std::string binaryRepresentation;
   // adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
   if (comp.getDataType() == "fp" || comp.getDataType() == "real") {
+    std::stringstream outputStream;
     float fpVal = comp.getFPValue();
     std::string fpcFloatPrefix = (fpVal ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
     size_t size = sizeof(fpVal);
@@ -91,15 +93,16 @@ std::string binaryValue(VHDLComponent const comp) {
         }
       p--;
     }
-    return (fpcFloatPrefix + outputStream.str());
+    binaryRepresentation = fpcFloatPrefix + outputStream.str();
   } else if (comp.getDataType() == "int") {
-    return std::bitset<34>(comp.getIntValue()).to_string(); // NOTE assuming unsigned binary representation here
+    binaryRepresentation = std::bitset<34>(comp.getIntValue()).to_string(); // NOTE assuming unsigned binary representation here
   } else {
     VERBOSE_WARNING("Representing the value a VHDLComponent of type "
                     << comp.getType() << " (data type: " << comp.getDataType()
                     << ") as a binary is not supported.");
-    return NULL;
   }
+
+  return binaryRepresentation;
 }
 
 // Generates VHDL code in a specified output directory
