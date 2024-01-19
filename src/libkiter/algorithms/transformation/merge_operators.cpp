@@ -518,18 +518,22 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   VERBOSE_DEBUG("Execution times: ");
   for (auto &e : executionTime) {
     VERBOSE_DEBUG("Time: " << e.first);
-    std::map<std::string, bool> opMerged;
-    for (auto &type : typesToMerge) { // initialise map to flag when operator type has been detected at the given exec time
-      opMerged[type] = false;
+    std::map<std::string, int> opCountForExecTime; // occurances of each operator type executing at this time
+    for (auto &type : typesToMerge) {
+      opCountForExecTime[type] = 0;
     }
     for (auto &id : e.second) {
-      VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
-                   << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
+      VERBOSE_DEBUG(
+          "\t" << id << "("
+               << dataflow->getVertexName(dataflow->getVertexById(id)) << ", "
+               << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
       VHDLComponent op(dataflow, dataflow->getVertexById(id));
-      if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) != typesToMerge.end() &&
-          !opMerged[op.getType()]) {
-        mergeableIds[op.getType()].push_back(id);
-        opMerged[op.getType()] = true;
+      if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) !=
+          typesToMerge.end()) {
+        // group by occurance count to generate separate merge groups for
+        // operators (of the same type) executing in parallel
+        mergeableIds[op.getType() + std::to_string(opCountForExecTime[op.getType()])].push_back(id);
+        opCountForExecTime[op.getType()]++;
       }
     }
   }
