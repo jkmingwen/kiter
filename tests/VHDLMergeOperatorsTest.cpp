@@ -5,7 +5,7 @@
  *      Author: jkmingwen
  */
 
-#define BOOST_TEST_MODULE VHDLMergeTest
+#define BOOST_TEST_MODULE VHDLMergeOperatorsTest
 #include <printers/stdout.h>
 #include "helpers/dadop_test_graphs.h"
 #include <models/Dataflow.h>
@@ -14,7 +14,7 @@
 #include <boost/test/unit_test_suite.hpp>
 #include "helpers/test_classes.h"
 
-BOOST_FIXTURE_TEST_SUITE(vhdl_merge_operators_test, WITHOUT_VERBOSE)
+BOOST_FIXTURE_TEST_SUITE(vhdl_merge_operators_test, WITH_VERBOSE)
 
 // The sequential arithmetic graph is the simplest case as its mergeable actors
 // have no overlapping executions.
@@ -26,21 +26,15 @@ BOOST_AUTO_TEST_CASE(test_simple_merge) {
                                                           {5, 7, 10}}; // prod
 
   // greedy merge
-  std::vector<std::vector<ARRAY_INDEX>> greedyMergeIds;
-  greedyMergeIds = algorithms::greedyMerge(original_graph, 125);
-  VERBOSE_INFO("Greedy merge list size: " << greedyMergeIds.size());
-  for (auto &i : greedyMergeIds) {
-    VERBOSE_INFO("Merge group:");
-    for (auto &j : i) {
-      VERBOSE_INFO(std::to_string(j) << "  ");
-    }
-  }
+  std::vector<std::vector<ARRAY_INDEX>> greedyMergeIds =
+    algorithms::greedyMerge(original_graph, 125);
   BOOST_TEST_REQUIRE(greedyMergeIds == expectedMergeIds);
 
   // smart merge
   std::vector<std::vector<ARRAY_INDEX>> smartMergeIds =
       algorithms::smartMerge(original_graph, 125);
   BOOST_TEST_REQUIRE(smartMergeIds == expectedMergeIds);
+  delete original_graph;
 }
 
 // Test FIR4 for a merge involving actors that execute in parallel
@@ -60,6 +54,7 @@ BOOST_AUTO_TEST_CASE(test_overlapping_merge) {
   std::vector<std::vector<ARRAY_INDEX>> smartMergeIds =
     algorithms::smartMerge(original_graph, 125);
   BOOST_TEST_REQUIRE(smartMergeIds == expectedSmartMergeIds);
+  delete original_graph;
 }
 
 BOOST_AUTO_TEST_CASE(test_merge_problematics) {
@@ -98,7 +93,8 @@ BOOST_AUTO_TEST_CASE(test_merge_problematics) {
       {11, 19}};       // diff
 
   std::vector<std::vector<ARRAY_INDEX>> expectedRMS2SmartMergeIds{
-      {8, 13}}; // prod
+    {8, 13},
+    {16, 20}}; // prod
 
   models::Dataflow *rms2_original = generateRMS2Simplified();
   // greedy merge
@@ -110,6 +106,9 @@ BOOST_AUTO_TEST_CASE(test_merge_problematics) {
   std::vector<std::vector<ARRAY_INDEX>> rms2SmartMergeIds =
     algorithms::smartMerge(rms2_original, 125);
   BOOST_TEST_REQUIRE(rms2SmartMergeIds == expectedRMS2SmartMergeIds);
+
+  delete echo_original;
+  delete rms2_original;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

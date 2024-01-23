@@ -137,14 +137,6 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
         }
       }}
   }
-  // to prevent deadlock, set preload of output channel of delay to 1
-  {ForEachVertex(dataflow_prime, v) {
-      if (dataflow_prime->getVertexType(v) == "delay") {
-        {ForOutputEdges(dataflow_prime, v, e) { // should only have 1 output edge at this point
-            dataflow_prime->setPreload(e, 1);
-          }}
-      }
-    }}
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
 }
 

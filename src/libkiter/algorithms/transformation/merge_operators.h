@@ -54,7 +54,7 @@ namespace algorithms {
   std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow,
                                                    int operatorFreq);
   void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
-                            abstractDepGraph &g);
+                            abstractDepGraph &g, std::map<ARRAY_INDEX, bool> &visited);
 
   std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                   "fp_sqrt", "fp_diff", "fp_pow",

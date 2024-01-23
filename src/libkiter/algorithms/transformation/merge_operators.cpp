@@ -396,8 +396,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
   }
 
   // to identify all relevant causal dependencies, we look for dependencies from the output actors
+  std::map<ARRAY_INDEX, bool> visited;
   {ForEachVertex(dataflow, v) {
       std::string actorName = dataflow->getVertexName(v);
+      visited[dataflow->getVertexId(v)] = false;
       if (actorName.find("OUTPUT", 0) != std::string::npos) { // we match by name to avoid having to instantiate new VHDLComponent objects
         outputActorNames.push_back(actorName);
       }
@@ -406,13 +408,14 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
                  "No output actors identified; at least 1 output actor needed to run causal dependency detection.");
   for (auto &name : outputActorNames) {
     Vertex outputActor = dataflow->getVertexByName(name);
-    findCausalDependency(dataflow, outputActor, absDepGraph);
+    findCausalDependency(dataflow, outputActor, absDepGraph, visited);
   }
   VERBOSE_DEBUG(absDepGraph.printStatus());
 
   // compute execution times using causal dependency graph
   {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexInDegree(v) == 0) { // we only start from actors without causal dependencies (no input edges)
+      // start from actors without causal dependencies to compute execution time
+      if (!absDepGraph.hasDependency(dataflow->getVertexId(v))) {
         absDepGraph.computeExecTime(dataflow, dataflow->getVertexId(v), execTimes);
       }
     }}
@@ -489,8 +492,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   }
 
   // to identify all relevant causal dependencies, we look for dependencies from the output actors
+    std::map<ARRAY_INDEX, bool> visited;
   {ForEachVertex(dataflow, v) {
       std::string actorName = dataflow->getVertexName(v);
+      visited[dataflow->getVertexId(v)] = false;
       if (actorName.find("OUTPUT", 0) != std::string::npos) { // we match by name to avoid having to instantiate new VHDLComponent objects
         outputActorNames.push_back(actorName);
       }
@@ -499,13 +504,14 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
                  "No output actors identified; at least 1 output actor needed to run causal dependency detection.");
   for (auto &name : outputActorNames) {
     Vertex outputActor = dataflow->getVertexByName(name);
-    findCausalDependency(dataflow, outputActor, absDepGraph);
+    findCausalDependency(dataflow, outputActor, absDepGraph, visited);
   }
   VERBOSE_DEBUG(absDepGraph.printStatus());
 
   // compute execution times using causal dependency graph
   {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexInDegree(v) == 0) { // we only start from actors without causal dependencies (no input edges)
+      // start from actors without causal dependencies to compute execution time
+      if (!absDepGraph.hasDependency(dataflow->getVertexId(v))) {
         absDepGraph.computeExecTime(dataflow, dataflow->getVertexId(v), execTimes);
       }
     }}
@@ -548,28 +554,18 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
 }
 
 // recursively look for causal dependencies starting from the specified Vertex v
-// NOTE this only works with HSDFs
-void algorithms::findCausalDependency(models::Dataflow* const dataflow, Vertex v,
-                                      abstractDepGraph &g) {
-  if (dataflow->getVertexInDegree(v) > 0) { // input edges means possible causal dependencies
-    {ForInputEdges(dataflow, v, inEdge) {
-        Vertex source = dataflow->getEdgeSource(inEdge);
-        TOKEN_UNIT consRate = dataflow->getEdgeOutPhase(inEdge, 1);
-        TOKEN_UNIT prodRate = dataflow->getEdgeInPhase(inEdge, 1);
-        if (dataflow->getPreload(inEdge) < consRate) {
-          g.addCausalDep(dataflow->getVertexId(source), dataflow->getVertexId(v));
-          findCausalDependency(dataflow, source, g);
-        }
-      }}
-  } else {
-    {ForOutputEdges(dataflow, v, outEdge) {
-        Vertex target = dataflow->getEdgeTarget(outEdge);
-        TOKEN_UNIT consRate = dataflow->getEdgeOutPhase(outEdge, 1);
-        TOKEN_UNIT prodRate = dataflow->getEdgeInPhase(outEdge, 1);
-        if (dataflow->getPreload(outEdge) < consRate) {
-          g.addCausalDep(dataflow->getVertexId(v), dataflow->getVertexId(target));
-        }
-      }}
-    return;
-  }
+void algorithms::findCausalDependency(models::Dataflow *const dataflow,
+                                      Vertex v, abstractDepGraph &g,
+                                      std::map<ARRAY_INDEX, bool> &visited) {
+  visited[dataflow->getVertexId(v)] = true;
+  {ForInputEdges(dataflow, v, inEdge) {
+      Vertex source = dataflow->getEdgeSource(inEdge);
+      TOKEN_UNIT consRate = dataflow->getEdgeOutPhase(inEdge, 1);
+      if (dataflow->getPreload(inEdge) < consRate) {
+        g.addCausalDep(dataflow->getVertexId(source), dataflow->getVertexId(v));
+      }
+      if (!visited[dataflow->getVertexId(source)]) {
+        findCausalDependency(dataflow, source, g, visited);
+      }
+    }}
 }
