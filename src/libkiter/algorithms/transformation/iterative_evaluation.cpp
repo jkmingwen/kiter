@@ -137,19 +137,16 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
         }
       }}
   }
-  // to prevent deadlock, set preload of output channel of delay to 1
-  {ForEachVertex(dataflow_prime, v) {
-      if (dataflow_prime->getVertexType(v) == "delay") {
-        {ForOutputEdges(dataflow_prime, v, e) { // should only have 1 output edge at this point
-            dataflow_prime->setPreload(e, 1);
-          }}
-      }
-    }}
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
 }
 
-bool is_number(const std::string &s) {
-    return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
+bool isFloatingPoint(const std::string& input) {
+    std::istringstream iss(input);
+    float f;
+    iss >> std::noskipws >> f; // noskipws means not to skip white spaces
+
+    // Check if the entire string was consumed and if there are no errors
+    return iss.eof() && !iss.fail();
 }
 
 // returns true if all input vertices to the given vertex have numeric values
@@ -159,14 +156,11 @@ bool algorithms::checkForNumericInputs(models::Dataflow* const dataflow, Vertex 
       if (dataflow->getVertexInDegree(v)) {
         {ForInputEdges(dataflow, v, e) {
             std::string actorType = dataflow->getVertexType(dataflow->getEdgeSource(e));
-            if (!is_number(actorType)) return false;
-            // FIXME: Here I remove the exception to speed up things. But I am not 100% sure the behaviour is the same.
-            // float conv = std::stof(actorType);
+            if (!isFloatingPoint(actorType)) return false;
           }}
       } else {
         allInputNum = false; // no inputs means no numeric inputs
       }
-
 
   return allInputNum;
 }

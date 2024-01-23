@@ -235,7 +235,7 @@ void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
           visited[adj.first] = true;
           visitQueue.push_back(adj.first);
           VERBOSE_ASSERT(dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).size() == 1, "Currently only supports computing execution timings of single phase actors.")
-            int opLifespan = dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).front(); // TODO set exec time to that of operator
+          int opLifespan = dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).front();
           if (execTimes[adj.first] <= execTimes[vId] + opLifespan) { // always set to any higher existing computed exec time
             execTimes[adj.first] = execTimes[vId] + opLifespan;
           }
@@ -245,6 +245,20 @@ void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
   }
 
   return;
+}
+
+bool abstractDepGraph::hasDependency(ARRAY_INDEX vId) {
+  bool hasDependency = false;
+  for (auto const &srcId : this->abstractDependencyGraph) {
+    for (auto const &depId  : srcId.second) {
+      if (depId.second && depId.first == vId) {
+        hasDependency = true;
+        break;
+      }
+    }
+  }
+
+  return hasDependency;
 }
 
 std::string abstractDepGraph::printStatus() {
