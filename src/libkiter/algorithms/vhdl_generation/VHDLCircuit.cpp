@@ -112,9 +112,9 @@ std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(const std:
   std::vector<std::string> connNames;
 
   for (auto& comp : this->componentMap) {
-    if (comp.second.getName() == srcActorName) {
+    if (comp.second.getUniqueName() == srcActorName) {
       srcOutputEdges = comp.second.getOutputEdges();
-    } else if (comp.second.getName() == dstActorName) {
+    } else if (comp.second.getUniqueName() == dstActorName) {
       dstInputEdges = comp.second.getInputEdges();
     }
   }
@@ -161,9 +161,9 @@ std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(const std::str
 std::string VHDLCircuit::getComponentFullName(const std::string &partialName) const {
   std::vector<std::string> matchingNames;
   for (auto& comp : this->componentMap) {
-    std::size_t found = comp.second.getName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
-    if ((found == 0) or (comp.second.getName() == partialName)) {
-      matchingNames.push_back(comp.second.getName());
+    std::size_t found = comp.second.getUniqueName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
+    if ((found == 0) or (comp.second.getUniqueName() == partialName)) {
+      matchingNames.push_back(comp.second.getUniqueName());
     }
   }
 
@@ -245,7 +245,7 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
     if ((comp.second).getType() != "Proj" && !(comp.second).isConst() &&
         (comp.second).getType() != "output_selector") {
       if ((comp.second).getOutputEdges().size() > 1) { // if operator has more than one output
-        actorNames.push_back((comp.second).getName());
+        actorNames.push_back((comp.second).getUniqueName());
       }
     }
   }

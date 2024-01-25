@@ -7,7 +7,6 @@
 #ifndef VHDL_COMPONENT_H_
 #define VHDL_COMPONENT_H_
 
-#include <bitset>
 #include <models/Dataflow.h>
 #include <string>
 
@@ -21,8 +20,7 @@ class VHDLComponent {
   VHDLComponent(models::Dataflow* const dataflow, Vertex a); // actor must be associated to a graph
 
   Vertex getActor()const;
-  std::string getName()const;
-  ARRAY_INDEX getId()const;
+  std::string getUniqueName()const;
   int getIOId()const;
   const std::vector<std::string>& getInputPorts()const;
   const std::vector<std::string>& getOutputPorts()const;
@@ -30,29 +28,27 @@ class VHDLComponent {
   const std::vector<std::string>& getOutputEdges()const;
   std::string getType()const;
   int getLifespan()const;
-  void setFPValue(float newVal);
-  void setIntValue(int newVal);
+  void setFPValue(const float& newVal);
+  void setIntValue(const int& newVal);
   float getFPValue() const;
   int getIntValue() const;
   std::string getImplementationName()const;
   const std::vector<std::string>& getArgOrder() const;
   const std::map<std::string, int>& getInputTypes() const;
   const std::map<std::string, int>& getOutputTypes() const;
-  void setDataType(std::string newType);
+  void setDataType(const std::string& newType);
   std::string getDataType() const ;
   bool isConst() const;
   bool hasMixedType() const;
-  void setName(std::string newName);
-  void setId(ARRAY_INDEX newId);
+  void setUniqueName(const std::string& newName);
   void setLifespan(int lifespan);
-  void setImplementationName(std::string newName);
+  void setImplementationName(const std::string& newName);
   void setIOId(int id);
   std::string printStatus() const ;
 
  private:
   Vertex actor;
-  std::string componentName;
-  ARRAY_INDEX id;
+  std::string uniqueName;
   std::vector<std::string> inputPorts;
   std::vector<std::string> outputPorts;
   std::string componentType;
@@ -65,13 +61,13 @@ class VHDLComponent {
   float fpValue;
   int intValue;
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
-  std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "nentry",
-                                      "vslider"}; // NOTE temporary workaround to handle UI components
+  std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "vslider",
+                                      "nentry"}; // NOTE temporary workaround to handle UI components
   std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
                                               "prod", "sqrt", "pow"};
   std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"}; // operators that act on numbers to produce numbers
   std::vector<std::string> routingTypes = {"select2", "select3", "attach", // operators that route input signals to outputs
-                                           "vbargraph"}; // bargraph operators here as their current functionality is simply to send input to output
+                                           "vbargraph", "hbargraph"}; // bargraph operators here as their current functionality is simply to send input to output
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp

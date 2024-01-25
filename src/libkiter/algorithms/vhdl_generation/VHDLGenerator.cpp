@@ -76,7 +76,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, bool bufferl
 std::string binaryValue(VHDLComponent const comp) {
   std::string binaryRepresentation;
   // adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
-  if (comp.getDataType() == "fp" || comp.getDataType() == "real") {
+  if (comp.getDataType() == "fp") {
     std::stringstream outputStream;
     float fpVal = comp.getFPValue();
     std::string fpcFloatPrefix = (fpVal ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
@@ -878,11 +878,11 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferles
       for (auto &op : circuit.getComponentMap()) {
         if (op.second.getType() == "INPUT") {
           VERBOSE_ASSERT(op.second.getOutputPorts().size() == 1,
-                         "Input component (" << op.second.getName() << ") should only have 1 output port");
+                         "Input component (" << op.second.getUniqueName() << ") should only have 1 output port");
           inSignalNames[op.second.getIOId()] = op.second.getOutputPorts().front();
         } else if (op.second.getType() == "OUTPUT") {
           VERBOSE_ASSERT(op.second.getInputPorts().size() == 1,
-                         "Output component (" << op.second.getName() << ") should only have 1 input port");
+                         "Output component (" << op.second.getUniqueName() << ") should only have 1 input port");
           outSignalNames[op.second.getIOId()] = op.second.getInputPorts().front();
         }
       }
@@ -2120,7 +2120,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit& circuit,
         inputSignals.clear();
         for (auto i = 0; i < op.second.getArgOrder().size(); i++) {
           std::string srcActorName = circuit.getComponentFullName(op.second.getArgOrder()[i]);
-          std::string dstActorName = op.second.getName();
+          std::string dstActorName = op.second.getUniqueName();
           if (isBufferless) {
             std::vector<std::string> connNames = circuit.getConnectionNameFromComponents(srcActorName,
                                                                                          dstActorName);
