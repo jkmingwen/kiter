@@ -57,7 +57,7 @@ class VHDLComponent {
   int lifespan;
   std::string implementationName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
-  std::string dataType; // TODO add operator type ("fp/int")
+  std::string dataType;
   float fpValue;
   int intValue;
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators

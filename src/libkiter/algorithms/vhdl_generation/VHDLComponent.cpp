@@ -51,6 +51,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   if (componentType.find("INPUT") != std::string::npos ||
       componentType.find("OUTPUT") != std::string::npos) {
     ioId = std::stoi(componentType.substr(componentType.find('_') + 1, std::string::npos));
+    componentType = componentType.substr(0, componentType.find("_")); // necessary to strip ID from name (e.g. "INPUT_0") so we can parse it as a generic INPUT/OUTPUT component
   }
 
   /* Identify order of arguments for operators.
@@ -90,7 +91,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       VERBOSE_ERROR("Unsupported data type: " << dataType);
     }
   } else {
-    if (inputTypes.empty()) {
+    if (inputTypes.empty() && componentType != "INPUT") {
       VERBOSE_ERROR(uniqueName << " (" << componentType << ")"
                                   << " should have at least 1 input");
     }

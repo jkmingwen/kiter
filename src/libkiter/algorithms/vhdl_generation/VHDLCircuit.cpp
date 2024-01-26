@@ -74,7 +74,7 @@ std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType
     return this->implementationNames.at(opType);
   } else {
     VERBOSE_WARNING("No implementation name listed for " << opType
-                    << ", check implemenatationNames in VHDLCircuit.h");
+                    << ", check implementationNames in VHDLCircuit.h");
     return "UNIMPLEMENTED_OPERATOR_" + opType;
   }
 }
