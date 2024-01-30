@@ -1,5 +1,5 @@
 /*
- * VHDLGenerator.h
+ * VHDLGenerator.cpp
  *
  *  Created on: 14 June 2021
  *      Author: jkmingwen
@@ -13,6 +13,7 @@
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
+#include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
 #include <printers/SDF3Wrapper.h>
 
@@ -28,6 +29,43 @@ std::string tbDir; // testbench directory
 std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
 int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed to run at
 bool isBufferless = false; // if VHDL design should include FIFO buffers along each connection
+int bitWidth = 34;
+
+/* Each component has a specific lifespan and name that needs to be defined in
+   the generated AXI interface --- we track them using a predefined map where
+   the keys are the operating frequencies. The "types" of the operators,
+   which are taken from the actor types in the SDF file generated from the Faust
+   application, then map to the number of clock cycles taken for them to complete */
+std::map<int, std::map<std::string, int>> operatorLifespans =
+  {
+    {50,
+     {{"fp_add", 1}, {"fp_prod", 1}, {"fp_div", 3}, {"fp_sqrt", 1},
+      {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
+      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      // NOTE unimplemented operators from here:
+      {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
+      // {"select3", 1},
+      {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}},
+    {125,
+     {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
+      {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
+      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      // NOTE unimplemented operators from here:
+      {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
+      // {"select3", 1},
+      {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}},
+    {250,
+     {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
+      {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
+      {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
+      // NOTE unimplemented operators from here:
+      {"fp_floor", 5}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
+      // {"select3", 1},
+      {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}}
+  };
 
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
 
@@ -37,7 +75,6 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
   std::replace(circuitName.begin(), circuitName.end(), '-', '_');
   std::replace(circuitName.begin(), circuitName.end(), '.', '_');
   circuit.setName(circuitName);
-  circuit.setOperatorFreq(operatorFreq);
   VERBOSE_DEBUG( "circuit name: " << circuitName );
 
   // populate circuit object with components and connections based on dataflow graph
@@ -45,18 +82,18 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
       VHDLComponent newComp(dataflow, actor);
       circuit.addComponent(newComp);
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = circuit.getOperatorLifespan(newComp.getType());
-      VERBOSE_INFO("operator lifespan (" << newComp.getType() << "): " << opLifespan);
-      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-        std::vector<TIME_UNIT> opLifespans{1};
-        // input and output selectors have multiple phases of execution and so need a vector of lifespans
-        if (newComp.getType() == "input_selector" || newComp.getType() == "output_selector") {
-          opLifespans = dataflow->getVertexPhaseDuration(actor);
-        }
+      VERBOSE_INFO("operator lifespan ("
+                   << newComp.getType() << "): "
+                   << getOperatorLifespan(newComp.getType(), operatorFreq));
+      if (newComp.getType() == "input_selector" ||
+          newComp.getType() == "output_selector") {
+        std::vector<TIME_UNIT> opLifespans{dataflow->getVertexPhaseDuration(actor)};
         dataflow->setVertexDuration(actor, opLifespans);
       } else {
-        std::vector<TIME_UNIT> opLifespans{opLifespan};
-        dataflow->setVertexDuration(actor, opLifespans);
+        std::vector<TIME_UNIT> opLifespans {
+          getOperatorLifespan(newComp.getType(),
+                              operatorFreq)};
+        dataflow->setVertexDuration(actor, opLifespans); // TODO remove repeated code
       }
     }}
   {ForEachEdge(dataflow, edge) {
@@ -108,6 +145,16 @@ std::string binaryValue(VHDLComponent const comp) {
   }
 
   return binaryRepresentation;
+}
+
+TIME_UNIT getOperatorLifespan(const std::string &opType, int operatorFreq) {
+  if (operatorLifespans.at(operatorFreq).count(opType)) {
+    return operatorLifespans.at(operatorFreq).at(opType);
+  } else {
+    // some components have no lifespan (e.g. Proj, const_val) but need a
+    // positive lifespan for SDF to remain valid
+    return 1;
+  }
 }
 
 /**

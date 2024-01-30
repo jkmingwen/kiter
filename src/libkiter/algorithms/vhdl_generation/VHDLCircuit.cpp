@@ -17,7 +17,6 @@ VHDLCircuit::VHDLCircuit() {}
    @param newComp VHDLComponent to add to the circuit.
  */
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
-  newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
   newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
@@ -59,16 +58,6 @@ const VHDLComponent& VHDLCircuit::getFirstComponentByType(const std::string &op)
   // TODO return null VHDL component if nothing found
 }
 
-
-int VHDLCircuit::getOperatorLifespan(const std::string &opType) const {
-  if (this->operatorLifespans.at(this->operatorFreq).count(opType)) {
-    return this->operatorLifespans.at(this->operatorFreq).at(opType);
-  } else {
-    // NOTE default to 0 if lifespan not specified
-    return 0;
-  }
-}
-
 std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const{
   if (this->implementationNames.count(opType)) {
     return this->implementationNames.at(opType);
@@ -79,7 +68,7 @@ std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType
   }
 }
 
-// return output counts for each occurance of the given operator
+// return input counts for each occurance of the given operator
 std::map<int, int> VHDLCircuit::getNumInputs(const std::string &opType) const {
   std::map<int, int> inputCounts; // number of outputs, and their occurances
   for (auto &comp : this->componentMap) {
@@ -180,20 +169,6 @@ void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
 }
 
-void VHDLCircuit::setOperatorFreq(int freq) {
-  if (this->operatorLifespans.count(freq)) {
-    this->operatorFreq = freq;
-  } else {
-    std::string supportedFrequencies;
-    for (auto i : this->operatorLifespans) {
-      supportedFrequencies += std::to_string(i.first) + "  ";
-    }
-    VERBOSE_ERROR("The selected operator frequency (" << freq
-                  << ") is not supported. Supported frequencies: "
-                  << supportedFrequencies);
-  }
-}
-
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
   this->connectionMap.insert(std::make_pair(newConnect.getEdge(),
                                             newConnect));
@@ -214,7 +189,7 @@ std::string VHDLCircuit::printStatus() {
   outputStream << "Operator, count (and lifespan):" << std::endl;
   for (auto &op : this->operatorMap) {
     outputStream << "\t" << op.first << ", "
-                 << op.second << " (" << this->getOperatorLifespan(op.first)
+                 << op.second // << " (" << this->getOperatorLifespan(op.first) // TODO add operator lifespan if possible and relevant
                  << ")\n";
     // if (op.first == "Proj" || op.first == "const_value") {
       outputStream << "\t\tOutput counts, occurances:" << std::endl;

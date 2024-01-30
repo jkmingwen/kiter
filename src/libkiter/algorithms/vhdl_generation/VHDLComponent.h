@@ -27,7 +27,6 @@ class VHDLComponent {
   const std::vector<std::string>& getInputEdges()const;
   const std::vector<std::string>& getOutputEdges()const;
   std::string getType()const;
-  int getLifespan()const;
   void setFPValue(const float& newVal);
   void setIntValue(const int& newVal);
   float getFPValue() const;
@@ -41,7 +40,6 @@ class VHDLComponent {
   bool isConst() const;
   bool hasMixedType() const;
   void setUniqueName(const std::string& newName);
-  void setLifespan(int lifespan);
   void setImplementationName(const std::string& newName);
   void setIOId(int id);
   std::string printStatus() const ;
@@ -54,7 +52,6 @@ class VHDLComponent {
   std::string componentType;
   std::vector<std::string> inputEdges;
   std::vector<std::string> outputEdges;
-  int lifespan;
   std::string implementationName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
   std::string dataType;

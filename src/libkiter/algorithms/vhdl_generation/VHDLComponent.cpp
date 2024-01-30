@@ -20,7 +20,6 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   uniqueName = dataflow->getVertexName(a); // unique ID per VHDLComponent
   implementationName = "default"; // name of top-level component for the given operator in VHDL
   componentType = dataflow->getVertexType(a); // vertex type denotes computation performed (sans data type)
-  lifespan = 0; // in clock cycles
   isMixedType = false; // some components (e.g. pow) take in a mix of data types as arguments
 
   // port names denote input/output data types --- check and track these
@@ -147,10 +146,6 @@ int VHDLComponent::getIOId() const {
   return this->ioId;
 }
 
-int VHDLComponent::getLifespan() const {
-  return this->lifespan;
-}
-
 const std::vector<std::string>& VHDLComponent::getInputPorts() const{
   return this->inputPorts;
 }
@@ -224,10 +219,6 @@ int VHDLComponent::getIntValue() const {
 
 void VHDLComponent::setUniqueName(const std::string& newName) {
   this->uniqueName = newName;
-}
-
-void VHDLComponent::setLifespan(int lifespan) {
-  this->lifespan = lifespan;
 }
 
 void VHDLComponent::setImplementationName(const std::string& newName) {
