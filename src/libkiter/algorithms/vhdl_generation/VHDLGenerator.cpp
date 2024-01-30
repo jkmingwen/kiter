@@ -147,6 +147,44 @@ std::string binaryValue(VHDLComponent const comp) {
   return binaryRepresentation;
 }
 
+/**
+   Generates a file based on a reference, optionally replacing words in the
+   resulting file.
+
+   @param refFile Path to reference file.
+   @param dstFile Path to location of file to be generated in.
+   @param replacementMap Words to match and their replacements.
+
+   @return void
+ */
+void copyFileAndReplaceWords(
+    std::string refFile, std::string dstFile,
+    const std::map<std::string, std::string> &replacementMap) {
+  // const auto copyOptions = std::filesystem::copy_options::update_existing |
+  //   std::filesystem::copy_options::recursive;
+
+  // std::filesystem::copy(refFile, dstFile, copyOptions);
+  std::ifstream fileStream(refFile);
+  std::ofstream fileCopy(dstFile);
+  std::string lineContent;
+  if (fileStream.is_open()) {
+    while (std::getline(fileStream, lineContent)) {
+      for (auto const &[match, replacement] : replacementMap) {
+        size_t pos = 0;
+        while ((pos = lineContent.find(match, pos)) != std::string::npos) {
+          lineContent.replace(pos, match.length(), replacement);
+          pos += replacement.length();
+        }
+      }
+      fileCopy << lineContent << std::endl;
+    }
+    fileStream.close();
+    fileCopy.close();
+  } else {
+    VERBOSE_ERROR("Failed to access " << refFile);
+  }
+}
+
 TIME_UNIT getOperatorLifespan(const std::string &opType, int operatorFreq) {
   if (operatorLifespans.at(operatorFreq).count(opType)) {
     return operatorLifespans.at(operatorFreq).at(opType);
@@ -314,21 +352,17 @@ void algorithms::generateOperators(VHDLCircuit &circuit) {
 }
 
 void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
-  std::ofstream vhdlOutput;
   std::string operatorFileName = "const_value";
-  std::string wordsToReplace[] = {"$N_OUTPUTS", "$PORT_LIST", "$PORT_CONNECTIONS"};
   // generate separate const_value components for given number of outputs required
-  for (auto &i : outputCounts) {
-    vhdlOutput.open(componentDir + operatorFileName + "_" + std::to_string(i.first)
-                    + ".vhd");
+  for (auto const &[numOutputs, occurances] : outputCounts) {
     std::stringstream portListStream;
     std::stringstream portConnStream;
     std::string portList;
     std::string portConn;
     std::string portListEnd = ";\n";
     // generate port names and behaviour
-    for (int p = 0; p < i.first; p++) {
-      if (p + 1 == i.first) {
+    for (int p = 0; p < numOutputs; p++) {
+      if (p + 1 == numOutputs) {
         portListEnd = "";
       }
       portListStream << "out_ready_" << p << " : in std_logic;\n";
@@ -341,82 +375,48 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
     }
     portList = portListStream.str();
     portConn = portConnStream.str();
-    std::map<std::string, std::string> replacementWords = {{"$N_OUTPUTS", std::to_string(i.first)},
+    std::map<std::string, std::string> replacementWords = {{"$N_OUTPUTS", std::to_string(numOutputs)},
                                                            {"$PORT_LIST", portList},
                                                            {"$PORT_CONNECTIONS", portConn}};
-    std::ifstream compReference(referenceDir + operatorFileName + "_n_outputs.vhd");
-    std::string fileContent;
-    if (compReference.is_open()) {
-      while (std::getline(compReference, fileContent)) {
-        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-          size_t pos = fileContent.find(word);
-          if (pos != std::string::npos) {
-            fileContent.replace(pos, word.length(),
-                                replacementWords[word]);
-          }
-        }
-        vhdlOutput << fileContent << std::endl;
-      }
-      compReference.close();
-      vhdlOutput.close();
-    } else {
-        VERBOSE_ERROR("Reference file for " << operatorFileName << " does not exist/not found!"); // TODO turn into assert
-    }
+    copyFileAndReplaceWords(referenceDir + operatorFileName + "_n_outputs.vhd",
+                            componentDir + operatorFileName + "_" +
+                                std::to_string(numOutputs) + ".vhd",
+                            replacementWords);
   }
 }
 
 // Generate splitter components for the Proj components in the circuit (defined by number of outputs)
 void algorithms::generateSplitterOperators(std::map<int, int> outputCounts) {
-  std::ofstream vhdlOutput;
   std::string operatorFileName = "hs_splitter";
-  std::string wordsToReplace[] = {"$NUM_OUTPUTS", "$OUTPUT_PORTS", "$OUT_READY_SIGS",
-                                  "$OUT_DATA_MAPPING", "$OUT_VALID_MAPPING"};
-  for (auto &i : outputCounts) {
+  for (auto const &[numOutputs, occurances] : outputCounts) {
     std::string refFileName = operatorFileName + ".vhd";
-    std::string outputFile = operatorFileName + "_" + std::to_string(i.first) + ".vhd";
-    std::ifstream compReference(referenceDir + refFileName);
-    std::string fileContent;
+    std::string outputFile = operatorFileName + "_" + std::to_string(numOutputs) + ".vhd";
     std::stringstream outputPorts;
     std::stringstream outputReadySigs;
     std::stringstream outputDataMapping;
     std::stringstream outputValidMapping;
 
-    for (int outCount = 0; outCount < i.first; outCount++) {
+    for (int outCount = 0; outCount < numOutputs; outCount++) {
       std::string delimiter = ";\n";
       std::string boolAnd = " AND ";
       outputPorts << "out_ready_" << std::to_string(outCount) << " : in std_logic" << delimiter
                   << "out_valid_" << std::to_string(outCount) << " : out std_logic" << delimiter;
       outputDataMapping << "out_data_" << std::to_string(outCount) << " <= temp_data_0(bit_width-1 downto 0);\n";
       outputValidMapping << "out_valid_" << std::to_string(outCount) << " <= is_stored_0;\n";
-      if (outCount + 1 == i.first) {
+      if (outCount + 1 == numOutputs) {
         delimiter = "\n";
         boolAnd = "";
       }
       outputPorts << "out_data_" << std::to_string(outCount) << " : out std_logic_vector(bit_width-1 downto 0)" << delimiter;
       outputReadySigs << "out_ready_" << std::to_string(outCount) << "='1'" << boolAnd;
     }
-    std::map<std::string, std::string> replacementWords = {{"$NUM_OUTPUTS", std::to_string(i.first)},
+    std::map<std::string, std::string> replacementWords = {{"$NUM_OUTPUTS", std::to_string(numOutputs)},
                                                            {"$OUTPUT_PORTS", outputPorts.str()},
                                                            {"$OUT_READY_SIGS", outputReadySigs.str()},
                                                            {"$OUT_DATA_MAPPING", outputDataMapping.str()},
                                                            {"$OUT_VALID_MAPPING", outputValidMapping.str()}};
-    vhdlOutput.open(componentDir + outputFile);
-    if (compReference.is_open()) {
-      while (std::getline(compReference, fileContent)) {
-        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-          size_t pos = fileContent.find(word);
-          if (pos != std::string::npos) {
-            fileContent.replace(pos, word.length(),
-                                replacementWords[word]);
-          }
-        }
-        vhdlOutput << fileContent << std::endl;
-      }
-      compReference.close();
-      vhdlOutput.close();
-    } else {
-        VERBOSE_ERROR ("Reference file for " << refFileName  << " does not exist/not found!"); // TODO turn into assert
-    }
+    copyFileAndReplaceWords(referenceDir + refFileName,
+                            componentDir + outputFile, replacementWords);
   }
 
 }
@@ -424,28 +424,10 @@ void algorithms::generateSplitterOperators(std::map<int, int> outputCounts) {
 // Generate signal routing operators
 // NOTE currently only supports select2 operator
 void algorithms::generateRoutingOperators(VHDLComponent comp) {
-  std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
-  std::string componentName = entityName + "_component"; // just need a distinct name for the component instantiation in the HS interface declaration in VHDL
-  vhdlOutput.open(componentDir + entityName + "_op.vhd"); // write operator implementation
-  std::ifstream operatorRef(referenceDir + entityName + "_op.vhd");
-  std::string fileContent;
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
-                                  "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$HSM_TYPE"};
+  // need distinct name for component instantiation in the HS interface declaration in VHDL
+  std::string componentName = entityName + "_component";
   std::string opInputCount = std::to_string(comp.getInputPorts().size());
-  // generate select operator
-  if (operatorRef.is_open()) {
-    while (std::getline(operatorRef, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    operatorRef.close();
-    vhdlOutput.close();
-  } else {
-
-      VERBOSE_ERROR ("Reference file for " << comp.getType()  << " does not exist/not found!"); // TODO turn into assert
-
-  }
   std::string hsmType = "";
   if (comp.getType() == "select2") {
     hsmType = "_three";
@@ -455,112 +437,53 @@ void algorithms::generateRoutingOperators(VHDLComponent comp) {
                                                          {"$COMPONENT_NAME", componentName},
                                                          {"$OP_LIFESPAN", std::to_string(1)}, // HS interface requires lifespan to be >0
                                                          {"$HSM_TYPE", hsmType}};
-  // generate HS interface for select operator
-  vhdlOutput.open(componentDir + entityName + ".vhd");
-  std::ifstream interfaceRef(referenceDir + "flopoco_hs_interface"
-                             + "_" + opInputCount + ".vhd");
-  if (interfaceRef.is_open()) {
-    while (std::getline(interfaceRef, fileContent)) {
-      for (const std::string &word : wordsToReplace) {
-        size_t pos = fileContent.find(word);
-        if (pos != std::string::npos) {
-          fileContent.replace(pos, word.length(),
-                              replacementWords[word]);
-        }
-      }
-      vhdlOutput << fileContent << std::endl;
-    }
-    interfaceRef.close();
-    vhdlOutput.close();
-  } else {
-     VERBOSE_ERROR ("HS interface file for " << "flopoco_hs_interface_" + opInputCount
-                    << ".vhd does not exist/not found!"); // TODO turn into assert
-  }
+  // generate select operator implementation
+  const auto copyOptions = std::filesystem::copy_options::update_existing |
+                           std::filesystem::copy_options::recursive;
+  std::filesystem::copy(referenceDir + entityName + "_op.vhd",
+                        componentDir + entityName + "_op.vhd", copyOptions);
+
+  copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface" + "_" +
+                              opInputCount + ".vhd",
+                          componentDir + entityName + ".vhd", replacementWords);
 }
 
-// NOTE workaround for now to generate floor operator; integrate into generateOperator in the future
 void algorithms::generateFloorOperator(VHDLComponent comp) {
-  // TODO a lot of things just hardcoded here; need to change this --- just a really messy way of getting this done for now
   // copy in fp_floor_freq implementation file
-  generateFPCOperator("fp_floor");
+  generateFPCOperator(comp.getImplementationName());
 
   // copy in fp_floor wrapper file and change operator frequency
-  std::ofstream floorWrapperCopy;
-  floorWrapperCopy.open(componentDir + "fp_floor.vhd");
-  std::ifstream floorWrapper(referenceDir + "fp_floor.vhd");
-  std::string content;
-  std::string freq = "$FREQ";
-  if (floorWrapper.is_open()) {
-    while (std::getline(floorWrapper, content)) {
-      size_t pos = content.find(freq);
-      if (pos != std::string::npos) {
-        content.replace(pos, freq.length(),
-                        std::to_string(operatorFreq));
-      }
-      floorWrapperCopy << content << std::endl;
-    }
-    floorWrapperCopy.close();
-  } else {
-    VERBOSE_ERROR ("Reference file for " << "fp_floor.vhd does not exist/not found!");
-  }
+  std::map<std::string, std::string> freqReplace;
+  freqReplace["$FREQ"] = std::to_string(operatorFreq);
+  copyFileAndReplaceWords(referenceDir + "fp_floor.vhd",
+                          componentDir + "fp_floor.vhd", freqReplace);
   // generate internal components that make up floor operator
   std::string internalComponents[] = {"float2int", "int2float"};
-  for (const std::string &c : internalComponents) {
-    std::ofstream vhdlOutput;
-    std::string entityName = c;
+  for (const std::string &entityName : internalComponents) {
     std::string componentName = entityName + "_implementation";
-    std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
-                                    "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                    "$HSM_TYPE"};
-    std::string implementationName = c + "_flopoco";
-    std::string lifespan = "1";
-    if (operatorFreq == 250) {
-      if (c == "float2int") {
-        lifespan = "2";
-      } else if (c == "int2float") {
-        lifespan = "3";
-      }
-    }
+    std::string implementationName = entityName + "_flopoco";
+    std::string lifespan = std::to_string(getOperatorLifespan(entityName,
+                                                              operatorFreq));
+
     generateFPCOperator(implementationName);
-    vhdlOutput.open(componentDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_hs_interface_1.vhd");
-    std::string fileContent;
     std::string operatorName = implementationName + "_f" + std::to_string(operatorFreq);
     std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                            {"$FLOPOCO_OP_NAME", operatorName},
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", lifespan},
                                                            {"$HSM_TYPE", "_one"}};
-    if (operatorRef.is_open()) {
-      while (std::getline(operatorRef, fileContent)) {
-        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-          size_t pos = fileContent.find(word);
-          if (pos != std::string::npos) {
-            fileContent.replace(pos, word.length(),
-                                replacementWords[word]);
-          }
-        }
-        vhdlOutput << fileContent << std::endl;
-      }
-      operatorRef.close();
-      vhdlOutput.close();
-    } else {
-      VERBOSE_ERROR ("Reference file for " << "flopoco_hs_interface_1.vhd does not exist/not found!"); // TODO turn into assert
-    }
+    copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface_1.vhd",
+                            componentDir + entityName + ".vhd",
+                            replacementWords);
   }
 }
 
 void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
                                                      std::map<int, int> inputCounts,
                                                      std::map<int, int> outputCounts) {
-  std::ofstream vhdlOutput;
   std::string entityName = comp.getType();
   VERBOSE_DEBUG("entity name: " << entityName);
   std::string componentName;
-  std::string wordsToReplace[] = {"$COMPONENT_NAME", "$PORT_LIST", "$PROCESS_BEHAVIOUR",
-                                  "$VALID_SIGNAL_ROUTING", "$DATA_SIGNAL_ROUTING",
-                                  "$READY_SIGNAL_ROUTING"};
-  int opPortCount = 0;
   std::string portList;
   std::string processBehaviour;
   std::string validSignalRouting;
@@ -599,38 +522,21 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
           + "'0';\n";
       }
       // generate input selector implementation
-      vhdlOutput.open(componentDir + componentName + ".vhd"); // instantiate VHDL file
-      std::ifstream operatorRef(referenceDir + entityName + ".vhd");
-      std::string fileContent;
       std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
                                                              {"$PORT_LIST", portList},
                                                              {"$PROCESS_BEHAVIOUR", processBehaviour},
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-      if (operatorRef.is_open()) {
-        while (std::getline(operatorRef, fileContent)) {
-          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-            size_t pos = fileContent.find(word);
-            if (pos != std::string::npos) {
-              fileContent.replace(pos, word.length(),
-                                  replacementWords[word]);
-            }
-          }
-          vhdlOutput << fileContent << std::endl;
-        }
-        operatorRef.close();
-        vhdlOutput.close();
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
+                                componentDir + componentName + ".vhd",
+                                replacementWords);
         // reset strings for next iteration
         portList.clear();
         processBehaviour.clear();
         validSignalRouting.clear();
         dataSignalRouting.clear();
         readySignalRouting.clear();
-      } else {
-        VERBOSE_ERROR ("Reference file for " << entityName + " with " + std::to_string(ports.first)
-                       << " inputs does not exist/not found!"); // TODO turn into assert
-      }
     }
   } else {
     for (auto &ports : outputCounts) {
@@ -667,38 +573,21 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
         }
       }
       // generate output selector implementation
-      vhdlOutput.open(componentDir + componentName + ".vhd"); // instantiate VHDL file
-      std::ifstream operatorRef(referenceDir + entityName + ".vhd");
-      std::string fileContent;
       std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
                                                              {"$PORT_LIST", portList},
                                                              {"$PROCESS_BEHAVIOUR", processBehaviour},
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-      if (operatorRef.is_open()) {
-        while (std::getline(operatorRef, fileContent)) {
-          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-            size_t pos = fileContent.find(word);
-            if (pos != std::string::npos) {
-              fileContent.replace(pos, word.length(),
-                                  replacementWords[word]);
-            }
-          }
-          vhdlOutput << fileContent << std::endl;
-        }
-        operatorRef.close();
-        vhdlOutput.close();
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
+                                componentDir + componentName + ".vhd",
+                                replacementWords);
         // reset strings for next iteration
         portList.clear();
         processBehaviour.clear();
         validSignalRouting.clear();
         dataSignalRouting.clear();
         readySignalRouting.clear();
-      } else {
-        VERBOSE_ERROR ("Reference file for " << entityName + " with " + std::to_string(ports.first)
-                       << " inputs does not exist/not found!"); // TODO turn into assert
-      }
     }
   }
 }
@@ -708,68 +597,43 @@ void algorithms::generateFPCOperator(std::string compImplementationName) {
   std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
   std::string operatorFileName = compImplementationName + "_f" + std::to_string(operatorFreq);
+  const auto copyOptions = std::filesystem::copy_options::update_existing |
+                           std::filesystem::copy_options::recursive;
 
-  vhdlOutput.open(componentDir + operatorFileName + ".vhd"); // instantiate VHDL file
-  std::ifstream operatorRef(operatorRefDir + operatorFileName + ".vhdl");
-  std::string fileContent;
-  if (operatorRef.is_open()) {
-    while (std::getline(operatorRef, fileContent)) {
-      vhdlOutput << fileContent << std::endl;
-    }
-    operatorRef.close();
-    vhdlOutput.close();
-  } else {
-    VERBOSE_ERROR ("Reference file for " <<  compImplementationName  << " does not exist/not found!"); // TODO turn into assert
-  }
+  std::filesystem::copy(operatorRefDir + operatorFileName + ".vhdl",
+                        componentDir + operatorFileName + ".vhd", copyOptions);
 }
 
-// Generate HS interface for each FloPoCo operator
-void algorithms::generateOperator(VHDLComponent comp) {
-  std::ofstream vhdlOutput;
-  std::string entityName = comp.getType();
-  std::string componentName = entityName + "_implementation";
-  std::string wordsToReplace[] = {"$ENTITY_NAME", "$FLOPOCO_OP_NAME",
-                                  "$COMPONENT_NAME", "$OP_LIFESPAN",
-                                  "$HSM_TYPE"};
-  std::string opInputCount = std::to_string(comp.getInputPorts().size());
+/**
+   Generate corresponding VHDL code for the component.
 
+   @param comp VHDL code generated based on this.
+
+   @return void
+ */
+void algorithms::generateOperator(VHDLComponent comp) {
   if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT" && !comp.isConst()) {
-    // generate flopoco operators
-    generateFPCOperator(comp.getImplementationName()); // generate FloPoCo operator
-    vhdlOutput.open(componentDir + entityName + ".vhd"); // instantiate VHDL file
-    std::ifstream operatorRef(referenceDir + "flopoco_hs_interface_" +
-                              opInputCount + ".vhd");
-    std::string fileContent;
+    std::string entityName = comp.getType();
+    std::string componentName = entityName + "_implementation";
+    std::string opInputCount = std::to_string(comp.getInputPorts().size());
     std::string operatorName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
     std::string hsmType = "";
     if (comp.getInputPorts().size() == 1) {
       hsmType = "_one";
     }
-    std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
-                                                           {"$FLOPOCO_OP_NAME", operatorName},
-                                                           {"$COMPONENT_NAME", componentName},
-                                                           {"$OP_LIFESPAN", std::to_string(comp.getLifespan())},
-                                                           {"$HSM_TYPE", hsmType}};
-    if (operatorRef.is_open()) {
-      while (std::getline(operatorRef, fileContent)) {
-        for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-          size_t pos = fileContent.find(word);
-          if (pos != std::string::npos) {
-            fileContent.replace(pos, word.length(),
-                                replacementWords[word]);
-          }
-        }
-        vhdlOutput << fileContent << std::endl;
-      }
-      operatorRef.close();
-      vhdlOutput.close();
-    } else {
+    std::map<std::string, std::string> replacementWords = {
+        {"$ENTITY_NAME", entityName},
+        {"$FLOPOCO_OP_NAME", operatorName},
+        {"$COMPONENT_NAME", componentName},
+        {"$OP_LIFESPAN", std::to_string(getOperatorLifespan(comp.getType(), operatorFreq))},
+        {"$HSM_TYPE", hsmType}};
 
-
-        VERBOSE_ERROR ("Reference file for " << "flopoco_hs_interface_" + opInputCount
-                                             << ".vhd does not exist/not found!");
-
-    }
+    // generate VHDL implementation of component's operation
+    generateFPCOperator(comp.getImplementationName());
+    // generate the appropriate HS interface
+    copyFileAndReplaceWords(
+        referenceDir + "flopoco_hs_interface_" + opInputCount + ".vhd",
+        componentDir + entityName + ".vhd", replacementWords);
   }
 }
 
@@ -785,15 +649,16 @@ void algorithms::generateCircuit(VHDLCircuit &circuit) {
   vhdlOutput.open(topDir + graphName + ".vhd"); // instantiate VHDL file
 
   // 1. Define libraries used
-    generateVHDLHeader(vhdlOutput);
-    // 2. Port declarations
-    generateVHDLEntity(circuit, numInputPorts, numOutputPorts, vhdlOutput);
+  generateVHDLHeader(vhdlOutput);
 
-    // 3. Specify architecture (behaviour) of operator type
-    generateVHDLArchitecture(circuit, operatorMap, noOperators, vhdlOutput);
+  // 2. Port declarations
+  generateVHDLEntity(circuit, numInputPorts, numOutputPorts, vhdlOutput);
 
-    // Close the stream
-    vhdlOutput.close();
+  // 3. Specify architecture (behaviour) of operator type
+  generateVHDLArchitecture(circuit, operatorMap, noOperators, vhdlOutput);
+
+  // Close the stream
+  vhdlOutput.close();
 }
 
 void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
@@ -1947,7 +1812,6 @@ std::string algorithms::generateSplitterComponents(std::map<int, int> outputCoun
 
 // Copy FloPoCo-HS interface component specification from reference files to generated subdirectory
 void algorithms::generateHSInterfaceComponents() {
-  std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
   // TODO only produce the HS component files if necessary; right now, we're just writing every file
   std::vector<std::string> componentNames = {"hs_merger", "countdown",
@@ -1961,27 +1825,15 @@ void algorithms::generateHSInterfaceComponents() {
   }
 
   for (const auto &component : componentNames) {
-    vhdlOutput.open(componentDir + component + ".vhd");
-    std::ifstream compReference(referenceDir + component + ".vhd");
-    std::string fileContent;
-    if (compReference.is_open()) {
-      while (std::getline(compReference, fileContent)) {
-        vhdlOutput << fileContent << std::endl;
-      }
-      compReference.close();
-      vhdlOutput.close();
-    } else {
-
-        VERBOSE_ERROR( "Reference file for " << component
-                << " does not exist/not found!"); // TODO turn into assert
-
-    }
+    const auto copyOptions = std::filesystem::copy_options::update_existing |
+                             std::filesystem::copy_options::recursive;
+    std::filesystem::copy(referenceDir + component + ".vhd",
+                          componentDir + component + ".vhd", copyOptions);
   }
 }
 
 // Copy VHDL components necessary for interfacing with the audio codec from reference files to generated subdirectory
 void algorithms::generateAudioInterfaceComponents() {
-  std::ofstream vhdlOutput;
   // names of reference files required to copy into project; add/remove as required
   std::vector<std::string> componentNames =
     {"input_interface", "output_interface", // send audio data in accordance to handshake protocol
@@ -1990,46 +1842,21 @@ void algorithms::generateAudioInterfaceComponents() {
      "i2s_transceiver"}; // expose data from ADC/DAC to PL
   std::vector<std::string> operatorNames = // need separate path for FloPoCo operators as they're stored in different subdirectory
     {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
-  std::string wordsToReplace[] = {"$OP_FREQ"};
   std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
                                                             std::to_string(operatorFreq)}}; // name component according to operator frequency
-    for (const auto &component : componentNames) {
-      vhdlOutput.open(componentDir + component + ".vhd");
-      std::ifstream compReference(referenceDir + component + ".vhd");
-      std::string fileContent;
-      if (compReference.is_open()) {
-        while (std::getline(compReference, fileContent)) {
-          for (const std::string &word : wordsToReplace) { // TODO account for multiple occurances in single line
-            size_t pos = fileContent.find(word);
-            if (pos != std::string::npos) {
-              fileContent.replace(pos, word.length(),
-                                  replacementWords[word]);
-            }
-          }
-          vhdlOutput << fileContent << std::endl;
-        }
-        compReference.close();
-        vhdlOutput.close();
-      } else {
-        VERBOSE_ERROR( "Reference file for " << component
-                       << " does not exist/not found!"); // TODO turn into assert
-      }
-    }
+  for (const auto &component : componentNames) {
+    copyFileAndReplaceWords(referenceDir + component + ".vhd",
+                            componentDir + component + ".vhd",
+                            replacementWords);
+  }
   for (const auto &op : operatorNames) {
-    vhdlOutput.open(componentDir + op + "_f" + std::to_string(operatorFreq) + ".vhd");
-    std::ifstream opReference(referenceDir + "/operators/" + op +
-                              "_f" + std::to_string(operatorFreq) + ".vhdl");
-    std::string fileContent;
-    if (opReference.is_open()) {
-      while (std::getline(opReference, fileContent)) {
-        vhdlOutput << fileContent << std::endl;
-      }
-      opReference.close();
-      vhdlOutput.close();
-    } else {
-      VERBOSE_ERROR( "Reference file for " << op
-                     << " does not exist/not found!"); // TODO turn into assert
-    }
+    const auto copyOptions = std::filesystem::copy_options::update_existing |
+      std::filesystem::copy_options::recursive;
+    std::filesystem::copy(referenceDir + "/operators/" + op + "_f" +
+                          std::to_string(operatorFreq) + ".vhdl",
+                          componentDir + op + "_f" +
+                          std::to_string(operatorFreq) + ".vhd",
+                          copyOptions);
   }
 }
 

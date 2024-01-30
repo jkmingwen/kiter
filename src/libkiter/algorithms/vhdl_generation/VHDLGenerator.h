@@ -16,6 +16,10 @@
 
 VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow);
 std::string binaryValue(VHDLComponent const comp);
+void copyFileAndReplaceWords(
+    std::string refFile, std::string dstFile,
+    const std::map<std::string, std::string> &replacementMap);
+TIME_UNIT getOperatorLifespan(const std::string &opType, int operatorFreq);
 
 namespace models {
   class Dataflow;
