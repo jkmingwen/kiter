@@ -91,8 +91,8 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
         dataflow->setVertexDuration(actor, opLifespans);
       } else {
         std::vector<TIME_UNIT> opLifespans {
-          getOperatorLifespan(newComp.getType(),
-                              operatorFreq)};
+          (TIME_UNIT) getOperatorLifespan(newComp.getType(),
+                                          operatorFreq)};
         dataflow->setVertexDuration(actor, opLifespans); // TODO remove repeated code
       }
     }}
@@ -185,7 +185,7 @@ void copyFileAndReplaceWords(
   }
 }
 
-TIME_UNIT getOperatorLifespan(const std::string &opType, int operatorFreq) {
+int getOperatorLifespan(const std::string &opType, int operatorFreq) {
   if (operatorLifespans.at(operatorFreq).count(opType)) {
     return operatorLifespans.at(operatorFreq).at(opType);
   } else {
