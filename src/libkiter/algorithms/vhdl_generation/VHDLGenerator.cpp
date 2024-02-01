@@ -85,15 +85,11 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
       VERBOSE_INFO("operator lifespan ("
                    << newComp.getType() << "): "
                    << getOperatorLifespan(newComp.getType(), operatorFreq));
-      if (newComp.getType() == "input_selector" ||
-          newComp.getType() == "output_selector") {
-        std::vector<TIME_UNIT> opLifespans{dataflow->getVertexPhaseDuration(actor)};
-        dataflow->setVertexDuration(actor, opLifespans);
-      } else {
-        std::vector<TIME_UNIT> opLifespans {
-          (TIME_UNIT) getOperatorLifespan(newComp.getType(),
-                                          operatorFreq)};
-        dataflow->setVertexDuration(actor, opLifespans); // TODO remove repeated code
+      if (newComp.getType() != "input_selector" &&
+          newComp.getType() != "output_selector") { // input/output selector lifespans are already set in merge_operators
+        dataflow->setVertexDuration(
+            actor,
+            {(TIME_UNIT)getOperatorLifespan(newComp.getType(), operatorFreq)});
       }
     }}
   {ForEachEdge(dataflow, edge) {
