@@ -38,6 +38,7 @@ class VHDLComponent {
   void setDataType(const std::string& newType);
   std::string getDataType() const ;
   bool isConst() const;
+  bool isUI() const;
   bool hasMixedType() const;
   void setUniqueName(const std::string& newName);
   void setImplementationName(const std::string& newName);
@@ -59,15 +60,15 @@ class VHDLComponent {
   int intValue;
   std::vector<std::string> argOrder; // store order of arguments for noncommutative operators
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "vslider",
-                                      "nentry"}; // NOTE temporary workaround to handle UI components
+                                      "nentry", "vbargraph", "hbargraph"}; // NOTE temporary workaround to handle UI components
   std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
                                               "prod", "sqrt", "pow"};
   std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"}; // operators that act on numbers to produce numbers
-  std::vector<std::string> routingTypes = {"select2", "select3", "attach", // operators that route input signals to outputs
-                                           "vbargraph", "hbargraph"}; // bargraph operators here as their current functionality is simply to send input to output
+  std::vector<std::string> routingTypes = {"select2", "select3", "attach"}; // operators that route input signals to outputs
   std::map<std::string, int> inputTypes;
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp
+  bool isUIType;
   int ioId; // if it is of type input/output it will be assigned an ID according to their name (this is so we can assign 0->L, 1-R, etc.)
 };
 #endif /* VHDL_COMPONENT_H_ */

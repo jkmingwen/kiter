@@ -328,6 +328,8 @@ void algorithms::generateOperators(VHDLCircuit &circuit) {
       generateFloorOperator(circuit.getFirstComponentByType(op.first));
     } else if (op.first == "delay") {
       generateFPCOperator(circuit.getFirstComponentByType(op.first).getImplementationName());
+    } else if (circuit.getFirstComponentByType(op.first).isUI()) {
+      generateUIOperator(circuit.getFirstComponentByType(op.first));
     } else if (op.first == "input_selector" || op.first == "output_selector") {
       generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
                                           inputCounts, outputCounts);
@@ -600,6 +602,14 @@ void algorithms::generateFPCOperator(std::string compImplementationName) {
                         componentDir + operatorFileName + ".vhd", copyOptions);
 }
 
+void algorithms::generateUIOperator(VHDLComponent comp) {
+  const auto copyOptions = std::filesystem::copy_options::update_existing |
+    std::filesystem::copy_options::recursive;
+  std::filesystem::copy(
+      referenceDir + "/ui/" + comp.getImplementationName() + ".vhdl",
+      componentDir + comp.getImplementationName() + ".vhd", copyOptions);
+}
+
 /**
    Generate corresponding VHDL code for the component.
 
@@ -674,27 +684,24 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int
                << "    " << "rst : in std_logic;\n"
                << std::endl;
     // Specify ready, valid, and data ports for each input port:
+    std::string portName = "    " + circuit.getName();
     for (auto i = 0; i < numInputPorts; i++) {
-        // TODO define portName variable outside of loop to minimize unnecessary repetition
-        //      (also, for loop should be outside if loop)
-        std::string portName = "    " + circuit.getName() + "_in";
-        vhdlOutput << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-                   << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-                   << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+        vhdlOutput << portName + "_in_ready_" + std::to_string(i) + " : out std_logic;\n"
+                   << portName + "_in_valid_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_in_data_" + std::to_string(i) + " : in std_logic_vector("
                    << "ram_width - 1 downto 0) := (others => '0');\n"
                    << std::endl;
     }
     // Specify ready, valid, and data ports for each output port:
     for (auto i = 0; i < numOutputPorts; i++) {
-        std::string portName = "    " + circuit.getName() + "_out";
-        vhdlOutput << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+        vhdlOutput << portName + "_out_ready_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_out_valid_" + std::to_string(i) + " : out std_logic;\n";
         if (i + 1 == numOutputPorts) {
-            vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+            vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
                        << "ram_width - 1 downto 0) := (others => '0')\n"
                        << std::endl; // last line of port declaration has no terminating semicolon
         } else {
-            vhdlOutput << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+            vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
                        << "ram_width - 1 downto 0) := (others => '0');\n"
                        << std::endl;
         }
@@ -704,6 +711,7 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int
 
 void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
                                           bool noOperators, std::ofstream &vhdlOutput) {// component declaration
+    bool uiDetected = false;
     vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
     if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
       std::map<int, int> constOutputs;
@@ -721,6 +729,9 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
           } else if (op.first == "const_value" ||
                      circuit.getFirstComponentByType(op.first).isConst()) {
             constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+          } else if (circuit.getFirstComponentByType(op.first).isUI()) {
+            vhdlOutput << generateUIComponents(circuit.getFirstComponentByType(op.first)) << std::endl;
+            uiDetected = true;
           } else if (op.first == "input_selector" || op.first == "output_selector") {
             vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first),
                                                                inputCounts, outputCounts)
@@ -887,6 +898,16 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
 
     std::vector<std::string> dataSignals;
     std::vector<std::string> validReadySignals;
+    if (uiDetected) {
+      for (auto &op : circuit.getOperatorMap()) {
+        // NOTE workaround for UI components' pin out that isn't reflected in SDF
+        if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
+          for (int i = 0; i < op.second; i++) {
+            dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
+          }
+        }
+      }
+    }
     for (auto &connection : circuit.getConnectionMap()) {
       bool isNotTopInOut; // check if connection belongs to top level input/output
       if (isBufferless) {
@@ -1504,17 +1525,10 @@ std::string algorithms::generateFPCToI2SSignalNames(int id) {
 
 std::string algorithms::generateComponent(VHDLComponent comp) {
   std::stringstream outputStream;
-  std::string componentName;
-  if (comp.getType() == "const_value") { // TODO verify if this check is still necessary since const_val is already checked prior to this function call
-    componentName = comp.getType();
-  } else {
-    componentName = comp.getType();
-  }
-  int numInputPorts;
-  int numOutputPorts;
-  // TODO assert that component is not an INPUT/OUTPUT (not sure if still necessary given earlier checks)
-  numInputPorts = comp.getInputPorts().size();
-  numOutputPorts = comp.getOutputPorts().size();
+  std::string componentName = comp.getType();
+  int numInputPorts = comp.getInputPorts().size();
+  int numOutputPorts = comp.getOutputPorts().size();
+
   // every component requires clock and reset ports
   outputStream << "component " << componentName << " is" << std::endl;
   if (comp.getType() == "const_value") {
@@ -1759,6 +1773,58 @@ std::string algorithms::generateConstComponents(std::map<int, int> outputCounts)
   return outputStream.str();
 }
 
+std::string algorithms::generateUIComponents(VHDLComponent comp) { // TODO combine with generateComponent
+  std::stringstream outputStream;
+  std::string componentName = comp.getType();
+  int numInputPorts = comp.getInputPorts().size();
+  int numOutputPorts = comp.getOutputPorts().size();
+  // every component requires clock and reset ports
+  outputStream << "component " << componentName << " is\n";
+  if (componentName == "hslider" || componentName == "vslider" ||
+      componentName == "button" || componentName == "checkbox" ||
+      componentName == "nentry") {
+    outputStream << "generic (\n"
+                 << "    " << "default_value : std_logic_vector(ram_width - 1 downto 0)\n"
+                 << ");\n";
+  }
+  outputStream << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n" << std::endl;
+  if (componentName == "hslider" || componentName == "vslider" ||
+      componentName == "button" || componentName == "checkbox" ||
+      componentName == "nentry") {
+    // additional input port required to connect UI component to pin out (even though it's not reflected in SDF)
+    outputStream << "    " << "op_in_data_0 : in std_logic_vector(ram_width - 1 downto 0);\n"
+                 << std::endl;
+  }
+  // Specify ready, valid, and data ports for each input port:
+  for (auto i = 0; i < numInputPorts; i++) {
+    std::string portName = "    op_in";
+    outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                 << "ram_width - 1 downto 0);\n"
+                 << std::endl;
+  }
+  // Specify ready, valid, and data ports for each output port:
+  for (auto i = 0; i < numOutputPorts; i++) {
+    std::string portName = "    op_out";
+    outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                 << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+    if (i + 1 == numOutputPorts) {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+    } else {
+      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                   << "ram_width - 1 downto 0);\n" << std::endl;
+    }
+
+  }
+  outputStream << "); end component;\n" << std::endl;
+
+  return outputStream.str();
+}
+
 // generate one HS splitter component for each corresponding Proj component (defined by number of outputs)
 // TODO find a way to generalise splitter component and generation
 std::string algorithms::generateSplitterComponents(std::map<int, int> outputCounts) {
@@ -1924,6 +1990,13 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
                      << binaryValue(op.second) << "\"" << "\n)\n"
                      << std::endl;
       }
+      if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
+          opName == "checkbox" || opName == "button") { // TODO check for all UI components
+        outputStream << "generic map (\n"
+                     << "    " << "default_value =>"
+                     << "\"" << "0000000000000000010000000000000000" << "\"" << "\n)\n" // TODO get default value
+                     << std::endl;
+      }
       if (opName == "delay") {
         int ramInitVal = 0;
         int ramDepthVal = 2048;
@@ -1948,6 +2021,14 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
                    << "    " << "clk => " << "clk,\n"
                    << "    " << "rst => " << "rst,\n"
                    << std::endl;
+      if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
+          opName == "checkbox" || opName == "button") { // TODO check for all UI components
+        outputStream << "    "
+                     << "op_in_data_0 => " << opName
+                     << "_"
+                     << std::to_string(opCount[opName]) << "_data_in,\n"
+                     << std::endl;
+      }
       // input/output mappings
       int inPortCount = 0;
       int outPortCount = 0;

@@ -37,6 +37,7 @@ namespace algorithms {
                                            std::map<int, int> inputCounts,
                                            std::map<int, int> outputCounts);
   void generateFPCOperator(std::string compImplementationName);
+  void generateUIOperator(VHDLComponent comp);
   void generateOperator(VHDLComponent comp);
 
 
@@ -72,6 +73,7 @@ namespace algorithms {
   std::string generateDelayComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);
+  std::string generateUIComponents(VHDLComponent comp);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);
   void generateHSInterfaceComponents();
   void generateAudioInterfaceComponents();

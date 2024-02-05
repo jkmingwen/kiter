@@ -197,6 +197,14 @@ bool VHDLComponent::isConst() const {
   return this->componentType == "const_value";
 }
 
+bool VHDLComponent::isUI() const {
+  if (std::count(uiTypes.begin(), uiTypes.end(), this->componentType)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool VHDLComponent::hasMixedType() const{
   return this->isMixedType;
 }
