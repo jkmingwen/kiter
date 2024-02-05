@@ -10,12 +10,20 @@
 
 VHDLCircuit::VHDLCircuit() {}
 
+/**
+   Insert a component into the circuit. Components with mixed input types will trigger a scan
+   of the current components in the circuit to ensure that the right data types are provided.
+
+   @param newComp VHDLComponent to add to the circuit.
+ */
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
-  newComp.setLifespan(this->getOperatorLifespan(newComp.getType()));
   newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(),
                                            newComp));
-  this->operatorMap[newComp.getType()]++; // track operators used in circuit
+  this->operatorMap[newComp.getType()]++; // keep track of counts of operator types present in circuit
+  if (newComp.hasMixedType()) {
+    this->refreshComponentMap();
+  }
 }
 
 void VHDLCircuit::addInputPort(std::string portName,
@@ -50,27 +58,17 @@ const VHDLComponent& VHDLCircuit::getFirstComponentByType(const std::string &op)
   // TODO return null VHDL component if nothing found
 }
 
-
-int VHDLCircuit::getOperatorLifespan(const std::string &opType) const {
-  if (this->operatorLifespans.at(this->operatorFreq).count(opType)) {
-    return this->operatorLifespans.at(this->operatorFreq).at(opType);
-  } else {
-    // NOTE default to 0 if lifespan not specified
-    return 0;
-  }
-}
-
 std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const{
   if (this->implementationNames.count(opType)) {
     return this->implementationNames.at(opType);
   } else {
     VERBOSE_WARNING("No implementation name listed for " << opType
-                    << ", check implemenatationNames in VHDLCircuit.h");
+                    << ", check implementationNames in VHDLCircuit.h");
     return "UNIMPLEMENTED_OPERATOR_" + opType;
   }
 }
 
-// return output counts for each occurance of the given operator
+// return input counts for each occurance of the given operator
 std::map<int, int> VHDLCircuit::getNumInputs(const std::string &opType) const {
   std::map<int, int> inputCounts; // number of outputs, and their occurances
   for (auto &comp : this->componentMap) {
@@ -103,9 +101,9 @@ std::vector<std::string> VHDLCircuit::getConnectionNameFromComponents(const std:
   std::vector<std::string> connNames;
 
   for (auto& comp : this->componentMap) {
-    if (comp.second.getName() == srcActorName) {
+    if (comp.second.getUniqueName() == srcActorName) {
       srcOutputEdges = comp.second.getOutputEdges();
-    } else if (comp.second.getName() == dstActorName) {
+    } else if (comp.second.getUniqueName() == dstActorName) {
       dstInputEdges = comp.second.getInputEdges();
     }
   }
@@ -152,9 +150,9 @@ std::vector<std::string> VHDLCircuit::getDstPortBetweenComponents(const std::str
 std::string VHDLCircuit::getComponentFullName(const std::string &partialName) const {
   std::vector<std::string> matchingNames;
   for (auto& comp : this->componentMap) {
-    std::size_t found = comp.second.getName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
-    if ((found == 0) or (comp.second.getName() == partialName)) {
-      matchingNames.push_back(comp.second.getName());
+    std::size_t found = comp.second.getUniqueName().find(partialName + "_"); // BRUNO Edit: Workaround to make sure it is really its name
+    if ((found == 0) or (comp.second.getUniqueName() == partialName)) {
+      matchingNames.push_back(comp.second.getUniqueName());
     }
   }
 
@@ -169,20 +167,6 @@ std::string VHDLCircuit::getComponentFullName(const std::string &partialName) co
 
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
-}
-
-void VHDLCircuit::setOperatorFreq(int freq) {
-  if (this->operatorLifespans.count(freq)) {
-    this->operatorFreq = freq;
-  } else {
-    std::string supportedFrequencies;
-    for (auto i : this->operatorLifespans) {
-      supportedFrequencies += std::to_string(i.first) + "  ";
-    }
-    VERBOSE_ERROR("The selected operator frequency (" << freq
-                  << ") is not supported. Supported frequencies: "
-                  << supportedFrequencies);
-  }
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
@@ -205,7 +189,7 @@ std::string VHDLCircuit::printStatus() {
   outputStream << "Operator, count (and lifespan):" << std::endl;
   for (auto &op : this->operatorMap) {
     outputStream << "\t" << op.first << ", "
-                 << op.second << " (" << this->getOperatorLifespan(op.first)
+                 << op.second // << " (" << this->getOperatorLifespan(op.first) // TODO add operator lifespan if possible and relevant
                  << ")\n";
     // if (op.first == "Proj" || op.first == "const_value") {
       outputStream << "\t\tOutput counts, occurances:" << std::endl;
@@ -236,7 +220,7 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
     if ((comp.second).getType() != "Proj" && !(comp.second).isConst() &&
         (comp.second).getType() != "output_selector") {
       if ((comp.second).getOutputEdges().size() > 1) { // if operator has more than one output
-        actorNames.push_back((comp.second).getName());
+        actorNames.push_back((comp.second).getUniqueName());
       }
     }
   }
@@ -259,12 +243,21 @@ std::vector<VHDLComponent> VHDLCircuit::getDstComponents(const VHDLComponent &sr
   return dstComponents;
 }
 
-// converts a constant value int type to float
-void VHDLCircuit::convConstIntToFloat(Vertex v) {
-  VERBOSE_ASSERT(this->componentMap.find(v) != this->componentMap.end(), "Specified constant value component doesn't exist in this circuit's component map");
-  if (this->componentMap.at(v).getDataType() == "fp") {
-    VERBOSE_WARNING("\t" << this->componentMap.at(v).getName() << " is already a float, bypassing conversion");
-  } else {
-    this->componentMap.at(v).convConstIntToFloat();
+void VHDLCircuit::refreshComponentMap() {
+  for (auto &dstComp : this->componentMap) {
+    if (dstComp.second.hasMixedType() && dstComp.second.getDataType() == "fp") {
+      // convert any input args of integer constant values to floating point
+      const std::vector<std::string>& dstInEdges = dstComp.second.getInputEdges();
+      for (auto &srcComp : this->componentMap) {
+        for (auto &outEdge : srcComp.second.getOutputEdges()) {
+          if (std::find(dstInEdges.begin(), dstInEdges.end(), outEdge) != dstInEdges.end()) {
+            if (srcComp.second.isConst() && srcComp.second.getDataType() == "int") {
+              srcComp.second.setFPValue(static_cast<float>(srcComp.second.getIntValue()));
+              srcComp.second.setDataType("fp");
+            }
+          }
+        }
+      }
+    }
   }
 }

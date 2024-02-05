@@ -18,7 +18,7 @@ std::set<std::string> binaryOps = {
 };
 
 std::set<std::string> castOps = {
-  "int", "float", "abs"
+  "float2int", "int2float", "abs"
 };
 
 std::set<std::string> trigOps = {
@@ -261,9 +261,9 @@ std::string algorithms::evalBinop(std::string op, std::string arg1, std::string 
 }
 
 std::string algorithms::evalCast(std::string op, std::string arg) {
-  if (op == "int") {
+  if (op == "float2int") {
     return std::to_string(std::stoi(arg));
-  } else if (op == "float") {
+  } else if (op == "int2float") {
     return std::to_string(std::stof(arg));
   } else if (op == "abs") {
     return std::to_string(std::abs(std::stof(arg)));

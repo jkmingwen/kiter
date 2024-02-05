@@ -51,7 +51,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
 
   // check and adjust for any operators with multiple I/Os
   // the merge function currently only works with operators with the same number of inputs/outputs
-  VHDLCircuit tmp = generateCircuitObject(dataflow, true, operatorFreq); // set bufferless to true -- inconsequential in this use case
+  VHDLCircuit tmp = generateCircuitObject(dataflow);
   while (tmp.getMultiOutActors().size() > 0) {
 
     VERBOSE_INFO("getMultiOutActors is not empty");
@@ -67,7 +67,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
       }
     }
     VERBOSE_INFO("Regenerate Circuit");
-    tmp = generateCircuitObject(dataflow, true, operatorFreq); // set bufferless to true -- inconsequential in this use case
+    tmp = generateCircuitObject(dataflow);
   }
   VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
 
@@ -363,7 +363,6 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
   std::vector<std::string> outputActorNames;
   std::map<std::string, int> opCounts;
   VHDLCircuit circuit;
-  circuit.setOperatorFreq(operatorFreq);
 
   {ForEachVertex(dataflow, v) {
       VHDLComponent op(dataflow, v);
@@ -375,7 +374,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = circuit.getOperatorLifespan(op.getType());
+      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
       VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
       if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
         std::vector<TIME_UNIT> opLifespans{1};
@@ -459,7 +458,6 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   std::vector<std::string> outputActorNames;
   std::map<std::string, int> opCounts;
   VHDLCircuit circuit;
-  circuit.setOperatorFreq(operatorFreq);
 
   {ForEachVertex(dataflow, v) {
       VHDLComponent op(dataflow, v);
@@ -471,7 +469,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = circuit.getOperatorLifespan(op.getType());
+      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
       VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
       if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
         std::vector<TIME_UNIT> opLifespans{1};

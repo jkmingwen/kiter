@@ -14,52 +14,42 @@
 #include "VHDLConnection.h"
 #include "VHDLComponent.h"
 
-VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow,
-                                  bool bufferless, int operatorFreq);
+VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow);
+std::string binaryValue(VHDLComponent const comp);
+void copyFileAndReplaceWords(
+    std::string refFile, std::string dstFile,
+    const std::map<std::string, std::string> &replacementMap);
+int getOperatorLifespan(const std::string &opType, int operatorFreq);
 
 namespace models {
   class Dataflow;
 }
 
 namespace algorithms {
-  enum ActorType { input, output, add, prod, div };
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
-  void generateOperators(VHDLCircuit &circuit, std::string componentDirectory,
-                         std::string refDirectory, bool isBufferless,
-                         int operatorFreq);
-  void generateConstOperator(std::string compDir, std::string referenceDir,
-                             std::map<int, int> outputCounts);
-  void generateSplitterOperators(std::string compDir, std::string referenceDir,
-                                 std::map<int, int> outputCounts);
-  void generateRoutingOperators(VHDLComponent comp, std::string compDir,
-                                std::string referenceDir);
-  void generateFloorOperator(VHDLComponent comp, std::string compDir,
-                             std::string referenceDir, int operatorFreq);
-  void generateDelayOperator(VHDLComponent comp, std::string compDir,
-                             std::string referenceDir, int operatorFreq);
-  void generateInputOutputSelectorOperator(VHDLComponent comp, std::string compDir,
-                                           std::string referenceDir, int operatorFreq,
+  void generateOperators(VHDLCircuit &circuit);
+  void generateConstOperator(std::map<int, int> outputCounts);
+  void generateSplitterOperators(std::map<int, int> outputCounts);
+  void generateRoutingOperators(VHDLComponent comp);
+  void generateFloorOperator(VHDLComponent comp);
+  void generateInputOutputSelectorOperator(VHDLComponent comp,
                                            std::map<int, int> inputCounts,
                                            std::map<int, int> outputCounts);
-  void generateFPCOperator(std::string compImplementationName, std::string compDir,
-                           std::string referenceDir, int operatorFreq);
-  void generateOperator(VHDLComponent comp, std::string componentDirectory,
-                        std::string referenceDir, int operatorFreq);
-  void generateTestbench(std::string tbDirectory, std::string refDirectory);
+  void generateFPCOperator(std::string compImplementationName);
+  void generateUIOperator(VHDLComponent comp);
+  void generateOperator(VHDLComponent comp);
 
 
     // GenerateCircuit helper functions
     void generateVHDLHeader(std::ofstream &vhdlOutput);
     void generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int numOutputPorts, std::ofstream &vhdlOutput);
-    void generateVHDLArchitecture(VHDLCircuit &circuit, bool isBufferless, std::map<std::string, int> &operatorMap,
+    void generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
                                   bool noOperators, std::ofstream &vhdlOutput);
 
 
-  void generateCircuit(VHDLCircuit &circuit, std::string outputDirectory,
-                       bool isBufferless);
-  void generateAudioInterfaceWrapper(const VHDLCircuit &circuit, const std::string &referenceDir,
-                                     const std::string &outputDir);
+  void generateCircuit(VHDLCircuit &circuit);
+  void generateAudioInterfaceWrapper(const VHDLCircuit &circuit);
   std::string generateAudioInterfaceWrapperPorts(int id);
   std::string generateAudioInterfaceWrapperMapping(int id);
   std::string generateI2SToFPCComponent(int inputBitWidth, int outputBitWidth);
@@ -83,21 +73,16 @@ namespace algorithms {
   std::string generateDelayComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateConstComponents(std::map<int, int> outputCounts);
+  std::string generateUIComponents(VHDLComponent comp);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);
-  void generateHSInterfaceComponents(std::string componentDir,
-                                     std::string referenceDir,
-                                     bool isBufferless);
-  void generateAudioInterfaceComponents(std::string componentDir,
-                                        std::string referenceDir,
-                                        int operatorFreq);
+  void generateHSInterfaceComponents();
+  void generateAudioInterfaceComponents();
   std::vector<std::string> generateSendSigNames(const std::string &srcPort,
                                                 const VHDLCircuit &circuit);
   std::vector<std::string> generateReceiveSigNames(const std::string &dstPort,
                                                    const VHDLCircuit &circuit);
-  std::string generatePortMapping(const VHDLCircuit &circuit, bool isBufferless,
+  std::string generatePortMapping(const VHDLCircuit &circuit,
                                   bool noOperators);
-  void generateMergingScript(std::vector<std::string> actorNames, std::string graphName,
-                             std::string dirName, std::string referenceDir);
   void printCircuitInfo(models::Dataflow* const dataflow,
                         parameters_list_t param_list);
 }
