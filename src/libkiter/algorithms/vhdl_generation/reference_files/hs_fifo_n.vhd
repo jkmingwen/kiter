@@ -74,9 +74,10 @@ begin
         fifo_empty <= '0';
       end if;
 
-      for i in 0 to ram_depth - 1 loop
-            ram(i) <= (others => '0');
-      end loop;
+      --Please don't reset the BRAM that way, or it won't use the BRAM.
+      --for i in 0 to ram_depth - 1 loop
+      --      ram(i) <= (others => '0');
+      --end loop;
 
     elsif falling_edge(buffer_clk) then
 
