@@ -338,12 +338,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit) {
     }
 
   }
-  for (auto &conn : circuit.getConnectionMap()) {
-    if (conn.second.getInitialTokenCount()) {
-      isBufferless = false;
-      break;
-    }
-  }
+
   generateHSInterfaceComponents();
   generateAudioInterfaceComponents();
 
