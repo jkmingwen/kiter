@@ -10,6 +10,8 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "../vhdl_generation/VHDLGenerator.h"
+#include "singleOutput.h"
 
 std::set<std::string> binaryOps = {
   "add", "diff", "prod", "div", "mod", "l_shift",
@@ -136,6 +138,27 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           break;
         }
       }}
+  }
+
+  // enforce single outputs for each operator
+  VHDLCircuit tmp = generateCircuitObject(dataflow_prime);
+  while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
+
+    VERBOSE_INFO("getMultiOutActors is not empty");
+
+    /*  This block removes multiIO actors and replaces them with a router that splits their output */
+    for (std::string actorName: tmp.getMultiOutActors()) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("singleOutput actor " << actorName);
+      try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
+        algorithms::transformation::singleOutput(dataflow_prime, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    tmp = generateCircuitObject(dataflow_prime);
+    // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
   }
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
 }
