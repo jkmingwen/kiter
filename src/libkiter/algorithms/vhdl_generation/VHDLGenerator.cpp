@@ -28,7 +28,7 @@ std::string componentDir;
 std::string tbDir; // testbench directory
 std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
 int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed to run at
-bool isBufferless = false; // if VHDL design should include FIFO buffers along each connection
+bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 
 /* Each component has a specific lifespan and name that needs to be defined in
@@ -749,8 +749,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
         delayDetected = true;
       }
     }
-    if ((delayDetected &&
-        (operatorMap.size() - (operatorMap.count("INPUT") + operatorMap.count("OUTPUT"))) > 1) || !isBufferless) { // we will always have FIFO buffers if the bufferless flag is false
+    if (delayDetected || !isBufferless) {
       vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
     }
     /* Track top-level input and output signals
@@ -2203,55 +2202,48 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
     std::string bCompName = "hs_fifo";
     std::string bName = "buffer";
     for (auto &buffer : circuit.getConnectionMap()) {
-      // only generate buffer between non-input/output components
-      if (!(circuit.getInputPorts().count(buffer.second.getDstPort()) ||
-            circuit.getOutputPorts().count(buffer.second.getSrcPort()))) {
-        if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
-          std::vector<std::string> sendSigs;
-          std::vector<std::string> receiveSigs;
-          if (!noOperators) {
-            sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-            receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
-          } else { // NOTE workaround to deal with case where only inputs/outputs in Faust program
-            sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
-            receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
-          }
-          // ram width/depth, reset, and clock mappings
-          TOKEN_UNIT bufferPadding = 1;
-          // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
-          outputStream << "fifo_" + std::to_string(bufferCount)
-                       << " : " << bCompName << "\n"
-                       <<"generic map (\n"
-                       << "    " << "ram_width => ram_width,\n"
-                       << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
-                       << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
-                       << std::endl;
-          outputStream << "port map (\n"
-                       << "    " << bName << "_clk => " << "clk,\n"
-                       << "    " << bName << "_rst => " << "rst,\n"
-                       << std::endl;
-          // input/output mappings
-          outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
-                       << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
-                       << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
-                       << std::endl;
-          outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
-                       << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
-                       << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
-                       << std::endl;
-          bufferCount++;
-        }
+      if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
+        std::vector<std::string> sendSigs;
+        std::vector<std::string> receiveSigs;
+        sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
+        receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+        // ram width/depth, reset, and clock mappings
+        TOKEN_UNIT bufferPadding = 1;
+        // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
+        outputStream << "fifo_" + std::to_string(bufferCount)
+                     << " : " << bCompName << "\n"
+                     <<"generic map (\n"
+                     << "    " << "ram_width => ram_width,\n"
+                     << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
+                     << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
+                     << std::endl;
+        outputStream << "port map (\n"
+                     << "    " << bName << "_clk => " << "clk,\n"
+                     << "    " << bName << "_rst => " << "rst,\n"
+                     << std::endl;
+        // input/output mappings
+        outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
+                     << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
+                     << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
+                     << std::endl;
+        outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
+                     << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
+                     << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
+                     << std::endl;
+        bufferCount++;
       }
     }
-    if (noOperators) { // just need to pass through data if no operators
+    if (noOperators) { // special case of simply passing through data if no operators and initial tokens
       std::vector<std::string> sendSigs;
       std::vector<std::string> receiveSigs;
       for (auto &buffer : circuit.getConnectionMap()) {
-        sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
-        receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
-        outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
-        outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
-        outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
+        if (!buffer.second.getInitialTokenCount()) {
+          sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
+          receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
+          outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
+          outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
+          outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
+        }
       }
     }
   }
