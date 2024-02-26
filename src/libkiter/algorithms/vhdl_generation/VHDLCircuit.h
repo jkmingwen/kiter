@@ -63,11 +63,19 @@ class VHDLCircuit {
   std::vector<std::string> getDstPortBetweenComponents(const std::string &srcActorName,
                                                        const std::string &dstActorName) const;
   std::string getComponentFullName(const std::string &partialName) const;
-    std::vector<std::string> getMultiOutActors() const;
-    std::vector<VHDLComponent> getDstComponents(const VHDLComponent &srcComponent) const;
+  std::vector<std::string> getMultiOutActors() const;
+  VHDLComponent getDstComponent(const VHDLConnection &conn) const;
+  VHDLComponent getSrcComponent(const VHDLConnection &conn) const;
+  std::vector<VHDLComponent> getDstComponents(const VHDLComponent &srcComponent) const;
+  std::vector<VHDLComponent> getSrcComponents(const VHDLComponent &dstComponent) const;
 
   void setName(std::string);
   void refreshComponentMap();
+  void updateTopLevelPorts(bool isBufferless);
+  std::vector<std::string> generateDataSignalNames(VHDLConnection conn,
+                                                   bool isBufferless);
+  std::vector<std::string> generateValidReadySignalNames(VHDLConnection conn,
+                                                         bool isBufferless);
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;

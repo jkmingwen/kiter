@@ -227,6 +227,30 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
   return actorNames;
 }
 
+VHDLComponent VHDLCircuit::getDstComponent(const VHDLConnection &conn) const {
+  VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
+  for (auto &comp : this->componentMap) {
+    for (auto &inEdge : comp.second.getInputEdges()) {
+      if (conn.getName() == inEdge) {
+        return comp.second;
+      }
+    }
+  }
+  VERBOSE_ERROR("Connection " << conn.getName() << " has no destination component");
+}
+
+VHDLComponent VHDLCircuit::getSrcComponent(const VHDLConnection &conn) const {
+  VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
+  for (auto &comp : this->componentMap) {
+    for (auto &outEdge : comp.second.getOutputEdges()) {
+      if (conn.getName() == outEdge) {
+        return comp.second;
+      }
+    }
+  }
+  VERBOSE_ERROR("Connection " << conn.getName() << " has no destination component");
+}
+
 std::vector<VHDLComponent> VHDLCircuit::getDstComponents(const VHDLComponent &srcComponent) const {
   VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
   std::vector<VHDLComponent> dstComponents;
@@ -241,6 +265,22 @@ std::vector<VHDLComponent> VHDLCircuit::getDstComponents(const VHDLComponent &sr
   }
 
   return dstComponents;
+}
+
+std::vector<VHDLComponent> VHDLCircuit::getSrcComponents(const VHDLComponent &dstComponent) const {
+  VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
+  std::vector<VHDLComponent> srcComponents;
+  const std::vector<std::string>& srcInEdges = dstComponent.getInputEdges();
+  for (auto &comp : this->componentMap) {
+    for (auto &inEdge : comp.second.getInputEdges()) {
+      if (std::find(srcInEdges.begin(), srcInEdges.end(), inEdge) != srcInEdges.end()) {
+        srcComponents.push_back(comp.second);
+        break; // just need to identify one matching edge to determine source component
+      }
+    }
+  }
+
+  return srcComponents;
 }
 
 void VHDLCircuit::refreshComponentMap() {
@@ -260,4 +300,88 @@ void VHDLCircuit::refreshComponentMap() {
       }
     }
   }
+}
+
+// Instantiate top level input/output port names and the corresponding signals
+// they use
+// To be called only after instantiating component and connection maps
+void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
+  std::map<int, std::string> inSignalNames;
+  std::map<int, std::string> outSignalNames;
+  // TODO check that component and connection maps have been instantiated
+  // TODO check that input and output ports only have 1 output/input edge/port
+  for (auto const &[v, comp] : this->getComponentMap()) {
+    if (comp.getType() == "INPUT") {
+      std::vector<std::string> signalNames(3);
+      signalNames[0] = this->getName() + "_in_valid_" + std::to_string(comp.getIOId());
+      signalNames[1] = this->getName() + "_in_ready_" + std::to_string(comp.getIOId());
+      signalNames[2] = this->getName() + "_in_data_" + std::to_string(comp.getIOId());
+      for (auto const &edgeName : comp.getOutputEdges()) {
+        for (auto const &[e, conn] : this->getConnectionMap()) {
+          if (conn.getName() == edgeName) {
+            if (conn.getInitialTokenCount() || !isBufferless) {
+              this->addInputPort(conn.getSrcPort(), signalNames);
+            } else {
+              this->addInputPort(edgeName, signalNames);
+            }
+          }
+        }
+      }
+    } else if (comp.getType() == "OUTPUT") {
+      std::vector<std::string> signalNames(3);
+      signalNames[0] = this->getName() + "_out_valid_" + std::to_string(comp.getIOId());
+      signalNames[1] = this->getName() + "_out_ready_" + std::to_string(comp.getIOId());
+      signalNames[2] = this->getName() + "_out_data_" + std::to_string(comp.getIOId());
+      for (auto const &edgeName : comp.getInputEdges()) {
+        for (auto const &[e, conn] : this->getConnectionMap()) {
+          if (conn.getName() == edgeName) {
+            if (conn.getInitialTokenCount() || !isBufferless) {
+              this->addOutputPort(conn.getDstPort(), signalNames);
+            } else {
+              this->addOutputPort(edgeName, signalNames);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+std::vector<std::string>VHDLCircuit::generateDataSignalNames(VHDLConnection conn,
+                                                             bool isBufferless) {
+  std::vector<std::string> signalNames;
+  if (!isBufferless || conn.getInitialTokenCount()) {
+    // 2 sets of signals to connect with FIFO buffer inbetween
+    signalNames.push_back(conn.getSrcPort() + "_DATA");
+    signalNames.push_back(conn.getDstPort() + "_DATA");
+  } else {
+    // Connections directly between input and output have no intermediate signals
+    if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
+          this->getDstComponent(conn).getType() == "OUTPUT")) {
+      signalNames.push_back(conn.getName() + "_DATA");
+    }
+  }
+
+  return signalNames;
+}
+
+std::vector<std::string> VHDLCircuit::generateValidReadySignalNames(VHDLConnection conn,
+                                                                    bool isBufferless) {
+  std::vector<std::string> signalNames;
+  if (!isBufferless || conn.getInitialTokenCount()) {
+    // 2 sets of signals to connect with FIFO buffer inbetween
+    signalNames.push_back(conn.getSrcPort() + "_VALID");
+    signalNames.push_back(conn.getDstPort() + "_VALID");
+    signalNames.push_back(conn.getSrcPort() + "_READY");
+    signalNames.push_back(conn.getDstPort() + "_READY");
+  } else {
+    // Connections directly between input and output have no intermediate signals
+    if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
+          this->getDstComponent(conn).getType() == "OUTPUT")) {
+      signalNames.push_back(conn.getName() + "_VALID");
+      signalNames.push_back(conn.getName() + "_READY");
+    }
+  }
+
+  return signalNames;
 }
