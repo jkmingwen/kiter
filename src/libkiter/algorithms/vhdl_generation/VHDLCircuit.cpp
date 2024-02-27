@@ -227,6 +227,7 @@ std::vector<std::string> VHDLCircuit::getMultiOutActors() const {
   return actorNames;
 }
 
+// return destination VHDLComponent of the given VHDLConnection
 VHDLComponent VHDLCircuit::getDstComponent(const VHDLConnection &conn) const {
   VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
   for (auto &comp : this->componentMap) {
@@ -239,6 +240,7 @@ VHDLComponent VHDLCircuit::getDstComponent(const VHDLConnection &conn) const {
   VERBOSE_ERROR("Connection " << conn.getName() << " has no destination component");
 }
 
+// return source VHDLComponent of the given VHDLConnection
 VHDLComponent VHDLCircuit::getSrcComponent(const VHDLConnection &conn) const {
   VERBOSE_ASSERT(this->componentMap.size(), "Component map is empty, populate component map before searching for components");
   for (auto &comp : this->componentMap) {
@@ -347,39 +349,41 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
   }
 }
 
-std::vector<std::string>VHDLCircuit::generateDataSignalNames(VHDLConnection conn,
-                                                             bool isBufferless) {
+std::vector<std::string> VHDLCircuit::generateDataSignalNames(bool isBufferless) {
   std::vector<std::string> signalNames;
-  if (!isBufferless || conn.getInitialTokenCount()) {
-    // 2 sets of signals to connect with FIFO buffer inbetween
-    signalNames.push_back(conn.getSrcPort() + "_DATA");
-    signalNames.push_back(conn.getDstPort() + "_DATA");
-  } else {
-    // Connections directly between input and output have no intermediate signals
-    if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
-          this->getDstComponent(conn).getType() == "OUTPUT")) {
-      signalNames.push_back(conn.getName() + "_DATA");
+  for (auto const &[e, conn] : this->getConnectionMap()) {
+    if (!isBufferless || conn.getInitialTokenCount()) {
+      // 2 sets of signals to connect with FIFO buffer inbetween
+      signalNames.push_back(conn.getSrcPort() + "_DATA");
+      signalNames.push_back(conn.getDstPort() + "_DATA");
+    } else {
+      // Connections directly between input and output have no intermediate signals
+      if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
+            this->getDstComponent(conn).getType() == "OUTPUT")) {
+        signalNames.push_back(conn.getName() + "_DATA");
+      }
     }
   }
 
   return signalNames;
 }
 
-std::vector<std::string> VHDLCircuit::generateValidReadySignalNames(VHDLConnection conn,
-                                                                    bool isBufferless) {
+std::vector<std::string> VHDLCircuit::generateValidReadySignalNames(bool isBufferless) {
   std::vector<std::string> signalNames;
-  if (!isBufferless || conn.getInitialTokenCount()) {
-    // 2 sets of signals to connect with FIFO buffer inbetween
-    signalNames.push_back(conn.getSrcPort() + "_VALID");
-    signalNames.push_back(conn.getDstPort() + "_VALID");
-    signalNames.push_back(conn.getSrcPort() + "_READY");
-    signalNames.push_back(conn.getDstPort() + "_READY");
-  } else {
-    // Connections directly between input and output have no intermediate signals
-    if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
-          this->getDstComponent(conn).getType() == "OUTPUT")) {
-      signalNames.push_back(conn.getName() + "_VALID");
-      signalNames.push_back(conn.getName() + "_READY");
+  for (auto const &[e, conn] : this->getConnectionMap()) {
+    if (!isBufferless || conn.getInitialTokenCount()) {
+      // 2 sets of signals to connect with FIFO buffer inbetween
+      signalNames.push_back(conn.getSrcPort() + "_VALID");
+      signalNames.push_back(conn.getDstPort() + "_VALID");
+      signalNames.push_back(conn.getSrcPort() + "_READY");
+      signalNames.push_back(conn.getDstPort() + "_READY");
+    } else {
+      // Connections directly between input and output have no intermediate signals
+      if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
+            this->getDstComponent(conn).getType() == "OUTPUT")) {
+        signalNames.push_back(conn.getName() + "_VALID");
+        signalNames.push_back(conn.getName() + "_READY");
+      }
     }
   }
 

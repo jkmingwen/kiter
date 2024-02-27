@@ -773,18 +773,8 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   }
 
   // 2. Generate intermediate signal names
-  for (auto &connection : circuit.getConnectionMap()) {
-    std::vector<std::string> tmpDataSignals(circuit.generateDataSignalNames(connection.second, isBufferless));
-    std::vector<std::string> tmpValidReadySignals(circuit.generateValidReadySignalNames(connection.second, isBufferless));
-    if (tmpDataSignals.size()) {
-      dataSignals.insert(dataSignals.end(), tmpDataSignals.begin(),
-                         tmpDataSignals.end());
-    }
-    if (tmpValidReadySignals.size()) {
-      validReadySignals.insert(validReadySignals.end(), tmpValidReadySignals.begin(),
-                               tmpValidReadySignals.end());
-    }
-  }
+  dataSignals = circuit.generateDataSignalNames(isBufferless);
+  validReadySignals = circuit.generateValidReadySignalNames(isBufferless);
 
   // 3. Write signal names to VHDL output
   // data signals
