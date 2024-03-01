@@ -62,7 +62,7 @@ const VHDLComponent& VHDLCircuit::getFirstComponentByType(const std::string &op)
   // TODO return null VHDL component if nothing found
 }
 
-std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const{
+std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const {
   if (this->implementationNames.count(opType)) {
     return this->implementationNames.at(opType);
   } else {

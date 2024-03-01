@@ -97,6 +97,14 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     VERBOSE_ASSERT(this->getHSInputSignals().size() == this->inputEdges.size(),
                    this->getUniqueName() << ": HS input signals != input edges");
   }
+
+  {ForOutputEdges(dataflow, this->actor, e) {
+      if (dataflow->getPreload(e)) {
+        this->addHSOutputSignal(dataflow->getEdgeInputPortName(e));
+      } else {
+        this->addHSOutputSignal(dataflow->getEdgeName(e));
+      }
+    }}
   // Rearrange output ports and edges according to output selector phases of execution
   if (this->getType() == "output_selector") {
     {ForOutputEdges(dataflow, this->actor, e) {
@@ -109,14 +117,6 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
               this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
             }
           }
-        }
-      }}
-  } else {
-    {ForOutputEdges(dataflow, this->actor, e) {
-        if (dataflow->getPreload(e)) {
-          this->addHSOutputSignal(dataflow->getEdgeInputPortName(e));
-        } else {
-          this->addHSOutputSignal(dataflow->getEdgeName(e));
         }
       }}
   }
