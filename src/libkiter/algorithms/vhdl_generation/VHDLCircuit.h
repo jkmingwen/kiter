@@ -74,6 +74,7 @@ class VHDLCircuit {
   void updateTopLevelPorts(bool isBufferless);
   std::vector<std::string> generateDataSignalNames(bool isBufferless);
   std::vector<std::string> generateValidReadySignalNames(bool isBufferless);
+  std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;

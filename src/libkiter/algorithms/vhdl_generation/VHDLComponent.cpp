@@ -69,6 +69,60 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }
   }
 
+  // Rearrange input ports and edges according to argument order
+  if (this->argOrder.size() && this->getType() != "INPUT" && this->getType() != "OUTPUT") {
+    for (auto const &inputVertexName : this->argOrder) {
+      Vertex inputVertex = dataflow->getVertexByName(
+          getNameFromPartialName(dataflow, inputVertexName));
+      {ForInputEdges(dataflow, this->actor, e) {
+          if (dataflow->getEdgeSource(e) == inputVertex) {
+            if (dataflow->getPreload(e)) {
+              this->addHSInputSignal(dataflow->getEdgeOutputPortName(e));
+            } else {
+              this->addHSInputSignal(dataflow->getEdgeName(e));
+            }
+          }
+        }}
+    }
+    VERBOSE_ASSERT(this->getHSInputSignals().size() == this->argOrder.size(),
+                   this->getUniqueName() << ": HS input ports after reordering != argOrder size");
+  } else {
+    {ForInputEdges(dataflow, this->actor, e) {
+        if (dataflow->getPreload(e)) {
+          this->addHSInputSignal(dataflow->getEdgeOutputPortName(e));
+        } else {
+          this->addHSInputSignal(dataflow->getEdgeName(e));
+        }
+      }}
+    VERBOSE_ASSERT(this->getHSInputSignals().size() == this->inputEdges.size(),
+                   this->getUniqueName() << ": HS input signals != input edges");
+  }
+  // Rearrange output ports and edges according to output selector phases of execution
+  if (this->getType() == "output_selector") {
+    {ForOutputEdges(dataflow, this->actor, e) {
+        std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
+        for (int exec = 0; exec < inputVector.size(); exec++) {
+          if (inputVector.at(exec) == 1) {
+            if (dataflow->getPreload(e)) {
+              this->hsOutputSignals.at(exec) = dataflow->getEdgeInputPortName(e);
+            } else {
+              this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
+            }
+          }
+        }
+      }}
+  } else {
+    {ForOutputEdges(dataflow, this->actor, e) {
+        if (dataflow->getPreload(e)) {
+          this->addHSOutputSignal(dataflow->getEdgeInputPortName(e));
+        } else {
+          this->addHSOutputSignal(dataflow->getEdgeName(e));
+        }
+      }}
+  }
+  VERBOSE_ASSERT(this->getHSOutputSignals().size() == this->outputEdges.size(),
+                 this->getUniqueName() << ": HS output signals after reordering != output edges");
+
   /* TODO identify data type of component to select appropriate VHDL implementation
      data type produced by constant value and UI components determine their data type
      all other types of operators use input types */
@@ -239,6 +293,30 @@ void VHDLComponent::setIOId(int id) {
   this->ioId = id;
 }
 
+const std::vector<std::string> VHDLComponent::getHSInputSignals() const {
+  return this->hsInputSignals;
+}
+
+const std::vector<std::string> VHDLComponent::getHSOutputSignals() const {
+  return this->hsOutputSignals;
+}
+
+void VHDLComponent::addHSInputSignal(const std::string& signalName) {
+  if (std::find(hsInputSignals.begin(),
+                hsInputSignals.end(),
+                signalName) == hsInputSignals.end()) {
+    hsInputSignals.push_back(signalName);
+  }
+}
+
+void VHDLComponent::addHSOutputSignal(const std::string& signalName) {
+  if (std::find(hsOutputSignals.begin(),
+                hsOutputSignals.end(),
+                signalName) == hsOutputSignals.end()) {
+    hsOutputSignals.push_back(signalName);
+  }
+}
+
 std::string VHDLComponent::printStatus() const  {
   std::stringstream outputStream;
 
@@ -290,4 +368,24 @@ std::string VHDLComponent::printStatus() const  {
   }
 
   return outputStream.str();
+}
+
+std::string getNameFromPartialName(models::Dataflow* const dataflow,
+                                   const std::string &partialName) {
+  std::vector<std::string> matchingNames;
+  {ForEachVertex(dataflow, v) {
+      std::string vertexName = dataflow->getVertexName(v);
+      std::size_t found = vertexName.find(partialName + "_");
+      if ((found == 0) || (vertexName == partialName)) {
+        matchingNames.push_back(vertexName);
+      }
+    }}
+
+  VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns '" << matchingNames[0] << "'");
+  if(matchingNames.size() != 1) {
+      VERBOSE_ERROR("Wrong name count for '" << partialName << "': " << commons::toString(matchingNames));
+  }
+
+  assert(matchingNames.size() == 1);
+  return matchingNames.front();
 }

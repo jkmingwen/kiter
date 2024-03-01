@@ -803,12 +803,12 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
       vhdlOutput << signal << delim << std::endl;
     }
     vhdlOutput << " : std_logic;\n" << std::endl;
-    vhdlOutput << generatePortMapping(circuit, noOperators) << std::endl;
+    vhdlOutput << generatePortMapping(circuit) << std::endl;
     vhdlOutput << "end behaviour;" << std::endl;
 
     vhdlOutput.close();
   } else {
-    vhdlOutput << generatePortMapping(circuit, noOperators) << std::endl;
+    vhdlOutput << generatePortMapping(circuit) << std::endl;
     vhdlOutput << "end behaviour;" << std::endl;
   }
 }
@@ -1763,8 +1763,7 @@ std::vector<std::string> algorithms::generateReceiveSigNames(const std::string &
 }
 
 // Generate port mapping for each operator in the circuit
-std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
-                                            bool noOperators) {
+std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
   std::stringstream outputStream;
   std::string componentName;
   std::map<std::string, int> opCount(circuit.getOperatorMap());
@@ -1774,20 +1773,20 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
   for (auto &c : opCount) {
     c.second = 0;
   }
-  for (auto &op : circuit.getComponentMap()) {
-    if (op.second.getType() != "INPUT" && op.second.getType() != "OUTPUT") {
-      std::string opName = op.second.getType();
-      if (op.second.isConst()) {
-        opName = op.second.getType() + "_" + std::to_string((op.second).getOutputPorts().size());
-        componentName = "const_value_" + std::to_string((op.second).getOutputPorts().size());
-      } else if (op.second.getType() == "Proj") {
-        opName = "hs_splitter_" + std::to_string((op.second).getOutputPorts().size());
+  for (auto &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+      std::string opName = comp.getType();
+      if (comp.isConst()) {
+        opName = comp.getType() + "_" + std::to_string(comp.getOutputPorts().size());
+        componentName = "const_value_" + std::to_string(comp.getOutputPorts().size());
+      } else if (comp.getType() == "Proj") {
+        opName = "hs_splitter_" + std::to_string(comp.getOutputPorts().size());
         componentName = opName;
-      } else if (op.second.getType() == "input_selector") {
-        opName = "input_selector_" + std::to_string((op.second).getInputPorts().size());
+      } else if (comp.getType() == "input_selector") {
+        opName = "input_selector_" + std::to_string(comp.getInputPorts().size());
         componentName = opName;
-      } else if (op.second.getType() == "output_selector") {
-        opName = "output_selector_" + std::to_string((op.second).getOutputPorts().size());
+      } else if (comp.getType() == "output_selector") {
+        opName = "output_selector_" + std::to_string(comp.getOutputPorts().size());
         componentName = opName;
       } else {
         componentName = opName;
@@ -1795,10 +1794,10 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
       // reset/clock mappings
       outputStream << opName << "_" + std::to_string(opCount[opName])
                    << " : " << componentName << "\n" << std::endl;
-      if (op.second.isConst()) { // NOTE binary representation of const_val operators set here
+      if (comp.isConst()) { // NOTE binary representation of const_val operators set here
         outputStream << "generic map (\n"
                      << "    " << "value => " << "\""
-                     << binaryValue(op.second) << "\"" << "\n)\n"
+                     << binaryValue(comp) << "\"" << "\n)\n"
                      << std::endl;
       }
       if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
@@ -1817,15 +1816,15 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
                      << "    " << "ram_depth => " << std::to_string(ramDepthVal)
                      << "\n)\n" << std::endl;
       }
-      if (op.second.getType() == "input_selector") {
+      if (comp.getType() == "input_selector") {
         outputStream << "generic map (\n"
                      << "    " << "num_phases => "
-                     << std::to_string((op.second).getInputPorts().size())
+                     << std::to_string(comp.getInputPorts().size())
                      << "\n)\n" << std::endl;
-      } else if (op.second.getType() == "output_selector") {
+      } else if (comp.getType() == "output_selector") {
         outputStream << "generic map (\n"
                      << "    " << "num_phases => "
-                     << std::to_string((op.second).getOutputPorts().size())
+                     << std::to_string(comp.getOutputPorts().size())
                      << "\n)\n" << std::endl;
       }
       outputStream << "port map (\n"
@@ -1841,125 +1840,39 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
                      << std::endl;
       }
       // input/output mappings
-      int inPortCount = 0;
-      int outPortCount = 0;
-      std::vector<std::string> inputSignals;
-      std::vector<std::string> outputSignals;
-      if (isBufferless) {
-        for (auto &i : op.second.getInputEdges()) {
-          for (auto &conn : circuit.getConnectionMap()) {
-            if (conn.second.getName() == i) {
-              if (conn.second.getInitialTokenCount()) {
-                inputSignals.push_back(conn.second.getDstPort());
-              } else {
-                inputSignals.push_back(i);
-              }
-            }
-          }
-        }
-        for (auto &i : op.second.getOutputEdges()) {
-          for (auto &conn : circuit.getConnectionMap()) {
-            if (conn.second.getName() == i) {
-              if (conn.second.getInitialTokenCount()) {
-                outputSignals.push_back(conn.second.getSrcPort());
-              } else {
-                outputSignals.push_back(i);
-              }
-            }
-          }
-        }
-      } else {
-        inputSignals = op.second.getInputPorts();
-        outputSignals = op.second.getOutputPorts();
-      }
-      if (op.second.getArgOrder().size()) { // match input signals to argument ordering given by name
-        assert(op.second.getArgOrder().size() == inputSignals.size()); // number of input signals must match number of arguments
-        inputSignals.clear();
-        for (auto i = 0; i < op.second.getArgOrder().size(); i++) {
-          std::string srcActorName = circuit.getComponentFullName(op.second.getArgOrder()[i]);
-          std::string dstActorName = op.second.getUniqueName();
-          if (isBufferless) {
-            std::vector<std::string> connNames = circuit.getConnectionNameFromComponents(srcActorName,
-                                                                                         dstActorName);
-            for (auto &name : connNames) {
-              for (auto &conn : circuit.getConnectionMap()) {
-                if (conn.second.getName() == name) {
-                  if (conn.second.getInitialTokenCount()) {
-                    if (std::find(inputSignals.begin(), inputSignals.end(), conn.second.getDstPort()) == inputSignals.end()) {
-                      inputSignals.push_back(conn.second.getDstPort());
-                    }
-                  } else {
-                    if (std::find(inputSignals.begin(), inputSignals.end(), name) == inputSignals.end()) {
-                      inputSignals.push_back(name);
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            std::vector<std::string> connNames = circuit.getDstPortBetweenComponents(srcActorName,
-                                                                                     dstActorName);
-            for (auto &name : connNames) {
-              if (std::find(inputSignals.begin(), inputSignals.end(), name) == inputSignals.end()) {
-                inputSignals.push_back(name);
-              }
-            }
-          }
-        }
-        assert(op.second.getArgOrder().size() == inputSignals.size()); // make sure we retrieved the right number of inputSignal names
-      }
-      if (op.second.getType() == "output_selector") { // NOTE workaround to retain ordering of ports for output selector
-        // we don't clear the outputSignal vector as we're just shuffling around the names
-        for (auto &i : op.second.getOutputEdges()) {
-          for (auto &conn : circuit.getConnectionMap()) { // find VHDL connection corresponding to edge
-            if (conn.second.getName() == i) {
-              for (int exec = 0; exec < conn.second.getInputVector().size(); exec++) {
-                if (conn.second.getInputVector().at(exec) == 1) { // the position of the exec rate of 1 determines its order in the output signal vector
-                  if (conn.second.getInitialTokenCount() || !isBufferless) {
-                    outputSignals.at(exec) = conn.second.getSrcPort();
-                  } else {
-                    outputSignals.at(exec) = i;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      for (auto &inPort : inputSignals) {
-        std::vector<std::string> receiveSigs(3);
+      int inPortCount, outPortCount = 0;
+      for (auto s : comp.getHSInputSignals()) {
+        std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, true);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj") {
+        if (comp.isConst() || comp.getType() == "Proj") {
           sigPrefix = "";
         }
-        receiveSigs = generateReceiveSigNames(inPort, circuit);
         outputStream << "    " << sigPrefix << "in_ready_" << std::to_string(inPortCount)
-                     << " => " << receiveSigs[READY] << ",\n"
+                     << " => " << sigNames[READY] << ",\n"
                      << "    " << sigPrefix << "in_valid_" << std::to_string(inPortCount)
-                     << " => " << receiveSigs[VALID] << ",\n"
+                     << " => " << sigNames[VALID] << ",\n"
                      << "    " << sigPrefix << "in_data_" << std::to_string(inPortCount)
-                     << " => " << receiveSigs[DATA] << ",\n" << std::endl;
+                     << " => " << sigNames[DATA] << ",\n" << std::endl;
         inPortCount++;
       }
       std::string lineEnder = ",";
-      size_t numOutPorts = outputSignals.size();
+      size_t numOutPorts = comp.getHSOutputSignals().size();
       size_t iteration = 1;
-      for (auto &outPort : outputSignals) {
-        std::vector<std::string> sendSigs(3);
+      for (auto s : comp.getHSOutputSignals()) {
+        std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, false);
         std::string sigPrefix = "op_";
-        if (op.second.isConst() || op.second.getType() == "Proj") {
+        if (comp.isConst() || comp.getType() == "Proj") {
           sigPrefix = "";
         }
-        sendSigs = generateSendSigNames(outPort, circuit);
         if (iteration == numOutPorts) {
           lineEnder = "";  // last port mapping terminates without a comma
         }
         outputStream << "    " << sigPrefix << "out_ready_" << std::to_string(outPortCount)
-                     << " => " << sendSigs[READY] << ",\n"
+                     << " => " << sigNames[READY] << ",\n"
                      << "    " << sigPrefix << "out_valid_" << std::to_string(outPortCount)
-                     << " => " << sendSigs[VALID] << ",\n"
+                     << " => " << sigNames[VALID] << ",\n"
                      << "    " << sigPrefix << "out_data_" << std::to_string(outPortCount)
-                     << " => " << sendSigs[DATA] << lineEnder << "\n"
+                     << " => " << sigNames[DATA] << lineEnder << "\n"
                      << std::endl;
         outPortCount++;
         iteration++;
@@ -1970,96 +1883,50 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit,
     }
   }
 
-  // buffer port mappings
-  if (!isBufferless) {
-    int bufferCount = 0;
-    std::string bCompName = "hs_fifo";
-    std::string bName = "buffer";
-    for (auto &buffer : circuit.getConnectionMap()) {
-      // only generate buffer between non-input/output components
-      if (!(circuit.getInputPorts().count(buffer.second.getDstPort()) ||
-            circuit.getOutputPorts().count(buffer.second.getSrcPort()))) {
+  // Buffer port mappings
+  int bufferCount = 0;
+  std::string bCompName = "hs_fifo";
+  std::string bName = "buffer";
+  for (auto &buffer : circuit.getConnectionMap()) {
+    if (!isBufferless || buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
+      std::vector<std::string> sendSigs;
+      std::vector<std::string> receiveSigs;
+      sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
+      receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+      // ram width/depth, reset, and clock mappings
+      TOKEN_UNIT bufferPadding = 1; // buffers with size 0 would cause deadlocks
+      outputStream << "fifo_" + std::to_string(bufferCount)
+                   << " : " << bCompName << "\n"
+                   <<"generic map (\n"
+                   << "    " << "ram_width => ram_width,\n"
+                   << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
+                   << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
+                   << std::endl;
+      outputStream << "port map (\n"
+                   << "    " << bName << "_clk => " << "clk,\n"
+                   << "    " << bName << "_rst => " << "rst,\n"
+                   << std::endl;
+      // input/output mappings
+      outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
+                   << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
+                   << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
+                   << std::endl;
+      outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
+                   << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
+                   << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
+                   << std::endl;
+      bufferCount++;
+    } else {
+      // simply pass through data if no operators and no initial tokens
+      if (circuit.getSrcComponent(buffer.second).getType() == "INPUT" &&
+          circuit.getDstComponent(buffer.second).getType() == "OUTPUT") {
         std::vector<std::string> sendSigs;
         std::vector<std::string> receiveSigs;
-        if (!noOperators) {
-          sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-          receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
-        } else { // NOTE workaround to deal with case where only inputs/outputs in Faust program
-          sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
-          receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
-        }
-        // ram width/depth, reset, and clock mappings
-        TOKEN_UNIT bufferPadding = 1;
-        // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
-        outputStream << "fifo_" + std::to_string(bufferCount)
-                     << " : " << bCompName << "\n"
-                     <<"generic map (\n"
-                     << "    " << "ram_width => ram_width,\n"
-                     << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
-                     << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
-                     << std::endl;
-        outputStream << "port map (\n"
-                     << "    " << bName << "_clk => " << "clk,\n"
-                     << "    " << bName << "_rst => " << "rst,\n"
-                     << std::endl;
-        // input/output mappings
-        outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
-                     << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
-                     << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
-                     << std::endl;
-        outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
-                     << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
-                     << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
-                     << std::endl;
-        bufferCount++;
-      }
-    }
-  } else {
-    int bufferCount = 0;
-    std::string bCompName = "hs_fifo";
-    std::string bName = "buffer";
-    for (auto &buffer : circuit.getConnectionMap()) {
-      if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
-        std::vector<std::string> sendSigs;
-        std::vector<std::string> receiveSigs;
-        sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-        receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
-        // ram width/depth, reset, and clock mappings
-        TOKEN_UNIT bufferPadding = 1;
-        // if (buffer.second.getBufferSize() == 0) { bufferPadding = 1; } // buffers with size 0 would cause deadlocks
-        outputStream << "fifo_" + std::to_string(bufferCount)
-                     << " : " << bCompName << "\n"
-                     <<"generic map (\n"
-                     << "    " << "ram_width => ram_width,\n"
-                     << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
-                     << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
-                     << std::endl;
-        outputStream << "port map (\n"
-                     << "    " << bName << "_clk => " << "clk,\n"
-                     << "    " << bName << "_rst => " << "rst,\n"
-                     << std::endl;
-        // input/output mappings
-        outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
-                     << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
-                     << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
-                     << std::endl;
-        outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
-                     << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
-                     << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
-                     << std::endl;
-        bufferCount++;
-      } else { // simply pass through data if no operators and initial tokens
-        std::vector<std::string> sendSigs;
-        std::vector<std::string> receiveSigs;
-        // for (auto &buffer : circuit.getConnectionMap()) {
-        //   if (!buffer.second.getInitialTokenCount()) {
-            sendSigs = generateReceiveSigNames(buffer.second.getSrcPort(), circuit);
-            receiveSigs = generateSendSigNames(buffer.second.getDstPort(), circuit);
-            outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
-            outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
-            outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
-        //   }
-        // }
+        sendSigs = generateSendSigNames(buffer.second.getName(), circuit);
+        receiveSigs = generateReceiveSigNames(buffer.second.getName(), circuit);
+        outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
+        outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
+        outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
       }
     }
   }

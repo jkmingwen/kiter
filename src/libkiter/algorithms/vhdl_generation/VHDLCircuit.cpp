@@ -315,6 +315,7 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
   for (auto const &[v, comp] : this->getComponentMap()) {
     if (comp.getType() == "INPUT") {
       std::vector<std::string> signalNames(3);
+      // 0: VALID, 1: READY, 2: DATA
       signalNames[0] = this->getName() + "_in_valid_" + std::to_string(comp.getIOId());
       signalNames[1] = this->getName() + "_in_ready_" + std::to_string(comp.getIOId());
       signalNames[2] = this->getName() + "_in_data_" + std::to_string(comp.getIOId());
@@ -331,6 +332,7 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
       }
     } else if (comp.getType() == "OUTPUT") {
       std::vector<std::string> signalNames(3);
+      // 0: VALID, 1: READY, 2: DATA
       signalNames[0] = this->getName() + "_out_valid_" + std::to_string(comp.getIOId());
       signalNames[1] = this->getName() + "_out_ready_" + std::to_string(comp.getIOId());
       signalNames[2] = this->getName() + "_out_data_" + std::to_string(comp.getIOId());
@@ -385,6 +387,23 @@ std::vector<std::string> VHDLCircuit::generateValidReadySignalNames(bool isBuffe
         signalNames.push_back(conn.getName() + "_READY");
       }
     }
+  }
+
+  return signalNames;
+}
+
+std::vector<std::string> VHDLCircuit::generateHSSignalNames(std::string &name,
+                                                            bool isInputSig) const {
+  std::vector<std::string> signalNames(3);
+  std::vector<std::string> topLevelPorts;
+  if (isInputSig && this->getInputPorts().count(name)) {
+    signalNames = this->inputPorts.at(name);
+  } else if (!isInputSig && this->getOutputPorts().count(name)) {
+    signalNames = this->outputPorts.at(name);
+  } else {
+    signalNames[0] = name + "_VALID";
+    signalNames[1] = name + "_READY";
+    signalNames[2] = name + "_DATA";
   }
 
   return signalNames;

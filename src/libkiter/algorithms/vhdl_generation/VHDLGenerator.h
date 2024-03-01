@@ -81,8 +81,7 @@ namespace algorithms {
                                                 const VHDLCircuit &circuit);
   std::vector<std::string> generateReceiveSigNames(const std::string &dstPort,
                                                    const VHDLCircuit &circuit);
-  std::string generatePortMapping(const VHDLCircuit &circuit,
-                                  bool noOperators);
+  std::string generatePortMapping(const VHDLCircuit &circuit);
   void printCircuitInfo(models::Dataflow* const dataflow,
                         parameters_list_t param_list);
 }

@@ -14,6 +14,9 @@ namespace models {
   class Dataflow;
 }
 
+std::string getNameFromPartialName(models::Dataflow *const dataflow,
+                                   const std::string &partialName);
+
 class VHDLComponent {
  public:
   // VHDLComponent();
@@ -34,7 +37,9 @@ class VHDLComponent {
   std::string getImplementationName()const;
   const std::vector<std::string>& getArgOrder() const;
   const std::map<std::string, int>& getInputTypes() const;
-  const std::map<std::string, int>& getOutputTypes() const;
+  const std::map<std::string, int> &getOutputTypes() const;
+  const std::vector<std::string> getHSInputSignals() const;
+  const std::vector<std::string> getHSOutputSignals() const;
   void setDataType(const std::string& newType);
   std::string getDataType() const ;
   bool isConst() const;
@@ -43,6 +48,8 @@ class VHDLComponent {
   void setUniqueName(const std::string& newName);
   void setImplementationName(const std::string& newName);
   void setIOId(int id);
+  void addHSInputSignal(const std::string& signalName);
+  void addHSOutputSignal(const std::string& signalName);
   std::string printStatus() const ;
 
  private:
@@ -53,6 +60,8 @@ class VHDLComponent {
   std::string componentType;
   std::vector<std::string> inputEdges;
   std::vector<std::string> outputEdges;
+  std::vector<std::string> hsInputSignals;
+  std::vector<std::string> hsOutputSignals;
   std::string implementationName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
   std::string dataType;
