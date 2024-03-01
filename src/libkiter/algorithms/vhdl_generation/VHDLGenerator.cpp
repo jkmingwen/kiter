@@ -96,7 +96,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  circuit.updateTopLevelPorts(isBufferless);
+  circuit.updateTopLevelPorts();
 
   return circuit;
 }
@@ -264,6 +264,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       VERBOSE_FAILURE();
   }
 
+  if (!isBufferless) {
+    {ForEachEdge(dataflow, e) {
+        if (!dataflow->getPreload(e)) {
+          dataflow->setPreload(e, 1);
+        }
+      }}
+  }
   // VHDLCircuit object specifies operators and how they're connected
   VHDLCircuit tmp = generateCircuitObject(dataflow);
   while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
@@ -750,14 +757,10 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   }
 
   // FIFO component instantiation
-  if (!isBufferless) {
-    vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-  } else {
-    for (auto &conn : circuit.getConnectionMap()) {
-      if (conn.second.getInitialTokenCount()) {
-        vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-        break;
-      }
+  for (auto &conn : circuit.getConnectionMap()) {
+    if (conn.second.getInitialTokenCount()) {
+      vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+      break;
     }
   }
 
@@ -773,8 +776,8 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   }
 
   // 2. Generate intermediate signal names
-  dataSignals = circuit.generateDataSignalNames(isBufferless);
-  validReadySignals = circuit.generateValidReadySignalNames(isBufferless);
+  dataSignals = circuit.generateDataSignalNames();
+  validReadySignals = circuit.generateValidReadySignalNames();
 
   // 3. Write signal names to VHDL output
   // data signals
@@ -1859,7 +1862,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
   std::string bCompName = "hs_fifo";
   std::string bName = "buffer";
   for (auto &buffer : circuit.getConnectionMap()) {
-    if (!isBufferless || buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
+    if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
       auto src = buffer.second.getSrcPort();
       auto dst = buffer.second.getDstPort();
       std::vector<std::string> sendSigs = circuit.generateHSSignalNames(src, 1);

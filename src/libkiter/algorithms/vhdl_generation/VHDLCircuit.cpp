@@ -311,7 +311,7 @@ void VHDLCircuit::refreshComponentMap() {
 // Instantiate top level input/output port names and the corresponding signals
 // they use
 // To be called only after instantiating component and connection maps
-void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
+void VHDLCircuit::updateTopLevelPorts() {
   std::map<int, std::string> inSignalNames;
   std::map<int, std::string> outSignalNames;
   // TODO check that component and connection maps have been instantiated
@@ -326,7 +326,7 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
       for (auto const &edgeName : comp.getOutputEdges()) {
         for (auto const &[e, conn] : this->getConnectionMap()) {
           if (conn.getName() == edgeName) {
-            if (conn.getInitialTokenCount() || !isBufferless) {
+            if (conn.getInitialTokenCount()) {
               this->addInputPort(conn.getSrcPort(), signalNames);
             } else {
               this->addInputPort(edgeName, signalNames);
@@ -343,7 +343,7 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
       for (auto const &edgeName : comp.getInputEdges()) {
         for (auto const &[e, conn] : this->getConnectionMap()) {
           if (conn.getName() == edgeName) {
-            if (conn.getInitialTokenCount() || !isBufferless) {
+            if (conn.getInitialTokenCount()) {
               this->addOutputPort(conn.getDstPort(), signalNames);
             } else {
               this->addOutputPort(edgeName, signalNames);
