@@ -18,9 +18,13 @@ VHDLCircuit::VHDLCircuit() {}
  */
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
   newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
-  this->componentMap.insert(std::make_pair(newComp.getActor(),
-                                           newComp));
-  this->operatorMap[newComp.getType()]++; // keep track of counts of operator types present in circuit
+  this->componentMap.insert(std::make_pair(newComp.getActor(), newComp));
+  // keep track of counts of operator types present in circuit
+  if (this->operatorMap.count(newComp.getType())) {
+    this->operatorMap[newComp.getType()]++;
+  } else {
+    this->operatorMap[newComp.getType()] = 1; // prevent count value initialising to anything other than 1
+  }
   if (newComp.hasMixedType()) {
     this->refreshComponentMap();
   }
