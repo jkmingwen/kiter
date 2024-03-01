@@ -354,14 +354,14 @@ void VHDLCircuit::updateTopLevelPorts(bool isBufferless) {
 std::vector<std::string> VHDLCircuit::generateDataSignalNames(bool isBufferless) {
   std::vector<std::string> signalNames;
   for (auto const &[e, conn] : this->getConnectionMap()) {
-    if (!isBufferless || conn.getInitialTokenCount()) {
-      // 2 sets of signals to connect with FIFO buffer inbetween
-      signalNames.push_back(conn.getSrcPort() + "_DATA");
-      signalNames.push_back(conn.getDstPort() + "_DATA");
-    } else {
-      // Connections directly between input and output have no intermediate signals
-      if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
-            this->getDstComponent(conn).getType() == "OUTPUT")) {
+    // Connections directly between input and output have no intermediate signals
+    if (!(this->getSrcComponent(conn).getType() == "INPUT" ||
+          this->getDstComponent(conn).getType() == "OUTPUT")) {
+      if (!isBufferless || conn.getInitialTokenCount()) {
+        // 2 sets of signals to connect with FIFO buffer inbetween
+        signalNames.push_back(conn.getSrcPort() + "_DATA");
+        signalNames.push_back(conn.getDstPort() + "_DATA");
+      } else {
         signalNames.push_back(conn.getName() + "_DATA");
       }
     }
@@ -373,16 +373,16 @@ std::vector<std::string> VHDLCircuit::generateDataSignalNames(bool isBufferless)
 std::vector<std::string> VHDLCircuit::generateValidReadySignalNames(bool isBufferless) {
   std::vector<std::string> signalNames;
   for (auto const &[e, conn] : this->getConnectionMap()) {
-    if (!isBufferless || conn.getInitialTokenCount()) {
-      // 2 sets of signals to connect with FIFO buffer inbetween
-      signalNames.push_back(conn.getSrcPort() + "_VALID");
-      signalNames.push_back(conn.getDstPort() + "_VALID");
-      signalNames.push_back(conn.getSrcPort() + "_READY");
-      signalNames.push_back(conn.getDstPort() + "_READY");
-    } else {
-      // Connections directly between input and output have no intermediate signals
-      if (!(this->getSrcComponent(conn).getType() == "INPUT" &&
-            this->getDstComponent(conn).getType() == "OUTPUT")) {
+    // Connections directly between input and output have no intermediate signals
+    if (!(this->getSrcComponent(conn).getType() == "INPUT" ||
+          this->getDstComponent(conn).getType() == "OUTPUT")) {
+      if (!isBufferless || conn.getInitialTokenCount()) {
+        // 2 sets of signals to connect with FIFO buffer inbetween
+        signalNames.push_back(conn.getSrcPort() + "_VALID");
+        signalNames.push_back(conn.getDstPort() + "_VALID");
+        signalNames.push_back(conn.getSrcPort() + "_READY");
+        signalNames.push_back(conn.getDstPort() + "_READY");
+      } else {
         signalNames.push_back(conn.getName() + "_VALID");
         signalNames.push_back(conn.getName() + "_READY");
       }

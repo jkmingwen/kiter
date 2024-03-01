@@ -1733,35 +1733,6 @@ void algorithms::generateAudioInterfaceComponents() {
   }
 }
 
-std::vector<std::string> algorithms::generateSendSigNames(const std::string &srcPort,
-                                                          const VHDLCircuit &circuit) {
-  std::vector<std::string> sendSignals(3);
-
-  if (circuit.getOutputPorts().count(srcPort)) {
-    sendSignals = circuit.getOutputPorts().at(srcPort);
-  } else {
-    sendSignals[VALID] = srcPort + "_VALID";
-    sendSignals[READY] = srcPort + "_READY";
-    sendSignals[DATA] = srcPort + "_DATA";
-  }
-  return sendSignals;
-}
-
-std::vector<std::string> algorithms::generateReceiveSigNames(const std::string &dstPort,
-                                                             const VHDLCircuit &circuit) {
-  std::vector<std::string> receiveSignals(3);
-
-  if (circuit.getInputPorts().count(dstPort)) {
-    receiveSignals = circuit.getInputPorts().at(dstPort);
-  } else {
-    receiveSignals[VALID] = dstPort + "_VALID";
-    receiveSignals[READY] = dstPort + "_READY";
-    receiveSignals[DATA] = dstPort + "_DATA";
-  }
-
-  return receiveSignals;
-}
-
 // Generate port mapping for each operator in the circuit
 std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
   std::stringstream outputStream;
@@ -1889,10 +1860,10 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
   std::string bName = "buffer";
   for (auto &buffer : circuit.getConnectionMap()) {
     if (!isBufferless || buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
-      std::vector<std::string> sendSigs;
-      std::vector<std::string> receiveSigs;
-      sendSigs = generateSendSigNames(buffer.second.getSrcPort(), circuit);
-      receiveSigs = generateReceiveSigNames(buffer.second.getDstPort(), circuit);
+      auto src = buffer.second.getSrcPort();
+      auto dst = buffer.second.getDstPort();
+      std::vector<std::string> sendSigs = circuit.generateHSSignalNames(src, 1);
+      std::vector<std::string> receiveSigs = circuit.generateHSSignalNames(dst, 0);
       // ram width/depth, reset, and clock mappings
       TOKEN_UNIT bufferPadding = 1; // buffers with size 0 would cause deadlocks
       outputStream << "fifo_" + std::to_string(bufferCount)
@@ -1920,10 +1891,9 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
       // simply pass through data if no operators and no initial tokens
       if (circuit.getSrcComponent(buffer.second).getType() == "INPUT" &&
           circuit.getDstComponent(buffer.second).getType() == "OUTPUT") {
-        std::vector<std::string> sendSigs;
-        std::vector<std::string> receiveSigs;
-        sendSigs = generateSendSigNames(buffer.second.getName(), circuit);
-        receiveSigs = generateReceiveSigNames(buffer.second.getName(), circuit);
+        auto edgeName = buffer.second.getName();
+        std::vector<std::string> sendSigs = circuit.generateHSSignalNames(edgeName, 1);
+        std::vector<std::string> receiveSigs  = circuit.generateHSSignalNames(edgeName, 0);
         outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
         outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
         outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
