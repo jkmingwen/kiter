@@ -180,6 +180,10 @@ namespace algorithms {
             for (auto& future : futures) {
                 future.wait();
             }
+
+            VERBOSE_INFO("End of explore, in process size is " << this->in_progress.size() << " and job pool size is " << this->job_pool.size());
+            if (exploration_parameters.realtime_output)  std::cout << print_unfinished();
+
         }
 
 
@@ -215,6 +219,17 @@ namespace algorithms {
             return res;
         }
 
+        std::string ModularDSE::print_unfinished() {
+            std::string res = "";
+
+            for (auto c : this->in_progress) {
+                res += c.to_csv_line(true) + "\n";
+            }
+            for (auto c : this->job_pool) {
+                res += c.to_csv_line(true) + "\n";
+            }
+            return res;
+        }
 
         void ModularDSE::import_results(TokenConfigurationSet& database) {
             for (TokenConfiguration res : database) {

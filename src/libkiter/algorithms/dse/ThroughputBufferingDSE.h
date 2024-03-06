@@ -31,10 +31,11 @@ namespace algorithms {
 
         class ThroughputBufferingNext {
         public:
-            ThroughputBufferingNext(ThroughputBufferingMode mode) :  mode(mode)  {}
+            ThroughputBufferingNext(ThroughputBufferingMode mode, bool use_cache) :  mode(mode) , use_cache(use_cache) {}
             algorithms::dse::ModularDSE::NextFuncRes operator()(const algorithms::dse::TokenConfiguration& current) const;
         private:
             ThroughputBufferingMode mode;
+            bool use_cache;
         };
 
 

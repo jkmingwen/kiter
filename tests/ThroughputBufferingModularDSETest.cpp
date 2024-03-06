@@ -158,7 +158,7 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
         // 2. run a dse with target throughout to beat.
         algorithms::dse::ModularDSE dse(cc_g,
                                         algorithms::dse::kperiodic_performance_func,
-                                        algorithms::dse::ThroughputBufferingNext(algorithms::dse::KDSE_MODE),
+                                        algorithms::dse::ThroughputBufferingNext(algorithms::dse::KDSE_MODE, false),
                                         algorithms::dse::ThroughputBufferingStopCondition(target_th, true),
                                         1);
         dse.add_initial_job(tc);
