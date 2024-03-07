@@ -261,13 +261,13 @@ models::Dataflow * RandomGenerator::generate (int seed) {
 			dataflow->setEdgeOutInitPhases(c, out_init_phases);
 
 
-			VERBOSE_INFO("Autogen edge_id=" << i << " nweight_in=" << nweight_in << " nweight_out=" << nweight_out);
-			VERBOSE_INFO("         " << " gcdz=" <<  gcdz  << "  factor=" <<  factor  );
-			VERBOSE_INFO("         "
+            VERBOSE_DEBUG("Autogen edge_id=" << i << " nweight_in=" << nweight_in << " nweight_out=" << nweight_out);
+            VERBOSE_DEBUG("         " << " gcdz=" <<  gcdz  << "  factor=" <<  factor  );
+			VERBOSE_DEBUG("         "
 			<< "  weight_in_periodic=" <<  weight_in_periodic << "  weight_out_periodic=" <<  weight_out_periodic
 			 << " in_periodic_phases=" <<  commons::toString(in_periodic_phases) << " out_periodic_phases=" <<  commons::toString(out_periodic_phases)
 			<< " in_periodic_sections=" <<  commons::toString(in_periodic_sections)  << " out_periodic_sections=" <<  commons::toString(out_periodic_sections)  );
-			VERBOSE_INFO("         "
+            VERBOSE_DEBUG("         "
 			<< "  weight_in_init=" <<  weight_in_init << "  weight_out_init=" <<  weight_out_init
 			 << " in_init_phases=" <<  commons::toString(in_init_phases) << " out_init_phases=" <<  commons::toString(out_init_phases)
 			<< " in_init_sections=" <<  commons::toString(in_init_sections)  << " out_init_sections=" <<  commons::toString(out_init_sections)  );

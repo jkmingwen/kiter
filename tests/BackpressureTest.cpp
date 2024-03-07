@@ -36,6 +36,7 @@ BOOST_FIXTURE_TEST_SUITE( backpressure_test , WITH_SAMPLE)
         VERBOSE_INFO("Backpressure: pipeline sample");
         TIME_UNIT period = get_period(pipeline_sample);
         params["PERIOD"] = commons::toString(period);
+        BOOST_TEST_MESSAGE("PERIOD is " << period);
         algorithms::compute_backpressure_memory_sizing(pipeline_sample, params);
     }
 
@@ -60,9 +61,8 @@ BOOST_FIXTURE_TEST_SUITE( backpressure_test , WITH_SAMPLE)
         VERBOSE_INFO("Running backpressure");
         for(auto graph : graphs) {
             TIME_UNIT period = get_period(graph);
-
-            if(period <= 0) continue;
-
+            if(period <= 0 || std::isinf(period)) continue;
+            BOOST_TEST_MESSAGE("PERIOD is " << period);
             params["PERIOD"] = commons::toString(period);
             algorithms::compute_backpressure_memory_sizing(graph, params);
         }
