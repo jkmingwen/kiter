@@ -78,6 +78,7 @@ BOOST_AUTO_TEST_CASE( random_speriodic_test )
         VERBOSE_INFO("generate graph " << i << " with " << buf_num);
 
         models::Dataflow *g = generate_random_graph(i, buf_num, MAX_PHASE_COUNT, 2, 1);
+        g->reset_computation();
         graphs.push_back(g);
     }
 

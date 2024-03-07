@@ -1,0 +1,15 @@
+FROM ubuntu:noble
+
+
+
+################################### PACKAGE INSTALL  ##########################
+RUN apt-get update && apt-get install --no-install-recommends -y git make cmake gcc g++ libboost-all-dev libxml2-dev libglpk-dev glpk-utils && apt-get clean && rm -rf /var/lib/apt/lists/*
+################################################################################
+
+RUN mkdir /kiter/
+COPY . /kiter/
+WORKDIR /kiter/
+RUN make clean
+RUN make release
+RUN make unit_test
+

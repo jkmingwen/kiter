@@ -50,7 +50,10 @@ class WITH_SAMPLE {
         pipeline_sample->setNoC(noc);
         cycle_sample->setNoC(noc);
         mult_scc_sample->setNoC(noc);
-
+//  // TODO: This should have been a good idea, but the reset_computation, computeRepetitionVector  ...
+//        computeRepetitionVector(pipeline_sample);
+//        computeRepetitionVector(cycle_sample);
+//        computeRepetitionVector(mult_scc_sample);
     	BOOST_TEST_MESSAGE( "WITH_SAMPLE Setup Done" );
 	}
 	~WITH_SAMPLE () {

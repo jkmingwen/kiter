@@ -10,7 +10,7 @@
 #include <models/Dataflow.h>
 
 void algorithms::transformation::remove_reentrancy (models::Dataflow* const  dataflow, parameters_list_t params) {
-
+    dataflow->reset_computation();
 	if (params.find("taskname") != params.end()) {
 		auto names = commons::split<std::string>(params["taskname"], ',');
 		for (auto name : names) {
