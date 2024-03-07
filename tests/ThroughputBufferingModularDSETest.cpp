@@ -75,7 +75,7 @@ models::Dataflow* generateGraph () {
 }
 
 
-BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
+BOOST_FIXTURE_TEST_SUITE(ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
 
     BOOST_AUTO_TEST_CASE(solve_ThroughputBuffering_test_with_reentrancy) {
 
@@ -181,5 +181,40 @@ BOOST_FIXTURE_TEST_SUITE( ThroughputBuffering_modular_dse_test, WITH_SAMPLE)
         delete cc_g;
     }
 
+
+    BOOST_AUTO_TEST_CASE(solve_ThroughputBuffering_test_with_timeout) {
+
+        commons::set_verbose_mode(commons::DEBUG_LEVEL);
+        // create the input graph
+        models::Dataflow g;
+        Vertex v1 = g.addVertex(4,"v1");
+        Vertex v2 = g.addVertex(6,"v2");
+        Edge e1 = g.addEdge(v1, v2, 1,"e");
+
+        g.setPreload(e1, 2);
+
+
+        g.setEdgeInPhases(e1, {1, 2});
+        g.setEdgeOutPhases(e1, {11});
+
+
+        g.setVertexDuration(v1,{1,1});
+        g.setVertexDuration(v2,{4});
+
+        g.setReentrancyFactor(v1,1);
+        g.setReentrancyFactor(v2,1);
+
+        g.setEdgeType(e1,EDGE_TYPE::NORMAL_EDGE);
+        auto throughput_res = algorithms::compute_Kperiodic_throughput_and_cycles(&g);
+        TIME_UNIT target_throughput = throughput_res.throughput;
+        std::cout << "Throughput is " << target_throughput << std::endl;
+
+        algorithms::dse::ExplorationParameters params;
+        params.timeout_sec = 1;
+        params.realtime_output = true;
+        algorithms::dse::TokenConfigurationSet res = algorithms::dse::solve_throughputbuffering( &g, algorithms::dse::KDSE_MODE, params) ;
+
+
+    }
 
 BOOST_AUTO_TEST_SUITE_END()

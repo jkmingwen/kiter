@@ -466,6 +466,7 @@ namespace algorithms {
                 VERBOSE_INFO("Wait for stop signal effect.");
                 exploration_future.wait();
                 VERBOSE_INFO("Exploration_future ended, after stop signal.");
+                VERBOSE_WARNING("Incomplete exploration.");
             } else {
                 VERBOSE_INFO("exploration_future ended by itself, without stop signal.");
             }

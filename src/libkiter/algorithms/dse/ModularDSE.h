@@ -76,6 +76,7 @@ namespace algorithms {
             const TokenConfigurationSet & getResults () const {return results;} ;
             size_t results_size () const {return results.size();};
             size_t job_pool_size () const {return job_pool.size();};
+            size_t in_progress_size () const {return in_progress.size();};
             std::string print_space(bool no_timing = false);
             std::string print_unfinished();
 
