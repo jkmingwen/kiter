@@ -109,6 +109,7 @@ public:
 					return it;
 			}
 		}
+        VERBOSE_ERROR("getLeftNeighbour: no edge from this node");
         throw NoCException();
 	};
 	const NetworkEdge& getRightNeighbour(node_id_t src) const {
@@ -118,6 +119,7 @@ public:
 					return it;
 			}
 		}
+        VERBOSE_ERROR("getRightNeighbour: no edge from this node");
         throw NoCException();
 	};
 	const NetworkEdge& getTopNeighbour(node_id_t src) const {
@@ -127,6 +129,7 @@ public:
 					return it;
 			}
 		}
+        VERBOSE_ERROR("getTopNeighbour: no edge from this node");
         throw NoCException();
 	};
 	const NetworkEdge& getBottomNeighbour(node_id_t src) const {
@@ -137,6 +140,7 @@ public:
 			}
 		}
 
+        VERBOSE_ERROR("getBottomNeighbour: no edge from this node");
         throw NoCException();
 	};
 	const NetworkEdge& getSrcNeighbour(node_id_t src) const {
@@ -146,6 +150,7 @@ public:
 					return it;
 			}
 		}
+        VERBOSE_ERROR("getSrcNeighbour: no edge to this node.");
         throw NoCException();
 	};
 	const NetworkEdge& getDstNeighbour(node_id_t dst) const {
@@ -155,6 +160,7 @@ public:
 					return it;
 			}
 		}
+        VERBOSE_ERROR("getSrcNeighbour: no edge from this node.");
         throw NoCException();
 	};
 

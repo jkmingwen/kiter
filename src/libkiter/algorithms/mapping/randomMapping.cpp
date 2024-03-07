@@ -11,11 +11,16 @@
 void algorithms::mapping::randomMapping (models::Dataflow* const  dataflow, parameters_list_t params) {
 
 	VERBOSE_INFO("randomMapping");
+
+    VERBOSE_ASSERT(dataflow->getNoC().size() > 0, "The dataflow must have a NoC associated to it to be mapped.");
+
 	for (auto t : dataflow->vertices()) {
 		if (params.find(dataflow->getVertexName(t)) != params.end()) {
 			dataflow->setMapping(t, commons::fromString<node_id_t> (params[dataflow->getVertexName(t)]));
 		} else {
-			node_id_t random_id = dataflow->getNoC().size() + std::rand() % dataflow->getNoC().size();
+            auto noc_size = dataflow->getNoC().size() ;
+            auto rand_val = std::rand() ;
+			node_id_t random_id = noc_size + rand_val % noc_size;
 			dataflow->setMapping(t, random_id);
 		}
 	}
