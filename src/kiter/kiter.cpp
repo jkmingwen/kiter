@@ -10,6 +10,9 @@
 #include <printers/printers.h>
 #include <commons/commons.h>
 
+// Please keep this here, necessary for Ubuntu linking
+#include <algorithms/algorithms.h>
+
 
 
 inline double tock() {

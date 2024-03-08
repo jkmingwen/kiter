@@ -10,6 +10,6 @@ RUN mkdir /kiter/
 COPY . /kiter/
 WORKDIR /kiter/
 RUN make clean
-RUN make release
-RUN make unit_test
+RUN make release -j12
+RUN ./Release/bin/kiter -h
 
