@@ -44,6 +44,8 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
                                                                                              const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes);
 StorageDistribution initialiseDist(models::Dataflow* dataflow);
 void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>& matching, StorageDistribution checkDist);
+std::string vectorToCSV(std::vector<ARRAY_INDEX> v, std::string sep);
+std::string vectorStringsToCSV(std::vector<std::string> v, std::string sep);
 
 
 

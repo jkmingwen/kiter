@@ -14,6 +14,8 @@
 #include <models/Dataflow.h>
 #include <models/EventGraph.h>
 #include <models/repetition_vector.h>
+#include "algorithms/dse/deep_dse.h"
+#include "algorithms/transformation/normalize.h"
 #include "buffer_sizing.h"
 #include "kperiodic.h"
 #include <chrono> // to take computation timings
@@ -448,10 +450,12 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 #endif
 
     // create new graph with modelled bounded channel quantities
-    models::Dataflow* dataflow_prime;
+    models::Dataflow *dataflow_prime;
+    std::map<Edge,Edge> matching;
     if (!initializedWFeedback){
         auto dataflow_and_matching = genGraphWFeedbackEdgesWithPairs(dataflow);
         dataflow_prime = dataflow_and_matching.first;
+        matching = dataflow_and_matching.second;
     } else {
         dataflow_prime = new models::Dataflow(*dataflow);
         dataflow_prime->reset_computation();
@@ -557,6 +561,14 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 
     // initialise data logging file
     std::ofstream dseLog;
+    std::ofstream ccLog;
+    std::ofstream ccLogNorm;
+    ccLog.open(logDirName + dataflow_prime->getGraphName() + "_cclog" +
+               methodName + ".csv");
+    ccLog << "ids,tokens" << std::endl;
+    ccLogNorm.open(logDirName + dataflow_prime->getGraphName() + "_norm_cclog" +
+               methodName + ".csv");
+    ccLogNorm << "ids,tokens,input_rate,output_rate" << std::endl;
     if (writeLogFiles) {
         dseLog.open(logDirName + dataflow_prime->getGraphName() + "_dselog" + methodName + ".csv");
         dseLog << "storage distribution size,throughput,channel quantities,dependency mask,computation duration,cumulative duration"
@@ -614,10 +626,14 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
             maxStorageDist.addStorageDistribution(checkDist);
         }
 
+        std::vector<ARRAY_INDEX> ccIds;
+        std::vector<TOKEN_UNIT> ccTokens;
         // Create new storage distributions for every storage dependency found; add new storage distributions to checklist
         for (std::set<Edge>::iterator it = (result.critical_edges).begin();
              it != (result.critical_edges).end(); it++) {
-            if (dataflow_prime->getEdgeType(*it) == FEEDBACK_EDGE){
+            if (dataflow_prime->getEdgeType(*it) == FEEDBACK_EDGE) {
+                ccIds.push_back(dataflow_prime->getEdgeId(*it));
+                ccTokens.push_back(checkDist.getChannelQuantity(*it));
                 StorageDistribution newDist(checkDist);
                 // only increase channel quantity on "modelled" channels
                 VERBOSE_DEBUG_DSE("\tFound storage dependency in channel "<< dataflow_prime->getEdgeName(*it));
@@ -628,6 +644,37 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
                 VERBOSE_DEBUG_DSE("\tUpdating checklist with new storage distribution...");
                 checklist.addStorageDistribution(newDist);
             }
+        }
+        ccLog << "\"";
+        std::string delim = "";
+        for (auto const &i : ccIds) {
+            ccLog << delim << i;
+            delim = ",";
+        }
+        ccLog << "\",\"";
+        delim = "";
+        for (auto const &t : ccTokens) {
+            ccLog << delim << t;
+            delim = ",";
+        }
+        ccLog << "\"" << std::endl;
+
+        // log normalized CCs
+        if (result.critical_edges.size()) {
+            models::Dataflow *cc_g = get_critical_cycle_original_edges_from_prime(
+                                                                                  dataflow_prime, matching, result);
+            std::vector<ARRAY_INDEX> ccNormIds, ccNormTokens;
+            std::vector<std::string> ccNormInRates, ccNormOutRates;
+            transformation::apply_normalization(cc_g, parameters);
+            {ForEachEdge(cc_g, e) {
+                    ccNormIds.push_back(cc_g->getEdgeId(e));
+                    ccNormTokens.push_back(cc_g->getPreload(e));
+                    ccNormInRates.push_back(vectorToCSV(cc_g->getEdgeInVector(e), " "));
+                    ccNormOutRates.push_back(vectorToCSV(cc_g->getEdgeOutVector(e), " "));
+                }}
+            ccLogNorm << vectorToCSV(ccNormIds, ",") << "," << vectorToCSV(ccNormTokens, ",")
+                      << "," << vectorStringsToCSV(ccNormInRates, ",") << ","
+                      << vectorStringsToCSV(ccNormOutRates, ",") << std::endl;
         }
 
         // Ensure minimal set is indeed minimal
@@ -665,6 +712,8 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
         std::cout << "\nPareto points have been written to: "
                   << ppDirName + dataflow_prime->getGraphName() + "_pp" + methodName + ".csv"
                   << std::endl;
+        ccLog.close();
+        ccLogNorm.close();
 
 #ifdef WRITE_GRAPHS
         minStorageDist.printGraphs(dataflow_prime,
@@ -695,6 +744,32 @@ void algorithms::compute_Kperiodic_throughput_dse (models::Dataflow* const dataf
     
   }
 
+std::string vectorToCSV(std::vector<ARRAY_INDEX> v, std::string sep) {
+    std::string output("\"");
+    std::string delim("");
 
+    for (auto const &i : v) {
+        output += delim;
+        output += std::to_string(i);
+        delim = sep;
+    }
+    output += "\"";
+
+    return output;
+}
+
+std::string vectorStringsToCSV(std::vector<std::string> v, std::string sep) {
+    std::string output("\"");
+    std::string delim("");
+
+    for (auto const &i : v) {
+        output += delim;
+        output += i;
+        delim = sep;
+    }
+    output += "\"";
+
+    return output;
+}
 
 
