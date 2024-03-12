@@ -2,14 +2,30 @@ FROM ubuntu:noble
 
 
 
-################################### PACKAGE INSTALL  ##########################
+################################### INSTALL DEPS  ##########################
 RUN apt-get update && apt-get install --no-install-recommends -y git make cmake gcc g++ libboost-all-dev libxml2-dev libglpk-dev glpk-utils && apt-get clean && rm -rf /var/lib/apt/lists/*
-################################################################################
 
+
+################################### PREPARE  ##########################
 RUN mkdir /kiter/
-COPY . /kiter/
-WORKDIR /kiter/
-RUN make clean
-RUN make release -j12
-RUN ./Release/bin/kiter -h
 
+COPY ./src /kiter/src
+COPY ./benchmarks /kiter/benchmarks
+COPY ./modules /kiter/modules
+COPY ./tests /kiter/tests
+COPY ./tools /kiter/tools
+COPY ./CMakeLists.txt /kiter/CMakeLists.txt
+COPY ./Makefile /kiter/Makefile
+
+################################### CLEAN  ##########################
+RUN make clean -C /kiter/
+RUN make sdf3_benchmarks -C /kiter/
+
+################################### COMPILE  ##########################
+RUN make release -j12 -C /kiter/
+
+################################### TEST  ##########################
+RUN /kiter/Release/bin/kiter -h
+
+
+WORKDIR /kiter/
