@@ -460,16 +460,27 @@ namespace algorithms {
 
 
             VERBOSE_INFO("Start waiting for exploration_future.");
-            if (std::future_status::timeout == exploration_future.wait_for(std::chrono::seconds(params.timeout_sec))) {
-                VERBOSE_INFO("Timeout, sending a stop signal.");
-                dse.stop();
-                VERBOSE_INFO("Wait for stop signal effect.");
-                exploration_future.wait();
-                VERBOSE_INFO("Exploration_future ended, after stop signal.");
-            } else {
-                VERBOSE_INFO("exploration_future ended by itself, without stop signal.");
+            bool timeout_happenend = false;
+            if (params.timeout_sec > 0) {
+                // Manage the end with a timeout
+                if (std::future_status::timeout ==
+                    exploration_future.wait_for(std::chrono::seconds(params.timeout_sec))) {
+                    // The timeout happened, we need to force the end.
+                    timeout_happenend = true;
+                    VERBOSE_INFO("Timeout, sending a stop signal.");
+                    dse.stop();
+                    VERBOSE_INFO("Wait for stop signal effect.");
+                } else {
+                    VERBOSE_INFO("exploration_future ended by itself, without stop signal.");
+                }
             }
 
+            exploration_future.wait();
+
+            if (timeout_happenend) {
+                VERBOSE_INFO("Exploration_future ended, after stop signal.");
+                VERBOSE_WARNING("Incomplete exploration.");
+            }
 
             return dse.getResults();
 

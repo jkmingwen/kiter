@@ -70,6 +70,7 @@ static std::vector<ARRAY_INDEX> generate_task_order (const models::Dataflow* con
 	// Loop over to execute everyone. Unoptimized, could be much faster if tasks were stacked, and sum of dependences stored.
 	// This does not model timings, useless for throughput
 	while (total > 0) {
+        bool no_task_executed = true;
 		{ForEachVertex(from,t) {
 			ARRAY_INDEX vId = from->getVertexId(t);
 			bool can_execute = false;
@@ -85,7 +86,7 @@ static std::vector<ARRAY_INDEX> generate_task_order (const models::Dataflow* con
 				}}
 
 				if (can_execute) {
-
+                    no_task_executed =  false;
 					if ( std::find (prog_order.begin(), prog_order.end(), vId) == prog_order.end())
 					{
 						prog_order.push_back(vId);
@@ -103,6 +104,10 @@ static std::vector<ARRAY_INDEX> generate_task_order (const models::Dataflow* con
 				}
 			}
 		}}
+        if (no_task_executed) {
+            VERBOSE_ERROR("This should never happend");
+            break;
+        }
 	}
 
 	return prog_order;
@@ -240,6 +245,7 @@ static std::map<int, route_t> graphProcessing(const models::Dataflow* const data
 	//          TODO: This looks much more complicated than it should be, to rewrite ASAP
 
 
+    VERBOSE_INFO("Run SCCFinder");
 	algorithms::SCCFinder finder = algorithms::SCCFinder(to);
 	finder.printSCCs(to, start);
 
@@ -250,9 +256,14 @@ static std::map<int, route_t> graphProcessing(const models::Dataflow* const data
 	//          TODO: To read the code
 
 
+    VERBOSE_INFO("Run generate_task_order");
 	std::vector<ARRAY_INDEX> prog_order = generate_task_order(dataflow); // #### symbolic execution to find program execution order (prog_order)
+
+
 	models::Dataflow* to2 = new models::Dataflow(*dataflow);
 	to2->reset_computation();
+
+    VERBOSE_INFO("Run removeCycleEdges");
 	start = removeCycleEdges(to2, prog_order,finder.getcyclen_per_vtxid());
 
 	// Result: Seems to remove some edges
@@ -263,7 +274,9 @@ static std::map<int, route_t> graphProcessing(const models::Dataflow* const data
 	//          TODO: To read the code
 
 
+    VERBOSE_INFO("Run GraphMapper");
 	algorithms::GraphMapper mapper = algorithms::GraphMapper(finder.getcyclen_per_vtxid());
+    VERBOSE_INFO("Run taskAndNoCMapping");
 	std::map<int, route_t> routes = mapper.taskAndNoCMapping(dataflow, to2, start, noc);
 
 

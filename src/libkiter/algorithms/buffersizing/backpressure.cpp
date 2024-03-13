@@ -20,7 +20,9 @@ BufferSizingResult algorithms::compute_backpressure_memory_sizing (models::Dataf
 
     // STEP 1 - Compute normalized period
     TIME_UNIT PERIOD = 0 ;
-	if (params.find("PERIOD")!= params.end() ) PERIOD =  commons::fromString<TIME_UNIT>(params["PERIOD"]);
+	if (params.find("PERIOD")!= params.end() ) {
+        PERIOD =  commons::fromString<TIME_UNIT>(params["PERIOD"]);
+    }
     VERBOSE_ASSERT_GreaterThan(PERIOD, 0);
 
 
