@@ -38,7 +38,7 @@
 }
 
 
-models::Scheduling algorithms::scheduling::CSDF_1PeriodicScheduling (const models::Dataflow* const dataflow) {
+models::Scheduling algorithms::scheduling::CSDF_1PeriodicScheduling (const models::Dataflow* const dataflow, TIME_UNIT fixed_period) {
 
  	VERBOSE_ASSERT(dataflow->has_repetition_vector(), "Repetition vector failed.");
 
@@ -76,6 +76,16 @@ models::Scheduling algorithms::scheduling::CSDF_1PeriodicScheduling (const model
 
  	scheduling_t scheduling_result;
  	TIME_UNIT omega = 1.0 / res ;
+
+    if (fixed_period > 0) {
+        if (omega > fixed_period) {
+            VERBOSE_ERROR("Fixed period smaller that minimal period.");
+            VERBOSE_FAILURE();
+        } else {
+            omega = fixed_period;
+        }
+    }
+
  	eg->computeStartingTimeWithOmega (omega);
 
  	{ForEachEvent(eg,e) {
@@ -288,7 +298,12 @@ void algorithms::scheduling::CSDF_1PeriodicThroughput (models::Dataflow*  datafl
 void algorithms::scheduling::OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t params)  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
-	models::Scheduling res = CSDF_1PeriodicScheduling (dataflow);
+    TIME_UNIT fixed_period = 0;
+    if (params.contains("PERIOD")) {
+        fixed_period = commons::fromString<TIME_UNIT>(params["PERIOD"]);
+    }
+
+	models::Scheduling res = CSDF_1PeriodicScheduling (dataflow, fixed_period);
 
    TIME_UNIT omega = res.getGraphPeriod();
 

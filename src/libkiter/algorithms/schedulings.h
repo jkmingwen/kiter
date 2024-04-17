@@ -52,7 +52,7 @@ void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_
 		 void CSDF_NPeriodicThroughput    (models::Dataflow*  dataflow, parameters_list_t );
 
 
-		 models::Scheduling CSDF_1PeriodicScheduling    (const models::Dataflow* const dataflow);
+		 models::Scheduling CSDF_1PeriodicScheduling    (const models::Dataflow* const dataflow, TIME_UNIT fixed_period = 0);
 		 void OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 
@@ -60,7 +60,7 @@ void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_
 		 void CSDF_Real1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
 
 
-		 models::Scheduling CSDF_SPeriodicScheduling       (const models::Dataflow* const dataflow) ;
+		 models::Scheduling CSDF_SPeriodicScheduling       (const models::Dataflow* const dataflow, TIME_UNIT fixed_period = 0) ;
 		 void SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 		 models::Scheduling ASAPScheduling       (models::Dataflow* dataflow) ;

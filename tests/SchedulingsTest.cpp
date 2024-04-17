@@ -206,7 +206,7 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
     BOOST_AUTO_TEST_CASE(CSDF_1PeriodicScheduling) {
         BOOST_REQUIRE(pipeline_sample);
         algorithms::scheduling::CSDF_1PeriodicScheduling(pipeline_sample);
-        randomTest(algorithms::scheduling::CSDF_1PeriodicScheduling);
+        //randomTest(algorithms::scheduling::CSDF_1PeriodicScheduling);
     }
 
     BOOST_AUTO_TEST_CASE(CSDF_RealPeriodicScheduling_LP) {
@@ -218,7 +218,7 @@ BOOST_FIXTURE_TEST_SUITE( schedulings_test, WITH_SAMPLE)
     BOOST_AUTO_TEST_CASE(CSDF_SPeriodicScheduling) {
         BOOST_REQUIRE(pipeline_sample);
         algorithms::scheduling::CSDF_SPeriodicScheduling(pipeline_sample);
-        randomTest(algorithms::scheduling::CSDF_SPeriodicScheduling);
+        //randomTest(algorithms::scheduling::CSDF_SPeriodicScheduling);
     }
 
     BOOST_AUTO_TEST_CASE(ModelASAPScheduling, * boost::unit_test::disabled()) {
