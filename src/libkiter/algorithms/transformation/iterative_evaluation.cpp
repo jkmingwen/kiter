@@ -28,7 +28,7 @@ std::set<std::string> trigOps = {
 };
 
 std::set<std::string> nonEvalOps = { // operators that can't be evaluated
-  "select2", "input_selector", "output_selector"
+  "select2", "input_selector", "output_selector", "sbuffer"
 };
 
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
@@ -67,12 +67,6 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               break;
             }
           }
-          // if (opName == "Proj") {
-          //   VERBOSE_INFO("\tBypassing Proj");
-          //   bypassProj(dataflow_prime, v);
-          //   changeDetected = true;
-          //   break;
-          // }
           if (checkForNumericInputs(dataflow_prime, v)) {
             std::vector<std::string> inputArgs;
             {ForInputEdges(dataflow_prime, v, e) {
@@ -163,6 +157,106 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
 }
 
+void algorithms::transformation::use_scheduled_buffers(models::Dataflow* const  dataflow,
+                                                       parameters_list_t params) {
+  bool changeDetected = true;
+  bool delayDetected = true;
+
+  models::Dataflow* dataflow_prime = dataflow;
+  VERBOSE_INFO("Adding scheduled buffers...");
+  while (delayDetected) {
+    VERBOSE_INFO("Iteratively searching for static delay:");
+    delayDetected = false;
+    {ForEachVertex(dataflow_prime, v) {
+        std::string opName = dataflow_prime->getVertexType(v);
+        VERBOSE_INFO("Visiting " << opName << " ("
+                                 << dataflow_prime->getVertexName(v) << ")...");
+        if (opName == "delay") {
+          // identify input signal edge and static delay amount
+          int delayAmt;
+          Edge inputSig, delayArg;
+          if (checkForStaticDelay(dataflow_prime, v, inputSig, delayArg, delayAmt)) {
+            VERBOSE_INFO("\tDetected static delay");
+            VERBOSE_INFO("\t\tDelay amount: " << delayAmt
+                         << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
+            delayToBuffer(dataflow_prime, v, inputSig, delayArg, delayAmt);
+            delayDetected = true;
+            break;
+          }
+        }
+      }}
+  }
+  VERBOSE_INFO("No further possible delays to replace detected");
+  while (changeDetected) {
+    VERBOSE_INFO("");
+    VERBOSE_INFO("Iteratively evaluating:");
+    changeDetected = false;
+      {ForEachVertex(dataflow_prime, v) {
+          std::string opName = dataflow_prime->getVertexType(v);
+          VERBOSE_INFO("Visiting " << opName
+                       << " (" << dataflow_prime->getVertexName(v) << ")...");
+          if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
+            VERBOSE_INFO(opName << "(" << dataflow_prime->getVertexName(v) << ") has no input/output edges, removing...");
+            dataflow_prime->removeVertex(v);
+            changeDetected = true;
+            break;
+          }
+          if (opName == "Proj") {
+            VERBOSE_INFO("\tBypassing Proj");
+            bypassProj(dataflow_prime, v);
+            changeDetected = true;
+            break;
+          }
+          if (checkForNumericInputs(dataflow_prime, v)) {
+            std::vector<std::string> inputArgs;
+            {ForInputEdges(dataflow_prime, v, e) {
+                inputArgs.push_back(dataflow_prime->getVertexType(dataflow_prime->getEdgeSource(e)));
+              }}
+            if (binaryOps.find(opName) != binaryOps.end() && inputArgs.size() == 2) {
+              VERBOSE_INFO("\tEvaluating binary operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: " << inputArgs[0] << ", " << inputArgs[1]);
+              applyResult(dataflow_prime, v, evalBinop(opName, inputArgs[0], inputArgs[1]));
+              changeDetected = true;
+              break;
+            } else if (castOps.find(opName) != castOps.end() && inputArgs.size() == 1) {
+              VERBOSE_INFO("\tEvaluating cast operator: " << opName);
+              VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
+              applyResult(dataflow_prime, v, evalCast(opName, inputArgs[0]));
+              changeDetected = true;
+              break;
+            } else if (trigOps.find(opName) != trigOps.end() && inputArgs.size() == 1) {
+              VERBOSE_INFO("\tEvaluating trig operator: " << opName);
+              VERBOSE_INFO("\t\tInput argument: " << inputArgs[0]);
+              applyResult(dataflow_prime, v, evalTrig(opName, inputArgs[0]));
+              changeDetected = true;
+              break;
+            } else if (nonEvalOps.find(opName) != nonEvalOps.end()) {
+              VERBOSE_INFO("\tNon-evaluated operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: ");
+              for (auto &i : inputArgs) {
+                VERBOSE_INFO("\t\t  " << i);
+              }
+              changeDetected = false; // no change as actors aren't removed
+              break;
+            } else if (opName.find("OUTPUT") != std::string::npos) {
+              VERBOSE_INFO("\tAll inputs to output are constants");
+              break;
+            } else {
+              VERBOSE_INFO("\tEvaluating operator: " << opName);
+              VERBOSE_INFO("\t\tInput arguments: ");
+              for (auto &i : inputArgs) {
+                VERBOSE_INFO("\t\t  " << i);
+              }
+              applyResult(dataflow_prime, v, evalOther(opName, inputArgs));
+              changeDetected = true;
+              break;
+            }
+          }
+        }}
+  }
+  VERBOSE_INFO("No further possible evaluations detected");
+}
+
 bool isFloatingPoint(const std::string& input) {
     std::istringstream iss(input);
     float f;
@@ -198,34 +292,43 @@ bool algorithms::checkForStaticDelay(models::Dataflow* const dataflow, Vertex v,
   VERBOSE_DEBUG_ASSERT(dataflow->getVertexInDegree(v) == 2,
                        "Expected number of input arguments for delay is 2; number of inputs detected: "
                        << dataflow->getVertexInDegree(v));
-  bool intArgFound = false;
+  bool intArgFound = true;
   std::vector<Edge> inputEdges;
-  std::string inputArgType;
   {ForInputEdges(dataflow, v, e) {
       inputEdges.push_back(e);
     }}
-  /* NOTE we assume that the channel with the smaller channel number is the delayed signal
-     while the larger is the delay arg; this has been true based off our observations but
-     might not always be in the future */
-  if (getChannelNumber(dataflow->getEdgeName(inputEdges.front())) < getChannelNumber(dataflow->getEdgeName(inputEdges.back()))) {
-    VERBOSE_INFO("\tParsing input edge: " << dataflow->getEdgeName(inputEdges.back()));
-    inputArgType = dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.back()));
-    delayArg = inputEdges.back();
+  std::string inputOneType =
+      dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.front()));
+  std::string inputTwoType =
+      dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.back()));
+  bool inputOneIsInt =
+      inputOneType.find_first_not_of("0123456789") == std::string::npos;
+  bool inputTwoIsInt =
+      inputTwoType.find_first_not_of("0123456789") == std::string::npos;
+  /* If at least one of the two input signals to the delay is a constant
+     integer, we consider it as a static delay (with the constant int as the
+     delay amount) */
+  VERBOSE_INFO("First input type: " << inputOneType << ", " << dataflow->getEdgeName(inputEdges.front()));
+  VERBOSE_INFO("Second input type: " << inputTwoType << ", " << dataflow->getEdgeName(inputEdges.back()));
+  if ((inputOneIsInt && inputTwoIsInt) || inputTwoIsInt) {
+    /* in the case where both input signals are constant integers, we assume
+       that first signal is the delayed signal while the second signal is
+       the delay argument. */
     inputSig = inputEdges.front();
-  } else {
-    VERBOSE_INFO("\tParsing input edge: " << dataflow->getEdgeName(inputEdges.front()));
-    inputArgType = dataflow->getVertexType(dataflow->getEdgeSource(inputEdges.front()));
-    delayArg = inputEdges.front();
-    inputSig = inputEdges.back();
-  }
-  VERBOSE_INFO("\tInput edge source actor is of type " << inputArgType);
-
-  // https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
-  if (inputArgType.find_first_not_of("0123456789") == std::string::npos) {
-    delayAmt = std::stoi(inputArgType);
-    intArgFound = true;
+    delayArg = inputEdges.back();
+    delayAmt = std::stoi(inputTwoType);
     VERBOSE_INFO("\t\tFound integer argument of value " << delayAmt);
-    VERBOSE_INFO("\t\tInput edge set to " << dataflow->getEdgeName(inputSig));
+    VERBOSE_INFO("\t\tInput signal from " << dataflow->getEdgeName(inputSig));
+    VERBOSE_INFO("\t\tDelay arg from " << dataflow->getEdgeName(delayArg));
+  } else if (inputOneIsInt) {
+    inputSig = inputEdges.back();
+    delayArg = inputEdges.front();
+    delayAmt = std::stoi(inputOneType);
+    VERBOSE_INFO("\t\tFound integer argument of value " << delayAmt);
+    VERBOSE_INFO("\t\tInput signal from " << dataflow->getEdgeName(inputSig));
+    VERBOSE_INFO("\t\tDelay arg from " << dataflow->getEdgeName(delayArg));
+  } else {
+    intArgFound = false;
   }
 
   return intArgFound;
@@ -410,6 +513,36 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   }
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
 }
+
+void algorithms::delayToBuffer(models::Dataflow* const dataflow, Vertex v,
+                               Edge inputSig, Edge delayArg, int delayAmt) {
+  std::vector<TOKEN_UNIT> inPhases = dataflow->getEdgeInVector(inputSig);
+  std::vector<TOKEN_UNIT> outPhases = dataflow->getEdgeOutVector(inputSig);
+  std::string edgeName = dataflow->getEdgeName(inputSig);
+  std::string edgeInPort = dataflow->getEdgeInputPortName(inputSig);
+  std::string edgeOutPort = dataflow->getEdgeOutputPortName(inputSig);
+  std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
+  std::string delayName = dataflow->getVertexName(v);
+  unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
+  Vertex newTarget;
+
+  dataflow->setVertexType(v, "sbuffer");
+  dataflow->setVertexName(v, "sbuffer_" + std::to_string(delayAmt));
+
+  /* remove vertex providing delay argument:
+     note that if the delay arg actor has multiple output edges,
+     we just delete the corresponding edge so we don't unnecessarily
+     alter the graph */
+  VERBOSE_INFO("\tnumber of outputs for delay argument: " << delayArgOutputCnt);
+  if (delayArgOutputCnt > 1) {
+    VERBOSE_INFO("\t\tRemoving edge from delay argument (" << dataflow->getEdgeName(delayArg) << ")");
+    dataflow->removeEdge(delayArg);
+  } else { // only one output edge
+    VERBOSE_INFO("\t\tRemoving delay argument from graph (" << delayArgSourceName << ")");
+    dataflow->removeVertex(dataflow->getVertexByName(delayArgSourceName));
+  }
+}
+
 
 void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
   std::string projName = dataflow->getVertexName(v);
