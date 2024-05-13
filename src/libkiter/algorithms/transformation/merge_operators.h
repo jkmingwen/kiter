@@ -56,13 +56,6 @@ namespace algorithms {
   void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
                             abstractDepGraph &g, std::map<ARRAY_INDEX, bool> &visited);
 
-  std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
-                                                  "fp_sqrt", "fp_diff", "fp_pow",
-                                                  "int_add", "int_diff", "int_prod",
-                                                  "float2int", "int2float", "fp_floor",
-                                                  "int_max", "int_min", "fp_max",
-                                                  "fp_min", "fp_abs" };
-  std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 }
 ADD_TRANSFORMATION(MergeOperators,
                    transformation_t({ "MergeOperators" , "Identify operators (via a given merging strategy) and merge into a single occurance.", algorithms::transformation::merge_operators}));

@@ -12,12 +12,19 @@
 #include "../vhdl_generation/VHDLGenerator.h"
 #include "../throughput/actor.h"
 #include "../throughput/state.h"
-#include "../dse/buffer_sizing.h"
 #include "../dse/abstract_dep_graph.h"
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
 #include "singleOutput.h"
+
+std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
+                                                "fp_sqrt", "fp_diff", "fp_pow",
+                                                "int_add", "int_diff", "int_prod",
+                                                "float2int", "int2float", "fp_floor",
+                                                "int_max", "int_min", "fp_max",
+                                                "fp_min", "fp_abs" };
+std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
@@ -50,26 +57,29 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   }
 
   // check and adjust for any operators with multiple I/Os
-  // the merge function currently only works with operators with the same number of inputs/outputs
-  VHDLCircuit tmp = generateCircuitObject(dataflow);
-  while (tmp.getMultiOutActors().size() > 0) {
+  // the merge function currently only works with operators with the same number
+  // of inputs/outputs
+  if (params.find("NORMALISE_OP_OUTPUTS") != params.end()) {
+    VHDLCircuit tmp = generateCircuitObject(dataflow);
+    while (tmp.getMultiOutActors().size() > 0) {
 
-    VERBOSE_INFO("getMultiOutActors is not empty");
-    /*  This block remove multiIO actors and replace them  */
-    for (std::string actorName: tmp.getMultiOutActors()) {
-      parameters_list_t parameters;
-      parameters["name"] = actorName;
-      VERBOSE_INFO("singleOutput actor " << actorName);
-      try {
-        singleOutput(dataflow, parameters);
-      } catch (...) {
-        VERBOSE_WARNING("actor missing!");
+      VERBOSE_INFO("getMultiOutActors is not empty");
+      /*  This block remove multiIO actors and replace them  */
+      for (std::string actorName: tmp.getMultiOutActors()) {
+        parameters_list_t parameters;
+        parameters["name"] = actorName;
+        VERBOSE_INFO("singleOutput actor " << actorName);
+        try {
+          singleOutput(dataflow, parameters);
+        } catch (...) {
+          VERBOSE_WARNING("actor missing!");
+        }
       }
+      VERBOSE_INFO("Regenerate Circuit");
+      tmp = generateCircuitObject(dataflow);
     }
-    VERBOSE_INFO("Regenerate Circuit");
-    tmp = generateCircuitObject(dataflow);
+    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
   }
-  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
 
   // Begin merge operation
   int isOffset = 0;
@@ -326,6 +336,7 @@ void algorithms::addReentrancy(models::Dataflow* const dataflow, Vertex v,
   dataflow->setEdgeOutputPortName(selfLoop, "out_R" + actorName);
   dataflow->setPreload(selfLoop, 1); // reentrancy edges need an initial token
   dataflow->setTokenSize(selfLoop, 1);
+  dataflow->setEdgeType(selfLoop, EDGE_TYPE::FEEDBACK_EDGE);
 }
 
 // replace all occurances of actor name with replacement name
