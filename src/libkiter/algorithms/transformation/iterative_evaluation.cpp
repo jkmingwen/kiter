@@ -12,6 +12,7 @@
 #include <printers/SDF3Wrapper.h> // to write XML files
 #include "../vhdl_generation/VHDLGenerator.h"
 #include "singleOutput.h"
+#include "merge_operators.h"
 
 std::set<std::string> binaryOps = {
   "add", "diff", "prod", "div", "mod", "l_shift",
@@ -516,18 +517,18 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
 
 void algorithms::delayToBuffer(models::Dataflow* const dataflow, Vertex v,
                                Edge inputSig, Edge delayArg, int delayAmt) {
-  std::vector<TOKEN_UNIT> inPhases = dataflow->getEdgeInVector(inputSig);
-  std::vector<TOKEN_UNIT> outPhases = dataflow->getEdgeOutVector(inputSig);
-  std::string edgeName = dataflow->getEdgeName(inputSig);
-  std::string edgeInPort = dataflow->getEdgeInputPortName(inputSig);
-  std::string edgeOutPort = dataflow->getEdgeOutputPortName(inputSig);
   std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
-  Vertex newTarget;
 
+  std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
   dataflow->setVertexType(v, "sbuffer");
-  dataflow->setVertexName(v, "sbuffer_" + std::to_string(delayAmt));
+  dataflow->setVertexName(v, newName);
+  {ForEachVertex(dataflow, a) { // update any occurances of delay name in other vertex names
+      dataflow->setVertexName(
+          a, replaceActorName(dataflow->getVertexName(a), delayName, newName));
+    }
+  }
 
   /* remove vertex providing delay argument:
      note that if the delay arg actor has multiple output edges,
@@ -542,6 +543,7 @@ void algorithms::delayToBuffer(models::Dataflow* const dataflow, Vertex v,
     dataflow->removeVertex(dataflow->getVertexByName(delayArgSourceName));
   }
 }
+
 
 
 void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
