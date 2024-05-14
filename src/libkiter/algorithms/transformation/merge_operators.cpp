@@ -124,9 +124,11 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   VERBOSE_ASSERT(vertices.size() > 1, "Need to have more than 1 actor to perform merging.");
   std::vector<unsigned int> vInDegree;
   std::vector<unsigned int> vOutDegree;
+  std::vector<TIME_UNIT> mergedDurations;
   for (auto v : vertices) {
     vInDegree.push_back(dataflow->getVertexInDegree(v));
     vOutDegree.push_back(dataflow->getVertexOutDegree(v));
+    mergedDurations.push_back(dataflow->getVertexDuration(v));
   }
   VERBOSE_ASSERT(std::equal(vInDegree.begin() + 1, vInDegree.end(), vInDegree.begin()),
                  "Every actor to be merged needs to have the same number of inputs.");
@@ -186,11 +188,11 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     mergedActorName += "_inputselector" + commons::toString(i + isOffset);
   }
   Vertex mergedActor = dataflow->addVertex(mergedActorName);
-  dataflow->setPhasesQuantity(mergedActor, 1);
-  dataflow->setVertexDuration(mergedActor,dataflow->getVertexPhaseDuration(vertices.front())); // just get phase duration of first actor since they're all equal
+  dataflow->setPhasesQuantity(mergedActor, vertices.size());
+  dataflow->setVertexDuration(mergedActor, mergedDurations);
   dataflow->setVertexType(mergedActor, dataflow->getVertexType(vertices.front())); // merged vertices are of the same type
   // add re-entrancy edges
-  addReentrancy(dataflow, mergedActor, mergedActorName, {1});
+  dataflow->setReentrancyFactor(mergedActor, 1);
 
   // add input selectors to graph
   for (int i = 0; i < inDeg; i++) {
@@ -250,7 +252,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     VERBOSE_WARNING("Output edge from input selector " << isId << "set to: " << outEdgeName);
     dataflow->setEdgeName(outEdge, outEdgeName);
     dataflow->setEdgeInPhases(outEdge, execRates);
-    dataflow->setEdgeOutPhases(outEdge, {1});
+    dataflow->setEdgeOutPhases(outEdge, execRates);
     dataflow->setEdgeInputPortName(outEdge, "in_" + outEdgeName);
     dataflow->setEdgeOutputPortName(outEdge, "out_" + outEdgeName);
     dataflow->setPreload(outEdge, 0);
@@ -276,7 +278,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
     std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(mergedToOS, outEdgeName);
-    dataflow->setEdgeInPhases(mergedToOS, {1});
+    dataflow->setEdgeInPhases(mergedToOS, execRates);
     dataflow->setEdgeOutPhases(mergedToOS, execRates);
     dataflow->setEdgeInputPortName(mergedToOS, "in_" + outEdgeName);
     dataflow->setEdgeOutputPortName(mergedToOS, "out_" + outEdgeName);
