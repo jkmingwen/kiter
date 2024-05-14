@@ -258,6 +258,92 @@ void algorithms::transformation::use_scheduled_buffers(models::Dataflow* const  
   VERBOSE_INFO("No further possible evaluations detected");
 }
 
+void algorithms::transformation::generate_audio_components(models::Dataflow* const  dataflow,
+                                                           parameters_list_t params) {
+  models::Dataflow *dataflow_prime = dataflow;
+  bool foundInputL, foundInputR = false;
+  // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
+  std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
+  Vertex lIn, rIn;
+    VERBOSE_INFO("Binding input/output selector edges in graph:");
+      {ForEachVertex(dataflow_prime, v) {
+          std::string opType = dataflow_prime->getVertexType(v);
+          VERBOSE_INFO("Visiting " << opType
+                       << " (" << dataflow_prime->getVertexName(v) << ")...");
+          if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
+            VERBOSE_INFO(opType << "(" << dataflow_prime->getVertexName(v) << ") has no input/output edges, removing...");
+            dataflow_prime->removeVertex(v);
+          }
+          if (opType == "input_selector") {
+            VERBOSE_INFO("\tBinding edges of input selector");
+            bindVertexEdges(dataflow_prime, v, 0);
+          }
+          if (opType == "output_selector") {
+            VERBOSE_INFO("\tBinding edges of output selector");
+            bindVertexEdges(dataflow_prime, v, 1);
+          }
+          if (opType == "INPUT_0") {
+            foundInputL = true;
+            lIn = v;
+            dataflow_prime->setPhasesQuantity(lIn, 1);
+            dataflow_prime->setVertexDuration(lIn, {4});
+            dataflow_prime->setReentrancyFactor(lIn, 1);
+          }
+          if (opType == "INPUT_1") {
+            foundInputR = true;
+            rIn = v;
+            dataflow_prime->setPhasesQuantity(rIn, 1);
+            dataflow_prime->setVertexDuration(rIn, {4});
+            dataflow_prime->setReentrancyFactor(rIn, 1);
+          }
+        }
+      }
+      // add dummy input actors if none are found so that scheduling can still be performed
+      if (!foundInputL) {
+        lIn = dataflow_prime->addVertex("INPUT_0");
+        dataflow_prime->setVertexType(lIn, "INPUT_0");
+        dataflow_prime->setPhasesQuantity(lIn, 1);
+        dataflow_prime->setVertexDuration(lIn, {4});
+        dataflow_prime->setReentrancyFactor(lIn, 1);
+      }
+      if (!foundInputR) {
+        rIn = dataflow_prime->addVertex("INPUT_1");
+        dataflow_prime->setVertexType(rIn, "INPUT_1");
+        dataflow_prime->setPhasesQuantity(rIn, 1);
+        dataflow_prime->setVertexDuration(rIn, {4});
+        dataflow_prime->setReentrancyFactor(rIn, 1);
+      }
+      // add dependencies and actor to simulate periodic audio input data
+      // dependencies between left and right input actors
+      Edge lDep = dataflow_prime->addEdge(lIn, rIn);
+      dataflow_prime->setEdgeInPhases(lDep, {1});
+      dataflow_prime->setEdgeOutPhases(lDep, {1});
+      dataflow_prime->setPreload(lDep, 1);
+      dataflow_prime->setTokenSize(lDep, 1);
+      Edge rDep = dataflow_prime->addEdge(rIn, lIn);
+      dataflow_prime->setEdgeInPhases(rDep, {1});
+      dataflow_prime->setEdgeOutPhases(rDep, {1});
+      dataflow_prime->setPreload(rDep, 0);
+      dataflow_prime->setTokenSize(rDep, 1);
+      // audio input actor simulates periodic data
+      Vertex audioIn = dataflow_prime->addVertex("AUDIO_IN");
+      dataflow_prime->setVertexType(audioIn, "AUDIO_IN");
+      dataflow_prime->setPhasesQuantity(audioIn, 2);
+      dataflow_prime->setVertexDuration(audioIn, audioPeriod);
+      dataflow_prime->setReentrancyFactor(audioIn, 1);
+      Edge lChannel = dataflow_prime->addEdge(audioIn, lIn);
+      dataflow_prime->setEdgeInPhases(lChannel, {1,0});
+      dataflow_prime->setEdgeOutPhases(lChannel, {1});
+      dataflow_prime->setPreload(lChannel, 0);
+      dataflow_prime->setTokenSize(lChannel, 1);
+      Edge rChannel = dataflow_prime->addEdge(audioIn, rIn);
+      dataflow_prime->setEdgeInPhases(rChannel, {0,1});
+      dataflow_prime->setEdgeOutPhases(rChannel, {1});
+      dataflow_prime->setPreload(rChannel, 1);
+      dataflow_prime->setTokenSize(rChannel, 1);
+  VERBOSE_INFO("Done modifying graph");
+}
+
 bool isFloatingPoint(const std::string& input) {
     std::istringstream iss(input);
     float f;
@@ -524,6 +610,7 @@ void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
   std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
   dataflow->setVertexType(v, "sbuffer");
   dataflow->setVertexName(v, newName);
+  dataflow->setReentrancyFactor(v, 1);
   {ForEachVertex(dataflow, a) { // update any occurances of delay name in other vertex names
       dataflow->setVertexName(
           a, replaceActorName(dataflow->getVertexName(a), delayName, newName));
@@ -869,4 +956,83 @@ int algorithms::getChannelNumber(std::string channelName) {
                        "Channel number extracted is not a number");
 
   return std::stoi(channelName);
+}
+
+// Binds the input/output/all edges of the given Vertex
+// 0: bind output edges
+// 1: bind input edges
+// 2: bind all edges
+void algorithms::bindVertexEdges(models::Dataflow *const dataflow, Vertex v,
+                                 int option) {
+  switch (option) {
+  case 0:
+    {ForOutputEdges(dataflow, v, e) {
+      if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
+        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+        Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
+                                        dataflow->getEdgeSource(e), fbEdgeName);
+        dataflow->setEdgeInputPortName(
+            fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
+        dataflow->setEdgeOutputPortName(
+            fbEdge, dataflow->getEdgeInputPortName(e) + "_fb");
+        dataflow->setEdgeInPhases(fbEdge, dataflow->getEdgeOutVector(e));
+        dataflow->setEdgeOutPhases(fbEdge, dataflow->getEdgeInVector(e));
+        dataflow->setPreload(fbEdge, 1);
+        dataflow->setEdgeType(fbEdge, EDGE_TYPE::FEEDBACK_EDGE);
+      }
+    }}
+    break;
+  case 1:
+    {ForInputEdges(dataflow, v, e) {
+      if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
+        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+        Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
+                                        dataflow->getEdgeSource(e), fbEdgeName);
+        dataflow->setEdgeInputPortName(
+            fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
+        dataflow->setEdgeOutputPortName(
+            fbEdge, dataflow->getEdgeInputPortName(e) + "_fb");
+        dataflow->setEdgeInPhases(fbEdge, dataflow->getEdgeOutVector(e));
+        dataflow->setEdgeOutPhases(fbEdge, dataflow->getEdgeInVector(e));
+        dataflow->setPreload(fbEdge, 1);
+        dataflow->setEdgeType(fbEdge, EDGE_TYPE::FEEDBACK_EDGE);
+      }
+    }}
+    break;
+  case 2:
+    {ForInputEdges(dataflow, v, e) {
+      if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+        Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
+                                        dataflow->getEdgeSource(e), fbEdgeName);
+        dataflow->setEdgeInputPortName(
+            fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
+        dataflow->setEdgeOutputPortName(
+            fbEdge, dataflow->getEdgeInputPortName(e) + "_fb");
+        dataflow->setEdgeInPhases(fbEdge, dataflow->getEdgeOutVector(e));
+        dataflow->setEdgeOutPhases(fbEdge, dataflow->getEdgeInVector(e));
+        dataflow->setPreload(fbEdge, 1);
+        dataflow->setEdgeType(fbEdge, EDGE_TYPE::FEEDBACK_EDGE);
+      }
+    }}
+    {ForOutputEdges(dataflow, v, e) {
+      if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
+        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+        Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
+                                        dataflow->getEdgeSource(e), fbEdgeName);
+        dataflow->setEdgeInputPortName(
+                                       fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
+        dataflow->setEdgeOutputPortName(
+                                        fbEdge, dataflow->getEdgeInputPortName(e) + "_fb");
+        dataflow->setEdgeInPhases(fbEdge, dataflow->getEdgeOutVector(e));
+        dataflow->setEdgeOutPhases(fbEdge, dataflow->getEdgeInVector(e));
+        dataflow->setPreload(fbEdge, 1);
+        dataflow->setEdgeType(fbEdge, EDGE_TYPE::FEEDBACK_EDGE);
+      }
+    }}
+    break;
+  default:
+    VERBOSE_ERROR(
+        "Option must be between 0-2; given option: " << std::to_string(option));
+  }
 }

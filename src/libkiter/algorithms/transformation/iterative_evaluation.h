@@ -28,6 +28,8 @@ namespace algorithms {
     void iterative_evaluate(models::Dataflow* const dataflow, parameters_list_t  parameters);
     void use_scheduled_buffers(models::Dataflow *const dataflow,
                                parameters_list_t parameters);
+    void generate_audio_components(models::Dataflow* const  dataflow,
+                                   parameters_list_t params);
   }
   bool checkForNumericInputs(models::Dataflow* const dataflow, Vertex v);
   bool checkForStaticDelay(models::Dataflow* const dataflow, Vertex v,
@@ -44,6 +46,7 @@ namespace algorithms {
   void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v);
   void applyResult(models::Dataflow* const dataflow, Vertex v, std::string result);
   int getChannelNumber(std::string channelName);
+  void bindVertexEdges(models::Dataflow* const dataflow, Vertex v, int option);
 }
 
 ADD_TRANSFORMATION(
@@ -59,6 +62,11 @@ ADD_TRANSFORMATION(
          "Faust to SDF: Use scheduled buffers in SDF and simplify graph.",
          algorithms::transformation::use_scheduled_buffers}));
 
+ADD_TRANSFORMATION(
+    GenerateAudioComponents,
+    transformation_t({"GenerateAudioComponents",
+                      "Faust to SDF: Modify graph to model audio input.",
+                      algorithms::transformation::generate_audio_components}));
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_ITERATIVE_EVALUATION_H_ */
