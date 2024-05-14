@@ -257,7 +257,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     dataflow->setTokenSize(outEdge, 1);
 
     // add re-entrancy edges/ports
-    addReentrancy(dataflow, new_is, "inputselector" + commons::toString(isId), execRates);
+    dataflow->setReentrancyFactor(new_is, 1);
   }
   isOffset += inDeg;
 
@@ -304,7 +304,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     }
 
     // add re-entrancy edges/ports
-    addReentrancy(dataflow, new_os, "outputselector" + commons::toString(osId), execRates);
+    dataflow->setReentrancyFactor(new_os, 1);
     // rename affected actors (targets of merged vertices) with updated source actor name (of output selector)
     for (auto name : actorNames) {
       {ForEachVertex(dataflow, v) {
@@ -325,18 +325,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   for (auto i : verticesToRemove) {
     dataflow->removeVertex(dataflow->getVertexById(i));
   }
-}
-
-void algorithms::addReentrancy(models::Dataflow* const dataflow, Vertex v,
-                               std::string actorName, std::vector<TOKEN_UNIT> execRates) {
-  Edge selfLoop = dataflow->addEdge(v, v, "R" + actorName);
-  dataflow->setEdgeInPhases(selfLoop, execRates);
-  dataflow->setEdgeOutPhases(selfLoop, execRates);
-  dataflow->setEdgeInputPortName(selfLoop, "in_R" + actorName);
-  dataflow->setEdgeOutputPortName(selfLoop, "out_R" + actorName);
-  dataflow->setPreload(selfLoop, 1); // reentrancy edges need an initial token
-  dataflow->setTokenSize(selfLoop, 1);
-  dataflow->setEdgeType(selfLoop, EDGE_TYPE::FEEDBACK_EDGE);
 }
 
 // replace all occurances of actor name with replacement name

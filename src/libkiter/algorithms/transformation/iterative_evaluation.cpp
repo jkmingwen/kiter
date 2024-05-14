@@ -515,7 +515,7 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
 }
 
-void algorithms::delayToBuffer(models::Dataflow* const dataflow, Vertex v,
+void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
                                Edge inputSig, Edge delayArg, int delayAmt) {
   std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
   std::string delayName = dataflow->getVertexName(v);

@@ -27,24 +27,9 @@ namespace algorithms {
   namespace transformation {
     void merge_operators(models::Dataflow* const dataflow, parameters_list_t  parameters);
   }
-  /* bool checkForNumericInputs(models::Dataflow* const dataflow, Vertex v); */
-  /* bool checkForStaticDelay(models::Dataflow* const dataflow, Vertex v, */
-  /*                          Edge &inputSig, Edge &delayArg, int &delayAmt); */
-  /* std::string evalBinop(std::string op, std::string arg1, std::string arg2); */
-  /* std::string evalCast(std::string op, std::string arg); */
-  /* std::string evalOther(std::string op, std::vector<std::string> args); */
-  /* std::string evalTrig(std::string op, std::string arg); */
-  /* void bypassDelay(models::Dataflow* const dataflow, Vertex v, */
-  /*                  Edge inputSig, Edge delayArg, int delayAmt); */
-  /* void bypassProj(models::Dataflow* const dataflow, Vertex v); */
-  /* void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v); */
-  /* void applyResult(models::Dataflow* const dataflow, Vertex v, std::string result); */
-  /* int getChannelNumber(std::string channelName); */
   void generateMergedGraph(models::Dataflow* dataflow,
                            std::vector<Vertex> &vertices,
                            int &isOffset, int &osOffset);
-  void addReentrancy(models::Dataflow* const dataflow, Vertex v,
-                     std::string actorName, std::vector<TOKEN_UNIT> execRates);
   std::string replaceActorName(std::string originalName, const std::string& toReplace,
                                const std::string& replacement);
 
