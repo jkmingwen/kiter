@@ -1814,7 +1814,8 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
                      << std::endl;
       }
       // input/output mappings
-      int inPortCount, outPortCount = 0;
+      int inPortCount = 0;
+      int outPortCount = 0;
       for (auto s : comp.getHSInputSignals()) {
         std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, true);
         std::string sigPrefix = "op_";

@@ -261,7 +261,8 @@ void algorithms::transformation::use_scheduled_buffers(models::Dataflow* const  
 void algorithms::transformation::generate_audio_components(models::Dataflow* const  dataflow,
                                                            parameters_list_t params) {
   models::Dataflow *dataflow_prime = dataflow;
-  bool foundInputL, foundInputR = false;
+  bool foundInputL = false;
+  bool foundInputR = false;
   // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
   std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
   Vertex lIn, rIn;
