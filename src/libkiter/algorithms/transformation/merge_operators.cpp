@@ -59,7 +59,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   // check and adjust for any operators with multiple I/Os
   // the merge function currently only works with operators with the same number
   // of inputs/outputs
-  if (params.find("NORMALISE_OP_OUTPUTS") != params.end()) {
+  if (params.find("NORMALISE_OUTPUTS") != params.end()) {
     VHDLCircuit tmp = generateCircuitObject(dataflow);
     while (tmp.getMultiOutActors().size() > 0) {
 

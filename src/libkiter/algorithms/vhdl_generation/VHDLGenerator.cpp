@@ -207,6 +207,7 @@ int getOperatorLifespan(const std::string &opType, int operatorFreq) {
    - BUFFERLESS: 't' to activate; indicates whether each connection in the VHDL
    design should include a FIFO buffer. Set to buffered (t) by default.
    - FREQUENCY: Clock cycle frequency of VHDL design.
+   - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
 
    @return void; VHDL code generated in location specified in OUTPUT_DIR
    parameter.
@@ -274,30 +275,31 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
   // VHDLCircuit object specifies operators and how they're connected
   VHDLCircuit tmp = generateCircuitObject(dataflow);
-  while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
+  if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
+    while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
-    VERBOSE_INFO("getMultiOutActors is not empty");
+      VERBOSE_INFO("getMultiOutActors is not empty");
 
-    /*  This block removes multiIO actors and replaces them with a router that splits their output */
-    for (std::string actorName: tmp.getMultiOutActors()) {
-      parameters_list_t parameters;
-      parameters["name"] = actorName;
-      VERBOSE_INFO("singleOutput actor " << actorName);
-      try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
-        algorithms::transformation::singleOutput(dataflow, parameters);
-      } catch (...) {
-        VERBOSE_WARNING("actor missing!");
+      /*  This block removes multiIO actors and replaces them with a router that splits their output */
+      for (std::string actorName: tmp.getMultiOutActors()) {
+        parameters_list_t parameters;
+        parameters["name"] = actorName;
+        VERBOSE_INFO("singleOutput actor " << actorName);
+        try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
+          algorithms::transformation::singleOutput(dataflow, parameters);
+        } catch (...) {
+          VERBOSE_WARNING("actor missing!");
+        }
       }
+
+      // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
+      VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
+      tmp = generateCircuitObject(dataflow);
     }
 
-    // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
-    VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
-    tmp = generateCircuitObject(dataflow);
+    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
+    VERBOSE_INFO("Output Circuit");
   }
-
-  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
-  VERBOSE_INFO("Output Circuit");
-
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing
