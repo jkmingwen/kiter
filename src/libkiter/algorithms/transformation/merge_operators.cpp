@@ -375,18 +375,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
-      VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
-      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-        std::vector<TIME_UNIT> opLifespans{1};
-        if (op.getType() == "input_selector" || op.getType() == "output_selector") {
-          opLifespans = dataflow->getVertexPhaseDuration(v); // special case for input and output selectors, which are CSDF components
-        }
+      std::vector<TIME_UNIT> opLifespans(
+          dataflow->getVertexPhaseDuration(v).size(),
+         getOperatorLifespan(op.getType(), operatorFreq));
         dataflow->setVertexDuration(v, opLifespans);
-      } else {
-        std::vector<TIME_UNIT> opLifespans{opLifespan};
-        dataflow->setVertexDuration(v, opLifespans);
-      }
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   for (auto &types : opCounts) {
@@ -470,18 +462,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
-      VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
-      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-        std::vector<TIME_UNIT> opLifespans{1};
-        if (op.getType() == "input_selector" || op.getType() == "output_selector") {
-          opLifespans = dataflow->getVertexPhaseDuration(v); // special case for input and output selectors, which are CSDF components
-        }
-        dataflow->setVertexDuration(v, opLifespans);
-      } else {
-        std::vector<TIME_UNIT> opLifespans{opLifespan};
-        dataflow->setVertexDuration(v, opLifespans);
-      }
+      std::vector<TIME_UNIT> opLifespans(
+                                         dataflow->getVertexPhaseDuration(v).size(),
+                                         getOperatorLifespan(op.getType(), operatorFreq));
+      dataflow->setVertexDuration(v, opLifespans);
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   for (auto &types : opCounts) {
