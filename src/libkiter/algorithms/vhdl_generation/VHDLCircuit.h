@@ -75,6 +75,7 @@ class VHDLCircuit {
   std::vector<std::string> generateDataSignalNames();
   std::vector<std::string> generateValidReadySignalNames();
   std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;
+  std::string generateSignalNames(std::string &name, bool isInputSig) const;
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;
@@ -103,7 +104,6 @@ class VHDLCircuit {
       {"fp_min", "fp_min"},
       {"fp_abs", "fp_abs"},
       {"select2", "select2"},
-      // {"select3", "select3"},
       {"attach", "attach"},
       {"delay", "delay"}, // NOTE delay doesn't have a fixed lifespan, which is
                           // why it's not in the operatorLifespan map
@@ -114,7 +114,8 @@ class VHDLCircuit {
       {"vslider", "vslider"},
       {"nentry", "nentry"},
       {"checkbox", "checkbox"},
-      {"button", "button"}
+      {"button", "button"},
+      {"sbuffer", "sbuffer"}
   };
 
 }; // End of VHDLCircuit

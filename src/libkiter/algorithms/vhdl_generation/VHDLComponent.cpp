@@ -31,6 +31,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       outputPorts.push_back(dataflow->getEdgeInputPortName(outEdge));
       outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
+  // for when we want to use a single signal to send output to multiple actors (not data driven)
+  this->sharedOutputSignal = dataflow->getEdgeName(it2Edge(dataflow->getOutputEdges(a).first));
   for (const auto& port : inputPorts) {
     std::string portName = port;
     if (portName.substr(portName.find_last_of('_') + 1) == "vect") { // ignore "vect" to find the actual data type
@@ -70,7 +72,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
   }
 
   // Rearrange input ports and edges according to argument order
-  if (this->argOrder.size() && this->getType() != "INPUT" && this->getType() != "OUTPUT") {
+  if (this->argOrder.size() && this->getType() != "INPUT" &&
+      this->getType() != "OUTPUT") {
     for (auto const &inputVertexName : this->argOrder) {
       Vertex inputVertex = dataflow->getVertexByName(
           getNameFromPartialName(dataflow, inputVertexName));
@@ -80,6 +83,15 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
               this->addHSInputSignal(dataflow->getEdgeOutputPortName(e));
             } else {
               this->addHSInputSignal(dataflow->getEdgeName(e));
+            }
+            // we use the first output edge from the source vertex to ensure
+            // that the outputs of that vertex use the same signal even if it
+            // has multiple output edges
+            if (this->getType() == "input_selector") {
+              this->addInputSignal(dataflow->getEdgeName(e));
+            } else {
+              Edge signal = it2Edge(dataflow->getOutputEdges(inputVertex).first);
+              this->addInputSignal(dataflow->getEdgeName(signal));
             }
           }
         }}
@@ -93,6 +105,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
         } else {
           this->addHSInputSignal(dataflow->getEdgeName(e));
         }
+        this->addInputSignal(dataflow->getEdgeName(e));
       }}
     VERBOSE_ASSERT(this->getHSInputSignals().size() == this->inputEdges.size(),
                    this->getUniqueName() << ": HS input signals != input edges");
@@ -104,6 +117,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       } else {
         this->addHSOutputSignal(dataflow->getEdgeName(e));
       }
+      this->addOutputSignal(dataflow->getEdgeName(e));
     }}
   // Rearrange output ports and edges according to output selector phases of execution
   if (this->getType() == "output_selector") {
@@ -116,6 +130,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
             } else {
               this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
             }
+            this->outputSignals.at(exec) = dataflow->getEdgeName(e);
           }
         }
       }}
@@ -301,6 +316,21 @@ const std::vector<std::string> VHDLComponent::getHSOutputSignals() const {
   return this->hsOutputSignals;
 }
 
+const std::vector<std::string> VHDLComponent::getInputSignals() const {
+  return this->inputSignals;
+}
+
+const std::vector<std::string> VHDLComponent::getOutputSignals() const {
+  if (this->getType() == "input_selector" ||
+      this->getType() == "output_selector" ||
+      this->getType() == "const_value") {
+    return this->outputSignals;
+  } else {
+    return std::vector<std::string>(1, this->sharedOutputSignal);
+  }
+
+}
+
 void VHDLComponent::addHSInputSignal(const std::string& signalName) {
   if (std::find(hsInputSignals.begin(),
                 hsInputSignals.end(),
@@ -314,6 +344,22 @@ void VHDLComponent::addHSOutputSignal(const std::string& signalName) {
                 hsOutputSignals.end(),
                 signalName) == hsOutputSignals.end()) {
     hsOutputSignals.push_back(signalName);
+  }
+}
+
+void VHDLComponent::addInputSignal(const std::string& signalName) {
+  if (std::find(inputSignals.begin(),
+                inputSignals.end(),
+                signalName) == inputSignals.end()) {
+    inputSignals.push_back(signalName);
+  }
+}
+
+void VHDLComponent::addOutputSignal(const std::string& signalName) {
+  if (std::find(outputSignals.begin(),
+                outputSignals.end(),
+                signalName) == outputSignals.end()) {
+    outputSignals.push_back(signalName);
   }
 }
 

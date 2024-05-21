@@ -40,6 +40,8 @@ class VHDLComponent {
   const std::map<std::string, int> &getOutputTypes() const;
   const std::vector<std::string> getHSInputSignals() const;
   const std::vector<std::string> getHSOutputSignals() const;
+  const std::vector<std::string> getInputSignals() const;
+  const std::vector<std::string> getOutputSignals() const;
   void setDataType(const std::string& newType);
   std::string getDataType() const ;
   bool isConst() const;
@@ -49,7 +51,9 @@ class VHDLComponent {
   void setImplementationName(const std::string& newName);
   void setIOId(int id);
   void addHSInputSignal(const std::string& signalName);
-  void addHSOutputSignal(const std::string& signalName);
+  void addHSOutputSignal(const std::string &signalName);
+  void addInputSignal(const std::string &signalName);
+  void addOutputSignal(const std::string& signalName);
   std::string printStatus() const ;
 
  private:
@@ -62,6 +66,9 @@ class VHDLComponent {
   std::vector<std::string> outputEdges;
   std::vector<std::string> hsInputSignals;
   std::vector<std::string> hsOutputSignals;
+  std::vector<std::string> inputSignals;
+  std::vector<std::string> outputSignals;
+  std::string sharedOutputSignal;
   std::string implementationName; // for use in instantiating FPC-AXI interface
   bool isConstVal; // true if component generates a constant value (const_val.vhd)
   std::string dataType;
