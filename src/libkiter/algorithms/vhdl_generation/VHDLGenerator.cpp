@@ -463,7 +463,7 @@ void algorithms::generateOperators(VHDLCircuit &circuit) {
           const auto copyOptions = std::filesystem::copy_options::update_existing |
             std::filesystem::copy_options::recursive;
           std::filesystem::copy(operatorRefDir + operatorFileName + ".vhdl",
-                                componentDir + operatorFileName + ".vhd", copyOptions);
+                                componentDir + operatorFileName + ".vhdl", copyOptions);
         }
       }
     }
@@ -502,9 +502,9 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
     std::map<std::string, std::string> replacementWords = {{"$N_OUTPUTS", std::to_string(numOutputs)},
                                                            {"$PORT_LIST", portList},
                                                            {"$PORT_CONNECTIONS", portConn}};
-    copyFileAndReplaceWords(referenceDir + operatorFileName + "_n_outputs.vhd",
+    copyFileAndReplaceWords(referenceDir + operatorFileName + "_n_outputs.vhdl",
                             componentDir + operatorFileName + "_" +
-                                std::to_string(numOutputs) + ".vhd",
+                                std::to_string(numOutputs) + ".vhdl",
                             replacementWords);
   }
 }
@@ -513,8 +513,8 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
 void algorithms::generateSplitterOperators(std::map<int, int> outputCounts) {
   std::string operatorFileName = "hs_splitter";
   for (auto const &[numOutputs, occurances] : outputCounts) {
-    std::string refFileName = operatorFileName + ".vhd";
-    std::string outputFile = operatorFileName + "_" + std::to_string(numOutputs) + ".vhd";
+    std::string refFileName = operatorFileName + ".vhdl";
+    std::string outputFile = operatorFileName + "_" + std::to_string(numOutputs) + ".vhdl";
     std::stringstream outputPorts;
     std::stringstream outputReadySigs;
     std::stringstream outputDataMapping;
@@ -568,8 +568,8 @@ void algorithms::generateRoutingOperators(VHDLComponent comp) {
                         componentDir + entityName + "_op.vhd", copyOptions);
 
   copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface" + "_" +
-                              opInputCount + ".vhd",
-                          componentDir + entityName + ".vhd", replacementWords);
+                              opInputCount + ".vhdl",
+                          componentDir + entityName + ".vhdl", replacementWords);
 }
 
 void algorithms::generateFloorOperator(VHDLComponent comp) {
@@ -579,8 +579,8 @@ void algorithms::generateFloorOperator(VHDLComponent comp) {
   // copy in fp_floor wrapper file and change operator frequency
   std::map<std::string, std::string> freqReplace;
   freqReplace["$FREQ"] = std::to_string(operatorFreq);
-  copyFileAndReplaceWords(referenceDir + "fp_floor.vhd",
-                          componentDir + "fp_floor.vhd", freqReplace);
+  copyFileAndReplaceWords(referenceDir + "fp_floor.vhdl",
+                          componentDir + "fp_floor.vhdl", freqReplace);
   // generate internal components that make up floor operator
   std::string internalComponents[] = {"float2int", "int2float"};
   for (const std::string &entityName : internalComponents) {
@@ -596,8 +596,8 @@ void algorithms::generateFloorOperator(VHDLComponent comp) {
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", lifespan},
                                                            {"$HSM_TYPE", "_one"}};
-    copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface_1.vhd",
-                            componentDir + entityName + ".vhd",
+    copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface_1.vhdl",
+                            componentDir + entityName + ".vhdl",
                             replacementWords);
   }
 }
@@ -652,8 +652,8 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         portList.clear();
@@ -703,8 +703,8 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         portList.clear();
@@ -752,8 +752,8 @@ void algorithms::generateInputOutputSelectorImplementation(VHDLComponent comp,
                                                              {"$EXEC_TIME_PORTS", execTimePorts},
                                                              {"$INPUT_PORTS", portList},
                                                              {"$PROCESS_BEHAVIOUR", processBehaviour}};
-        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         execTimePorts.clear();
@@ -782,8 +782,8 @@ void algorithms::generateInputOutputSelectorImplementation(VHDLComponent comp,
                                                              {"$OUTPUT_PORTS", portList},
                                                              {"$PROCESS_BEHAVIOUR", processBehaviour},
                                                              {"$RESET_BEHAVIOUR", resetBehaviour}};
-        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         execTimePorts.clear();
@@ -802,7 +802,7 @@ void algorithms::generateFPCOperator(std::string compImplementationName) {
                            std::filesystem::copy_options::recursive;
 
   std::filesystem::copy(operatorRefDir + operatorFileName + ".vhdl",
-                        componentDir + operatorFileName + ".vhd", copyOptions);
+                        componentDir + operatorFileName + ".vhdl", copyOptions);
 }
 
 void algorithms::generateUIOperator(VHDLComponent comp) {
@@ -810,7 +810,7 @@ void algorithms::generateUIOperator(VHDLComponent comp) {
     std::filesystem::copy_options::recursive;
   std::filesystem::copy(
       referenceDir + "/ui/" + comp.getImplementationName() + ".vhdl",
-      componentDir + comp.getImplementationName() + ".vhd", copyOptions);
+      componentDir + comp.getImplementationName() + ".vhdl", copyOptions);
 }
 
 /**
@@ -841,8 +841,8 @@ void algorithms::generateOperator(VHDLComponent comp) {
     generateFPCOperator(comp.getImplementationName());
     // generate the appropriate HS interface
     copyFileAndReplaceWords(
-        referenceDir + "flopoco_hs_interface_" + opInputCount + ".vhd",
-        componentDir + entityName + ".vhd", replacementWords);
+        referenceDir + "flopoco_hs_interface_" + opInputCount + ".vhdl",
+        componentDir + entityName + ".vhdl", replacementWords);
   }
 }
 
@@ -1289,7 +1289,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
     operatorRef.close();
     vhdlOutput.close();
   } else {
-    VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhd"
+    VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhdl"
                    << " does not exist/not found!"); // TODO turn into assert
   }
 }
@@ -2080,8 +2080,8 @@ void algorithms::generateHSInterfaceComponents() {
   for (const auto &component : componentNames) {
     const auto copyOptions = std::filesystem::copy_options::update_existing |
                              std::filesystem::copy_options::recursive;
-    std::filesystem::copy(referenceDir + component + ".vhd",
-                          componentDir + component + ".vhd", copyOptions);
+    std::filesystem::copy(referenceDir + component + ".vhdl",
+                          componentDir + component + ".vhdl", copyOptions);
   }
 }
 
@@ -2098,8 +2098,8 @@ void algorithms::generateAudioInterfaceComponents() {
   std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
                                                             std::to_string(operatorFreq)}}; // name component according to operator frequency
   for (const auto &component : componentNames) {
-    copyFileAndReplaceWords(referenceDir + component + ".vhd",
-                            componentDir + component + ".vhd",
+    copyFileAndReplaceWords(referenceDir + component + ".vhdl",
+                            componentDir + component + ".vhdl",
                             replacementWords);
   }
   for (const auto &op : operatorNames) {
@@ -2108,7 +2108,7 @@ void algorithms::generateAudioInterfaceComponents() {
     std::filesystem::copy(referenceDir + "/operators/" + op + "_f" +
                           std::to_string(operatorFreq) + ".vhdl",
                           componentDir + op + "_f" +
-                          std::to_string(operatorFreq) + ".vhd",
+                          std::to_string(operatorFreq) + ".vhdl",
                           copyOptions);
   }
 }
