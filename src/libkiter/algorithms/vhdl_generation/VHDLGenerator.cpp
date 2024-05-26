@@ -2415,7 +2415,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
           int bufferSz = 0;
           int pushStart = 0;
           int popStart = 0;
-          int initTokens = 0;
+          int initTokens = comp.getSBufferInitTokens();
           outputStream << "generic map (\n"
                        << "    "
                        << "ram_width => ram_width,\n"

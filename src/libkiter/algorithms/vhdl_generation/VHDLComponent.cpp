@@ -365,6 +365,14 @@ void VHDLComponent::addOutputSignal(const std::string& signalName) {
   }
 }
 
+int VHDLComponent::getSBufferInitTokens() const {
+  VERBOSE_ASSERT(this->getType() == "sbuffer",
+                 "Can only get initial tokens from SBuffers");
+  std::string initTokens =
+      this->getUniqueName().substr(this->getUniqueName().find("INIT") + 4);
+  return std::stoi(initTokens);
+}
+
 std::string VHDLComponent::printStatus() const  {
   std::stringstream outputStream;
 

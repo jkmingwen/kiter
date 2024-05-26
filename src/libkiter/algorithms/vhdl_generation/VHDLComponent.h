@@ -54,6 +54,7 @@ class VHDLComponent {
   void addHSOutputSignal(const std::string &signalName);
   void addInputSignal(const std::string &signalName);
   void addOutputSignal(const std::string& signalName);
+  int getSBufferInitTokens() const;
   std::string printStatus() const ;
 
  private:
