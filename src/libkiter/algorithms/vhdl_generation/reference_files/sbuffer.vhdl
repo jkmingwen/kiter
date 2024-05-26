@@ -41,7 +41,7 @@ begin
                     null;
             end case;
         end if;
-        if (reset = '0') then
+        if (rst = '0') then
             write_index <= init;
             memory <= (others => (others => '0'));
         end if;
@@ -58,7 +58,7 @@ begin
                     null;
             end case;
         end if;
-        if (reset = '0') then
+        if (rst = '0') then
             read_index <= 0;
         end if;
     end process pop_operation;

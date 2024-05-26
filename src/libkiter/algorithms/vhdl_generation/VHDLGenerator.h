@@ -78,6 +78,9 @@ namespace algorithms {
   std::string generateDelayComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
   std::string generateSBufferComponent();
+  std::string generateCycleCounterComponent();
+  std::string generateInputScalingComponents(int i2sBitWidth, int fpcBitWidth);
+  std::string generateOutputScalingComponents(int i2sBitWidth, int fpcBitWidth);
   std::string generateConstComponents(std::map<int, int> outputCounts);
   std::string generateUIComponents(VHDLComponent comp);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);
