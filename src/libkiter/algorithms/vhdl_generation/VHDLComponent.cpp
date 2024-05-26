@@ -32,7 +32,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
       outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
   // for when we want to use a single signal to send output to multiple actors (not data driven)
-  this->sharedOutputSignal = dataflow->getEdgeName(it2Edge(dataflow->getOutputEdges(a).first));
+  if (dataflow->getVertexOutDegree(a)) {
+    this->sharedOutputSignal = dataflow->getEdgeName(it2Edge(dataflow->getOutputEdges(a).first));
+  }
   for (const auto& port : inputPorts) {
     std::string portName = port;
     if (portName.substr(portName.find_last_of('_') + 1) == "vect") { // ignore "vect" to find the actual data type
