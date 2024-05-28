@@ -263,6 +263,14 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   models::Dataflow *dataflow_prime = dataflow;
   bool foundInputL = false;
   bool foundInputR = false;
+  int operatorFreq = 125;
+  // check if operator frequencies have been specified
+  if (params.find("FREQUENCY") != params.end()) {
+    VERBOSE_INFO("Operator frequency set to " << params["FREQUENCY"]);
+    operatorFreq = std::stoi(params["FREQUENCY"]);
+  } else {
+    VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
+  }
   // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
   std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
   Vertex lIn, rIn;
@@ -286,8 +294,12 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
           if (opType == "INPUT_0") {
             foundInputL = true;
             lIn = v;
+            // input operation consists of these 3 components:
+            TIME_UNIT dur = getOperatorLifespan("sbuffer", operatorFreq) +
+                            getOperatorLifespan("fix2fp", operatorFreq) +
+                            getOperatorLifespan("fp_prod", operatorFreq);
             dataflow_prime->setPhasesQuantity(lIn, 1);
-            dataflow_prime->setVertexDuration(lIn, {4});
+            dataflow_prime->setVertexDuration(lIn, {dur});
             dataflow_prime->setReentrancyFactor(lIn, 1);
           }
           if (opType == "INPUT_1") {
