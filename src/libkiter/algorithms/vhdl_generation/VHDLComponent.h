@@ -55,6 +55,8 @@ class VHDLComponent {
   void addInputSignal(const std::string &signalName);
   void addOutputSignal(const std::string& signalName);
   int getSBufferInitTokens() const;
+  void setStartTimes(std::vector<TIME_UNIT> times);
+  std::vector<TIME_UNIT> getStartTimes() const;
   std::string printStatus() const ;
 
  private:
@@ -86,6 +88,8 @@ class VHDLComponent {
   std::map<std::string, int> outputTypes;
   bool isMixedType; // true if it has input edges of types int and fp
   bool isUIType;
-  int ioId; // if it is of type input/output it will be assigned an ID according to their name (this is so we can assign 0->L, 1-R, etc.)
+  int ioId; // if it is of type input/output it will be assigned an ID according
+            // to their name (this is so we can assign 0->L, 1-R, etc.)
+  std::vector<TIME_UNIT> startTimes;
 };
 #endif /* VHDL_COMPONENT_H_ */

@@ -373,6 +373,18 @@ int VHDLComponent::getSBufferInitTokens() const {
   return std::stoi(initTokens);
 }
 
+void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
+  if (!startTimes.size()) {
+    VERBOSE_WARNING("Adding empty vector of start times for "
+                    << this->getUniqueName());
+  }
+  this->startTimes = times;
+}
+
+std::vector<TIME_UNIT> VHDLComponent::getStartTimes() const {
+  return this->startTimes;
+}
+
 std::string VHDLComponent::printStatus() const  {
   std::stringstream outputStream;
 

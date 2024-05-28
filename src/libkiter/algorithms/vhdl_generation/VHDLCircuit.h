@@ -26,6 +26,7 @@ class VHDLCircuit {
   void addConnection(VHDLConnection newConnect);
   void addInputPort(std::string portName, const std::vector<std::string> &signalNames);
   void addOutputPort(std::string portName, const std::vector<std::string> &signalNames);
+  void setCompStartTime(std::string name, std::vector<TIME_UNIT> times);
 
   std::string printStatus();
 

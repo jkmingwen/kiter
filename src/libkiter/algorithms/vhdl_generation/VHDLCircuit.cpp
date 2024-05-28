@@ -40,6 +40,16 @@ void VHDLCircuit::addOutputPort(std::string portName,
   this->outputPorts.insert(std::make_pair(portName, signalNames));
 }
 
+// Assign start times to component in component map with matching name
+// Needed to use this roundabout method to modify component as getComponentMap is const
+void VHDLCircuit::setCompStartTime(std::string name, std::vector<TIME_UNIT> times) {
+  for (auto &[v, comp] : this->componentMap) {
+    if (name == comp.getUniqueName()) {
+      comp.setStartTimes(times);
+    }
+  }
+}
+
 int VHDLCircuit::getOperatorCount(const std::string &op) const {
     const auto &op_map = this->getOperatorMap();
     auto it = op_map.find(op);

@@ -12,8 +12,10 @@
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
+#include "algorithms/schedulings.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
+#include <algorithms/transformation/iterative_evaluation.h>
 #include <printers/SDF3Wrapper.h>
 
 // for signal name retrieval
@@ -30,6 +32,11 @@ int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed 
 bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
+int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
+int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
+                         // expected arrival of audio sample
+int computeL = 0; // total compute time for left channel
+int computeR = 0; // total compute time for right channel
 
 /* Each component has a specific lifespan and name that needs to be defined in
    the generated AXI interface --- we track them using a predefined map where
@@ -42,6 +49,7 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
      {{"fp_add", 1}, {"fp_prod", 1}, {"fp_div", 3}, {"fp_sqrt", 1},
       {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
       {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
@@ -51,6 +59,7 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
      {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
       {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
       {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
@@ -60,6 +69,7 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
      {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
       {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
       {"int_diff", 1}, {"float2int", 2}, {"int2float", 3}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 5}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
@@ -127,7 +137,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
   std::replace(circuitName.begin(), circuitName.end(), '-', '_');
   std::replace(circuitName.begin(), circuitName.end(), '.', '_');
   circuit.setName(circuitName);
-  VERBOSE_DEBUG( "circuit name: " << circuitName );
+  VERBOSE_DEBUG("circuit name: " << circuitName);
 
   // populate circuit object with components and connections based on dataflow graph
   {ForEachVertex(dataflow, actor) {
@@ -322,8 +332,17 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   if (param_list.find("FREQUENCY") != param_list.end()) {
     VERBOSE_INFO("Operator frequency set to " << param_list["FREQUENCY"]);
     operatorFreq = std::stoi(param_list["FREQUENCY"]);
+    systemPeriod = std::ceil((operatorFreq/12.288) * 256);
   } else {
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
+  }
+
+  // check if operator frequencies have been specified
+  if (param_list.find("SLACK") != param_list.end()) {
+    VERBOSE_INFO("Operator frequency set to " << param_list["SLACK"]);
+    systemSlack = std::stoi(param_list["SLACK"]);
+  } else {
+    VERBOSE_INFO("Default system slack used (" << systemSlack << "), you can use -p SLACK=slack_in_clock_cycles to set the operator frequency");
   }
 
   // define location of VHDL generation reference files
@@ -379,6 +398,44 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
     VERBOSE_INFO("Output Circuit");
   }
+
+  // schedule execution times
+  models::Dataflow *dataflowScheduled = new models::Dataflow(*dataflow);
+  // model periodic audio input by adding components
+  // (these extra components have no use in VHDL code, and so used purely to get scheduling numbers)
+  algorithms::transformation::generate_audio_components(dataflowScheduled,
+                                                        param_list);
+  VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),"inconsistent graph");
+  models::Scheduling res =
+      scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
+  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> execTimes;
+  for (const auto &item : res.getTaskSchedule()) {
+    execTimes[item.first] = item.second.periodic_starts.second;
+  }
+  std::vector<TIME_UNIT> inputEnds(2, 0);
+  std::vector<TIME_UNIT> outputStarts(2, 0);
+  for (auto &[v, comp] : tmp.getComponentMap()) {
+    if (execTimes.count(dataflow->getVertexId(v))) {
+      // add execTimes element as actor exec time
+      std::vector<TIME_UNIT> startTimes(execTimes[dataflow->getVertexId(v)]);
+      tmp.setCompStartTime(comp.getUniqueName(), startTimes);
+      if (comp.getType() == "INPUT") {
+        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        inputEnds[comp.getIOId()] = startTimes.front() + dataflowScheduled->getVertexDuration(v);
+      }
+      if (comp.getType() == "OUTPUT") {
+        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        outputStarts[comp.getIOId()] = startTimes.front();
+      }
+    } else {
+      VERBOSE_WARNING("No schedule generated for "
+                      << comp.getUniqueName() << " (" << comp.getType() << ")");
+    }
+  }
+  computeL = outputStarts[0] - inputEnds[0];
+  computeR = outputStarts[1] - inputEnds[1];
+  printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduled.xml",
+                          dataflow);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing
@@ -1185,9 +1242,6 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
       // Generate mappings for input/output interfaces and I2S transceivers
       for (auto i = 0; i < numAudioCodecs; i++) {
         inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
-        // inputInterfaceMapping << generateInputInterfaceMapping(i, i2sBitWidth);
-        // TODO add rx sbuffer mapping
-        // TODO add fix2fp mapping
       }
     } else {
       componentDeclaration << generateInputInterfaceComponent(i2sBitWidth) << std::endl;
@@ -1324,15 +1378,16 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
   }
   // audio interface constants TODO add proper compute time
   if (!dataDriven) {
-    int slack = 100;
-    int compute = 25;
-    int period = 5209;
     entitySignals << "signal counter_sig : integer;" << std::endl;
-    entitySignals << "constant SLACK : integer := " << std::to_string(slack) << ";" << std::endl;
-    entitySignals << "constant COMPUTE : integer := " << std::to_string(compute) << ";" << std::endl;
+    entitySignals << "constant SLACK : integer := "
+                  << std::to_string(systemSlack) << ";" << std::endl;
+    entitySignals << "constant COMPUTE_L : integer := "
+                  << std::to_string(computeL) << ";" << std::endl;
+    entitySignals << "constant COMPUTE_L : integer := "
+                  << std::to_string(computeR) << ";" << std::endl;
     // cycle counter mapping declared here:
     entityMapping << "counter : component cycle_counter\n"
-                  << "    generic map (period => " << std::to_string(period)
+                  << "    generic map (period => " << std::to_string(systemPeriod)
                   << ")\n"
                   << "    port map (clk => sys_clk_sig,\n"
                   << "              rst => rst_sig,\n"
@@ -1634,17 +1689,17 @@ std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) 
 std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) {
   std::stringstream outputStream;
   std::string channel;
-  int halfPeriod = 2604;
+  int halfPeriod = std::floor(systemPeriod/2); // Round down so that sum of half periods doesn't exceed period
   std::string pushStart;
   std::string popStart;
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
-    pushStart = "2*SLACK + COMPUTE";
-    popStart = "2*SLACK + COMPUTE + 1";
+    pushStart = "2*SLACK + COMPUTE_R";
+    popStart = "2*SLACK + COMPUTE_R + 1";
   } else { // even ids assigned to L channel
     channel = "l";
-    pushStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE";
-    popStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE + 1";
+    pushStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L";
+    popStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L + 1";
   }
   if (!dataDriven) {
     outputStream << "tx_buffer_" << std::to_string(id) << " : component sbuffer\n"
@@ -2401,7 +2456,10 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
           outputStream << "generic map (\n"
                        << "    " << "ram_width => ram_width," << std::endl;
           for (int i = 0; i < comp.getInputPorts().size(); i++) {
-            int execTime = 0; // TODO set exec time
+            VERBOSE_ASSERT(comp.getStartTimes().size() ==
+                               comp.getInputPorts().size(),
+                           "Number of start times and input ports don't match");
+            int execTime = comp.getStartTimes()[i] + systemSlack;
             std::string lineEnd = ",";
             if (i + 1 == comp.getInputPorts().size()) {
               lineEnd = ")";
@@ -2414,7 +2472,10 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
           outputStream << "generic map (\n"
                        << "    " << "ram_width => ram_width," << std::endl;
           for (int i = 0; i < comp.getOutputPorts().size(); i++) {
-            int execTime = 0; // TODO set exec time
+            VERBOSE_ASSERT(comp.getStartTimes().size() ==
+                           comp.getOutputPorts().size(),
+                           "Number of start times and output ports don't match");
+            int execTime = comp.getStartTimes()[i] + systemSlack;
             std::string lineEnd = ",";
             if (i + 1 == comp.getOutputPorts().size()) {
               lineEnd = ")";
@@ -2424,10 +2485,12 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
                          << execTime << lineEnd << std::endl;
           }
         } else if (comp.getType() == "sbuffer") {
-          int bufferSz = 0;
-          int pushStart = 0;
-          int popStart = 0;
+          VERBOSE_ASSERT(comp.getStartTimes().size() == 1,
+                         "SBuffers shouldn't have more than one start time");
+          int pushStart = comp.getStartTimes().front() + systemSlack;
+          int popStart = comp.getStartTimes().front() + 1 + systemSlack;
           int initTokens = comp.getSBufferInitTokens();
+          int bufferSz = initTokens + 1;
           outputStream << "generic map (\n"
                        << "    "
                        << "ram_width => ram_width,\n"
