@@ -1207,7 +1207,16 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
       componentDeclaration << generateOutputScalingComponents(i2sBitWidth, fpcBitWidth);
       for (auto i = 0; i < numAudioCodecs; i++) {
         outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
-
+      }
+    } else {
+      componentDeclaration << generateOutputInterfaceComponent(i2sBitWidth) << std::endl;
+      componentDeclaration << generateFPCToI2SComponent(fpcBitWidth, i2sBitWidth) << std::endl;
+      for (auto i = 0; i < numAudioCodecs; i++) {
+        outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
+        outputInterfaceMapping << generateOutputInterfaceMapping(i, i2sBitWidth);
+        // need to generate these intermediate signals here as there are sometimes less less output ports
+        // in the Faust component than there are output ports in the output interfaces
+        FPCToI2SSignals << generateFPCToI2SSignalNames(i);
       }
     }
   }
