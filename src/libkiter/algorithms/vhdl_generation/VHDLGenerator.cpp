@@ -1383,7 +1383,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
                   << std::to_string(systemSlack) << ";" << std::endl;
     entitySignals << "constant COMPUTE_L : integer := "
                   << std::to_string(computeL) << ";" << std::endl;
-    entitySignals << "constant COMPUTE_L : integer := "
+    entitySignals << "constant COMPUTE_R : integer := "
                   << std::to_string(computeR) << ";" << std::endl;
     // cycle counter mapping declared here:
     entityMapping << "counter : component cycle_counter\n"
