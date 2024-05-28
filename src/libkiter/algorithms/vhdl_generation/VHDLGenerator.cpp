@@ -1022,7 +1022,16 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
       // FIFO component instantiation
       for (auto &conn : circuit.getConnectionMap()) {
         if (conn.second.getInitialTokenCount()) {
+          VERBOSE_INFO("Generating HS FIFO buffer implementations");
           vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+          std::vector<std::string> fifoBufferComps = {
+              "hs_fifo", "hs_fifo_n", "hs_fifo_one", "hs_fifo_zero"};
+          for (const auto &component : fifoBufferComps) {
+            const auto copyOptions = std::filesystem::copy_options::update_existing |
+              std::filesystem::copy_options::recursive;
+            std::filesystem::copy(referenceDir + component + ".vhdl",
+                                  componentDir + component + ".vhdl", copyOptions);
+          }
           break;
         }
       }
@@ -2290,12 +2299,6 @@ void algorithms::generateHSInterfaceComponents() {
   std::vector<std::string> componentNames = {"hs_merger", "countdown",
                                              "store_send", "hs_merger_negate",
                                              "hs_merger_one", "hs_merger_three"};
-  if (!isBufferless) {
-    componentNames.push_back("hs_fifo");
-    componentNames.push_back("hs_fifo_n");
-    componentNames.push_back("hs_fifo_one");
-    componentNames.push_back("hs_fifo_zero");
-  }
 
   for (const auto &component : componentNames) {
     const auto copyOptions = std::filesystem::copy_options::update_existing |
