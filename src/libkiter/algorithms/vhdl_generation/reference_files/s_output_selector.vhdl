@@ -31,9 +31,6 @@ begin
                     null;
             end case;
         end if;
-        if (rst = '0') then
-          $RESET_BEHAVIOUR
-        end if;
     end process send_output;
 
 end Behavioral;

@@ -43,7 +43,6 @@ begin
         end if;
         if (rst = '0') then
             write_index <= init;
-            memory <= (others => (others => '0'));
         end if;
     end process push_operation;
 

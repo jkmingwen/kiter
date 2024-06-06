@@ -31,9 +31,6 @@ begin
                     null;
             end case;
         end if;
-        if (rst = '0') then
-            out_data_0 <= (others => '0');
-        end if;
     end process select_input;
 
 

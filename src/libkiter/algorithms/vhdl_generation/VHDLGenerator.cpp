@@ -837,14 +837,15 @@ void algorithms::generateInputOutputSelectorImplementation(VHDLComponent comp,
         processBehaviour += "when exec_time_" + std::to_string(i) +
                             " => out_data_" + std::to_string(i) +
                             " <= in_data_0;\n";
-        resetBehaviour += "out_data_" + std::to_string(i) + " <= (others => '0');\n";
+        // resetBehaviour += "out_data_" + std::to_string(i) + " <= (others => '0');\n";
       }
       // generate output selector implementation
       std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
                                                              {"$EXEC_TIME_PORTS", execTimePorts},
                                                              {"$OUTPUT_PORTS", portList},
                                                              {"$PROCESS_BEHAVIOUR", processBehaviour},
-                                                             {"$RESET_BEHAVIOUR", resetBehaviour}};
+                                                             // {"$RESET_BEHAVIOUR", resetBehaviour}
+      };
         copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
                                 componentDir + componentName + ".vhdl",
                                 replacementWords);
