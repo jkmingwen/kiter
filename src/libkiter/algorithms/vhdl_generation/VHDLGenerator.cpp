@@ -1969,7 +1969,7 @@ std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp,
         for (auto port = 0; port < numOutputPorts; port++) {
           outputStream << "          "
                        << "exec_time_" << std::to_string(port)
-                       << " : integer := 0" << std::endl;
+                       << " : integer := 0";
           if (port + 1 == numOutputPorts) {
             outputStream << ");" << std::endl;
           } else {
