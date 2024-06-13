@@ -40,6 +40,16 @@ void VHDLCircuit::addOutputPort(std::string portName,
   this->outputPorts.insert(std::make_pair(portName, signalNames));
 }
 
+// Assign start times to component in component map with matching name
+// Needed to use this roundabout method to modify component as getComponentMap is const
+void VHDLCircuit::setCompStartTime(std::string name, std::vector<TIME_UNIT> times) {
+  for (auto &[v, comp] : this->componentMap) {
+    if (name == comp.getUniqueName()) {
+      comp.setStartTimes(times);
+    }
+  }
+}
+
 int VHDLCircuit::getOperatorCount(const std::string &op) const {
     const auto &op_map = this->getOperatorMap();
     auto it = op_map.find(op);
@@ -74,7 +84,7 @@ std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType
 
 // return input counts for each occurance of the given operator
 std::map<int, int> VHDLCircuit::getNumInputs(const std::string &opType) const {
-  std::map<int, int> inputCounts; // number of outputs, and their occurances
+  std::map<int, int> inputCounts; // number of inputs, and their occurances
   for (auto &comp : this->componentMap) {
     if (comp.second.getType() == opType) {
       inputCounts[(comp.second.getInputPorts()).size()]++;
@@ -420,4 +430,20 @@ std::vector<std::string> VHDLCircuit::generateHSSignalNames(std::string &name,
   }
 
   return signalNames;
+}
+
+// Replace signal name with top-level port when an input/output port encountered
+// TODO don't hard code the iterator to the data signal name
+std::string VHDLCircuit::generateSignalNames(std::string &name,
+                                             bool isInputSig) const {
+  std::string signalName;
+  if (isInputSig && this->getInputPorts().count(name)) {
+    signalName = this->inputPorts.at(name)[2];
+  } else if (!isInputSig && this->getOutputPorts().count(name)) {
+    signalName = this->outputPorts.at(name)[2];
+  } else {
+    signalName = name + "_DATA";
+  }
+
+  return signalName;
 }

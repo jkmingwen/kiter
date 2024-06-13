@@ -6,15 +6,16 @@
  */
 
 #include <bitset>
-#include <set>
 #include <string>
 #include <filesystem>
 #include "VHDLGenerator.h"
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
+#include "algorithms/schedulings.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
+#include <algorithms/transformation/iterative_evaluation.h>
 #include <printers/SDF3Wrapper.h>
 
 // for signal name retrieval
@@ -30,6 +31,12 @@ std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_
 int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed to run at
 bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
+bool dataDriven = false; // if VHDL design is data driven using HS protocol
+int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
+int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
+                         // expected arrival of audio sample
+int computeL = 0; // total compute time for left channel
+int computeR = 0; // total compute time for right channel
 
 /* Each component has a specific lifespan and name that needs to be defined in
    the generated AXI interface --- we track them using a predefined map where
@@ -41,7 +48,8 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
     {50,
      {{"fp_add", 1}, {"fp_prod", 1}, {"fp_div", 3}, {"fp_sqrt", 1},
       {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
@@ -50,7 +58,8 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
     {125,
      {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
       {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 2}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
@@ -59,13 +68,66 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
     {250,
      {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
       {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
+      {"int_diff", 1}, {"float2int", 2}, {"int2float", 3}, {"sbuffer", 2},
+      {"fix2fp", 1}, {"fp2fix", 1},
       // NOTE unimplemented operators from here:
       {"fp_floor", 5}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
       // {"select3", 1},
       {"attach", 1}, {"int_abs", 1}, {"vbargraph", 1}}}
   };
+
+std::map<std::string, std::vector<std::string>>
+    operatorImplementationInputPorts = {
+        {"fp_add", {"X", "Y"}},
+        {"fp_prod", {"X", "Y"}},
+        {"fp_div", {"X", "Y"}},
+        {"fp_sqrt", {"X"}},
+        {"fp_diff", {"X", "Y"}},
+        {"fp_pow", {"X", "Y"}},
+        {"int_add", {"X", "Y"}},
+        {"int_prod", {"X", "Y"}},
+        {"int_diff", {"X", "Y"}},
+        {"float2int", {"X"}},
+        {"int2float", {"X"}},
+        {"sbuffer", {"in_data"}},
+        {"int_max", {"X", "Y"}},
+        {"int_min", {"X", "Y"}},
+        {"fp_max", {"X", "Y"}},
+        {"fp_min", {"X", "Y"}},
+        {"fp_abs", {"X"}},
+        {"int_abs", {"X"}},
+        {"select2", {"X", "Y", "Z"}},
+        {"attach", {"X", "Y"}} // ,
+                               // {"vbargraph", {"X"}},
+                               // {"fp_floor", {"op_in_data_0"}}
+};
+
+std::map<std::string, std::vector<std::string>>
+    operatorImplementationOutputPorts = {
+        {"fp_add", {"R"}},
+        {"fp_prod", {"R"}},
+        {"fp_div", {"R"}},
+        {"fp_sqrt", {"R"}},
+        {"fp_diff", {"R"}},
+        {"fp_pow", {"R"}},
+        {"int_add", {"R"}},
+        {"int_prod", {"R"}},
+        {"int_diff", {"R"}},
+        {"float2int", {"R"}},
+        {"int2float", {"R"}},
+        {"sbuffer", {"out_data"}},
+        {"int_max", {"R"}},
+        {"int_min", {"R"}},
+        {"fp_max", {"R"}},
+        {"fp_min", {"R"}},
+        {"fp_abs", {"R"}},
+        {"int_abs", {"R"}},
+        {"select2", {"R"}},
+        {"attach", {"R"}}// ,
+        // {"vbargraph", {"X"}},
+        // {"fp_floor", {"op_in_data_0"}}
+};
 
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
 
@@ -75,7 +137,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
   std::replace(circuitName.begin(), circuitName.end(), '-', '_');
   std::replace(circuitName.begin(), circuitName.end(), '.', '_');
   circuit.setName(circuitName);
-  VERBOSE_DEBUG( "circuit name: " << circuitName );
+  VERBOSE_DEBUG("circuit name: " << circuitName);
 
   // populate circuit object with components and connections based on dataflow graph
   {ForEachVertex(dataflow, actor) {
@@ -87,9 +149,10 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
                    << getOperatorLifespan(newComp.getType(), operatorFreq));
       if (newComp.getType() != "input_selector" &&
           newComp.getType() != "output_selector") { // input/output selector lifespans are already set in merge_operators
-        dataflow->setVertexDuration(
-            actor,
-            {(TIME_UNIT)getOperatorLifespan(newComp.getType(), operatorFreq)});
+        std::vector<TIME_UNIT> opLifespans(
+            dataflow->getVertexPhaseDuration(actor).size(),
+            (TIME_UNIT)getOperatorLifespan(newComp.getType(), operatorFreq));
+        dataflow->setVertexDuration(actor, opLifespans);
       }
     }}
   {ForEachEdge(dataflow, edge) {
@@ -192,6 +255,28 @@ int getOperatorLifespan(const std::string &opType, int operatorFreq) {
   }
 }
 
+const std::vector<std::string> getImplementationInputPorts(std::string opType) {
+  std::vector<std::string> inPortNames;
+  if (operatorImplementationInputPorts.count(opType)) {
+    inPortNames = operatorImplementationInputPorts.at(opType);
+  } else {
+    VERBOSE_WARNING("No input ports listed for given operator type " << opType <<
+                    " --- check operatorImplementationInputPorts for entry.");
+  }
+  return inPortNames;
+}
+
+const std::vector<std::string> getImplementationOutputPorts(std::string opType) {
+  std::vector<std::string> outPortNames;
+  if (operatorImplementationOutputPorts.count(opType)) {
+    outPortNames = operatorImplementationOutputPorts.at(opType);
+  } else {
+    VERBOSE_WARNING("No output ports listed for given operator type " << opType <<
+                    " --- check operatorImplementationOutputPorts for entry.");
+  }
+  return outPortNames;
+}
+
 /**
    Generates VHDL code for the given dataflow graph
 
@@ -206,6 +291,7 @@ int getOperatorLifespan(const std::string &opType, int operatorFreq) {
    - BUFFERLESS: 't' to activate; indicates whether each connection in the VHDL
    design should include a FIFO buffer. Set to buffered (t) by default.
    - FREQUENCY: Clock cycle frequency of VHDL design.
+   - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
 
    @return void; VHDL code generated in location specified in OUTPUT_DIR
    parameter.
@@ -246,8 +332,17 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   if (param_list.find("FREQUENCY") != param_list.end()) {
     VERBOSE_INFO("Operator frequency set to " << param_list["FREQUENCY"]);
     operatorFreq = std::stoi(param_list["FREQUENCY"]);
+    systemPeriod = std::ceil((operatorFreq/12.288) * 256);
   } else {
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
+  }
+
+  // check if operator frequencies have been specified
+  if (param_list.find("SLACK") != param_list.end()) {
+    VERBOSE_INFO("Operator frequency set to " << param_list["SLACK"]);
+    systemSlack = std::stoi(param_list["SLACK"]);
+  } else {
+    VERBOSE_INFO("Default system slack used (" << systemSlack << "), you can use -p SLACK=slack_in_clock_cycles to set the operator frequency");
   }
 
   // define location of VHDL generation reference files
@@ -264,6 +359,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       VERBOSE_FAILURE();
   }
 
+  if (param_list.find("DATA_DRIVEN") != param_list.end()) {
+    VERBOSE_INFO("Using data-driven implementation for VHDL design");
+    dataDriven = true;
+  }
+
   if (!isBufferless) {
     {ForEachEdge(dataflow, e) {
         if (!dataflow->getPreload(e)) {
@@ -273,30 +373,69 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
   // VHDLCircuit object specifies operators and how they're connected
   VHDLCircuit tmp = generateCircuitObject(dataflow);
-  while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
+  if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
+    while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
-    VERBOSE_INFO("getMultiOutActors is not empty");
+      VERBOSE_INFO("getMultiOutActors is not empty");
 
-    /*  This block removes multiIO actors and replaces them with a router that splits their output */
-    for (std::string actorName: tmp.getMultiOutActors()) {
-      parameters_list_t parameters;
-      parameters["name"] = actorName;
-      VERBOSE_INFO("singleOutput actor " << actorName);
-      try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
-        algorithms::transformation::singleOutput(dataflow, parameters);
-      } catch (...) {
-        VERBOSE_WARNING("actor missing!");
+      /*  This block removes multiIO actors and replaces them with a router that splits their output */
+      for (std::string actorName: tmp.getMultiOutActors()) {
+        parameters_list_t parameters;
+        parameters["name"] = actorName;
+        VERBOSE_INFO("singleOutput actor " << actorName);
+        try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
+          algorithms::transformation::singleOutput(dataflow, parameters);
+        } catch (...) {
+          VERBOSE_WARNING("actor missing!");
+        }
       }
+
+      // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
+      VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
+      tmp = generateCircuitObject(dataflow);
     }
 
-    // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
-    VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
-    tmp = generateCircuitObject(dataflow);
+    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
+    VERBOSE_INFO("Output Circuit");
   }
 
-  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
-  VERBOSE_INFO("Output Circuit");
-
+  // schedule execution times
+  models::Dataflow *dataflowScheduled = new models::Dataflow(*dataflow);
+  // model periodic audio input by adding components
+  // (these extra components have no use in VHDL code, and so used purely to get scheduling numbers)
+  algorithms::transformation::generate_audio_components(dataflowScheduled,
+                                                        param_list);
+  VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),"inconsistent graph");
+  models::Scheduling res =
+      scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
+  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> execTimes;
+  for (const auto &item : res.getTaskSchedule()) {
+    execTimes[item.first] = item.second.periodic_starts.second;
+  }
+  std::vector<TIME_UNIT> inputEnds(2, 0);
+  std::vector<TIME_UNIT> outputStarts(2, 0);
+  for (auto &[v, comp] : tmp.getComponentMap()) {
+    if (execTimes.count(dataflow->getVertexId(v))) {
+      // add execTimes element as actor exec time
+      std::vector<TIME_UNIT> startTimes(execTimes[dataflow->getVertexId(v)]);
+      tmp.setCompStartTime(comp.getUniqueName(), startTimes);
+      if (comp.getType() == "INPUT") {
+        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        inputEnds[comp.getIOId()] = startTimes.front() + dataflowScheduled->getVertexDuration(v);
+      }
+      if (comp.getType() == "OUTPUT") {
+        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        outputStarts[comp.getIOId()] = startTimes.front();
+      }
+    } else {
+      VERBOSE_WARNING("No schedule generated for "
+                      << comp.getUniqueName() << " (" << comp.getType() << ")");
+    }
+  }
+  computeL = outputStarts[0] - inputEnds[0];
+  computeR = outputStarts[1] - inputEnds[1];
+  printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduled.xml",
+                          dataflow);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing
@@ -319,37 +458,74 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 void algorithms::generateOperators(VHDLCircuit &circuit) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   // Generate VHDL files for individual components
-  for (auto const &op : operatorMap) {
-    VERBOSE_INFO( "Generate VHDL component file for " << op.first );
-    // track number of inputs/outputs for cases where operator can have different number of inputs/outputs
-    std::map<int, int> inputCounts;
-    std::map<int, int> outputCounts;
-    inputCounts = circuit.getNumInputs(op.first);
-    outputCounts = circuit.getNumOutputs(op.first);
-    if (op.first == "Proj") {
-      generateSplitterOperators(outputCounts);
-    } else if (op.first == "const_value") {
-      generateConstOperator(outputCounts);
-    } else if (op.first == "select2") {
-      generateRoutingOperators(circuit.getFirstComponentByType(op.first));
-    } else if (op.first == "fp_floor") {
-      generateFloorOperator(circuit.getFirstComponentByType(op.first));
-    } else if (op.first == "delay") {
-      generateFPCOperator(circuit.getFirstComponentByType(op.first).getImplementationName());
-    } else if (circuit.getFirstComponentByType(op.first).isUI()) {
-      generateUIOperator(circuit.getFirstComponentByType(op.first));
-    } else if (op.first == "input_selector" || op.first == "output_selector") {
-      generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
-                                          inputCounts, outputCounts);
-    } else {
-      generateOperator(circuit.getFirstComponentByType(op.first));
+  if (dataDriven) { // include HS interface components for data driven operator execution
+    for (auto const &op : operatorMap) { // operatorMap <first: operator type, second: occurances>
+      VERBOSE_INFO("Generate VHDL component file for " << op.first);
+      // track number of inputs/outputs for cases where operator can have different number of inputs/outputs
+      std::map<int, int> inputCounts;
+      std::map<int, int> outputCounts;
+      inputCounts = circuit.getNumInputs(op.first);
+      outputCounts = circuit.getNumOutputs(op.first);
+      if (op.first == "Proj") {
+        generateSplitterOperators(outputCounts);
+      } else if (op.first == "const_value") {
+        generateConstOperator(outputCounts);
+      } else if (op.first == "select2") {
+        generateRoutingOperators(circuit.getFirstComponentByType(op.first));
+      } else if (op.first == "fp_floor") {
+        generateFloorOperator(circuit.getFirstComponentByType(op.first));
+      } else if (op.first == "delay") {
+        generateFPCOperator(circuit.getFirstComponentByType(op.first).getImplementationName());
+      } else if (circuit.getFirstComponentByType(op.first).isUI()) {
+        generateUIOperator(circuit.getFirstComponentByType(op.first));
+      } else if (op.first == "input_selector" || op.first == "output_selector") {
+        generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
+                                            inputCounts, outputCounts);
+      } else {
+        generateOperator(circuit.getFirstComponentByType(op.first));
+      }
     }
-
+    generateHSInterfaceComponents();
+    generateAudioInterfaceComponents();
+  } else {
+    // operatorMap <key: operator type, value: occurances>
+    for (auto const &op : operatorMap) {
+      VERBOSE_INFO("Generate VHDL component file for " << op.first);
+      // input/outputCounts for given operator <key: number of inputs/outputs, value: occurances>
+      std::map<int, int> inputCounts;
+      std::map<int, int> outputCounts;
+      inputCounts = circuit.getNumInputs(op.first);
+      outputCounts = circuit.getNumOutputs(op.first);
+      if (op.first == "input_selector" || op.first == "output_selector") {
+        VERBOSE_INFO("Generating for " << op.first);
+        generateInputOutputSelectorImplementation(
+            circuit.getFirstComponentByType(op.first), inputCounts,
+            outputCounts);
+      } else if (op.first == "const_value") {
+        generateConstOperator(outputCounts);
+      } else { // copy operator implementation from reference directory
+        std::string operatorRefDir = referenceDir;
+        std::string operatorFileName =
+          circuit.getFirstComponentByType(op.first).getImplementationName();
+        if (op.first == "sbuffer") {
+          // do nothing
+        } else if (circuit.getFirstComponentByType(op.first).isUI()) {
+          operatorRefDir += "/ui/";
+        } else {
+          operatorRefDir += "/operators/";
+          operatorFileName += "_f" + std::to_string(operatorFreq);
+        }
+        if (op.first != "INPUT" && op.first != "OUTPUT") {
+          VERBOSE_INFO("Generating operator implementation for " << operatorFileName << " from " << operatorRefDir);
+          const auto copyOptions = std::filesystem::copy_options::update_existing |
+            std::filesystem::copy_options::recursive;
+          std::filesystem::copy(operatorRefDir + operatorFileName + ".vhdl",
+                                componentDir + operatorFileName + ".vhdl", copyOptions);
+        }
+      }
+    }
+    generateAudioInterfaceComponents();
   }
-
-  generateHSInterfaceComponents();
-  generateAudioInterfaceComponents();
-
 }
 
 void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
@@ -366,12 +542,17 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
       if (p + 1 == numOutputs) {
         portListEnd = "";
       }
-      portListStream << "out_ready_" << p << " : in std_logic;\n";
-      portListStream << "out_valid_" << p << " : out std_logic;\n";
-      portListStream << "out_data_" << p
-                     << " : out std_logic_vector (33 downto 0) := (others => '0')"
-                     << portListEnd << std::endl;
-      portConnStream << "out_valid_" << p << " <= '1';\n";
+      if (dataDriven) {
+        portListStream << "out_ready_" << p << " : in std_logic;\n";
+        portListStream << "out_valid_" << p << " : out std_logic;\n";
+      }
+      portListStream
+          << "out_data_" << p
+          << " : out std_logic_vector (33 downto 0) := (others => '0')"
+          << portListEnd << std::endl;
+      if (dataDriven) {
+        portConnStream << "out_valid_" << p << " <= '1';\n";
+      }
       portConnStream << "out_data_" << p << " <= value;\n" << std::endl;
     }
     portList = portListStream.str();
@@ -379,9 +560,9 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
     std::map<std::string, std::string> replacementWords = {{"$N_OUTPUTS", std::to_string(numOutputs)},
                                                            {"$PORT_LIST", portList},
                                                            {"$PORT_CONNECTIONS", portConn}};
-    copyFileAndReplaceWords(referenceDir + operatorFileName + "_n_outputs.vhd",
+    copyFileAndReplaceWords(referenceDir + operatorFileName + "_n_outputs.vhdl",
                             componentDir + operatorFileName + "_" +
-                                std::to_string(numOutputs) + ".vhd",
+                                std::to_string(numOutputs) + ".vhdl",
                             replacementWords);
   }
 }
@@ -390,8 +571,8 @@ void algorithms::generateConstOperator(std::map<int, int> outputCounts) {
 void algorithms::generateSplitterOperators(std::map<int, int> outputCounts) {
   std::string operatorFileName = "hs_splitter";
   for (auto const &[numOutputs, occurances] : outputCounts) {
-    std::string refFileName = operatorFileName + ".vhd";
-    std::string outputFile = operatorFileName + "_" + std::to_string(numOutputs) + ".vhd";
+    std::string refFileName = operatorFileName + ".vhdl";
+    std::string outputFile = operatorFileName + "_" + std::to_string(numOutputs) + ".vhdl";
     std::stringstream outputPorts;
     std::stringstream outputReadySigs;
     std::stringstream outputDataMapping;
@@ -445,8 +626,8 @@ void algorithms::generateRoutingOperators(VHDLComponent comp) {
                         componentDir + entityName + "_op.vhd", copyOptions);
 
   copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface" + "_" +
-                              opInputCount + ".vhd",
-                          componentDir + entityName + ".vhd", replacementWords);
+                              opInputCount + ".vhdl",
+                          componentDir + entityName + ".vhdl", replacementWords);
 }
 
 void algorithms::generateFloorOperator(VHDLComponent comp) {
@@ -456,8 +637,8 @@ void algorithms::generateFloorOperator(VHDLComponent comp) {
   // copy in fp_floor wrapper file and change operator frequency
   std::map<std::string, std::string> freqReplace;
   freqReplace["$FREQ"] = std::to_string(operatorFreq);
-  copyFileAndReplaceWords(referenceDir + "fp_floor.vhd",
-                          componentDir + "fp_floor.vhd", freqReplace);
+  copyFileAndReplaceWords(referenceDir + "fp_floor.vhdl",
+                          componentDir + "fp_floor.vhdl", freqReplace);
   // generate internal components that make up floor operator
   std::string internalComponents[] = {"float2int", "int2float"};
   for (const std::string &entityName : internalComponents) {
@@ -473,8 +654,8 @@ void algorithms::generateFloorOperator(VHDLComponent comp) {
                                                            {"$COMPONENT_NAME", componentName},
                                                            {"$OP_LIFESPAN", lifespan},
                                                            {"$HSM_TYPE", "_one"}};
-    copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface_1.vhd",
-                            componentDir + entityName + ".vhd",
+    copyFileAndReplaceWords(referenceDir + "flopoco_hs_interface_1.vhdl",
+                            componentDir + entityName + ".vhdl",
                             replacementWords);
   }
 }
@@ -529,8 +710,8 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         portList.clear();
@@ -580,8 +761,8 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
                                                              {"$VALID_SIGNAL_ROUTING", validSignalRouting},
                                                              {"$DATA_SIGNAL_ROUTING", dataSignalRouting},
                                                              {"$READY_SIGNAL_ROUTING", readySignalRouting}};
-        copyFileAndReplaceWords(referenceDir + entityName + ".vhd",
-                                componentDir + componentName + ".vhd",
+        copyFileAndReplaceWords(referenceDir + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
                                 replacementWords);
         // reset strings for next iteration
         portList.clear();
@@ -593,16 +774,99 @@ void algorithms::generateInputOutputSelectorOperator(VHDLComponent comp,
   }
 }
 
+/**
+   Generate VHDL implementation for the input/output selector. Will generate a
+   separate implementation file for each instance of a different number of
+   input/output ports required.
+
+   @param inputCounts Map with key = number of inputs, value = occurances
+
+   @param outputCounts Map with key = number of outputs, value = occurances
+*/
+void algorithms::generateInputOutputSelectorImplementation(VHDLComponent comp,
+                                                           std::map<int, int> inputCounts,
+                                                           std::map<int, int> outputCounts) {
+  std::string entityName = comp.getType();
+  std::string componentName;
+  std::string execTimePorts;
+  std::string portList;
+  std::string processBehaviour;
+  std::string validSignalRouting;
+  std::string dataSignalRouting;
+  std::string readySignalRouting;
+  std::string resetBehaviour;
+  if (entityName == "input_selector") {
+    for (auto &ports : inputCounts) {
+      componentName = entityName + "_" + std::to_string(ports.first);
+      for (int i = 0; i < ports.first; i++) {
+        execTimePorts += "exec_time_" + std::to_string(i) + " : integer := 0";
+        if (i + 1 == ports.first) {
+          execTimePorts += "\n";
+        } else {
+          execTimePorts += ";\n";
+        }
+        portList += "in_data_" + std::to_string(i) + " : in std_logic_vector(ram_width-1 downto 0);\n";
+        processBehaviour += "when exec_time_" + std::to_string(i) +
+                            " => out_data_0 <= in_data_" + std::to_string(i) +
+                            ";\n";
+      }
+      // generate input selector implementation
+      std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
+                                                             {"$EXEC_TIME_PORTS", execTimePorts},
+                                                             {"$INPUT_PORTS", portList},
+                                                             {"$PROCESS_BEHAVIOUR", processBehaviour}};
+        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
+                                replacementWords);
+        // reset strings for next iteration
+        execTimePorts.clear();
+        portList.clear();
+        processBehaviour.clear();
+    }
+  } else {
+    for (auto &ports : outputCounts) {
+      componentName = entityName + "_" + std::to_string(ports.first);
+      for (int i = 0; i < ports.first; i++) {
+        execTimePorts += "exec_time_" + std::to_string(i) + " : integer := 0";
+        if (i + 1 == ports.first) {
+          execTimePorts += "\n";
+        } else {
+          execTimePorts += ";\n";
+        }
+        portList += "out_data_" + std::to_string(i) + " : out std_logic_vector(ram_width-1 downto 0);\n";
+        processBehaviour += "when exec_time_" + std::to_string(i) +
+                            " => out_data_" + std::to_string(i) +
+                            " <= in_data_0;\n";
+        // resetBehaviour += "out_data_" + std::to_string(i) + " <= (others => '0');\n";
+      }
+      // generate output selector implementation
+      std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
+                                                             {"$EXEC_TIME_PORTS", execTimePorts},
+                                                             {"$OUTPUT_PORTS", portList},
+                                                             {"$PROCESS_BEHAVIOUR", processBehaviour},
+                                                             // {"$RESET_BEHAVIOUR", resetBehaviour}
+      };
+        copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
+                                componentDir + componentName + ".vhdl",
+                                replacementWords);
+        // reset strings for next iteration
+        execTimePorts.clear();
+        portList.clear();
+        processBehaviour.clear();
+        resetBehaviour.clear();
+    }
+  }
+}
+
 // Copy FloPoCo operator from reference file to project
 void algorithms::generateFPCOperator(std::string compImplementationName) {
-  std::ofstream vhdlOutput;
   std::string operatorRefDir = referenceDir + "/operators/";
   std::string operatorFileName = compImplementationName + "_f" + std::to_string(operatorFreq);
   const auto copyOptions = std::filesystem::copy_options::update_existing |
                            std::filesystem::copy_options::recursive;
 
   std::filesystem::copy(operatorRefDir + operatorFileName + ".vhdl",
-                        componentDir + operatorFileName + ".vhd", copyOptions);
+                        componentDir + operatorFileName + ".vhdl", copyOptions);
 }
 
 void algorithms::generateUIOperator(VHDLComponent comp) {
@@ -610,7 +874,7 @@ void algorithms::generateUIOperator(VHDLComponent comp) {
     std::filesystem::copy_options::recursive;
   std::filesystem::copy(
       referenceDir + "/ui/" + comp.getImplementationName() + ".vhdl",
-      componentDir + comp.getImplementationName() + ".vhd", copyOptions);
+      componentDir + comp.getImplementationName() + ".vhdl", copyOptions);
 }
 
 /**
@@ -641,16 +905,14 @@ void algorithms::generateOperator(VHDLComponent comp) {
     generateFPCOperator(comp.getImplementationName());
     // generate the appropriate HS interface
     copyFileAndReplaceWords(
-        referenceDir + "flopoco_hs_interface_" + opInputCount + ".vhd",
-        componentDir + entityName + ".vhd", replacementWords);
+        referenceDir + "flopoco_hs_interface_" + opInputCount + ".vhdl",
+        componentDir + entityName + ".vhdl", replacementWords);
   }
 }
 
 void algorithms::generateCircuit(VHDLCircuit &circuit) {
   std::ofstream vhdlOutput;
   std::string graphName = circuit.getName() + "_circuit"; // TODO decide on naming convention
-  int numInputPorts = circuit.getOperatorCount("INPUT");
-  int numOutputPorts = circuit.getOperatorCount("OUTPUT");
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") && operatorMap.count("OUTPUT"); // edge case where Faust program has no operators (only inputs/outputs)
 
@@ -661,7 +923,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit) {
   generateVHDLHeader(vhdlOutput);
 
   // 2. Port declarations
-  generateVHDLEntity(circuit, numInputPorts, numOutputPorts, vhdlOutput);
+  generateVHDLEntity(circuit, vhdlOutput);
 
   // 3. Specify architecture (behaviour) of operator type
   generateVHDLArchitecture(circuit, operatorMap, noOperators, vhdlOutput);
@@ -676,8 +938,22 @@ void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
                  << "use ieee.numeric_std.all;\n" << std::endl;
 }
 
-void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int numOutputPorts,
-                                    std::ofstream &vhdlOutput) {
+/**
+   Generates VHDL code for the entity declaration of the VHDL component that
+   will contain the port mapping of the rest of the constituent components that
+   make up the circuit.
+
+   @param circuit Circuit object to declare as VHDL entity.
+
+   @param numInputPorts Number of input ports of entity.
+
+   @param numOutputPorts Number of output ports of entity.
+
+   @param vhdlOutput Output stream to write VHDL code to.
+ */
+void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOutput) {
+    int numInputPorts = circuit.getOperatorCount("INPUT");
+    int numOutputPorts = circuit.getOperatorCount("OUTPUT");
     vhdlOutput << "entity " << circuit.getName() << " is\n"
                << "generic (\n"
                << "    " << "ram_width : natural := 34;\n"
@@ -688,29 +964,51 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int
                << std::endl;
     // Specify ready, valid, and data ports for each input port:
     std::string portName = "    " + circuit.getName();
-    for (auto i = 0; i < numInputPorts; i++) {
+    if (!dataDriven) {
+      vhdlOutput << "    " << "cycle_count : in integer;\n" << std::endl;
+      for (auto i = 0; i < numInputPorts; i++) {
+        vhdlOutput << portName + "_in_data_" + std::to_string(i) + " : in std_logic_vector("
+                   << "ram_width - 1 downto 0) := (others => '0');\n"
+                   << std::endl;
+      }
+      // Specify ready, valid, and data ports for each output port:
+      for (auto i = 0; i < numOutputPorts; i++) {
+        if (i + 1 == numOutputPorts) {
+          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0) := (others => '0')\n"
+                     << std::endl; // last line of port declaration has no terminating semicolon
+        } else {
+          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0) := (others => '0');\n"
+                     << std::endl;
+        }
+      }
+    } else {
+      for (auto i = 0; i < numInputPorts; i++) {
         vhdlOutput << portName + "_in_ready_" + std::to_string(i) + " : out std_logic;\n"
                    << portName + "_in_valid_" + std::to_string(i) + " : in std_logic;\n"
                    << portName + "_in_data_" + std::to_string(i) + " : in std_logic_vector("
                    << "ram_width - 1 downto 0) := (others => '0');\n"
                    << std::endl;
-    }
-    // Specify ready, valid, and data ports for each output port:
-    for (auto i = 0; i < numOutputPorts; i++) {
+      }
+      // Specify ready, valid, and data ports for each output port:
+      for (auto i = 0; i < numOutputPorts; i++) {
         vhdlOutput << portName + "_out_ready_" + std::to_string(i) + " : in std_logic;\n"
                    << portName + "_out_valid_" + std::to_string(i) + " : out std_logic;\n";
         if (i + 1 == numOutputPorts) {
-            vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0) := (others => '0')\n"
-                       << std::endl; // last line of port declaration has no terminating semicolon
+          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0) := (others => '0')\n"
+                     << std::endl; // last line of port declaration has no terminating semicolon
         } else {
-            vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0) := (others => '0');\n"
-                       << std::endl;
+          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0) := (others => '0');\n"
+                     << std::endl;
         }
+      }
     }
     vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
 }
+
 
 void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
                                           bool noOperators, std::ofstream &vhdlOutput) {// component declaration
@@ -721,99 +1019,144 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
 
   // 1. Instantiate components for each operator in circuit
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
-  if (!noOperators) { // no need to generate components other than buffers if there aren't any operators
-    std::map<int, int> constOutputs;
-    for (auto const &op : operatorMap) {
-      if (op.first != "INPUT" && op.first != "OUTPUT") {
-        std::map<int, int> inputCounts;
-        std::map<int, int> outputCounts;
-        inputCounts = circuit.getNumInputs(op.first);
-        outputCounts = circuit.getNumOutputs(op.first);
-        if (op.first == "Proj") {
-          vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
-        } else if (op.first == "delay") {
-          vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
-                     << std::endl;
-        } else if (op.first == "const_value" ||
-                   circuit.getFirstComponentByType(op.first).isConst()) {
-          constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
-        } else if (circuit.getFirstComponentByType(op.first).isUI()) {
-          vhdlOutput << generateUIComponents(circuit.getFirstComponentByType(op.first)) << std::endl;
-          uiDetected = true;
-        } else if (op.first == "input_selector" || op.first == "output_selector") {
-          vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first),
-                                                             inputCounts, outputCounts)
-                     << std::endl;
-        } else {
-          vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                     << std::endl;
+  if (!noOperators) { // only generate components if there are operators
+    if (!dataDriven) {
+      std::map<int, int> constOutputs;
+      for (auto const &op : operatorMap) {
+        if (op.first != "INPUT" && op.first != "OUTPUT") {
+          if (op.first == "input_selector" || op.first == "output_selector") {
+            vhdlOutput << generateInputOutputSelectorComponent(
+                circuit.getFirstComponentByType(op.first),
+                circuit.getNumInputs(op.first), circuit.getNumOutputs(op.first))
+                       << std::endl;
+          } else if (op.first == "sbuffer") {
+            vhdlOutput << generateSBufferComponent() << std::endl;
+          } else if (op.first == "const_value" ||
+                     circuit.getFirstComponentByType(op.first).isConst()) { // current workaround for UI components (we classify them as const value)
+            constOutputs = circuit.getNumOutputs(op.first);
+          }
+          else {
+            vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
+          }
         }
-
       }
-    }
-    if (constOutputs.size()) {
-      vhdlOutput << generateConstComponents(constOutputs) << std::endl;
-    }
-  }
+      if (constOutputs.size()) {
+        vhdlOutput << generateConstComponents(constOutputs) << std::endl;
+      }
+    } else {
+      std::map<int, int> constOutputs;
+      for (auto const &op : operatorMap) {
+        if (op.first != "INPUT" && op.first != "OUTPUT") {
+          std::map<int, int> inputCounts;
+          std::map<int, int> outputCounts;
+          inputCounts = circuit.getNumInputs(op.first);
+          outputCounts = circuit.getNumOutputs(op.first);
+          if (op.first == "Proj") {
+            vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
+          } else if (op.first == "delay") {
+            vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
+          } else if (op.first == "const_value" ||
+                     circuit.getFirstComponentByType(op.first).isConst()) {
+            constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
+          } else if (circuit.getFirstComponentByType(op.first).isUI()) {
+            vhdlOutput << generateUIComponents(circuit.getFirstComponentByType(op.first)) << std::endl;
+            uiDetected = true;
+          } else if (op.first == "input_selector" || op.first == "output_selector") {
+            vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first),
+                                                               inputCounts, outputCounts)
+                       << std::endl;
+          } else {
+            vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
+                       << std::endl;
+          }
 
-  // FIFO component instantiation
-  for (auto &conn : circuit.getConnectionMap()) {
-    if (conn.second.getInitialTokenCount()) {
-      vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-      break;
-    }
-  }
+        }
+      }
+      if (constOutputs.size()) {
+        vhdlOutput << generateConstComponents(constOutputs) << std::endl;
+      }
+      // FIFO component instantiation
+      for (auto &conn : circuit.getConnectionMap()) {
+        if (conn.second.getInitialTokenCount()) {
+          VERBOSE_INFO("Generating HS FIFO buffer implementations");
+          vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+          std::vector<std::string> fifoBufferComps = {
+              "hs_fifo", "hs_fifo_n", "hs_fifo_one", "hs_fifo_zero"};
+          for (const auto &component : fifoBufferComps) {
+            const auto copyOptions = std::filesystem::copy_options::update_existing |
+              std::filesystem::copy_options::recursive;
+            std::filesystem::copy(referenceDir + component + ".vhdl",
+                                  componentDir + component + ".vhdl", copyOptions);
+          }
+          break;
+        }
+      }
 
-  if (uiDetected) {
-    for (auto &op : circuit.getOperatorMap()) {
-      // NOTE workaround for UI components' pin out that isn't reflected in SDF
-      if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
-        for (int i = 0; i < op.second; i++) {
-          dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
+      if (uiDetected) {
+        for (auto &op : circuit.getOperatorMap()) {
+          // NOTE workaround for UI components' pin out that isn't reflected in SDF
+          if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
+            for (int i = 0; i < op.second; i++) {
+              dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
+            }
+          }
         }
       }
     }
   }
 
   // 2. Generate intermediate signal names
-  dataSignals = circuit.generateDataSignalNames();
-  validReadySignals = circuit.generateValidReadySignalNames();
-
-  // 3. Write signal names to VHDL output
-  // data signals
-  if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
-    vhdlOutput << "signal ";
-    std::string delim = ",";
-    int counter = 0;
-    for (auto &signal : dataSignals) {
-      counter++;
-      if (counter == dataSignals.size()) {
-        delim = "";
+  if (!dataDriven) {
+    for (auto const &[e, conn] : circuit.getConnectionMap()) {
+      if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
+            circuit.getDstComponent(conn).getType() == "OUTPUT")) {
+        dataSignals.push_back(conn.getName() + "_DATA");
       }
-      vhdlOutput << signal << delim << std::endl;
     }
-    vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
-               << std::endl;
-    // valid and ready signals
-    vhdlOutput << "signal ";
-    delim = ",";
-    counter = 0;
-    for (auto &signal : validReadySignals) {
-      counter++;
-      if (counter == validReadySignals.size()) {
-        delim = "";
-      }
-      vhdlOutput << signal << delim << std::endl;
-    }
-    vhdlOutput << " : std_logic;\n" << std::endl;
-    vhdlOutput << generatePortMapping(circuit) << std::endl;
-    vhdlOutput << "end behaviour;" << std::endl;
-
-    vhdlOutput.close();
   } else {
-    vhdlOutput << generatePortMapping(circuit) << std::endl;
-    vhdlOutput << "end behaviour;" << std::endl;
+    dataSignals = circuit.generateDataSignalNames();
+    validReadySignals = circuit.generateValidReadySignalNames();
   }
+    // 3. Write signal names to VHDL output
+    // data signals
+    if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
+      vhdlOutput << "signal ";
+      std::string delim = ",";
+      int counter = 0;
+      for (auto &signal : dataSignals) {
+        counter++;
+        if (counter == dataSignals.size()) {
+          delim = "";
+        }
+        vhdlOutput << signal << delim << std::endl;
+      }
+      vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
+                 << std::endl;
+      // valid and ready signals
+      if (dataDriven) {
+        vhdlOutput << "signal ";
+        delim = ",";
+        counter = 0;
+        for (auto &signal : validReadySignals) {
+          counter++;
+          if (counter == validReadySignals.size()) {
+            delim = "";
+          }
+          vhdlOutput << signal << delim << std::endl;
+        }
+        vhdlOutput << " : std_logic;\n" << std::endl;
+      }
+      vhdlOutput << generatePortMapping(circuit) << std::endl;
+      vhdlOutput << "end behaviour;" << std::endl;
+
+      vhdlOutput.close();
+    } else {
+      vhdlOutput << generatePortMapping(circuit) << std::endl;
+      vhdlOutput << "end behaviour;" << std::endl;
+    }
+
 }
 
 
@@ -889,28 +1232,47 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
     }
     i2sTransceiverSignals << generateI2STransceiverSignalNames(i, i2sBitWidth);
     i2sTransceiverMapping << generateI2STransceiverMapping(i, i2sBitWidth);
+    if (!dataDriven) {
+      componentDeclaration << generateSBufferComponent() << std::endl;
+      componentDeclaration << generateCycleCounterComponent() << std::endl;
+    }
   }
   if (numInputPorts) {
-    componentDeclaration << generateInputInterfaceComponent(i2sBitWidth) << std::endl;
-    componentDeclaration << generateI2SToFPCComponent(i2sBitWidth, fpcBitWidth) << std::endl;
-    // Generate mappings for input/output interfaces and I2S transceivers
-    for (auto i = 0; i < numAudioCodecs; i++) { //
-      inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
-      inputInterfaceMapping << generateInputInterfaceMapping(i, i2sBitWidth);
-      // need to generate these intermediate signals here as there are sometimes less less input ports
-      // in the Faust component than there are input ports in the input interfaces
-      I2SToFPCSignals << generateI2SToFPCSignalNames(i);
+    if (!dataDriven) {
+      componentDeclaration << generateInputScalingComponents(i2sBitWidth, fpcBitWidth);
+      // Generate mappings for input/output interfaces and I2S transceivers
+      for (auto i = 0; i < numAudioCodecs; i++) {
+        inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
+      }
+    } else {
+      componentDeclaration << generateInputInterfaceComponent(i2sBitWidth) << std::endl;
+      componentDeclaration << generateI2SToFPCComponent(i2sBitWidth, fpcBitWidth) << std::endl;
+      // Generate mappings for input/output interfaces and I2S transceivers
+      for (auto i = 0; i < numAudioCodecs; i++) {
+        inputInterfaceSignals << generateInputInterfaceSignalNames(i, i2sBitWidth);
+        inputInterfaceMapping << generateInputInterfaceMapping(i, i2sBitWidth);
+        // need to generate these intermediate signals here as there are sometimes less input ports
+        // in the Faust component than there are input ports in the input interfaces
+        I2SToFPCSignals << generateI2SToFPCSignalNames(i);
+      }
     }
   }
   if (numOutputPorts) {
-    componentDeclaration << generateOutputInterfaceComponent(i2sBitWidth) << std::endl;
-    componentDeclaration << generateFPCToI2SComponent(fpcBitWidth, i2sBitWidth) << std::endl;
-    for (auto i = 0; i < numAudioCodecs; i++) {
-      outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
-      outputInterfaceMapping << generateOutputInterfaceMapping(i, i2sBitWidth);
-      // need to generate these intermediate signals here as there are sometimes less less output ports
-      // in the Faust component than there are output ports in the output interfaces
-      FPCToI2SSignals << generateFPCToI2SSignalNames(i);
+    if (!dataDriven) {
+      componentDeclaration << generateOutputScalingComponents(i2sBitWidth, fpcBitWidth);
+      for (auto i = 0; i < numAudioCodecs; i++) {
+        outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
+      }
+    } else {
+      componentDeclaration << generateOutputInterfaceComponent(i2sBitWidth) << std::endl;
+      componentDeclaration << generateFPCToI2SComponent(fpcBitWidth, i2sBitWidth) << std::endl;
+      for (auto i = 0; i < numAudioCodecs; i++) {
+        outputInterfaceSignals << generateOutputInterfaceSignalNames(i, i2sBitWidth);
+        outputInterfaceMapping << generateOutputInterfaceMapping(i, i2sBitWidth);
+        // need to generate these intermediate signals here as there are sometimes less less output ports
+        // in the Faust component than there are output ports in the output interfaces
+        FPCToI2SSignals << generateFPCToI2SSignalNames(i);
+      }
     }
   }
 
@@ -920,12 +1282,16 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
               << "    " << "ram_depth : natural := 2);\n" // buffer size
               << "port (\n"
               << "    " << "clk : in std_logic;\n"
-              << "    " << "rst : in std_logic;\n"
+              << "    " << "rst : in std_logic;"
               << std::endl;
   entityMapping << entityName << "_0 : component " << entityName << "\n" // default to just a single component
                 << "port map (\n"
                 << "clk => sys_clk_sig,\n"
                 << "rst => rst_sig," << std::endl;
+  if (!dataDriven) {
+    portListing << "    " << "cycle_count : in integer;" << std::endl;
+    entityMapping << "cycle_count => counter_sig," << std::endl;
+  }
   // Specify ready, valid, and data ports for each input port:
   for (auto i = 0; i < numInputPorts; i++) {
     std::string readyInPort = "    " + entityName + "_in" + "_ready_" + std::to_string(i);
@@ -933,23 +1299,35 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
     std::string dataInPort = "    " + entityName + "_in" + "_data_" + std::to_string(i);
     std::string portListingDelimiter = ";\n";
     std::string mappingDelimiter = ",\n";
-    portListing << readyInPort << " : out std_logic" << portListingDelimiter
-                << validInPort << " : in std_logic" << portListingDelimiter;
-    entityMapping << readyInPort << " => " << entityName << "_in_ready_" << std::to_string(i)
-                  << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0" << mappingDelimiter
-                  << validInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_valid_0" << mappingDelimiter;
+    if (dataDriven) {
+      portListing << readyInPort << " : out std_logic" << portListingDelimiter
+                  << validInPort << " : in std_logic" << portListingDelimiter;
+      entityMapping << readyInPort << " => " << entityName << "_in_ready_" << std::to_string(i)
+                    << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0" << mappingDelimiter
+                    << validInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_valid_0" << mappingDelimiter;
+    }
     if ((i + 1 == numInputPorts) && (numOutputPorts == 0)) { // if dsp component only has inputs
       portListingDelimiter = "\n);";
       mappingDelimiter = "\n);"; // last line in port mapping should close bracket
     }
     portListing << dataInPort << " : in std_logic_vector(ram_width - 1 downto 0) := (others => '0')"
                 << portListingDelimiter << std::endl;
-    entityMapping << dataInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_data_0"
-                  << mappingDelimiter << std::endl;
+    if (!dataDriven) {
+      entityMapping << dataInPort << " => " << entityName << "_in_data_" << std::to_string(i)
+                    << mappingDelimiter << std::endl;
+    } else {
+      entityMapping << dataInPort << " => i2s_to_fpc_" << std::to_string(i) << "_op_out_data_0"
+                    << mappingDelimiter << std::endl;
+    }
     // generate separate I2S to FPC component for each input port
     I2SToFPCInstantiation << generateI2SToFPCMapping(i, entityName);
-    entitySignals << "signal " << entityName << "_in_ready_" << std::to_string(i)
-                  << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0 : std_logic;\n";
+    if (!dataDriven) {
+      entitySignals << "signal " << entityName << "_in_data_" << std::to_string(i)
+                    << " : std_logic_vector(33 downto 0);\n";
+    } else {
+      entitySignals << "signal " << entityName << "_in_ready_" << std::to_string(i)
+                    << "_i2s_to_fpc_" << std::to_string(i) << "_op_out_ready_0 : std_logic;\n";
+    }
   }
   // Specify ready, valid, and data ports for each output port:
   for (auto i = 0; i < numOutputPorts; i++) {
@@ -965,29 +1343,60 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
       "_i2s_to_fpc_" + std::to_string(i) + "_op_out_ready_0";
     entitySignalNames[DATA] = entityName + "_out_data_" + std::to_string(i) +
       "_fpc_to_i2s_" + std::to_string(i) + "_op_in_data_0";
-    portListing << readyOutPort << " : in std_logic" << portListingDelimiter
-                << validOutPort << " : out std_logic" << portListingDelimiter;
-    entityMapping << readyOutPort << " => " << "fpc_to_i2s_" << std::to_string(i) << "_op_in_ready_0" << mappingDelimiter
-                  << validOutPort << " => " << entitySignalNames[VALID] << mappingDelimiter;
+    if (dataDriven) {
+      portListing << readyOutPort << " : in std_logic" << portListingDelimiter
+                  << validOutPort << " : out std_logic" << portListingDelimiter;
+      entityMapping << readyOutPort << " => "
+                    << "fpc_to_i2s_" << std::to_string(i) << "_op_in_ready_0"
+                    << mappingDelimiter << validOutPort << " => "
+                    << entitySignalNames[VALID] << mappingDelimiter;
+    }
     if ((i + 1 == numOutputPorts)) {
       portListingDelimiter = "\n);";
       mappingDelimiter = "\n);"; // last line in port mapping should close bracket
     }
     portListing << dataOutPort << " : out std_logic_vector(ram_width - 1 downto 0) := (others => '0')"
                 << portListingDelimiter << std::endl;
-    entityMapping << dataOutPort << " => " << entitySignalNames[DATA]
-                  << mappingDelimiter << std::endl;
+    if (!dataDriven) {
+      entityMapping << dataOutPort << " => " << entityName << "_out_data_" << std::to_string(i)
+                    << mappingDelimiter << std::endl;
+    } else {
+      entityMapping << dataOutPort << " => " << entitySignalNames[DATA]
+                    << mappingDelimiter << std::endl;
+    }
     // generate separate FPC to I2S component for each output port
     FPCToI2SInstantiation << generateFPCToI2SMapping(i, entityName);
     // intermediate signals are named after a component's output ports
-    entitySignals << "signal " << entitySignalNames[VALID] << " : std_logic;\n"
-                  << "signal " << entitySignalNames[DATA] << " : std_logic_vector( 33 downto 0 );"
-                  << std::endl;
+    if (!dataDriven) {
+      entitySignals << "signal " << entityName << "_out_data_"
+                    << std::to_string(i)
+                    << " : std_logic_vector( 33 downto 0 );" << std::endl;
+    } else {
+      entitySignals << "signal " << entitySignalNames[VALID] << " : std_logic;\n"
+                    << "signal " << entitySignalNames[DATA] << " : std_logic_vector( 33 downto 0 );"
+                    << std::endl;
+    }
   }
-
+  // audio interface constants TODO add proper compute time
+  if (!dataDriven) {
+    entitySignals << "signal counter_sig : integer;" << std::endl;
+    entitySignals << "constant SLACK : integer := "
+                  << std::to_string(systemSlack) << ";" << std::endl;
+    entitySignals << "constant COMPUTE_L : integer := "
+                  << std::to_string(computeL) << ";" << std::endl;
+    entitySignals << "constant COMPUTE_R : integer := "
+                  << std::to_string(computeR) << ";" << std::endl;
+    // cycle counter mapping declared here:
+    entityMapping << "counter : component cycle_counter\n"
+                  << "    generic map (period => " << std::to_string(systemPeriod)
+                  << ")\n"
+                  << "    port map (clk => sys_clk_sig,\n"
+                  << "              rst => rst_sig,\n"
+                  << "              count => counter_sig);" << std::endl;
+  }
   // generate flopoco operators
   vhdlOutput.open(topDir + entityName + "_top.vhd"); // instantiate VHDL file
-  std::ifstream operatorRef(referenceDir + "audio_interface_wrapper.vhd");
+  std::ifstream operatorRef(referenceDir + "audio_interface_wrapper.vhdl");
   std::string fileContent;
   std::map<std::string, std::string> replacementWords = {{"$ENTITY_NAME", entityName},
                                                          {"$ENTITY_PORTS", portListing.str()},
@@ -1020,7 +1429,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
     operatorRef.close();
     vhdlOutput.close();
   } else {
-    VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhd"
+    VERBOSE_ERROR( "Reference file for " << referenceDir << "audio_interface_wrapper.vhdl"
                    << " does not exist/not found!"); // TODO turn into assert
   }
 }
@@ -1049,7 +1458,7 @@ std::string algorithms::generateInputInterfaceComponent(int bitWidth) {
 }
 
 std::string algorithms::generateOutputInterfaceComponent(int bitWidth) {
-    std::stringstream outputStream;
+  std::stringstream outputStream;
   outputStream << "component output_interface is\n"
                << "  port ("
                << "    clk : in std_logic;\n"
@@ -1144,11 +1553,18 @@ std::string algorithms::generateI2STransceiverMapping(int id, int bitWidth) {
                << "    " << "l_data_rx" << vectorSize << " => i2s_transceiver_"
                << id << "_l_data_rx" << vectorSize << ",\n"
                << "    " << "r_data_rx" << vectorSize << " => i2s_transceiver_"
-               << id << "_r_data_rx" << vectorSize << ",\n"
-               << "    " << "l_data_tx" << vectorSize << " => output_interface_"
-               << id << "_l_data_out" << vectorSize << ",\n"
-               << "    " << "r_data_tx" << vectorSize << " => output_interface_"
-               << id << "_r_data_out" << vectorSize << "\n);";
+               << id << "_r_data_rx" << vectorSize << "," << std::endl;
+  if (!dataDriven) {
+    outputStream << "    " << "l_data_tx" << vectorSize << " => i2s_transceiver_"
+                 << id << "_l_data_tx" << vectorSize << ",\n"
+                 << "    " << "r_data_tx" << vectorSize << " => i2s_transceiver_"
+                 << id << "_r_data_tx" << vectorSize << "\n);";
+  } else {
+    outputStream << "    " << "l_data_tx" << vectorSize << " => output_interface_"
+                 << id << "_l_data_out" << vectorSize << ",\n"
+                 << "    " << "r_data_tx" << vectorSize << " => output_interface_"
+                 << id << "_r_data_out" << vectorSize << "\n);";
+  }
   return outputStream.str();
 }
 
@@ -1157,24 +1573,25 @@ std::string algorithms::generateInputInterfaceMapping(int id, int bitWidth) {
   std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0 )";
   std::string inputInterface = "input_interface_" + std::to_string(id);
   std::string i2sTransceiver = "i2s_transceiver_" + std::to_string(id);
-  outputStream << inputInterface << ": component input_interface\n"
-               << "    " << "port map (\n"
-               << "    " << "clk => sys_clk_sig,\n"
-               << "    " << "rst => rst_sig,\n"
-               << "    " << "ws => " << i2sTransceiver << "_ws,\n"
-               << "    " << "l_data_in" << vectorSize << " => "
-               << i2sTransceiver << "_l_data_rx" << vectorSize << ",\n"
-               << "    " << "l_data_out" << vectorSize << " => "
-               << inputInterface << "_l_data_out" << vectorSize << ",\n"
-               << "    " << "l_ready => i2s_to_fpc_" << std::to_string(id) << "_op_in_ready_0,\n"
-               << "    " << "l_valid => " << inputInterface << "_l_valid,\n"
-               << "    " << "r_data_in" << vectorSize << " => "
-               << i2sTransceiver << "_r_data_rx" << vectorSize << ",\n"
-               << "    " << "r_data_out" << vectorSize << " => "
-               << inputInterface << "_r_data_out" << vectorSize << ",\n"
-    // NOTE right channel connected to other i2s_to_fpc component
-               << "    " << "r_ready => i2s_to_fpc_" << std::to_string(id + 1) << "_op_in_ready_0,\n"
-               << "    " << "r_valid => " << inputInterface << "_r_valid\n);";
+    outputStream << inputInterface << ": component input_interface\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "ws => " << i2sTransceiver << "_ws,\n"
+                 << "    " << "l_data_in" << vectorSize << " => "
+                 << i2sTransceiver << "_l_data_rx" << vectorSize << ",\n"
+                 << "    " << "l_data_out" << vectorSize << " => "
+                 << inputInterface << "_l_data_out" << vectorSize << ",\n"
+                 << "    " << "l_ready => i2s_to_fpc_" << std::to_string(id) << "_op_in_ready_0,\n"
+                 << "    " << "l_valid => " << inputInterface << "_l_valid,\n"
+                 << "    " << "r_data_in" << vectorSize << " => "
+                 << i2sTransceiver << "_r_data_rx" << vectorSize << ",\n"
+                 << "    " << "r_data_out" << vectorSize << " => "
+                 << inputInterface << "_r_data_out" << vectorSize << ",\n"
+      // NOTE right channel connected to other i2s_to_fpc component
+                 << "    " << "r_ready => i2s_to_fpc_" << std::to_string(id + 1) << "_op_in_ready_0,\n"
+                 << "    " << "r_valid => " << inputInterface << "_r_valid\n);";
+
   return outputStream.str();
 }
 
@@ -1183,84 +1600,155 @@ std::string algorithms::generateOutputInterfaceMapping(int id, int bitWidth) {
   std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0 )";
   std::string outputInterface = "output_interface_" + std::to_string(id);
   std::string i2sTransceiver = "i2s_transceiver_" + std::to_string(id);
-  outputStream << outputInterface << ": component output_interface\n"
-               << "    " << "port map (\n"
-               << "    " << "clk => sys_clk_sig,\n"
-               << "    " << "rst => rst_sig,\n"
-               << "    " << "ws => " << i2sTransceiver << "_ws,\n"
-               << "    " << "l_data_in" << vectorSize << " => fpc_to_i2s_"
-               << std::to_string(id) << "_op_out_data_0" << vectorSize << ",\n"
-               << "    " << "l_data_out" << vectorSize << " => "
-               << outputInterface << "_l_data_out" << vectorSize << ",\n"
-               << "    " << "l_ready => " << outputInterface << "_l_ready,\n"
-               << "    " << "l_valid => fpc_to_i2s_"
-               << std::to_string(id) << "_op_out_valid_0,\n"
-               << "    " << "r_data_in" << vectorSize << " => fpc_to_i2s_"
-               << std::to_string(id + 1) << "_op_out_data_0" << vectorSize << ",\n"
-               << "    " << "r_data_out" << vectorSize << " => "
-               << outputInterface << "_r_data_out" << vectorSize << ",\n"
-    // NOTE right channel connected to other i2s_to_fpc component
-               << "    " << "r_ready => " << outputInterface << "_r_ready,\n"
-               << "    " << "r_valid => fpc_to_i2s_"
-               << std::to_string(id + 1) << "_op_out_valid_0\n);";
+    outputStream << outputInterface << ": component output_interface\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "ws => " << i2sTransceiver << "_ws,\n"
+                 << "    " << "l_data_in" << vectorSize << " => fpc_to_i2s_"
+                 << std::to_string(id) << "_op_out_data_0" << vectorSize << ",\n"
+                 << "    " << "l_data_out" << vectorSize << " => "
+                 << outputInterface << "_l_data_out" << vectorSize << ",\n"
+                 << "    " << "l_ready => " << outputInterface << "_l_ready,\n"
+                 << "    " << "l_valid => fpc_to_i2s_"
+                 << std::to_string(id) << "_op_out_valid_0,\n"
+                 << "    " << "r_data_in" << vectorSize << " => fpc_to_i2s_"
+                 << std::to_string(id + 1) << "_op_out_data_0" << vectorSize << ",\n"
+                 << "    " << "r_data_out" << vectorSize << " => "
+                 << outputInterface << "_r_data_out" << vectorSize << ",\n"
+      // NOTE right channel connected to other i2s_to_fpc component
+                 << "    " << "r_ready => " << outputInterface << "_r_ready,\n"
+                 << "    " << "r_valid => fpc_to_i2s_"
+                 << std::to_string(id + 1) << "_op_out_valid_0\n);";
+
   return outputStream.str();
 }
 
 std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) {
   std::stringstream outputStream;
   std::string channel;
+  int halfPeriod = 2604;
+  std::string pushStart;
+  std::string popStart;
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
+    pushStart = "SLACK";
+    popStart = "SLACK + 1";
   } else { // even ids assigned to L channel
     channel = "l";
+    pushStart = std::to_string(halfPeriod) + " + SLACK";
+    popStart = std::to_string(halfPeriod) + " + SLACK + 1";
   }
-  outputStream << "i2s_to_fpc_" << id << ": component i2s_to_fpc\n"
-               << "    " << "port map (\n"
-               << "    " << "clk => sys_clk_sig,\n"
-               << "    " << "rst => rst_sig,\n"
-               << "    " << "op_in_data_0(23 downto 0) => input_interface_0_"
-               << channel << "_data_out(23 downto 0),\n"
-               << "    " << "op_in_ready_0 => i2s_to_fpc_"
-               << id << "_op_in_ready_0,\n"
-               << "    " << "op_in_valid_0 => input_interface_0_"
-               << channel << "_valid,\n"
-               << "    " << "op_out_data_0(33 downto 0) => i2s_to_fpc_"
-               << id << "_op_out_data_0(33 downto 0),\n"
-               << "    " << "op_out_ready_0 => " << entityName << "_in_ready_"
-               << id << "_i2s_to_fpc_" << id << "_op_out_ready_0,\n"
-               << "    " << "op_out_valid_0 => i2s_to_fpc_"
-               << id << "_op_out_valid_0\n"
-               << ");" << std::endl;
+  if (!dataDriven) {
+    outputStream << "rx_buffer_" << std::to_string(id) << " : component sbuffer\n"
+                 << "    " << "generic map (\n"
+                 << "    " << "ram_width => 24,\n"
+                 << "    " << "buffer_size => 1,\n"
+                 << "    " << "push_start => " << pushStart << ",\n"
+                 << "    " << "pop_start => " << popStart << ",\n"
+                 << "    " << "init => 0)\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "cycle_count => counter_sig,\n"
+                 << "    " << "in_data => " << "i2s_transceiver_" << std::to_string(id)
+                 << "_" << channel << "_data_rx,\n"
+                 << "    " << "out_data => fix2fp_" << std::to_string(id)
+                 << "_" << channel << "_data_in);"
+                 << std::endl;
+    outputStream << channel << "_fix2fp : fix2fp_and_scaledown\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "i2s_in => fix2fp_" << std::to_string(id)
+                 << "_" << channel << "_data_in,\n"
+                 << "    " << "fp_out => " << entityName << "_in_data_"
+                 << std::to_string(id) << ");" << std::endl;
+  } else {
+    outputStream << "i2s_to_fpc_" << id << ": component i2s_to_fpc\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "op_in_data_0(23 downto 0) => input_interface_0_"
+                 << channel << "_data_out(23 downto 0),\n"
+                 << "    " << "op_in_ready_0 => i2s_to_fpc_"
+                 << id << "_op_in_ready_0,\n"
+                 << "    " << "op_in_valid_0 => input_interface_0_"
+                 << channel << "_valid,\n"
+                 << "    " << "op_out_data_0(33 downto 0) => i2s_to_fpc_"
+                 << id << "_op_out_data_0(33 downto 0),\n"
+                 << "    " << "op_out_ready_0 => " << entityName << "_in_ready_"
+                 << id << "_i2s_to_fpc_" << id << "_op_out_ready_0,\n"
+                 << "    " << "op_out_valid_0 => i2s_to_fpc_"
+                 << id << "_op_out_valid_0\n"
+                 << ");" << std::endl;
+  }
+
   return outputStream.str();
 }
 
 std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) {
   std::stringstream outputStream;
   std::string channel;
+  int halfPeriod = std::floor(systemPeriod/2); // Round down so that sum of half periods doesn't exceed period
+  std::string pushStart;
+  std::string popStart;
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
+    pushStart = "2*SLACK + COMPUTE_R";
+    popStart = "2*SLACK + COMPUTE_R + 1";
   } else { // even ids assigned to L channel
     channel = "l";
+    pushStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L";
+    popStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L + 1";
   }
-  outputStream << "fpc_to_i2s_" << id << ": component fpc_to_i2s\n"
-               << "    " << "port map (\n"
-               << "    " << "clk => sys_clk_sig,\n"
-               << "    " << "rst => rst_sig,\n"
-               << "    " << "op_in_data_0(33 downto 0) => "
-               << entityName << "_out_data_" << id << "_fpc_to_i2s_" << id
-               << "_op_in_data_0,\n"
-               << "    " << "op_in_valid_0 => "
-               << entityName << "_out_valid_" << id << "_fpc_to_i2s_" << id
-               << "_op_in_valid_0,\n"
-               << "    " << "op_in_ready_0 => fpc_to_i2s_"
-               << id << "_op_in_ready_0,\n"
-               << "    " << "op_out_data_0(23 downto 0) => fpc_to_i2s_"
-               << id << "_op_out_data_0,\n"
-               << "    " << "op_out_ready_0 => " << "output_interface_0_"
-               << channel << "_ready,\n"
-               << "    " << "op_out_valid_0 => fpc_to_i2s_"
-               << id << "_op_out_valid_0\n"
-               << ");" << std::endl;
+  if (!dataDriven) {
+    outputStream << "tx_buffer_" << std::to_string(id) << " : component sbuffer\n"
+                 << "    " << "generic map (\n"
+                 << "    " << "ram_width => 24,\n"
+                 << "    " << "buffer_size => 1,\n"
+                 << "    " << "push_start => " << pushStart << ",\n"
+                 << "    " << "pop_start => " << popStart << ",\n"
+                 << "    " << "init => 0)\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "cycle_count => counter_sig,\n"
+                 << "    " << "in_data => fp2fix_" << std::to_string(id)
+                 << "_" << channel << "_data_out,\n"
+                 << "    " << "out_data => " << "i2s_transceiver_" << std::to_string(id)
+                 << "_" << channel << "_data_tx);\n"
+                 << std::endl;
+    outputStream << channel << "_fp2fix : fp2fix_and_scaleup\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "fp_in => " << entityName << "_out_data_"
+                 << std::to_string(id) << ",\n"
+                 << "    " << "i2s_out => fp2fix_" << std::to_string(id)
+                 << "_" << channel << "_data_out);" << std::endl;
+  } else {
+    outputStream << "fpc_to_i2s_" << id << ": component fpc_to_i2s\n"
+                 << "    " << "port map (\n"
+                 << "    " << "clk => sys_clk_sig,\n"
+                 << "    " << "rst => rst_sig,\n"
+                 << "    " << "op_in_data_0(33 downto 0) => "
+                 << entityName << "_out_data_" << id << "_fpc_to_i2s_" << id
+                 << "_op_in_data_0,\n"
+                 << "    " << "op_in_valid_0 => "
+                 << entityName << "_out_valid_" << id << "_fpc_to_i2s_" << id
+                 << "_op_in_valid_0,\n"
+                 << "    " << "op_in_ready_0 => fpc_to_i2s_"
+                 << id << "_op_in_ready_0,\n"
+                 << "    " << "op_out_data_0(23 downto 0) => fpc_to_i2s_"
+                 << id << "_op_out_data_0,\n"
+                 << "    " << "op_out_ready_0 => " << "output_interface_0_"
+                 << channel << "_ready,\n"
+                 << "    " << "op_out_valid_0 => fpc_to_i2s_"
+                 << id << "_op_out_valid_0\n"
+                 << ");" << std::endl;
+  }
+
   return outputStream.str();
 }
 
@@ -1270,6 +1758,9 @@ std::string algorithms::generateI2STransceiverSignalNames(int id, int bitWidth) 
   std::string componentName = "i2s_transceiver_" + std::to_string(id);
   outputStream << "signal " << componentName << "_l_data_rx : std_logic_vector " << vectorSize << ";\n"
                << "signal " << componentName << "_r_data_rx : std_logic_vector " << vectorSize << ";\n"
+    // we only use i2s_transceiver data tx signals in non-data driven implementation
+               << "signal " << componentName << "_l_data_tx : std_logic_vector " << vectorSize << ";\n"
+               << "signal " << componentName << "_r_data_tx : std_logic_vector " << vectorSize << ";\n"
                << "signal " << componentName << "_sclk : std_logic;\n"
                << "signal " << componentName << "_sd_tx : std_logic;\n"
                << "signal " << componentName << "_ws : std_logic;\n"
@@ -1280,22 +1771,38 @@ std::string algorithms::generateI2STransceiverSignalNames(int id, int bitWidth) 
 std::string algorithms::generateInputInterfaceSignalNames(int id, int bitWidth) {
   std::stringstream outputStream;
   std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0)";
-  std::string componentName = "input_interface_" + std::to_string(id);
-  outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
-               << "signal " << componentName << "_l_valid : std_logic;\n"
-               << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
-               << "signal " << componentName << "_r_valid : std_logic;\n";
+  std::string componentName;
+  if (!dataDriven) {
+    componentName = "fix2fp_" + std::to_string(id);
+    outputStream << "signal " << componentName << "_l_data_in : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_r_data_in : std_logic_vector " << vectorSize << ";"
+                 << std::endl;
+  } else {
+    componentName = "input_interface_" + std::to_string(id);
+    outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_l_valid : std_logic;\n"
+                 << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_r_valid : std_logic;" << std::endl;
+  }
   return outputStream.str();
 }
 
 std::string algorithms::generateOutputInterfaceSignalNames(int id, int bitWidth) {
   std::stringstream outputStream;
   std::string vectorSize = "( " + std::to_string(bitWidth - 1) + " downto 0)";
-  std::string componentName = "output_interface_" + std::to_string(id);
-  outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
-               << "signal " << componentName << "_l_ready : std_logic;\n"
-               << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
-               << "signal " << componentName << "_r_ready : std_logic;\n";
+  std::string componentName;
+  if (!dataDriven) {
+    componentName = "fp2fix_" + std::to_string(id);
+    outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";"
+                 << std::endl;
+  } else {
+    componentName = "output_interface_" + std::to_string(id);
+    outputStream << "signal " << componentName << "_l_data_out : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_l_ready : std_logic;\n"
+                 << "signal " << componentName << "_r_data_out : std_logic_vector " << vectorSize << ";\n"
+                 << "signal " << componentName << "_r_ready : std_logic;" << std::endl;
+  }
   return outputStream.str();
 }
 
@@ -1343,48 +1850,72 @@ std::string algorithms::generateComponent(VHDLComponent comp) {
   int numInputPorts = comp.getInputPorts().size();
   int numOutputPorts = comp.getOutputPorts().size();
 
-  // every component requires clock and reset ports
-  outputStream << "component " << componentName << " is" << std::endl;
-  if (comp.getType() == "const_value") {
-    outputStream << "generic (\n"
-                 << "    " << "value : std_logic_vector(ram_width - 1 downto 0)\n"
-                 << ");" << std::endl;
-  }
-  outputStream << "port (\n"
-               << "    " << "clk : in std_logic;\n"
-               << "    " << "rst : in std_logic;\n"
-               << std::endl;
-  // Specify ready, valid, and data ports for each input port:
-  for (auto i = 0; i < numInputPorts; i++) {
-    std::string portName = "    op_in";
-    if (comp.getType() == "const_value") {
-      portName = "    in";
-    }
-    outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-                 << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-                 << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-                 << "ram_width - 1 downto 0);\n"
+  if (!dataDriven) {
+    std::vector<std::string> inPortNames =
+        getImplementationInputPorts(comp.getType());
+    std::vector<std::string> outPortNames =
+        getImplementationOutputPorts(comp.getType());
+    // every component requires clock and reset ports
+    outputStream << "component "
+                 << comp.getImplementationName() + "_f" +
+                        std::to_string(operatorFreq)
+                 << " is" << std::endl;
+    outputStream << "port (\n"
+                 << "    " << "clk : in std_logic;"
                  << std::endl;
-  }
-
-  // Specify ready, valid, and data ports for each output port:
-  for (auto i = 0; i < numOutputPorts; i++) {
-    std::string portName = "    op_out";
-    if (comp.getType() == "const_value") {
-      portName = "    out";
+    // Specify ready, valid, and data ports for each input port:
+    for (auto i = 0; i < inPortNames.size(); i++) {
+      outputStream << "    " + inPortNames[i] + " : in std_logic_vector("
+                   << "ram_width - 1 downto 0);"
+                   << std::endl;
     }
-    outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                 << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-    if (i + 1 == numOutputPorts) {
-      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                   << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
-    } else {
-      outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                   << "ram_width - 1 downto 0);\n" << std::endl;
-    }
-  }
 
-  outputStream << "); end component;\n" << std::endl;
+    // Specify ready, valid, and data ports for each output port:
+    for (auto i = 0; i < outPortNames.size(); i++) {
+      if (i + 1 == numOutputPorts) {
+        outputStream << "    " + outPortNames[i] + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0)" << std::endl; // last line of port declaration has no terminating semicolon
+      } else {
+        outputStream << "    " + outPortNames[i] + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0);" << std::endl;
+      }
+    }
+
+    outputStream << "); end component;" << std::endl;
+  } else {
+    componentName = comp.getType();
+    // every component requires clock and reset ports
+    outputStream << "component " << componentName << " is" << std::endl;
+    outputStream << "port (\n"
+                 << "    " << "clk : in std_logic;\n"
+                 << "    " << "rst : in std_logic;\n"
+                 << std::endl;
+    // Specify ready, valid, and data ports for each input port:
+    for (auto i = 0; i < numInputPorts; i++) {
+      std::string portName = "    op_in";
+      outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                   << "ram_width - 1 downto 0);\n"
+                   << std::endl;
+    }
+
+    // Specify ready, valid, and data ports for each output port:
+    for (auto i = 0; i < numOutputPorts; i++) {
+      std::string portName = "    op_out";
+      outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+      if (i + 1 == numOutputPorts) {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+      } else {
+        outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                     << "ram_width - 1 downto 0);\n" << std::endl;
+      }
+    }
+
+    outputStream << "); end component;\n" << std::endl;
+  }
   return outputStream.str();
 }
 
@@ -1393,84 +1924,153 @@ std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp,
                                                              std::map<int, int> outputCounts) {
   std::stringstream outputStream;
   std::string componentName = comp.getType();
-  int numInputPorts;
-  int numOutputPorts;
-  if (componentName == "input_selector") {
-    for (auto &i : inputCounts) {
-      int numInputPorts = i.first;
-      int numOutputPorts = 1; // NOTE we assume that all input selectors have 1 output
-      std::string compNumberedName = componentName + "_" + std::to_string(numInputPorts);
-      // every component requires clock and reset ports
-      outputStream << "component " << compNumberedName << " is" << std::endl;
-      outputStream << "generic ( num_phases : integer );" << std::endl;
-      outputStream << "port (\n"
-                   << "    " << "clk : in std_logic;\n"
-                   << "    " << "rst : in std_logic;\n"
-                   << std::endl;
-      // Specify ready, valid, and data ports for each input port:
-      for (auto i = 0; i < numInputPorts; i++) {
-        std::string portName = "    op_in";
-        outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-                     << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-                     << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-                     << "ram_width - 1 downto 0);\n"
-                     << std::endl;
-      }
-
-      // Specify ready, valid, and data ports for each output port:
-      for (auto i = 0; i < numOutputPorts; i++) {
-        std::string portName = "    op_out";
-        outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                     << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-        if (i + 1 == numOutputPorts) {
-          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
-        } else {
-          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0);\n" << std::endl;
+  if (!dataDriven) {
+    if (comp.getType() == "input_selector") {
+      for (auto &i : inputCounts) {
+        int numInputPorts = i.first;
+        std::string compNumberedName = componentName + "_" + std::to_string(numInputPorts);
+        // every component requires clock and reset ports
+        outputStream << "component " << compNumberedName << " is" << std::endl;
+        outputStream << "generic ( ram_width : integer;" << std::endl;
+        for (auto port = 0; port < numInputPorts; port++) {
+          outputStream << "          "
+                       << "exec_time_" << std::to_string(port)
+                       << " : integer := 0";
+          if (port + 1 == numInputPorts) {
+            outputStream << ");" << std::endl;
+          } else {
+            outputStream << ";" << std::endl;
+          }
         }
-      }
-      outputStream << "); end component;\n" << std::endl;
-    }
-  } else if (componentName == "output_selector") { // generate for output selector
-    for (auto &i : outputCounts) {
-      int numInputPorts = 1; // NOTE we assume that all output selectors have 1 input
-      int numOutputPorts = i.first;
-      std::string compNumberedName = componentName + "_" + std::to_string(numOutputPorts);
-      // every component requires clock and reset ports
-      outputStream << "component " << compNumberedName << " is" << std::endl;
-      outputStream << "generic ( num_phases : integer );" << std::endl;
-      outputStream << "port (\n"
-                   << "    " << "clk : in std_logic;\n"
-                   << "    " << "rst : in std_logic;\n"
-                   << std::endl;
-      // Specify ready, valid, and data ports for each input port:
-      for (auto i = 0; i < numInputPorts; i++) {
-        std::string portName = "    op_in";
-        outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
-                     << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
-                     << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
-                     << "ram_width - 1 downto 0);\n"
+        outputStream << "port (\n"
+                     << "    " << "clk : in std_logic;\n"
+                     << "    " << "rst : in std_logic;\n"
+                     << "    " << "cycle_count : in integer;"
                      << std::endl;
-      }
-
-      // Specify ready, valid, and data ports for each output port:
-      for (auto i = 0; i < numOutputPorts; i++) {
-        std::string portName = "    op_out";
-        outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                     << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
-        if (i + 1 == numOutputPorts) {
-          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
-        } else {
-          outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
-                       << "ram_width - 1 downto 0);\n" << std::endl;
+        for (auto port = 0; port < numInputPorts; port++) {
+          outputStream << "    "
+                       << "in_data_" << std::to_string(port)
+                       << " : in std_logic_vector(ram_width-1 downto 0);"
+                       << std::endl;
         }
+        outputStream
+            << "    "
+            << "out_data_0 : out std_logic_vector(ram_width-1 downto 0)"
+            << std::endl;
+        outputStream << "); end component;\n" << std::endl;
       }
-      outputStream << "); end component;\n" << std::endl;
+    } else { // output_selector
+      for (auto &i : outputCounts) {
+        int numOutputPorts = i.first;
+        std::string compNumberedName = componentName + "_" + std::to_string(numOutputPorts);
+        // every component requires clock and reset ports
+        outputStream << "component " << compNumberedName << " is" << std::endl;
+        outputStream << "generic ( ram_width : integer;" << std::endl;
+        for (auto port = 0; port < numOutputPorts; port++) {
+          outputStream << "          "
+                       << "exec_time_" << std::to_string(port)
+                       << " : integer := 0" << std::endl;
+          if (port + 1 == numOutputPorts) {
+            outputStream << ");" << std::endl;
+          } else {
+            outputStream << ";" << std::endl;
+          }
+        }
+        outputStream << "port (\n"
+                     << "    " << "clk : in std_logic;\n"
+                     << "    " << "rst : in std_logic;\n"
+                     << "    " << "cycle_count : in integer;" << std::endl;
+        for (auto port = 0; port < numOutputPorts; port++) {
+          outputStream << "    "
+                       << "out_data_" << std::to_string(port)
+                       << " : out std_logic_vector(ram_width-1 downto 0);"
+                       << std::endl;
+        }
+        outputStream
+          << "    "
+          << "in_data_0 : in std_logic_vector(ram_width-1 downto 0)"
+          << std::endl;
+        outputStream << "); end component;\n" << std::endl;
+      }
     }
   } else {
-    VERBOSE_ERROR("Invalid component: " << componentName);
+    if (componentName == "input_selector") {
+      for (auto &i : inputCounts) {
+        int numInputPorts = i.first;
+        int numOutputPorts = 1; // NOTE we assume that all input selectors have 1 output
+        std::string compNumberedName = componentName + "_" + std::to_string(numInputPorts);
+        // every component requires clock and reset ports
+        outputStream << "component " << compNumberedName << " is" << std::endl;
+        outputStream << "generic ( num_phases : integer );" << std::endl;
+        outputStream << "port (\n"
+                     << "    " << "clk : in std_logic;\n"
+                     << "    " << "rst : in std_logic;\n"
+                     << std::endl;
+        // Specify ready, valid, and data ports for each input port:
+        for (auto i = 0; i < numInputPorts; i++) {
+          std::string portName = "    op_in";
+          outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                       << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                       << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                       << "ram_width - 1 downto 0);\n"
+                       << std::endl;
+        }
+
+        // Specify ready, valid, and data ports for each output port:
+        for (auto i = 0; i < numOutputPorts; i++) {
+          std::string portName = "    op_out";
+          outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                       << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+          if (i + 1 == numOutputPorts) {
+            outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                         << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+          } else {
+            outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                         << "ram_width - 1 downto 0);\n" << std::endl;
+          }
+        }
+        outputStream << "); end component;\n" << std::endl;
+      }
+    } else if (componentName == "output_selector") { // generate for output selector
+      for (auto &i : outputCounts) {
+        int numInputPorts = 1; // NOTE we assume that all output selectors have 1 input
+        int numOutputPorts = i.first;
+        std::string compNumberedName = componentName + "_" + std::to_string(numOutputPorts);
+        // every component requires clock and reset ports
+        outputStream << "component " << compNumberedName << " is" << std::endl;
+        outputStream << "generic ( num_phases : integer );" << std::endl;
+        outputStream << "port (\n"
+                     << "    " << "clk : in std_logic;\n"
+                     << "    " << "rst : in std_logic;\n"
+                     << std::endl;
+        // Specify ready, valid, and data ports for each input port:
+        for (auto i = 0; i < numInputPorts; i++) {
+          std::string portName = "    op_in";
+          outputStream << portName + "_ready_" + std::to_string(i) + " : out std_logic;\n"
+                       << portName + "_valid_" + std::to_string(i) + " : in std_logic;\n"
+                       << portName + "_data_" + std::to_string(i) + " : in std_logic_vector("
+                       << "ram_width - 1 downto 0);\n"
+                       << std::endl;
+        }
+
+        // Specify ready, valid, and data ports for each output port:
+        for (auto i = 0; i < numOutputPorts; i++) {
+          std::string portName = "    op_out";
+          outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                       << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+          if (i + 1 == numOutputPorts) {
+            outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                         << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
+          } else {
+            outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
+                         << "ram_width - 1 downto 0);\n" << std::endl;
+          }
+        }
+        outputStream << "); end component;\n" << std::endl;
+      }
+    } else {
+      VERBOSE_ERROR("Invalid component: " << componentName);
+    }
   }
 
   return outputStream.str();
@@ -1553,6 +2153,75 @@ std::string algorithms::generateBufferComponent(std::string circuitName) {
   return outputStream.str();
 }
 
+std::string algorithms::generateSBufferComponent() {
+  std::stringstream outputStream;
+  // every component requires clock and reset ports
+  outputStream << "component sbuffer is\n"
+               << "generic (\n"
+               << "    " << "ram_width : integer;\n"
+               << "    " << "buffer_size : integer;\n"
+               << "    " << "push_start : integer;\n"
+               << "    " << "pop_start : integer;\n"
+               << "    " << "init : integer);\n"
+               << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << "    " << "cycle_count : in integer;\n"
+               << "    " << "in_data : in std_logic_vector(ram_width-1 downto 0);\n"
+               << "    " << "out_data : out std_logic_vector(ram_width-1 downto 0)\n"
+               << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateCycleCounterComponent() {
+  std::stringstream outputStream;
+  // every component requires clock and reset ports
+  outputStream << "component cycle_counter is\n"
+               << "generic (period : integer := 0);\n"
+               << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << "    " << "count : out integer range - 1 to period-1 := 0\n"
+               << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateInputScalingComponents(int i2sBitWidth,
+						       int fpcBitWidth) {
+  std::stringstream outputStream;
+  outputStream << "component fix2fp_and_scaledown is\n"
+               << "generic (\n"
+               << "    " << "i2s_bit_width : natural := " << std::to_string(i2sBitWidth) << ";\n"
+               << "    " << "fp_bit_width : natural := " << std::to_string(fpcBitWidth) << ";\n"
+               << "    " << "bit_depth : natural := 2;\n"
+               << "    " <<  "scale_factor : std_logic_vector(33 downto 0) := \"0100110100000000000000000000000001\"); -- 1 / (2^23 - 1)\n"
+               << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << "    " << "i2s_in : in std_logic_vector(i2s_bit_width-1 downto 0) := (others => '0');\n"
+               << "    " << "fp_out : out std_logic_vector(fp_bit_width-1 downto 0) := (others => '0')\n"
+               << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
+std::string algorithms::generateOutputScalingComponents(int i2sBitWidth,
+							int fpcBitWidth) {
+  std::stringstream outputStream;
+  outputStream << "component fp2fix_and_scaleup is\n"
+               << "generic (\n"
+               << "    " << "i2s_bit_width : natural := " << std::to_string(i2sBitWidth) << ";\n"
+               << "    " << "fp_bit_width : natural := " << std::to_string(fpcBitWidth) << ";\n"
+               << "    " << "bit_depth : natural := 2;\n"
+               << "    " << "scale_factor : std_logic_vector(33 downto 0) := \"0101001010111111111111111111111110\"); -- 2^23 - 1\n"
+               << "port (\n"
+               << "    " << "clk : in std_logic;\n"
+               << "    " << "rst : in std_logic;\n"
+               << "    " << "fp_in : in std_logic_vector(fp_bit_width-1 downto 0) := (others => '0');\n"
+               << "    " << "i2s_out : out std_logic_vector(i2s_bit_width-1 downto 0) := (others => '0')\n"
+               << "); end component;\n" << std::endl;
+  return outputStream.str();
+}
+
 std::string algorithms::generateConstComponents(std::map<int, int> outputCounts) {
   std::stringstream outputStream;
   std::string componentName;
@@ -1571,8 +2240,10 @@ std::string algorithms::generateConstComponents(std::map<int, int> outputCounts)
     // Specify ready, valid, and data ports for each output port:
     for (auto i = 0; i < numOutputPorts; i++) {
       std::string portName = "    out";
-      outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
-                   << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+      if (dataDriven) {
+        outputStream << portName + "_ready_" + std::to_string(i) + " : in std_logic;\n"
+                     << portName + "_valid_" + std::to_string(i) + " : out std_logic;\n";
+      }
       if (i + 1 == numOutputPorts) {
         outputStream << portName + "_data_" + std::to_string(i) + " : out std_logic_vector("
                      << "ram_width - 1 downto 0)\n" << std::endl; // last line of port declaration has no terminating semicolon
@@ -1693,36 +2364,42 @@ void algorithms::generateHSInterfaceComponents() {
   std::vector<std::string> componentNames = {"hs_merger", "countdown",
                                              "store_send", "hs_merger_negate",
                                              "hs_merger_one", "hs_merger_three"};
-  if (!isBufferless) {
-    componentNames.push_back("hs_fifo");
-    componentNames.push_back("hs_fifo_n");
-    componentNames.push_back("hs_fifo_one");
-    componentNames.push_back("hs_fifo_zero");
-  }
 
   for (const auto &component : componentNames) {
     const auto copyOptions = std::filesystem::copy_options::update_existing |
                              std::filesystem::copy_options::recursive;
-    std::filesystem::copy(referenceDir + component + ".vhd",
-                          componentDir + component + ".vhd", copyOptions);
+    std::filesystem::copy(referenceDir + component + ".vhdl",
+                          componentDir + component + ".vhdl", copyOptions);
   }
 }
 
 // Copy VHDL components necessary for interfacing with the audio codec from reference files to generated subdirectory
 void algorithms::generateAudioInterfaceComponents() {
-  // names of reference files required to copy into project; add/remove as required
-  std::vector<std::string> componentNames =
-    {"input_interface", "output_interface", // send audio data in accordance to handshake protocol
-     "i2s_to_fpc", "fpc_to_i2s",
-     "fix2fp_and_scaledown", "fp2fix_and_scaleup", // convert and scale data coming to and from the audio codec (fixed point to float)
-     "i2s_transceiver"}; // expose data from ADC/DAC to PL
-  std::vector<std::string> operatorNames = // need separate path for FloPoCo operators as they're stored in different subdirectory
-    {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
+  // names of reference files required to copy into project; add/remove as
+  // required
+  std::vector<std::string> componentNames;
+  std::vector<std::string> operatorNames; // need separate path for FloPoCo operators as they're stored in different subdirectory
+  if (!dataDriven) {
+    componentNames = {"fix2fp_and_scaledown", "fp2fix_and_scaleup",
+                      "i2s_transceiver", "cycle_counter", "sbuffer"};
+    // separate path for FloPoCo operators as they're stored in different subdirectory
+    operatorNames = {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
+  } else {
+    componentNames = {// send audio data in accordance to handshake protocol
+      "input_interface", "output_interface",
+      // convert and scale data coming to and from audio codec (fixed point to float)
+      "i2s_to_fpc", "fpc_to_i2s", "fix2fp_and_scaledown",
+      "fp2fix_and_scaleup",
+      "i2s_transceiver"}; // expose data from ADC/DAC to PL
+    // separate path for FloPoCo operators as they're stored in different subdirectory
+    operatorNames =
+        {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
+  }
   std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
                                                             std::to_string(operatorFreq)}}; // name component according to operator frequency
   for (const auto &component : componentNames) {
-    copyFileAndReplaceWords(referenceDir + component + ".vhd",
-                            componentDir + component + ".vhd",
+    copyFileAndReplaceWords(referenceDir + component + ".vhdl",
+                            componentDir + component + ".vhdl",
                             replacementWords);
   }
   for (const auto &op : operatorNames) {
@@ -1731,7 +2408,7 @@ void algorithms::generateAudioInterfaceComponents() {
     std::filesystem::copy(referenceDir + "/operators/" + op + "_f" +
                           std::to_string(operatorFreq) + ".vhdl",
                           componentDir + op + "_f" +
-                          std::to_string(operatorFreq) + ".vhd",
+                          std::to_string(operatorFreq) + ".vhdl",
                           copyOptions);
   }
 }
@@ -1743,163 +2420,310 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
   std::map<std::string, int> opCount(circuit.getOperatorMap());
 
   outputStream << "begin\n" << std::endl;
-  // initialise counts
-  for (auto &c : opCount) {
-    c.second = 0;
-  }
-  for (auto &[v, comp] : circuit.getComponentMap()) {
-    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-      std::string opName = comp.getType();
-      if (comp.isConst()) {
-        opName = comp.getType() + "_" + std::to_string(comp.getOutputPorts().size());
-        componentName = "const_value_" + std::to_string(comp.getOutputPorts().size());
-      } else if (comp.getType() == "Proj") {
-        opName = "hs_splitter_" + std::to_string(comp.getOutputPorts().size());
-        componentName = opName;
-      } else if (comp.getType() == "input_selector") {
-        opName = "input_selector_" + std::to_string(comp.getInputPorts().size());
-        componentName = opName;
-      } else if (comp.getType() == "output_selector") {
-        opName = "output_selector_" + std::to_string(comp.getOutputPorts().size());
-        componentName = opName;
-      } else {
-        componentName = opName;
-      }
-      // reset/clock mappings
-      outputStream << opName << "_" + std::to_string(opCount[opName])
-                   << " : " << componentName << "\n" << std::endl;
-      if (comp.isConst()) { // NOTE binary representation of const_val operators set here
-        outputStream << "generic map (\n"
-                     << "    " << "value => " << "\""
-                     << binaryValue(comp) << "\"" << "\n)\n"
-                     << std::endl;
-      }
-      if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
-          opName == "checkbox" || opName == "button") { // TODO check for all UI components
-        outputStream << "generic map (\n"
-                     << "    " << "default_value =>"
-                     << "\"" << "0000000000000000010000000000000000" << "\"" << "\n)\n" // TODO get default value
-                     << std::endl;
-      }
-      if (opName == "delay") {
-        int ramInitVal = 0;
-        int ramDepthVal = 2048;
-        outputStream << "generic map (\n"
-                     << "    " << "ram_width => ram_width,\n"
-                     << "    " << "ram_init => " << std::to_string(ramInitVal) << ",\n"
-                     << "    " << "ram_depth => " << std::to_string(ramDepthVal)
-                     << "\n)\n" << std::endl;
-      }
-      if (comp.getType() == "input_selector") {
-        outputStream << "generic map (\n"
-                     << "    " << "num_phases => "
-                     << std::to_string(comp.getInputPorts().size())
-                     << "\n)\n" << std::endl;
-      } else if (comp.getType() == "output_selector") {
-        outputStream << "generic map (\n"
-                     << "    " << "num_phases => "
-                     << std::to_string(comp.getOutputPorts().size())
-                     << "\n)\n" << std::endl;
-      }
-      outputStream << "port map (\n"
-                   << "    " << "clk => " << "clk,\n"
-                   << "    " << "rst => " << "rst,\n"
-                   << std::endl;
-      if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
-          opName == "checkbox" || opName == "button") { // TODO check for all UI components
-        outputStream << "    "
-                     << "op_in_data_0 => " << opName
-                     << "_"
-                     << std::to_string(opCount[opName]) << "_data_in,\n"
-                     << std::endl;
-      }
-      // input/output mappings
-      int inPortCount, outPortCount = 0;
-      for (auto s : comp.getHSInputSignals()) {
-        std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, true);
-        std::string sigPrefix = "op_";
-        if (comp.isConst() || comp.getType() == "Proj") {
-          sigPrefix = "";
-        }
-        outputStream << "    " << sigPrefix << "in_ready_" << std::to_string(inPortCount)
-                     << " => " << sigNames[READY] << ",\n"
-                     << "    " << sigPrefix << "in_valid_" << std::to_string(inPortCount)
-                     << " => " << sigNames[VALID] << ",\n"
-                     << "    " << sigPrefix << "in_data_" << std::to_string(inPortCount)
-                     << " => " << sigNames[DATA] << ",\n" << std::endl;
-        inPortCount++;
-      }
-      std::string lineEnder = ",";
-      size_t numOutPorts = comp.getHSOutputSignals().size();
-      size_t iteration = 1;
-      for (auto s : comp.getHSOutputSignals()) {
-        std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, false);
-        std::string sigPrefix = "op_";
-        if (comp.isConst() || comp.getType() == "Proj") {
-          sigPrefix = "";
-        }
-        if (iteration == numOutPorts) {
-          lineEnder = "";  // last port mapping terminates without a comma
-        }
-        outputStream << "    " << sigPrefix << "out_ready_" << std::to_string(outPortCount)
-                     << " => " << sigNames[READY] << ",\n"
-                     << "    " << sigPrefix << "out_valid_" << std::to_string(outPortCount)
-                     << " => " << sigNames[VALID] << ",\n"
-                     << "    " << sigPrefix << "out_data_" << std::to_string(outPortCount)
-                     << " => " << sigNames[DATA] << lineEnder << "\n"
-                     << std::endl;
-        outPortCount++;
-        iteration++;
-      }
-
-      outputStream << ");\n" << std::endl;
-      opCount[opName]++;
+  if (!dataDriven) {
+    // track operator counts to give them unique names for each instance we need
+    // to perform port mapping for
+    for (auto &c : opCount) {
+      c.second = 0;
     }
-  }
+    for (auto &[v, comp] : circuit.getComponentMap()) {
+      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+        std::string opName = comp.getType();
+        if (comp.isConst()) {
+          opName = comp.getType() + "_" + std::to_string(comp.getOutputPorts().size());
+          componentName = "const_value_" + std::to_string(comp.getOutputPorts().size());
+        } else if (comp.getType() == "input_selector") {
+          opName = "input_selector_" + std::to_string(comp.getInputPorts().size());
+          componentName = opName;
+        } else if (comp.getType() == "output_selector") {
+          opName = "output_selector_" + std::to_string(comp.getOutputPorts().size());
+          componentName = opName;
+        } else if (comp.getType() == "sbuffer") {
+          componentName = comp.getImplementationName();
+        } else { // workaround to use implementation instead of HS interface wrapper
+          componentName = comp.getImplementationName() + "_f" + std::to_string(operatorFreq);
+        }
+        // reset/clock mappings
+        outputStream << opName << "_" + std::to_string(opCount[opName]) << " : "
+                     << componentName << "\n"
+                     << std::endl;
+        if (comp.getType() == "const_value") {
+          // NOTE binary representation of const_val operators set here
+          outputStream << "generic map (\n"
+                       << "    " << "value => " << "\""
+                       << binaryValue(comp) << "\"" << "\n)\n"
+                       << std::endl;
+        } else if (comp.getType() == "input_selector") {
+          outputStream << "generic map (\n"
+                       << "    " << "ram_width => ram_width," << std::endl;
+          for (int i = 0; i < comp.getInputPorts().size(); i++) {
+            VERBOSE_ASSERT(comp.getStartTimes().size() ==
+                               comp.getInputPorts().size(),
+                           "Number of start times and input ports don't match");
+            int execTime = comp.getStartTimes()[i] + systemSlack;
+            std::string lineEnd = ",";
+            if (i + 1 == comp.getInputPorts().size()) {
+              lineEnd = ")";
+            }
+            outputStream << "    "
+                         << "exec_time_" << std::to_string(i) << " => "
+                         << execTime << lineEnd << std::endl;
+          }
+        } else if (comp.getType() == "output_selector") {
+          outputStream << "generic map (\n"
+                       << "    " << "ram_width => ram_width," << std::endl;
+          for (int i = 0; i < comp.getOutputPorts().size(); i++) {
+            VERBOSE_ASSERT(comp.getStartTimes().size() ==
+                           comp.getOutputPorts().size(),
+                           "Number of start times and output ports don't match");
+            int execTime = comp.getStartTimes()[i] + systemSlack;
+            std::string lineEnd = ",";
+            if (i + 1 == comp.getOutputPorts().size()) {
+              lineEnd = ")";
+            }
+            outputStream << "    "
+                         << "exec_time_" << std::to_string(i) << " => "
+                         << execTime << lineEnd << std::endl;
+          }
+        } else if (comp.getType() == "sbuffer") {
+          VERBOSE_ASSERT(comp.getStartTimes().size() == 1,
+                         "SBuffers shouldn't have more than one start time");
+          int pushStart = comp.getStartTimes().front() + systemSlack;
+          int popStart = comp.getStartTimes().front() + 1 + systemSlack;
+          int initTokens = comp.getSBufferInitTokens();
+          int bufferSz = initTokens + 1;
+          outputStream << "generic map (\n"
+                       << "    "
+                       << "ram_width => ram_width,\n"
+                       << "    "
+                       << "buffer_size => " << bufferSz << ",\n"
+                       << "    "
+                       << "push_start => " << pushStart << ",\n"
+                       << "    "
+                       << "pop_start => " << popStart << ",\n"
+                       << "    "
+                       << "init => " << initTokens << ")" << std::endl;
+        }
+        outputStream << "port map (\n"
+                     << "    " << "clk => " << "clk," << std::endl;
+        if (!operatorLifespans.at(operatorFreq).count(comp.getType()) ||
+            comp.getType() == "sbuffer") { // hacky workaround to avoid use of reset port for FloPoCo implemented operators
+          outputStream << "    " << "rst => " << "rst," << std::endl;
+        }
+        if (comp.getType() == "sbuffer" || comp.getType() == "input_selector" ||
+            comp.getType() == "output_selector") {
+          outputStream << "    " << "cycle_count => cycle_count," << std::endl;
+        }
+        if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
+            opName == "checkbox" || opName == "button") { // TODO check for all UI components
+          outputStream << "    "
+                       << "op_in_data_0 => " << opName
+                       << "_"
+                       << std::to_string(opCount[opName]) << "_data_in,\n"
+                       << std::endl;
+        }
+        // input/output mappings
+        std::vector<std::string> inputSignals = comp.getInputSignals();
+        std::vector<std::string> outputSignals = comp.getOutputSignals();
+        unsigned inIt = 0;
+        unsigned outIt = 0;
+        std::string lineEnder = ",";
+        for (auto s : inputSignals) {
+          std::string sigName = circuit.generateSignalNames(s, true);
+          if (comp.getType() == "input_selector" ||
+              comp.getType() == "output_selector") {
+            outputStream << "    "
+                         << "in_data_" << std::to_string(inIt) << " => "
+                         << sigName << lineEnder << std::endl;
+          } else {
+            outputStream << "    "
+                         << getImplementationInputPorts(comp.getType())[inIt]
+                         << " => " << sigName << lineEnder << std::endl;
+          }
+          inIt++;
+        }
+        for (auto s : outputSignals) {
+          std::string sigName = circuit.generateSignalNames(s, false);
+          if (outIt + 1 == outputSignals.size()) {
+            lineEnder = "";
+          }
+          if (comp.getType() == "input_selector" ||
+              comp.getType() == "output_selector" ||
+              comp.getType() == "const_value") {
+            outputStream << "    "
+                         << "out_data_" << std::to_string(outIt) << " => "
+                         << sigName << lineEnder << std::endl;
+          } else {
+            outputStream << "    "
+                         << getImplementationOutputPorts(comp.getType())[outIt]
+                         << " => " << sigName << lineEnder << std::endl;
+          }
+          outIt++;
+        }
 
-  // Buffer port mappings
-  int bufferCount = 0;
-  std::string bCompName = "hs_fifo";
-  std::string bName = "buffer";
-  for (auto &buffer : circuit.getConnectionMap()) {
-    if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
-      auto src = buffer.second.getSrcPort();
-      auto dst = buffer.second.getDstPort();
-      std::vector<std::string> sendSigs = circuit.generateHSSignalNames(src, 1);
-      std::vector<std::string> receiveSigs = circuit.generateHSSignalNames(dst, 0);
-      // ram width/depth, reset, and clock mappings
-      TOKEN_UNIT bufferPadding = 1; // buffers with size 0 would cause deadlocks
-      outputStream << "fifo_" + std::to_string(bufferCount)
-                   << " : " << bCompName << "\n"
-                   <<"generic map (\n"
-                   << "    " << "ram_width => ram_width,\n"
-                   << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
-                   << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
-                   << std::endl;
-      outputStream << "port map (\n"
-                   << "    " << bName << "_clk => " << "clk,\n"
-                   << "    " << bName << "_rst => " << "rst,\n"
-                   << std::endl;
-      // input/output mappings
-      outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
-                   << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
-                   << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
-                   << std::endl;
-      outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
-                   << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
-                   << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
-                   << std::endl;
-      bufferCount++;
-    } else {
-      // simply pass through data if no operators and no initial tokens
-      if (circuit.getSrcComponent(buffer.second).getType() == "INPUT" &&
-          circuit.getDstComponent(buffer.second).getType() == "OUTPUT") {
-        auto edgeName = buffer.second.getName();
-        std::vector<std::string> sendSigs = circuit.generateHSSignalNames(edgeName, 1);
-        std::vector<std::string> receiveSigs  = circuit.generateHSSignalNames(edgeName, 0);
-        outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
-        outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
-        outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
+        outputStream << ");\n" << std::endl;
+        opCount[opName]++;
+      }
+    }
+  } else {
+    // initialise counts
+    for (auto &c : opCount) {
+      c.second = 0;
+    }
+    for (auto &[v, comp] : circuit.getComponentMap()) {
+      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+        std::string opName = comp.getType();
+        if (comp.isConst()) {
+          opName = comp.getType() + "_" + std::to_string(comp.getOutputPorts().size());
+          componentName = "const_value_" + std::to_string(comp.getOutputPorts().size());
+        } else if (comp.getType() == "Proj") {
+          opName = "hs_splitter_" + std::to_string(comp.getOutputPorts().size());
+          componentName = opName;
+        } else if (comp.getType() == "input_selector") {
+          opName = "input_selector_" + std::to_string(comp.getInputPorts().size());
+          componentName = opName;
+        } else if (comp.getType() == "output_selector") {
+          opName = "output_selector_" + std::to_string(comp.getOutputPorts().size());
+          componentName = opName;
+        } else {
+          componentName = opName;
+        }
+        // reset/clock mappings
+        outputStream << opName << "_" + std::to_string(opCount[opName])
+                     << " : " << componentName << "\n" << std::endl;
+        if (comp.isConst()) { // NOTE binary representation of const_val operators set here
+          outputStream << "generic map (\n"
+                       << "    " << "value => " << "\""
+                       << binaryValue(comp) << "\"" << "\n)\n"
+                       << std::endl;
+        }
+        if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
+            opName == "checkbox" || opName == "button") { // TODO check for all UI components
+          outputStream << "generic map (\n"
+                       << "    " << "default_value =>"
+                       << "\"" << "0000000000000000010000000000000000" << "\"" << "\n)\n" // TODO get default value
+                       << std::endl;
+        }
+        if (opName == "delay") {
+          int ramInitVal = 0;
+          int ramDepthVal = 2048;
+          outputStream << "generic map (\n"
+                       << "    " << "ram_width => ram_width,\n"
+                       << "    " << "ram_init => " << std::to_string(ramInitVal) << ",\n"
+                       << "    " << "ram_depth => " << std::to_string(ramDepthVal)
+                       << "\n)\n" << std::endl;
+        }
+        if (comp.getType() == "input_selector") {
+          outputStream << "generic map (\n"
+                       << "    " << "num_phases => "
+                       << std::to_string(comp.getInputPorts().size())
+                       << "\n)\n" << std::endl;
+        } else if (comp.getType() == "output_selector") {
+          outputStream << "generic map (\n"
+                       << "    " << "num_phases => "
+                       << std::to_string(comp.getOutputPorts().size())
+                       << "\n)\n" << std::endl;
+        }
+        outputStream << "port map (\n"
+                     << "    " << "clk => " << "clk,\n"
+                     << "    " << "rst => " << "rst,\n"
+                     << std::endl;
+        if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
+            opName == "checkbox" || opName == "button") { // TODO check for all UI components
+          outputStream << "    "
+                       << "op_in_data_0 => " << opName
+                       << "_"
+                       << std::to_string(opCount[opName]) << "_data_in,\n"
+                       << std::endl;
+        }
+        // input/output mappings
+        int inPortCount = 0;
+        int outPortCount = 0;
+        for (auto s : comp.getHSInputSignals()) {
+          std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, true);
+          std::string sigPrefix = "op_";
+          if (comp.isConst() || comp.getType() == "Proj") {
+            sigPrefix = "";
+          }
+          outputStream << "    " << sigPrefix << "in_ready_" << std::to_string(inPortCount)
+                       << " => " << sigNames[READY] << ",\n"
+                       << "    " << sigPrefix << "in_valid_" << std::to_string(inPortCount)
+                       << " => " << sigNames[VALID] << ",\n"
+                       << "    " << sigPrefix << "in_data_" << std::to_string(inPortCount)
+                       << " => " << sigNames[DATA] << ",\n" << std::endl;
+          inPortCount++;
+        }
+        std::string lineEnder = ",";
+        size_t numOutPorts = comp.getHSOutputSignals().size();
+        size_t iteration = 1;
+        for (auto s : comp.getHSOutputSignals()) {
+          std::vector<std::string> sigNames = circuit.generateHSSignalNames(s, false);
+          std::string sigPrefix = "op_";
+          if (comp.isConst() || comp.getType() == "Proj") {
+            sigPrefix = "";
+          }
+          if (iteration == numOutPorts) {
+            lineEnder = "";  // last port mapping terminates without a comma
+          }
+          outputStream << "    " << sigPrefix << "out_ready_" << std::to_string(outPortCount)
+                       << " => " << sigNames[READY] << ",\n"
+                       << "    " << sigPrefix << "out_valid_" << std::to_string(outPortCount)
+                       << " => " << sigNames[VALID] << ",\n"
+                       << "    " << sigPrefix << "out_data_" << std::to_string(outPortCount)
+                       << " => " << sigNames[DATA] << lineEnder << "\n"
+                       << std::endl;
+          outPortCount++;
+          iteration++;
+        }
+
+        outputStream << ");\n" << std::endl;
+        opCount[opName]++;
+      }
+    }
+    // Buffer port mappings
+    int bufferCount = 0;
+    std::string bCompName = "hs_fifo";
+    std::string bName = "buffer";
+    for (auto &buffer : circuit.getConnectionMap()) {
+      if (buffer.second.getInitialTokenCount()) { // only generate FIFO port mapping for necessary channels
+        auto src = buffer.second.getSrcPort();
+        auto dst = buffer.second.getDstPort();
+        std::vector<std::string> sendSigs = circuit.generateHSSignalNames(src, 1);
+        std::vector<std::string> receiveSigs = circuit.generateHSSignalNames(dst, 0);
+        // ram width/depth, reset, and clock mappings
+        TOKEN_UNIT bufferPadding = 1; // buffers with size 0 would cause deadlocks
+        outputStream << "fifo_" + std::to_string(bufferCount)
+                     << " : " << bCompName << "\n"
+                     <<"generic map (\n"
+                     << "    " << "ram_width => ram_width,\n"
+                     << "    " << "ram_depth => " << buffer.second.getBufferSize() + bufferPadding << ",\n"
+                     << "    " << "ram_init => " << buffer.second.getInitialTokenCount() << "\n)\n"
+                     << std::endl;
+        outputStream << "port map (\n"
+                     << "    " << bName << "_clk => " << "clk,\n"
+                     << "    " << bName << "_rst => " << "rst,\n"
+                     << std::endl;
+        // input/output mappings
+        outputStream << "    " << bName << "_in_ready => " << sendSigs[READY] << ",\n"
+                     << "    " << bName << "_in_valid => " << sendSigs[VALID] << ",\n"
+                     << "    " << bName << "_in_data => " << sendSigs[DATA] << ",\n"
+                     << std::endl;
+        outputStream << "    " << bName << "_out_ready => " << receiveSigs[READY] << ",\n"
+                     << "    " << bName << "_out_valid => " << receiveSigs[VALID] << ",\n"
+                     << "    " << bName << "_out_data => " << receiveSigs[DATA] << "\n);\n"
+                     << std::endl;
+        bufferCount++;
+      } else {
+        // simply pass through data if no operators and no initial tokens
+        if (circuit.getSrcComponent(buffer.second).getType() == "INPUT" &&
+            circuit.getDstComponent(buffer.second).getType() == "OUTPUT") {
+          auto edgeName = buffer.second.getName();
+          std::vector<std::string> sendSigs = circuit.generateHSSignalNames(edgeName, 1);
+          std::vector<std::string> receiveSigs  = circuit.generateHSSignalNames(edgeName, 0);
+          outputStream << receiveSigs[VALID] << "<=" << sendSigs[VALID] << ";\n";
+          outputStream << receiveSigs[DATA] << "<=" << sendSigs[DATA] << ";\n";
+          outputStream << sendSigs[READY] << "<=" << receiveSigs[READY] << ";\n";
+        }
       }
     }
   }

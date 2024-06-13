@@ -12,12 +12,19 @@
 #include "../vhdl_generation/VHDLGenerator.h"
 #include "../throughput/actor.h"
 #include "../throughput/state.h"
-#include "../dse/buffer_sizing.h"
 #include "../dse/abstract_dep_graph.h"
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
 #include "singleOutput.h"
+
+std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
+                                                "fp_sqrt", "fp_diff", "fp_pow",
+                                                "int_add", "int_diff", "int_prod",
+                                                "float2int", "int2float", "fp_floor",
+                                                "int_max", "int_min", "fp_max",
+                                                "fp_min", "fp_abs" };
+std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
@@ -50,26 +57,29 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   }
 
   // check and adjust for any operators with multiple I/Os
-  // the merge function currently only works with operators with the same number of inputs/outputs
-  VHDLCircuit tmp = generateCircuitObject(dataflow);
-  while (tmp.getMultiOutActors().size() > 0) {
+  // the merge function currently only works with operators with the same number
+  // of inputs/outputs
+  if (params.find("NORMALISE_OUTPUTS") != params.end()) {
+    VHDLCircuit tmp = generateCircuitObject(dataflow);
+    while (tmp.getMultiOutActors().size() > 0) {
 
-    VERBOSE_INFO("getMultiOutActors is not empty");
-    /*  This block remove multiIO actors and replace them  */
-    for (std::string actorName: tmp.getMultiOutActors()) {
-      parameters_list_t parameters;
-      parameters["name"] = actorName;
-      VERBOSE_INFO("singleOutput actor " << actorName);
-      try {
-        singleOutput(dataflow, parameters);
-      } catch (...) {
-        VERBOSE_WARNING("actor missing!");
+      VERBOSE_INFO("getMultiOutActors is not empty");
+      /*  This block remove multiIO actors and replace them  */
+      for (std::string actorName: tmp.getMultiOutActors()) {
+        parameters_list_t parameters;
+        parameters["name"] = actorName;
+        VERBOSE_INFO("singleOutput actor " << actorName);
+        try {
+          singleOutput(dataflow, parameters);
+        } catch (...) {
+          VERBOSE_WARNING("actor missing!");
+        }
       }
+      VERBOSE_INFO("Regenerate Circuit");
+      tmp = generateCircuitObject(dataflow);
     }
-    VERBOSE_INFO("Regenerate Circuit");
-    tmp = generateCircuitObject(dataflow);
+    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
   }
-  VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
 
   // Begin merge operation
   int isOffset = 0;
@@ -114,9 +124,11 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   VERBOSE_ASSERT(vertices.size() > 1, "Need to have more than 1 actor to perform merging.");
   std::vector<unsigned int> vInDegree;
   std::vector<unsigned int> vOutDegree;
+  std::vector<TIME_UNIT> mergedDurations;
   for (auto v : vertices) {
     vInDegree.push_back(dataflow->getVertexInDegree(v));
     vOutDegree.push_back(dataflow->getVertexOutDegree(v));
+    mergedDurations.push_back(dataflow->getVertexDuration(v));
   }
   VERBOSE_ASSERT(std::equal(vInDegree.begin() + 1, vInDegree.end(), vInDegree.begin()),
                  "Every actor to be merged needs to have the same number of inputs.");
@@ -176,11 +188,11 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     mergedActorName += "_inputselector" + commons::toString(i + isOffset);
   }
   Vertex mergedActor = dataflow->addVertex(mergedActorName);
-  dataflow->setPhasesQuantity(mergedActor, 1);
-  dataflow->setVertexDuration(mergedActor,dataflow->getVertexPhaseDuration(vertices.front())); // just get phase duration of first actor since they're all equal
+  dataflow->setPhasesQuantity(mergedActor, vertices.size());
+  dataflow->setVertexDuration(mergedActor, mergedDurations);
   dataflow->setVertexType(mergedActor, dataflow->getVertexType(vertices.front())); // merged vertices are of the same type
   // add re-entrancy edges
-  addReentrancy(dataflow, mergedActor, mergedActorName, {1});
+  dataflow->setReentrancyFactor(mergedActor, 1);
 
   // add input selectors to graph
   for (int i = 0; i < inDeg; i++) {
@@ -240,14 +252,14 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     VERBOSE_WARNING("Output edge from input selector " << isId << "set to: " << outEdgeName);
     dataflow->setEdgeName(outEdge, outEdgeName);
     dataflow->setEdgeInPhases(outEdge, execRates);
-    dataflow->setEdgeOutPhases(outEdge, {1});
+    dataflow->setEdgeOutPhases(outEdge, execRates);
     dataflow->setEdgeInputPortName(outEdge, "in_" + outEdgeName);
     dataflow->setEdgeOutputPortName(outEdge, "out_" + outEdgeName);
     dataflow->setPreload(outEdge, 0);
     dataflow->setTokenSize(outEdge, 1);
 
     // add re-entrancy edges/ports
-    addReentrancy(dataflow, new_is, "inputselector" + commons::toString(isId), execRates);
+    dataflow->setReentrancyFactor(new_is, 1);
   }
   isOffset += inDeg;
 
@@ -266,7 +278,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
     std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(mergedToOS, outEdgeName);
-    dataflow->setEdgeInPhases(mergedToOS, {1});
+    dataflow->setEdgeInPhases(mergedToOS, execRates);
     dataflow->setEdgeOutPhases(mergedToOS, execRates);
     dataflow->setEdgeInputPortName(mergedToOS, "in_" + outEdgeName);
     dataflow->setEdgeOutputPortName(mergedToOS, "out_" + outEdgeName);
@@ -294,7 +306,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     }
 
     // add re-entrancy edges/ports
-    addReentrancy(dataflow, new_os, "outputselector" + commons::toString(osId), execRates);
+    dataflow->setReentrancyFactor(new_os, 1);
     // rename affected actors (targets of merged vertices) with updated source actor name (of output selector)
     for (auto name : actorNames) {
       {ForEachVertex(dataflow, v) {
@@ -315,17 +327,6 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   for (auto i : verticesToRemove) {
     dataflow->removeVertex(dataflow->getVertexById(i));
   }
-}
-
-void algorithms::addReentrancy(models::Dataflow* const dataflow, Vertex v,
-                               std::string actorName, std::vector<TOKEN_UNIT> execRates) {
-  Edge selfLoop = dataflow->addEdge(v, v, "R" + actorName);
-  dataflow->setEdgeInPhases(selfLoop, execRates);
-  dataflow->setEdgeOutPhases(selfLoop, execRates);
-  dataflow->setEdgeInputPortName(selfLoop, "in_R" + actorName);
-  dataflow->setEdgeOutputPortName(selfLoop, "out_R" + actorName);
-  dataflow->setPreload(selfLoop, 1); // reentrancy edges need an initial token
-  dataflow->setTokenSize(selfLoop, 1);
 }
 
 // replace all occurances of actor name with replacement name
@@ -374,18 +375,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
-      VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
-      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-        std::vector<TIME_UNIT> opLifespans{1};
-        if (op.getType() == "input_selector" || op.getType() == "output_selector") {
-          opLifespans = dataflow->getVertexPhaseDuration(v); // special case for input and output selectors, which are CSDF components
-        }
+      std::vector<TIME_UNIT> opLifespans(
+          dataflow->getVertexPhaseDuration(v).size(),
+         getOperatorLifespan(op.getType(), operatorFreq));
         dataflow->setVertexDuration(v, opLifespans);
-      } else {
-        std::vector<TIME_UNIT> opLifespans{opLifespan};
-        dataflow->setVertexDuration(v, opLifespans);
-      }
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   for (auto &types : opCounts) {
@@ -469,18 +462,10 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
         opCounts[op.getType()]++;
       }
       // update execution time in dataflow according to component operator type
-      TIME_UNIT opLifespan = getOperatorLifespan(op.getType(), operatorFreq);
-      VERBOSE_INFO("operator lifespan (" << op.getType() << "): " << opLifespan);
-      if (opLifespan == 0) { // i.e. no specified lifespan (e.g. const_value, delay, Proj operators)
-        std::vector<TIME_UNIT> opLifespans{1};
-        if (op.getType() == "input_selector" || op.getType() == "output_selector") {
-          opLifespans = dataflow->getVertexPhaseDuration(v); // special case for input and output selectors, which are CSDF components
-        }
-        dataflow->setVertexDuration(v, opLifespans);
-      } else {
-        std::vector<TIME_UNIT> opLifespans{opLifespan};
-        dataflow->setVertexDuration(v, opLifespans);
-      }
+      std::vector<TIME_UNIT> opLifespans(
+                                         dataflow->getVertexPhaseDuration(v).size(),
+                                         getOperatorLifespan(op.getType(), operatorFreq));
+      dataflow->setVertexDuration(v, opLifespans);
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
   for (auto &types : opCounts) {

@@ -20,6 +20,8 @@ void copyFileAndReplaceWords(
     std::string refFile, std::string dstFile,
     const std::map<std::string, std::string> &replacementMap);
 int getOperatorLifespan(const std::string &opType, int operatorFreq);
+const std::vector<std::string> getImplementationInputPorts(std::string opType);
+const std::vector<std::string> getImplementationOutputPorts(std::string opType);
 
 namespace models {
   class Dataflow;
@@ -36,6 +38,9 @@ namespace algorithms {
   void generateInputOutputSelectorOperator(VHDLComponent comp,
                                            std::map<int, int> inputCounts,
                                            std::map<int, int> outputCounts);
+  void generateInputOutputSelectorImplementation(VHDLComponent comp,
+                                                 std::map<int, int> inputCounts,
+                                                 std::map<int, int> outputCounts);
   void generateFPCOperator(std::string compImplementationName);
   void generateUIOperator(VHDLComponent comp);
   void generateOperator(VHDLComponent comp);
@@ -43,7 +48,7 @@ namespace algorithms {
 
     // GenerateCircuit helper functions
     void generateVHDLHeader(std::ofstream &vhdlOutput);
-    void generateVHDLEntity(VHDLCircuit &circuit, int numInputPorts, int numOutputPorts, std::ofstream &vhdlOutput);
+    void generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOutput);
     void generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
                                   bool noOperators, std::ofstream &vhdlOutput);
 
@@ -72,6 +77,10 @@ namespace algorithms {
                                                    std::map<int, int> outputCounts);
   std::string generateDelayComponent(VHDLComponent comp);
   std::string generateBufferComponent(std::string circuitName);
+  std::string generateSBufferComponent();
+  std::string generateCycleCounterComponent();
+  std::string generateInputScalingComponents(int i2sBitWidth, int fpcBitWidth);
+  std::string generateOutputScalingComponents(int i2sBitWidth, int fpcBitWidth);
   std::string generateConstComponents(std::map<int, int> outputCounts);
   std::string generateUIComponents(VHDLComponent comp);
   std::string generateSplitterComponents(std::map<int, int> outputCounts);

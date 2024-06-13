@@ -27,24 +27,9 @@ namespace algorithms {
   namespace transformation {
     void merge_operators(models::Dataflow* const dataflow, parameters_list_t  parameters);
   }
-  /* bool checkForNumericInputs(models::Dataflow* const dataflow, Vertex v); */
-  /* bool checkForStaticDelay(models::Dataflow* const dataflow, Vertex v, */
-  /*                          Edge &inputSig, Edge &delayArg, int &delayAmt); */
-  /* std::string evalBinop(std::string op, std::string arg1, std::string arg2); */
-  /* std::string evalCast(std::string op, std::string arg); */
-  /* std::string evalOther(std::string op, std::vector<std::string> args); */
-  /* std::string evalTrig(std::string op, std::string arg); */
-  /* void bypassDelay(models::Dataflow* const dataflow, Vertex v, */
-  /*                  Edge inputSig, Edge delayArg, int delayAmt); */
-  /* void bypassProj(models::Dataflow* const dataflow, Vertex v); */
-  /* void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v); */
-  /* void applyResult(models::Dataflow* const dataflow, Vertex v, std::string result); */
-  /* int getChannelNumber(std::string channelName); */
   void generateMergedGraph(models::Dataflow* dataflow,
                            std::vector<Vertex> &vertices,
                            int &isOffset, int &osOffset);
-  void addReentrancy(models::Dataflow* const dataflow, Vertex v,
-                     std::string actorName, std::vector<TOKEN_UNIT> execRates);
   std::string replaceActorName(std::string originalName, const std::string& toReplace,
                                const std::string& replacement);
 
@@ -56,13 +41,6 @@ namespace algorithms {
   void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
                             abstractDepGraph &g, std::map<ARRAY_INDEX, bool> &visited);
 
-  std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
-                                                  "fp_sqrt", "fp_diff", "fp_pow",
-                                                  "int_add", "int_diff", "int_prod",
-                                                  "float2int", "int2float", "fp_floor",
-                                                  "int_max", "int_min", "fp_max",
-                                                  "fp_min", "fp_abs" };
-  std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 }
 ADD_TRANSFORMATION(MergeOperators,
                    transformation_t({ "MergeOperators" , "Identify operators (via a given merging strategy) and merge into a single occurance.", algorithms::transformation::merge_operators}));
