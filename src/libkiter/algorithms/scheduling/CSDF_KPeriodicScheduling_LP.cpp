@@ -509,7 +509,7 @@ void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow* 
 
 }
 
- void algorithms::scheduling::CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
+ void algorithms::scheduling::CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t params)  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
 	models::Scheduling res = CSDF_KPeriodicScheduling_LP  (dataflow, generate1PeriodicVector(dataflow));
@@ -518,6 +518,13 @@ void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow* 
     std::cout << "1Periodic(LP) throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
     std::cout << "1Periodic(LP) period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
 
+   int linesize = params.count("LINE")? commons::fromString<int>(params["LINE"]) : 80;
+
+   std::cout << res.asASCII(linesize);
+   std::cout << res.asText();
+
+   std::cout << "1Periodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
+   std::cout << "1Periodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
 }
 
  void algorithms::scheduling::CSDF_NPeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
