@@ -99,7 +99,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
         }}
     }
     VERBOSE_ASSERT(this->getHSInputSignals().size() == this->argOrder.size(),
-                   this->getUniqueName() << ": HS input ports after reordering != argOrder size");
+                   this->getUniqueName() << ": HS input ports after reordering << (" << this->getHSInputSignals().size() << ") != argOrder size (" << this->argOrder.size() << ")");
   } else {
     {ForInputEdges(dataflow, this->actor, e) {
         if (dataflow->getPreload(e)) {
@@ -123,17 +123,24 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     }}
   // Rearrange output ports and edges according to output selector phases of execution
   if (this->getType() == "output_selector") {
+    int outEdgeCount = 0;
     {ForOutputEdges(dataflow, this->actor, e) {
         std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
-        for (int exec = 0; exec < inputVector.size(); exec++) {
-          if (inputVector.at(exec) == 1) {
-            if (dataflow->getPreload(e)) {
-              this->hsOutputSignals.at(exec) = dataflow->getEdgeInputPortName(e);
-            } else {
-              this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
+        if (inputVector.size() > 1) {
+          for (int exec = 0; exec < inputVector.size(); exec++) {
+            if (inputVector.at(exec) == 1) {
+              if (dataflow->getPreload(e)) {
+                this->hsOutputSignals.at(exec) = dataflow->getEdgeInputPortName(e);
+              } else {
+                this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
+              }
+              VERBOSE_INFO("Edge for exec " << exec << ": " << dataflow->getEdgeName(e));
+              this->outputSignals.at(exec) = dataflow->getEdgeName(e);
             }
-            this->outputSignals.at(exec) = dataflow->getEdgeName(e);
           }
+        } else { // output selector is the broadcasting type
+          this->outputSignals.at(outEdgeCount) = dataflow->getEdgeName(e);
+          outEdgeCount++;
         }
       }}
   }
@@ -374,7 +381,7 @@ int VHDLComponent::getSBufferInitTokens() const {
 }
 
 void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
-  if (!startTimes.size()) {
+  if (!times.size()) {
     VERBOSE_WARNING("Adding empty vector of start times for "
                     << this->getUniqueName());
   }

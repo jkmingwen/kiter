@@ -32,6 +32,7 @@ int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed 
 bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
+bool osBroadcast = false;
 int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
 int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
@@ -292,6 +293,8 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    design should include a FIFO buffer. Set to buffered (t) by default.
    - FREQUENCY: Clock cycle frequency of VHDL design.
    - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
+   - OS_ADD_SBUFFER: Change output selector behaviour to simply broadcast input
+   data and add SBuffers to each output edge.
 
    @return void; VHDL code generated in location specified in OUTPUT_DIR
    parameter.
@@ -364,6 +367,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     dataDriven = true;
   }
 
+  if (param_list.find("OS_ADD_SBUFFER") != param_list.end()) {
+    VERBOSE_INFO("Adding SBuffers to the output edges of output selectors");
+    osBroadcast = true;
+  }
+
   if (!isBufferless) {
     {ForEachEdge(dataflow, e) {
         if (!dataflow->getPreload(e)) {
@@ -405,7 +413,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // (these extra components have no use in VHDL code, and so used purely to get scheduling numbers)
   algorithms::transformation::generate_audio_components(dataflowScheduled,
                                                         param_list);
-  VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),"inconsistent graph");
+  VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled), "inconsistent graph");
   models::Scheduling res =
       scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
   std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> execTimes;
@@ -418,6 +426,20 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     if (execTimes.count(dataflow->getVertexId(v))) {
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[dataflow->getVertexId(v)]);
+      // sbuffers used for broadcasting OS signal have >1 exec phase
+      if (comp.getType() == "sbuffer" && dataflow->getPhasesQuantity(v) > 1) {
+        TIME_UNIT startTime = 0;
+        {ForOutputEdges(dataflow, v, outEdge) {
+            for (auto i = 0; i < dataflow->getEdgeInPhasesCount(outEdge); i++) {
+              // use prod exec rates as a mask to identify relevant exec time
+              if (dataflow->getEdgeInVector(outEdge)[i] == 1) {
+                startTime = startTimes[i];
+              }
+            }
+          }
+        }
+        startTimes = {startTime};
+      }
       tmp.setCompStartTime(comp.getUniqueName(), startTimes);
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
@@ -834,26 +856,34 @@ void algorithms::generateInputOutputSelectorImplementation(VHDLComponent comp,
           execTimePorts += ";\n";
         }
         portList += "out_data_" + std::to_string(i) + " : out std_logic_vector(ram_width-1 downto 0);\n";
-        processBehaviour += "when exec_time_" + std::to_string(i) +
-                            " => out_data_" + std::to_string(i) +
-                            " <= in_data_0;\n";
-        // resetBehaviour += "out_data_" + std::to_string(i) + " <= (others => '0');\n";
+        if (!osBroadcast) {
+          processBehaviour += "when exec_time_" + std::to_string(i) +
+            " => out_data_" + std::to_string(i) +
+            " <= in_data_0;\n";
+        } else {
+          processBehaviour += "out_data_" + std::to_string(i) + " <= in_data_0;\n";
+        }
       }
       // generate output selector implementation
-      std::map<std::string, std::string> replacementWords = {{"$COMPONENT_NAME", componentName},
-                                                             {"$EXEC_TIME_PORTS", execTimePorts},
-                                                             {"$OUTPUT_PORTS", portList},
-                                                             {"$PROCESS_BEHAVIOUR", processBehaviour},
-                                                             // {"$RESET_BEHAVIOUR", resetBehaviour}
-      };
+      std::map<std::string, std::string> replacementWords = {
+          {"$COMPONENT_NAME", componentName},
+          {"$EXEC_TIME_PORTS", execTimePorts},
+          {"$OUTPUT_PORTS", portList},
+          {"$PROCESS_BEHAVIOUR", processBehaviour}};
+      if (!osBroadcast) {
         copyFileAndReplaceWords(referenceDir + "s_" + entityName + ".vhdl",
                                 componentDir + componentName + ".vhdl",
                                 replacementWords);
-        // reset strings for next iteration
-        execTimePorts.clear();
-        portList.clear();
-        processBehaviour.clear();
-        resetBehaviour.clear();
+      } else {
+        copyFileAndReplaceWords(referenceDir + "broadcast.vhdl",
+                                componentDir + componentName + ".vhdl",
+                                replacementWords);
+      }
+      // reset strings for next iteration
+      execTimePorts.clear();
+      portList.clear();
+      processBehaviour.clear();
+      resetBehaviour.clear();
     }
   }
 }
@@ -1965,21 +1995,29 @@ std::string algorithms::generateInputOutputSelectorComponent(VHDLComponent comp,
         std::string compNumberedName = componentName + "_" + std::to_string(numOutputPorts);
         // every component requires clock and reset ports
         outputStream << "component " << compNumberedName << " is" << std::endl;
-        outputStream << "generic ( ram_width : integer;" << std::endl;
-        for (auto port = 0; port < numOutputPorts; port++) {
-          outputStream << "          "
-                       << "exec_time_" << std::to_string(port)
-                       << " : integer := 0";
-          if (port + 1 == numOutputPorts) {
-            outputStream << ");" << std::endl;
-          } else {
-            outputStream << ";" << std::endl;
+        if (!osBroadcast) {
+          outputStream << "generic ( ram_width : integer;" << std::endl;
+          for (auto port = 0; port < numOutputPorts; port++) {
+            outputStream << "          "
+                         << "exec_time_" << std::to_string(port)
+                         << " : integer := 0";
+            if (port + 1 == numOutputPorts) {
+              outputStream << ");" << std::endl;
+            } else {
+              outputStream << ";" << std::endl;
+            }
           }
+          outputStream << "port (\n"
+                       << "    " << "clk : in std_logic;\n"
+                       << "    " << "rst : in std_logic;\n"
+                       << "    " << "cycle_count : in integer;" << std::endl;
+        } else {
+          outputStream << "generic ( ram_width : integer);\n"
+                       << "port (\n"
+                       << "    " << "clk : in std_logic;\n"
+                       << "    " << "rst : in std_logic;\n" << std::endl;
         }
-        outputStream << "port (\n"
-                     << "    " << "clk : in std_logic;\n"
-                     << "    " << "rst : in std_logic;\n"
-                     << "    " << "cycle_count : in integer;" << std::endl;
+
         for (auto port = 0; port < numOutputPorts; port++) {
           outputStream << "    "
                        << "out_data_" << std::to_string(port)
@@ -2470,20 +2508,25 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
                          << execTime << lineEnd << std::endl;
           }
         } else if (comp.getType() == "output_selector") {
-          outputStream << "generic map (\n"
-                       << "    " << "ram_width => ram_width," << std::endl;
-          for (int i = 0; i < comp.getOutputPorts().size(); i++) {
-            VERBOSE_ASSERT(comp.getStartTimes().size() ==
-                           comp.getOutputPorts().size(),
-                           "Number of start times and output ports don't match");
-            int execTime = comp.getStartTimes()[i] + systemSlack;
-            std::string lineEnd = ",";
-            if (i + 1 == comp.getOutputPorts().size()) {
-              lineEnd = ")";
+          if (osBroadcast) {
+            outputStream << "generic map (\n"
+                         << "    " << "ram_width => ram_width)" << std::endl;
+          } else {
+            outputStream << "generic map (\n"
+                         << "    " << "ram_width => ram_width," << std::endl;
+            for (int i = 0; i < comp.getOutputPorts().size(); i++) {
+              VERBOSE_ASSERT(comp.getStartTimes().size() ==
+                             comp.getOutputPorts().size(),
+                             "Number of start times and output ports don't match");
+              int execTime = comp.getStartTimes()[i] + systemSlack;
+              std::string lineEnd = ",";
+              if (i + 1 == comp.getOutputPorts().size()) {
+                lineEnd = ")";
+              }
+              outputStream << "    "
+                           << "exec_time_" << std::to_string(i) << " => "
+                           << execTime << lineEnd << std::endl;
             }
-            outputStream << "    "
-                         << "exec_time_" << std::to_string(i) << " => "
-                         << execTime << lineEnd << std::endl;
           }
         } else if (comp.getType() == "sbuffer") {
           VERBOSE_ASSERT(comp.getStartTimes().size() == 1,
@@ -2511,7 +2554,7 @@ std::string algorithms::generatePortMapping(const VHDLCircuit &circuit) {
           outputStream << "    " << "rst => " << "rst," << std::endl;
         }
         if (comp.getType() == "sbuffer" || comp.getType() == "input_selector" ||
-            comp.getType() == "output_selector") {
+            (comp.getType() == "output_selector" && !osBroadcast)) {
           outputStream << "    " << "cycle_count => cycle_count," << std::endl;
         }
         if (opName == "hslider" || opName == "vslider" || opName == "nentry" ||
