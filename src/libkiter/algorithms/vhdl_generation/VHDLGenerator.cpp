@@ -13,6 +13,7 @@
 #include "VHDLConnection.h"
 #include "VHDLCircuit.h"
 #include "algorithms/schedulings.h"
+#include "algorithms/transformation/merge_operators.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
 #include <algorithms/transformation/iterative_evaluation.h>
@@ -33,6 +34,7 @@ bool isBufferless = false; // if VHDL design should include FIFO buffers along e
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
 bool osBroadcast = false;
+bool toMerge = false; // if a merge strategy is specified
 int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
 int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
@@ -372,6 +374,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     osBroadcast = true;
   }
 
+  if (param_list.find("MERGE_STRATEGY") != param_list.end()) {
+    toMerge = true;
+  } else {
+    VERBOSE_INFO("No merge strategy specified; you can specify a merge "
+                 "strategy with -pMERGE_STRATEGY={greedy/smart}");
+  }
+
   if (!isBufferless) {
     {ForEachEdge(dataflow, e) {
         if (!dataflow->getPreload(e)) {
@@ -379,8 +388,20 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         }
       }}
   }
-  // VHDLCircuit object specifies operators and how they're connected
-  VHDLCircuit tmp = generateCircuitObject(dataflow);
+  // implement merge strategy if specified
+  models::Dataflow *broadcastTimingModel = new models::Dataflow(*dataflow);
+  std::map<std::string, std::vector<TIME_UNIT>> osBroadcastTimes; // only used when osBroadcast = true
+  if (toMerge) {
+    if (osBroadcast) {
+      param_list.erase(param_list.find("OS_ADD_SBUFFER"));
+      param_list["OS_BROADCAST_SCHED_MODEL"] = "true";
+      algorithms::transformation::merge_operators(broadcastTimingModel,
+                                                  param_list);
+      param_list["OS_ADD_SBUFFER"] = "true";
+    }
+    algorithms::transformation::merge_operators(dataflow, param_list);
+  }
+  VHDLCircuit tmp = generateCircuitObject(dataflow); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
@@ -410,36 +431,41 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // schedule execution times
   models::Dataflow *dataflowScheduled = new models::Dataflow(*dataflow);
   // model periodic audio input by adding components
-  // (these extra components have no use in VHDL code, and so used purely to get scheduling numbers)
-  algorithms::transformation::generate_audio_components(dataflowScheduled,
-                                                        param_list);
-  VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled), "inconsistent graph");
-  models::Scheduling res =
-      scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
-  std::map<ARRAY_INDEX, std::vector<TIME_UNIT>> execTimes;
-  for (const auto &item : res.getTaskSchedule()) {
-    execTimes[item.first] = item.second.periodic_starts.second;
+  // (these extra components have no use in VHDL code - used purely to get
+  // scheduling numbers)
+  std::map<std::string, std::vector<TIME_UNIT>> execTimes;
+  if (!osBroadcast) {
+    algorithms::transformation::generate_audio_components(dataflowScheduled,
+                                                          param_list);
+    VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),
+                   "inconsistent graph");
+    models::Scheduling res =
+        scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
+    for (const auto &item : res.getTaskSchedule()) {
+      execTimes[dataflowScheduled->getVertexName(dataflowScheduled->getVertexById(item.first))] = item.second.periodic_starts.second;
+    }
+  } else {
+    algorithms::transformation::generate_audio_components(broadcastTimingModel,
+                                                          param_list);
+    VERBOSE_ASSERT(computeRepetitionVector(broadcastTimingModel),
+                   "inconsistent graph");
+    models::Scheduling res =
+      scheduling::CSDF_1PeriodicScheduling(broadcastTimingModel, 0);
+    for (const auto &item : res.getTaskSchedule()) {
+      std::string actorBaseName =
+          broadcastTimingModel->getVertexName(broadcastTimingModel->getVertexById(item.first));
+      actorBaseName = actorBaseName.substr(0, actorBaseName.find("_"));
+      execTimes[actorBaseName] = item.second.periodic_starts.second;
+    }
   }
   std::vector<TIME_UNIT> inputEnds(2, 0);
   std::vector<TIME_UNIT> outputStarts(2, 0);
   for (auto &[v, comp] : tmp.getComponentMap()) {
-    if (execTimes.count(dataflow->getVertexId(v))) {
+    std::string name = dataflow->getVertexName(v);
+    if (osBroadcast) { name = name.substr(0, name.find("_")); }
+    if (execTimes.count(name)) {
       // add execTimes element as actor exec time
-      std::vector<TIME_UNIT> startTimes(execTimes[dataflow->getVertexId(v)]);
-      // sbuffers used for broadcasting OS signal have >1 exec phase
-      if (comp.getType() == "sbuffer" && dataflow->getPhasesQuantity(v) > 1) {
-        TIME_UNIT startTime = 0;
-        {ForOutputEdges(dataflow, v, outEdge) {
-            for (auto i = 0; i < dataflow->getEdgeInPhasesCount(outEdge); i++) {
-              // use prod exec rates as a mask to identify relevant exec time
-              if (dataflow->getEdgeInVector(outEdge)[i] == 1) {
-                startTime = startTimes[i];
-              }
-            }
-          }
-        }
-        startTimes = {startTime};
-      }
+      std::vector<TIME_UNIT> startTimes(execTimes[name]);
       tmp.setCompStartTime(comp.getUniqueName(), startTimes);
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
@@ -449,6 +475,26 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
         outputStarts[comp.getIOId()] = startTimes.front();
       }
+    } else if (comp.getType() == "sbuffer" && dataflow->getPhasesQuantity(v) > 1) {
+      // sbuffers used for broadcasting OS signal have >1 exec phase
+      VERBOSE_ASSERT(comp.getInputEdges().size() == 1,
+                     "sbuffers should only have 1 input");
+      std::string srcName = dataflow->getVertexName(dataflow->getEdgeSource(
+          dataflow->getEdgeByName(comp.getInputEdges().front())));
+      srcName = srcName.substr(0, srcName.find("_"));
+      std::vector<TIME_UNIT> srcOSStarts = execTimes[srcName];
+      TIME_UNIT startTime = 0;
+      {ForOutputEdges(dataflow, v, outEdge) {
+          for (auto i = 0; i < dataflow->getEdgeInPhasesCount(outEdge); i++) {
+            // use prod exec rates as a mask to identify relevant exec time
+            if (dataflow->getEdgeInVector(outEdge)[i] == 1) {
+              startTime = srcOSStarts[i];
+            }
+          }
+        }
+      }
+      srcOSStarts = {startTime};
+      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts);
     } else {
       VERBOSE_WARNING("No schedule generated for "
                       << comp.getUniqueName() << " (" << comp.getType() << ")");

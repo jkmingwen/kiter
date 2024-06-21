@@ -26,6 +26,7 @@ std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                 "fp_min", "fp_abs" };
 std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 bool addSBuffersToOSOutputs = false; // used for when the output selector should act as a simple broadcast
+bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
@@ -61,6 +62,10 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   if (params.find("OS_ADD_SBUFFER") != params.end()) {
     VERBOSE_INFO("Adding SBuffers to the output edges of output selectors");
     addSBuffersToOSOutputs = true;
+  }
+
+  if (params.find("OS_BROADCAST_SCHED_MODEL") != params.end()) {
+    modelOSBroadcastTimings = true;
   }
 
   // check and adjust for any operators with multiple I/Os
@@ -283,7 +288,12 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       dataflow->setVertexDuration(new_os, {1});
     } else {
       dataflow->setPhasesQuantity(new_os, vertices.size());
-      dataflow->setVertexDuration(new_os, execDurations);
+      if (!modelOSBroadcastTimings) {
+        dataflow->setVertexDuration(new_os, execDurations);
+      } else {
+        // to get the right execution timings, OS has longer exec duration (equal to SBuffer)
+        dataflow->setVertexDuration(new_os, std::vector<TIME_UNIT>(vertices.size(), 2));
+      }
     }
     dataflow->setVertexType(new_os, "output_selector");
     // connect merged actors to output selector
