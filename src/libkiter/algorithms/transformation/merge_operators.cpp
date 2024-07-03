@@ -332,7 +332,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
             "sbuffer" + std::to_string(broadcastBufferCnt) + "INIT0");
         dataflow->setVertexType(sBuffer, "sbuffer");
         dataflow->setPhasesQuantity(sBuffer, vertices.size());
-        dataflow->setVertexDuration(sBuffer, execDurations);
+        dataflow->setVertexDuration(sBuffer, std::vector<TIME_UNIT>(vertices.size(), 2));
         broadcastBufferCnt++;
         Edge toSBuffer = dataflow->addEdge(new_os, sBuffer, edgeName);
         dataflow->setEdgeInPhases(toSBuffer, {1});

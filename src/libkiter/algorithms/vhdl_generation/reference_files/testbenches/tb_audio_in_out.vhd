@@ -69,7 +69,7 @@ begin
 
   -- Clock generation with concurrent procedure call
   clk_gen(clk_8n, 250.0E6);  -- 250.0 MHz clock
-  clk_gen(clk_80n, 24.576E6);  -- 25.0 MHz clock
+  clk_gen(clk_80n, 12.288E6);  -- 12.288 MHz clock
 
   -- Reset Generation Process
   reset_process: process

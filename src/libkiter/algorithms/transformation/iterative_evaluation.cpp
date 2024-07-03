@@ -273,6 +273,15 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   }
   // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
   std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
+  // input/output operation consists of these 3 components:
+  TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
+                        getOperatorLifespan("fp_prod", operatorFreq);
+  TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
+                         getOperatorLifespan("fp_prod", operatorFreq);
+  if (params.find("OS_ADD_SBUFFER") != params.end()) {
+    inExecDur += getOperatorLifespan("sbuffer", operatorFreq);
+    outExecDur += getOperatorLifespan("sbuffer", operatorFreq);
+  }
   Vertex lIn, rIn;
     VERBOSE_INFO("Binding input/output selector edges in graph:");
       {ForEachVertex(dataflow_prime, v) {
@@ -294,20 +303,21 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
           if (opType == "INPUT_0") {
             foundInputL = true;
             lIn = v;
-            // input operation consists of these 3 components:
-            TIME_UNIT dur = getOperatorLifespan("sbuffer", operatorFreq) +
-                            getOperatorLifespan("fix2fp", operatorFreq) +
-                            getOperatorLifespan("fp_prod", operatorFreq);
             dataflow_prime->setPhasesQuantity(lIn, 1);
-            dataflow_prime->setVertexDuration(lIn, {dur});
+            dataflow_prime->setVertexDuration(lIn, {inExecDur});
             dataflow_prime->setReentrancyFactor(lIn, 1);
           }
           if (opType == "INPUT_1") {
             foundInputR = true;
             rIn = v;
             dataflow_prime->setPhasesQuantity(rIn, 1);
-            dataflow_prime->setVertexDuration(rIn, {4});
+            dataflow_prime->setVertexDuration(rIn, {inExecDur});
             dataflow_prime->setReentrancyFactor(rIn, 1);
+          }
+          if (opType == "OUTPUT_0" || opType == "OUTPUT_1") {
+            dataflow_prime->setPhasesQuantity(v, 1);
+            dataflow_prime->setVertexDuration(v, {outExecDur});
+            dataflow_prime->setReentrancyFactor(v, 1);
           }
         }
       }
@@ -316,14 +326,14 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
         lIn = dataflow_prime->addVertex("INPUT_0");
         dataflow_prime->setVertexType(lIn, "INPUT_0");
         dataflow_prime->setPhasesQuantity(lIn, 1);
-        dataflow_prime->setVertexDuration(lIn, {4});
+        dataflow_prime->setVertexDuration(lIn, {inExecDur});
         dataflow_prime->setReentrancyFactor(lIn, 1);
       }
       if (!foundInputR) {
         rIn = dataflow_prime->addVertex("INPUT_1");
         dataflow_prime->setVertexType(rIn, "INPUT_1");
         dataflow_prime->setPhasesQuantity(rIn, 1);
-        dataflow_prime->setVertexDuration(rIn, {4});
+        dataflow_prime->setVertexDuration(rIn, {inExecDur});
         dataflow_prime->setReentrancyFactor(rIn, 1);
       }
       // add dependencies and actor to simulate periodic audio input data
@@ -621,7 +631,9 @@ void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
 
   std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
+  TIME_UNIT compDur = 2;
   dataflow->setVertexType(v, "sbuffer");
+  dataflow->setVertexDuration(v, {compDur});
   dataflow->setVertexName(v, newName);
   dataflow->setReentrancyFactor(v, 1);
   {ForEachVertex(dataflow, a) { // update any occurances of delay name in other vertex names

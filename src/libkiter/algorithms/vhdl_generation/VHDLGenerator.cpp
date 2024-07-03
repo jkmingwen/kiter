@@ -72,7 +72,7 @@ std::map<int, std::map<std::string, int>> operatorLifespans =
      {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
       {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
       {"int_diff", 1}, {"float2int", 2}, {"int2float", 3}, {"sbuffer", 2},
-      {"fix2fp", 1}, {"fp2fix", 1},
+      {"fix2fp", 1}, {"fp2fix", 2},
       // NOTE unimplemented operators from here:
       {"fp_floor", 5}, {"int_max", 1}, {"int_min", 1}, {"fp_max", 1},
       {"fp_min", 1}, {"fp_abs", 1}, {"select2", 1},
