@@ -26,8 +26,6 @@ namespace models {
 namespace algorithms {
   namespace transformation {
     void iterative_evaluate(models::Dataflow* const dataflow, parameters_list_t  parameters);
-    void use_scheduled_buffers(models::Dataflow *const dataflow,
-                               parameters_list_t parameters);
     void generate_audio_components(models::Dataflow* const  dataflow,
                                    parameters_list_t params);
   }
@@ -40,7 +38,7 @@ namespace algorithms {
   std::string evalTrig(std::string op, std::string arg);
   void bypassDelay(models::Dataflow *const dataflow, Vertex v, Edge inputSig,
                    Edge delayArg, int delayAmt);
-  void delayToBuffer(models::Dataflow *const dataflow, Vertex v, Edge inputSig,
+  void delayToBuffer(models::Dataflow *const dataflow, Vertex v,
                      Edge delayArg, int delayAmt);
   void bypassProj(models::Dataflow *const dataflow, Vertex v);
   void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v);
@@ -55,12 +53,6 @@ ADD_TRANSFORMATION(
                       "Faust to SDF: simplify graph by iteratively evaluating "
                       "expressions with constant inputs.",
                       algorithms::transformation::iterative_evaluate}));
-ADD_TRANSFORMATION(
-    ScheduledBuffers,
-    transformation_t(
-        {"ScheduledBuffers",
-         "Faust to SDF: Use scheduled buffers in SDF and simplify graph.",
-         algorithms::transformation::use_scheduled_buffers}));
 
 ADD_TRANSFORMATION(
     GenerateAudioComponents,
