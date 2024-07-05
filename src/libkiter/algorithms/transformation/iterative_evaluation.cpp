@@ -219,7 +219,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
                         getOperatorLifespan("fp_prod", operatorFreq);
   TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
                          getOperatorLifespan("fp_prod", operatorFreq);
-  if (params.find("OS_ADD_SBUFFER") != params.end()) {
+  if (params.find("BROADCAST") != params.end()) {
     inExecDur += getOperatorLifespan("sbuffer", operatorFreq);
     outExecDur += getOperatorLifespan("sbuffer", operatorFreq);
   }

@@ -295,7 +295,7 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    design should include a FIFO buffer. Set to buffered (t) by default.
    - FREQUENCY: Clock cycle frequency of VHDL design.
    - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
-   - OS_ADD_SBUFFER: Change output selector behaviour to simply broadcast input
+   - BROADCAST: Change output selector behaviour to simply broadcast input
    data and add SBuffers to each output edge.
 
    @return void; VHDL code generated in location specified in OUTPUT_DIR
@@ -369,7 +369,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     dataDriven = true;
   }
 
-  if (param_list.find("OS_ADD_SBUFFER") != param_list.end()) {
+  if (param_list.find("BROADCAST") != param_list.end()) {
     VERBOSE_INFO("Adding SBuffers to the output edges of output selectors");
     osBroadcast = true;
   }
@@ -393,11 +393,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   std::map<std::string, std::vector<TIME_UNIT>> osBroadcastTimes; // only used when osBroadcast = true
   if (toMerge) {
     if (osBroadcast) {
-      param_list.erase(param_list.find("OS_ADD_SBUFFER"));
+      param_list.erase(param_list.find("BROADCAST"));
       param_list["OS_BROADCAST_SCHED_MODEL"] = "true";
       algorithms::transformation::merge_operators(broadcastTimingModel,
                                                   param_list);
-      param_list["OS_ADD_SBUFFER"] = "true";
+      param_list["BROADCAST"] = "true";
     }
     algorithms::transformation::merge_operators(dataflow, param_list);
   }

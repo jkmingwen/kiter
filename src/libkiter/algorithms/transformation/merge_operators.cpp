@@ -25,7 +25,7 @@ std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                 "int_max", "int_min", "fp_max",
                                                 "fp_min", "fp_abs" };
 std::vector<std::string> mergeStrategies = {"greedy", "smart"};
-bool addSBuffersToOSOutputs = false; // used for when the output selector should act as a simple broadcast
+bool osAsBroadcast = false; // used for when the output selector should act as a simple broadcast
 bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
 
@@ -59,9 +59,9 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
 
-  if (params.find("OS_ADD_SBUFFER") != params.end()) {
-    VERBOSE_INFO("Adding SBuffers to the output edges of output selectors");
-    addSBuffersToOSOutputs = true;
+  if (params.find("BROADCAST") != params.end()) {
+    VERBOSE_INFO("Adding gates to the output edges of output selectors");
+    osAsBroadcast = true;
   }
 
   if (params.find("OS_BROADCAST_SCHED_MODEL") != params.end()) {
@@ -283,7 +283,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<TIME_UNIT> execDurations(vertices.size(), 1);
     std::vector<TOKEN_UNIT> execRates(vertices.size(), 1);
     auto new_os = dataflow->addVertex(outputSelectorName);
-    if (addSBuffersToOSOutputs) { // OS simply broadcasts in this case; so just need 1 phase of execution
+    if (osAsBroadcast) { // OS simply broadcasts in this case; so just need 1 phase of execution
       dataflow->setPhasesQuantity(new_os, 1);
       dataflow->setVertexDuration(new_os, {1});
     } else {
@@ -301,7 +301,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
     std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(mergedToOS, outEdgeName);
-    if (addSBuffersToOSOutputs) {
+    if (osAsBroadcast) {
       dataflow->setEdgeInPhases(mergedToOS, execRates);
       dataflow->setEdgeOutPhases(mergedToOS, {1}); // if just broadcasting signal, then only need 1 exec phase
     } else {
@@ -326,7 +326,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       TOKEN_UNIT preload = dataflow->getPreload(ogEdge);
       DATA_UNIT tokenSize = dataflow->getTokenSize(ogEdge);
       dataflow->removeEdge(ogEdge);
-      if (addSBuffersToOSOutputs) {
+      if (osAsBroadcast) {
         std::string edgeName = ("broadcast" + edge.second[i]);
         Vertex sBuffer = dataflow->addVertex(
             "sbuffer" + std::to_string(broadcastBufferCnt) + "INIT0");
