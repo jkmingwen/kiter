@@ -53,6 +53,10 @@ class VHDLCircuit {
     const std::map<std::string, std::vector<std::string>>& getOutputPorts() const {
         return this->outputPorts;
     }
+
+    const std::map<std::string, std::string> &getTopLevelPorts() const {
+      return this->topLevelPorts;
+    }
   int getOperatorCount(const std::string &op) const;
   const VHDLComponent&  getFirstComponentByType(const std::string &op) const;
 
@@ -86,6 +90,7 @@ class VHDLCircuit {
   // ports of top-level input and output signals
   std::map<std::string, std::vector<std::string>> inputPorts;
   std::map<std::string, std::vector<std::string>> outputPorts;
+  std::map<std::string, std::string> topLevelPorts;
   std::map<std::string, std::string> implementationNames = {
       {"fp_add", "fp_add_flopoco"},
       {"fp_prod", "fp_prod_flopoco"},

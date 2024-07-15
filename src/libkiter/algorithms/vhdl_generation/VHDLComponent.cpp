@@ -5,7 +5,10 @@
  *      Author: jkmingwen
  */
 
+#include <bitset>
 #include <models/Dataflow.h>
+#include <sstream>
+#include <string>
 #include "VHDLComponent.h"
 
 /**
@@ -14,9 +17,14 @@
  * \param dataflow Dataflow graph that vertex is located in.
  * Required to query properties of the vertex.
  * \param a Vertex to instantiate as a VHDLComponent.
+ * \param implType Optional specification of VHDL implementation for given
+component {TT (default), DD}
+ * \param freq Operating frequency (in MHz) of given component {250 (default), 125, 50}
  */
-VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
+VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implType t, int freq) {
   actor = a;
+  implementationType = t;
+  opFreq = freq;
   uniqueName = dataflow->getVertexName(a); // unique ID per VHDLComponent
   implementationName = "default"; // name of top-level component for the given operator in VHDL
   componentType = dataflow->getVertexType(a); // vertex type denotes computation performed (sans data type)
@@ -204,8 +212,96 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a) {
     componentType = "const_value";
     if (dataType == "fp") {
       fpValue = compTypeAsFloat;
+      std::string prefix = (fpValue ? "01" : "00");
+      std::stringstream binaryRep;
+      size_t size = sizeof(fpValue);
+      unsigned char *p = (unsigned char *)&fpValue;
+      p += size - 1;
+      while (size--) {
+        for (int n = 0; n < 8; n++) {
+          char bit = ('0' + (*p & 128 ? 1 : 0));
+          binaryRep << bit;
+          *p <<=1;
+        }
+        p--;
+      }
+      binaryValue = prefix + binaryRep.str();
     } else {
-      intValue = (int) compTypeAsFloat;
+      intValue = (int)compTypeAsFloat;
+      binaryValue = std::bitset<34>(intValue).to_string(); // unsigned binary representation
+    }
+  }
+
+  // Assign instance name and mappings
+  if (componentType == "const_value" || componentType == "output_selector") {
+    portMapName = componentType + "_" + std::to_string(outputPorts.size());
+    refName = portMapName;
+  } else if (componentType == "input_selector") {
+    portMapName = componentType + "_" + std::to_string(inputPorts.size());
+    refName = portMapName;
+  } else if (componentType == "sbuffer") {
+    portMapName = componentType;
+    refName = componentType;
+  } else {
+    portMapName = componentType;
+    refName = implementationNames[componentType] + "_f" + std::to_string(freq);
+  }
+
+  // Generic and port mappings are mostly set here
+  // except for exec time mappings - set in setStartTimes()
+  addPortMapping("clk", "clk", "std_logic", "in");
+  if (componentType == "const_value") {
+    addPortMapping("rst", "rst", "std_logic", "in");
+    addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
+                   true);
+    for (auto o = 0; o < outputSignals.size(); o++) {
+      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+    }
+  } else if (componentType == "input_selector") {
+    addPortMapping("ram_width", "ram_width", "integer", "", true);
+    addPortMapping("rst", "rst", "std_logic", "in");
+    addPortMapping("cycle_count", "cycle_count", "integer", "in");
+    for (auto i = 0; i < inputSignals.size(); i++) {
+      addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+    }
+    for (auto o = 0; o < outputSignals.size(); o++) {
+      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+    }
+  } else if (componentType == "output_selector") {
+    addPortMapping("ram_width", "ram_width", "integer", "", true);
+    addPortMapping("rst", "rst", "std_logic", "in");
+    addPortMapping("cycle_count", "cycle_count", "integer", "in");
+    for (auto i = 0; i < inputSignals.size(); i++) {
+      addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+    }
+    for (auto o = 0; o < outputSignals.size(); o++) {
+      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+    }
+  } else if (componentType == "sbuffer") {
+    addPortMapping("ram_width", "ram_width", "integer", "", true);
+    addPortMapping("buffer_size",
+                   std::to_string(this->getSBufferInitTokens() + 1), "integer",
+                   "", true);
+    addPortMapping("init", std::to_string(this->getSBufferInitTokens()),
+                   "integer", "", true);
+    addPortMapping("rst", "rst", "std_logic", "in");
+    addPortMapping("cycle_count", "cycle_count", "integer", "in");
+    for (auto i : inputSignals) {
+      addPortMapping("in_data", i, "std_logic_vector", "in");
+    }
+    for (auto o : outputSignals) {
+      addPortMapping("out_data", o, "std_logic_vector", "out");
+    }
+  } else {
+    if (componentType != "INPUT" && componentType != "OUTPUT") {
+      std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+      std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+      for (auto i = 0; i < inputSignals.size(); i++) {
+        addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+      }
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+      }
     }
   }
 }
@@ -386,10 +482,50 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
                     << this->getUniqueName());
   }
   this->startTimes = times;
+  // execution time port mapping definition
+  for (int n = 0; auto time : times) {
+    if (componentType == "input_selector") {
+      VERBOSE_ASSERT(times.size() == inputPorts.size(),
+                     "Number of start times and input ports don't match");
+      addPortMapping("exec_time_" + std::to_string(n),
+                     std::to_string((int)time), "integer", "", true);
+    } else if (componentType == "output_selector") {
+      VERBOSE_ASSERT(times.size() == outputPorts.size(),
+                     "Number of start times and output ports don't match");
+      addPortMapping("exec_time_" + std::to_string(n),
+                     std::to_string((int)time), "integer", "", true);
+    } else if (componentType == "sbuffer") {
+      addPortMapping("push_start", std::to_string((int)time), "integer", "",
+                     true);
+      addPortMapping("pop_start", std::to_string((int)time + 1), "integer", "",
+                     true);
+    }
+    n++;
+  }
 }
 
 std::vector<TIME_UNIT> VHDLComponent::getStartTimes() const {
   return this->startTimes;
+}
+
+void VHDLComponent::addPortMapping(std::string port, std::string signal,
+                                   std::string type, std::string direction,
+                                   bool isGeneric, int dataWidth) {
+ // slv type needs to have a defined width
+  if (type == "std_logic_vector") {
+    type += "(" + std::to_string(dataWidth - 1) + " downto 0)";
+  }
+  if (isGeneric) {
+    genericMappings[port] = signal;
+    genericPorts[port] = " : " + type;
+  } else {
+    portMappings[port] = signal;
+    ports[port] = " : " + direction + type;
+  }
+}
+
+std::string VHDLComponent::getPortMapName() const {
+  return this->portMapName;
 }
 
 std::string VHDLComponent::printStatus() const  {
@@ -443,6 +579,42 @@ std::string VHDLComponent::printStatus() const  {
   }
 
   return outputStream.str();
+}
+
+std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::string> replacements) const {
+  std::stringstream codeOut;
+  std::string t = "    "; // indentation: 4 spaces
+  std::string lineEnder = ",";
+  codeOut << portMapName << "_" << id << " : " << refName << std::endl;
+  if (genericMappings.size()) {
+    codeOut << "generic map (" << std::endl;
+    for (auto &[port, signal] : genericMappings) {
+      if (port == genericMappings.rbegin()->first) { lineEnder = ")"; }
+      if (replacements.count(signal)) {
+        codeOut << t << port << " => " << replacements[signal] << lineEnder
+                << std::endl;
+      } else {
+        codeOut << t << port << " => " << signal << lineEnder
+                << std::endl;
+      }
+    }
+  }
+  lineEnder = ",";
+  if (portMappings.size()) {
+    codeOut << "port map (" << std::endl;
+    for (auto &[port, signal] : portMappings) {
+      if (port == portMappings.rbegin()->first) { lineEnder = ");"; }
+      if (replacements.count(signal)) {
+        codeOut << t << port << " => " << replacements[signal] << lineEnder
+                << std::endl;
+      } else {
+        codeOut << t << port << " => " << signal << lineEnder
+                << std::endl;
+      }
+    }
+  }
+
+  return codeOut.str();
 }
 
 std::string getNameFromPartialName(models::Dataflow* const dataflow,

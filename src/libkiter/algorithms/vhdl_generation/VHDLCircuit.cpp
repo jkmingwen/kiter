@@ -338,8 +338,10 @@ void VHDLCircuit::updateTopLevelPorts() {
           if (conn.getName() == edgeName) {
             if (conn.getInitialTokenCount()) {
               this->addInputPort(conn.getSrcPort(), signalNames);
+              this->topLevelPorts[conn.getSrcPort()] = signalNames[2];
             } else {
               this->addInputPort(edgeName, signalNames);
+              this->topLevelPorts[edgeName] = signalNames[2];
             }
           }
         }
@@ -355,8 +357,10 @@ void VHDLCircuit::updateTopLevelPorts() {
           if (conn.getName() == edgeName) {
             if (conn.getInitialTokenCount()) {
               this->addOutputPort(conn.getDstPort(), signalNames);
+              this->topLevelPorts[conn.getDstPort()] = signalNames[2];
             } else {
               this->addOutputPort(edgeName, signalNames);
+              this->topLevelPorts[edgeName] = signalNames[2];
             }
           }
         }

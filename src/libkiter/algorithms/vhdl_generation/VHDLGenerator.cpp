@@ -472,7 +472,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         inputEnds[comp.getIOId()] = startTimes.front() + dataflowScheduled->getVertexDuration(v);
       }
       if (comp.getType() == "OUTPUT") {
-        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
         outputStarts[comp.getIOId()] = startTimes.front();
       }
     } else if (comp.getType() == "sbuffer" && dataflow->getPhasesQuantity(v) > 1) {
@@ -1224,12 +1224,38 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
         }
         vhdlOutput << " : std_logic;\n" << std::endl;
       }
-      vhdlOutput << generatePortMapping(circuit) << std::endl;
+
+      // 4. Generate port mapping
+      std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
+      std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
+      for (auto &[v, comp] : circuit.getComponentMap()) {
+        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+          std::string opName = comp.getPortMapName();
+          if (opCounts.count(opName)) {
+            opCounts[opName]++;
+          } else {
+            opCounts[opName] = 0;
+          }
+          vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
+        }
+      }
       vhdlOutput << "end behaviour;" << std::endl;
 
       vhdlOutput.close();
     } else {
-      vhdlOutput << generatePortMapping(circuit) << std::endl;
+      std::map<std::string, int> opCounts;
+      std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
+      for (auto &[v, comp] : circuit.getComponentMap()) {
+        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+          std::string opName = comp.getPortMapName();
+          if (opCounts.count(opName)) {
+            opCounts[opName]++;
+          } else {
+            opCounts[opName] = 0;
+          }
+          vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
+        }
+      }
       vhdlOutput << "end behaviour;" << std::endl;
     }
 
