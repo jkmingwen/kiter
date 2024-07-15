@@ -244,7 +244,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     refName = componentType;
   } else {
     portMapName = componentType;
-    refName = implementationNames[componentType] + "_f" + std::to_string(freq);
+    refName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
   }
 
   // Generic and port mappings are mostly set here
@@ -517,10 +517,10 @@ void VHDLComponent::addPortMapping(std::string port, std::string signal,
   }
   if (isGeneric) {
     genericMappings[port] = signal;
-    genericPorts[port] = " : " + type;
+    genericPorts[port] = type;
   } else {
     portMappings[port] = signal;
-    ports[port] = " : " + direction + type;
+    ports[port] = direction + " " + type;
   }
 }
 
@@ -580,6 +580,77 @@ std::string VHDLComponent::printStatus() const  {
 
   return outputStream.str();
 }
+
+// Generate the VHDL declaration code for the component
+// - dataWidth (default: 34): bit width of data on the input/output ports
+std::string VHDLComponent::genDeclaration() const {
+  std::stringstream codeOut;
+  std::string t = "    "; // indentation: 4 spaces
+  // std::vector<std::string> implInPorts = opInputPorts.at(componentType);
+  // std::vector<std::string> implOutPorts = opOutputPorts.at(componentType);
+  codeOut << "component " << refName << " is"
+          << std::endl;
+  if (implementationType == TT) {
+    if (genericPorts.size()) {
+      std::string lineEnder = ";";
+      codeOut << "generic (" << std::endl;
+      for (auto &[port, sigType] : genericPorts) {
+        if (port == genericPorts.rbegin()->first) { lineEnder = ");"; }
+        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+      }
+    }
+    if (ports.size()) {
+      std::string lineEnder = ";";
+      codeOut << "port (" << std::endl;
+      for (auto &[port, sigType] : ports) {
+        if (port == ports.rbegin()->first) { lineEnder = ""; }
+        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+      }
+    }
+  } else if (implementationType == DD) {
+    if (genericPorts.size()) {
+      std::string lineEnder = ";";
+      codeOut << "generic (" << std::endl;
+      for (auto &[port, sigType] : genericPorts) {
+        if (port == genericPorts.rbegin()->first) { lineEnder = ");"; }
+        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+      }
+    }
+    if (ports.size()) { // TODO generate HS interface ports for VHDL components
+      std::string lineEnder = ";";
+      codeOut << "port (" << std::endl;
+      for (auto &[port, sigType] : ports) {
+        if (port == ports.rbegin()->first) { lineEnder = ""; }
+        // codeOut << t << "in_ready_" <<
+        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+      }
+    }
+    // for (auto i = 0; i < implInPorts.size(); i++) {
+    //   codeOut << t << "in_ready_" << i << " : out std_logic;\n"
+    //           << t << "in_valid_" << i << " : in std_logic;\n"
+    //           << t << "in_data_" << i << " : in std_logic_vector("
+    //           << dataWidth-1 << " downto 0);" << std::endl;
+    // }
+    // std::string lineEnder = ";";
+    // for (auto o = 0; o < implOutPorts.size(); o++) {
+    //   // last line of port declaration has no terminating semicolon
+    //   if (o + 1 == implOutPorts.size()) { lineEnder = ""; }
+    //   codeOut << t << "out_ready_" << o << " : in std_logic;\n"
+    //           << t << "out_valid_" << o << " : out std_logic;\n"
+    //           << t << "out_data_" << o << " : out std_logic_vector("
+    //           << dataWidth-1 << " downto 0)" << lineEnder << std::endl;
+    // }
+  } else {
+    VERBOSE_ERROR("Unable to generate instantiation code for VHDLComponent with "
+                  "implementation type: "
+                  << implementationType);
+  }
+  codeOut << "); end component;" << std::endl;
+
+  return codeOut.str();
+}
+
+
 
 std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::string> replacements) const {
   std::stringstream codeOut;

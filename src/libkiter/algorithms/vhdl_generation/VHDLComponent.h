@@ -64,6 +64,8 @@ class VHDLComponent {
                       std::string direction, bool isGeneric = false, int dataWidth = 34);
   std::string printStatus() const;
 
+  // Code generation methods
+  std::string genDeclaration() const; // generate instantiation of component
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
 

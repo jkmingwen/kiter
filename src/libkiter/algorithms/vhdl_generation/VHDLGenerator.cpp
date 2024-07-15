@@ -1097,28 +1097,15 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   if (!noOperators) { // only generate components if there are operators
     if (!dataDriven) {
-      std::map<int, int> constOutputs;
-      for (auto const &op : operatorMap) {
-        if (op.first != "INPUT" && op.first != "OUTPUT") {
-          if (op.first == "input_selector" || op.first == "output_selector") {
-            vhdlOutput << generateInputOutputSelectorComponent(
-                circuit.getFirstComponentByType(op.first),
-                circuit.getNumInputs(op.first), circuit.getNumOutputs(op.first))
-                       << std::endl;
-          } else if (op.first == "sbuffer") {
-            vhdlOutput << generateSBufferComponent() << std::endl;
-          } else if (op.first == "const_value" ||
-                     circuit.getFirstComponentByType(op.first).isConst()) { // current workaround for UI components (we classify them as const value)
-            constOutputs = circuit.getNumOutputs(op.first);
-          }
-          else {
-            vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                       << std::endl;
+      std::map<std::string, int> trackDeclarations; // check if component has been declared (only need 1 per component type)
+      for (auto const &[v, comp] : circuit.getComponentMap()) {
+        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+          std::string name = comp.getPortMapName();
+          if (!trackDeclarations.count(name)) {
+            trackDeclarations[name] = 1;
+            vhdlOutput << comp.genDeclaration() << std::endl;
           }
         }
-      }
-      if (constOutputs.size()) {
-        vhdlOutput << generateConstComponents(constOutputs) << std::endl;
       }
     } else {
       std::map<int, int> constOutputs;
