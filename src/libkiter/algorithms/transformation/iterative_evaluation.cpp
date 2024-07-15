@@ -204,7 +204,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   models::Dataflow *dataflow_prime = dataflow;
   bool foundInputL = false;
   bool foundInputR = false;
-  int operatorFreq = 125;
+  int operatorFreq = 250;
   // check if operator frequencies have been specified
   if (params.find("FREQUENCY") != params.end()) {
     VERBOSE_INFO("Operator frequency set to " << params["FREQUENCY"]);

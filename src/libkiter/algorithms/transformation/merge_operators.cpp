@@ -34,7 +34,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   bool mergeStrategySpecified = false;
   std::string outputName = dataflow->getGraphName() + "_merged" + ".xml"; // use graph name as default
   std::string mergeStrategy = "greedy";
-  int operatorFreq = 125; // default target operator frequency is 125MHz
+  int operatorFreq = 250; // operator compute frequency in MHz
 
   if (params.find("MERGE_STRATEGY") != params.end()) {
     if (std::find(mergeStrategies.begin(),

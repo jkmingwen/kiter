@@ -29,7 +29,7 @@ std::string topDir;
 std::string componentDir;
 std::string tbDir; // testbench directory
 std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
-int operatorFreq = 125; // clock frequency (in MHz) VHDL operators are designed to run at
+int operatorFreq = 250; // clock frequency (in MHz) VHDL operators are designed to run at
 bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
