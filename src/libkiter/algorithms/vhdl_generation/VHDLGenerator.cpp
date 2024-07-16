@@ -18,6 +18,7 @@
 #include <algorithms/transformation/singleOutput.h>
 #include <algorithms/transformation/iterative_evaluation.h>
 #include <printers/SDF3Wrapper.h>
+#include "VHDLCommons.h"
 
 // for signal name retrieval
 #define VALID 0
@@ -1140,6 +1141,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
       if (constOutputs.size()) {
         vhdlOutput << generateConstComponents(constOutputs) << std::endl;
       }
+
       // FIFO component instantiation
       for (auto &conn : circuit.getConnectionMap()) {
         if (conn.second.getInitialTokenCount()) {
@@ -1171,80 +1173,55 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   }
 
   // 2. Generate intermediate signal names
-  if (!dataDriven) {
-    for (auto const &[e, conn] : circuit.getConnectionMap()) {
-      if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
-            circuit.getDstComponent(conn).getType() == "OUTPUT")) {
-        dataSignals.push_back(conn.getName() + "_DATA");
+  std::map<std::string, std::vector<std::string>> signalNames;
+  for (auto const &[e, conn] : circuit.getConnectionMap()) {
+    std::map<std::string, std::vector<std::string>> newNames;
+    if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
+          circuit.getDstComponent(conn).getType() == "OUTPUT")) {
+      if (circuit.getSrcComponent(conn).getImplType() == TT &&
+          circuit.getDstComponent(conn).getImplType() == TT) {
+        newNames = conn.genSignalNames(TT);
+      } else if (circuit.getSrcComponent(conn).getImplType() == DD &&
+                 circuit.getDstComponent(conn).getImplType() == DD) {
+        newNames = conn.genSignalNames(DD);
+      } else {
+        VERBOSE_ERROR("Implementation type for signal name generation not yet supported");
+      }
+      for (auto const &[type, name] : newNames) {
+        signalNames[type].insert(signalNames[type].end(), name.begin(),
+                                 name.end());
       }
     }
-  } else {
-    dataSignals = circuit.generateDataSignalNames();
-    validReadySignals = circuit.generateValidReadySignalNames();
   }
-    // 3. Write signal names to VHDL output
-    // data signals
-    if (!noOperators && dataSignals.size()) { // no need to use internal signals if no operators nor internal signals
-      vhdlOutput << "signal ";
-      std::string delim = ",";
-      int counter = 0;
-      for (auto &signal : dataSignals) {
-        counter++;
-        if (counter == dataSignals.size()) {
-          delim = "";
-        }
-        vhdlOutput << signal << delim << std::endl;
-      }
-      vhdlOutput << " : std_logic_vector(ram_width - 1 downto 0);\n"
-                 << std::endl;
-      // valid and ready signals
-      if (dataDriven) {
-        vhdlOutput << "signal ";
-        delim = ",";
-        counter = 0;
-        for (auto &signal : validReadySignals) {
-          counter++;
-          if (counter == validReadySignals.size()) {
-            delim = "";
-          }
-          vhdlOutput << signal << delim << std::endl;
-        }
-        vhdlOutput << " : std_logic;\n" << std::endl;
-      }
 
-      // 4. Generate port mapping
-      std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
-      std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
-      for (auto &[v, comp] : circuit.getComponentMap()) {
-        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-          std::string opName = comp.getPortMapName();
-          if (opCounts.count(opName)) {
-            opCounts[opName]++;
-          } else {
-            opCounts[opName] = 0;
-          }
-          vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
-        }
-      }
-      vhdlOutput << "end behaviour;" << std::endl;
-
-      vhdlOutput.close();
-    } else {
-      std::map<std::string, int> opCounts;
-      std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
-      for (auto &[v, comp] : circuit.getComponentMap()) {
-        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-          std::string opName = comp.getPortMapName();
-          if (opCounts.count(opName)) {
-            opCounts[opName]++;
-          } else {
-            opCounts[opName] = 0;
-          }
-          vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
-        }
-      }
-      vhdlOutput << "end behaviour;" << std::endl;
+  // 3. Write signal names to VHDL output
+  for (auto const &[type, sigNames] : signalNames) {
+    std::string delim = ",\n";
+    vhdlOutput << "signal ";
+    for (auto const &name : sigNames) {
+      if (name == sigNames.back()) { delim = ""; }
+      vhdlOutput << name << delim;
     }
+    vhdlOutput << " : " << type << ";\n" << std::endl;
+  }
+
+  // 4. Generate port mapping
+  std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
+  std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
+  for (auto &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+      std::string opName = comp.getPortMapName();
+      if (opCounts.count(opName)) {
+        opCounts[opName]++;
+      } else {
+        opCounts[opName] = 0;
+      }
+      vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
+    }
+  }
+  vhdlOutput << "end behaviour;" << std::endl;
+
+  vhdlOutput.close();
 
 }
 

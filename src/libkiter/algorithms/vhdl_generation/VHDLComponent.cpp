@@ -688,6 +688,10 @@ std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::str
   return codeOut.str();
 }
 
+implType VHDLComponent::getImplType() const {
+  return this->implementationType;
+}
+
 std::string getNameFromPartialName(models::Dataflow* const dataflow,
                                    const std::string &partialName) {
   std::vector<std::string> matchingNames;

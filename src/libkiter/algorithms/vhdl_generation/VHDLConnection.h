@@ -9,6 +9,7 @@
 
 #include <models/Dataflow.h>
 #include <string>
+#include "VHDLCommons.h"
 
 namespace models {
   class Dataflow;
@@ -20,9 +21,9 @@ class VHDLConnection {
   VHDLConnection(models::Dataflow* const dataflow, Edge e); // actor must be associated to a graph
 
   Edge getEdge() const;
-   const std::string &getName()  const{
-        return this->connectionName;
-    }
+  const std::string &getName() const {
+    return this->connectionName;
+  }
   ARRAY_INDEX getId() const;
   std::string getSrcPort() const;
   std::string getDstPort() const;
@@ -36,6 +37,7 @@ class VHDLConnection {
   void setId(ARRAY_INDEX newId);
   void setBufferSize(TOKEN_UNIT size);
   void setInitialTokenCount(TOKEN_UNIT count);
+  std::map<std::string, std::vector<std::string>> genSignalNames(implType t) const; // signal type -> signal names
   std::string printStatus() const;
 
  private:

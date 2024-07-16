@@ -9,12 +9,11 @@
 
 #include <models/Dataflow.h>
 #include <string>
+#include "VHDLCommons.h"
 
 namespace models {
   class Dataflow;
 }
-
-enum implType {TT, DD}; // TT: time triggered, DD: data driven
 
 std::string getNameFromPartialName(models::Dataflow *const dataflow,
                                    const std::string &partialName);
@@ -61,7 +60,9 @@ class VHDLComponent {
   void setStartTimes(std::vector<TIME_UNIT> times);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
-                      std::string direction, bool isGeneric = false, int dataWidth = 34);
+                      std::string direction, bool isGeneric = false,
+                      int dataWidth = 34);
+  implType getImplType() const;
   std::string printStatus() const;
 
   // Code generation methods

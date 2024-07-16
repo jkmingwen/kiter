@@ -7,6 +7,7 @@
 
 #include <models/Dataflow.h>
 #include "VHDLConnection.h"
+#include "commons/verbose.h"
 
 VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   edge = e;
@@ -81,7 +82,48 @@ void VHDLConnection::setInitialTokenCount(TOKEN_UNIT count) {
   this->initialTokenCount = count;
 }
 
-std::string VHDLConnection::printStatus()  const{
+/**
+   Generate signal names for the given connection.
+
+   @param t The implementation type determines the types (and number) of signals
+   generated.
+
+   @return A map of signal types to vectors of signal names.
+
+ */
+std::map<std::string, std::vector<std::string>>
+VHDLConnection::genSignalNames(implType t) const {
+  std::map<std::string, std::vector<std::string>> names;
+  if (t == TT) { // time triggered implementation only requires data signal
+    std::string type = "std_logic_vector(" + std::to_string(dataTypeWidth - 1) + " downto 0)";
+    names[type].push_back(connectionName);
+  } else if (t == DD) {
+    // generate data, valid, ready signal names
+    std::string dataType =
+      "std_logic_vector(" + std::to_string(dataTypeWidth - 1) + " downto 0)";
+    std::string vldRdyType = "std_logic";
+    // initial tokens means that FIFO is placed there; need intermediate signals;
+    // generate names using ports instead
+    if (initialTokenCount > 0) {
+      names[dataType].push_back(srcPort + "_DATA");
+      names[dataType].push_back(dstPort + "_DATA");
+      names[vldRdyType].push_back(srcPort + "_VALID");
+      names[vldRdyType].push_back(srcPort + "_READY");
+      names[vldRdyType].push_back(dstPort + "_VALID");
+      names[vldRdyType].push_back(dstPort + "_READY");
+    } else {
+      names[dataType].push_back(connectionName + "_DATA");
+      names[vldRdyType].push_back(connectionName + "_VALID");
+      names[vldRdyType].push_back(connectionName + "_READY");
+    }
+  } else {
+    VERBOSE_ERROR("Invalid implementation type (" << t << ") specified for signal name generation.");
+  }
+
+  return names;
+}
+
+std::string VHDLConnection::printStatus() const {
   std::stringstream outputStream;
 
   outputStream << "\nEdge " << this->getName() << " (ID: " << this->getId()
