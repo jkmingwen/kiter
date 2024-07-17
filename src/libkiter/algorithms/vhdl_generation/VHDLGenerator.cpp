@@ -1206,6 +1206,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   }
 
   // 4. Generate port mapping
+  vhdlOutput << "begin\n" << std::endl;
   std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
   std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
   for (auto &[v, comp] : circuit.getComponentMap()) {

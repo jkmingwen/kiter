@@ -586,8 +586,6 @@ std::string VHDLComponent::printStatus() const  {
 std::string VHDLComponent::genDeclaration() const {
   std::stringstream codeOut;
   std::string t = "    "; // indentation: 4 spaces
-  // std::vector<std::string> implInPorts = opInputPorts.at(componentType);
-  // std::vector<std::string> implOutPorts = opOutputPorts.at(componentType);
   codeOut << "component " << refName << " is"
           << std::endl;
   if (implementationType == TT) {
