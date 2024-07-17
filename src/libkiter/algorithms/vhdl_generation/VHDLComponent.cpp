@@ -235,65 +235,75 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   // Assign instance name and mappings
   if (componentType == "const_value" || componentType == "output_selector") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
-    refName = portMapName;
+    implRefName = portMapName;
   } else if (componentType == "input_selector") {
     portMapName = componentType + "_" + std::to_string(inputPorts.size());
-    refName = portMapName;
+    implRefName = portMapName;
   } else if (componentType == "sbuffer") {
     portMapName = componentType;
-    refName = componentType;
+    implRefName = componentType;
   } else {
     portMapName = componentType;
-    refName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
+    implRefName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
   }
 
   // Generic and port mappings are mostly set here
   // except for exec time mappings - set in setStartTimes()
-  addPortMapping("clk", "clk", "std_logic", "in");
-  if (componentType == "const_value") {
-    addPortMapping("rst", "rst", "std_logic", "in");
-    addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
-                   true);
-    for (auto o = 0; o < outputSignals.size(); o++) {
-      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+  if (componentType == "INPUT" || componentType == "OUTPUT") { // expressed as top level ports
+    std::string portName = dataflow->getGraphName();
+    if (componentType == "INPUT") {
+      portName += "_in_data_" + std::to_string(ioId);
+      addPortMapping(portName, portName, "std_logic_vector", "in");
+    } else { // output
+      portName += "_out_data_" + std::to_string(ioId);
+      addPortMapping(portName, portName, "std_logic_vector", "out");
     }
-  } else if (componentType == "input_selector") {
-    addPortMapping("ram_width", "ram_width", "integer", "", true);
-    addPortMapping("rst", "rst", "std_logic", "in");
-    addPortMapping("cycle_count", "cycle_count", "integer", "in");
-    for (auto i = 0; i < inputSignals.size(); i++) {
-      addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
-    }
-    for (auto o = 0; o < outputSignals.size(); o++) {
-      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
-    }
-  } else if (componentType == "output_selector") {
-    addPortMapping("ram_width", "ram_width", "integer", "", true);
-    addPortMapping("rst", "rst", "std_logic", "in");
-    addPortMapping("cycle_count", "cycle_count", "integer", "in");
-    for (auto i = 0; i < inputSignals.size(); i++) {
-      addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
-    }
-    for (auto o = 0; o < outputSignals.size(); o++) {
-      addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
-    }
-  } else if (componentType == "sbuffer") {
-    addPortMapping("ram_width", "ram_width", "integer", "", true);
-    addPortMapping("buffer_size",
-                   std::to_string(this->getSBufferInitTokens() + 1), "integer",
-                   "", true);
-    addPortMapping("init", std::to_string(this->getSBufferInitTokens()),
-                   "integer", "", true);
-    addPortMapping("rst", "rst", "std_logic", "in");
-    addPortMapping("cycle_count", "cycle_count", "integer", "in");
-    for (auto i : inputSignals) {
-      addPortMapping("in_data", i, "std_logic_vector", "in");
-    }
-    for (auto o : outputSignals) {
-      addPortMapping("out_data", o, "std_logic_vector", "out");
-    }
+
   } else {
-    if (componentType != "INPUT" && componentType != "OUTPUT") {
+    addPortMapping("clk", "clk", "std_logic", "in");
+    if (componentType == "const_value") {
+      addPortMapping("rst", "rst", "std_logic", "in");
+      addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
+                     true);
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+      }
+    } else if (componentType == "input_selector") {
+      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      addPortMapping("rst", "rst", "std_logic", "in");
+      addPortMapping("cycle_count", "cycle_count", "integer", "in");
+      for (auto i = 0; i < inputSignals.size(); i++) {
+        addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+      }
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+      }
+    } else if (componentType == "output_selector") {
+      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      addPortMapping("rst", "rst", "std_logic", "in");
+      addPortMapping("cycle_count", "cycle_count", "integer", "in");
+      for (auto i = 0; i < inputSignals.size(); i++) {
+        addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+      }
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+      }
+    } else if (componentType == "sbuffer") {
+      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      addPortMapping("buffer_size",
+                     std::to_string(this->getSBufferInitTokens() + 1), "integer",
+                     "", true);
+      addPortMapping("init", std::to_string(this->getSBufferInitTokens()),
+                     "integer", "", true);
+      addPortMapping("rst", "rst", "std_logic", "in");
+      addPortMapping("cycle_count", "cycle_count", "integer", "in");
+      for (auto i : inputSignals) {
+        addPortMapping("in_data", i, "std_logic_vector", "in");
+      }
+      for (auto o : outputSignals) {
+        addPortMapping("out_data", o, "std_logic_vector", "out");
+      }
+    } else {
       std::vector<std::string> inPortNames = opInputPorts.at(componentType);
       std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
       for (auto i = 0; i < inputSignals.size(); i++) {
@@ -581,29 +591,64 @@ std::string VHDLComponent::printStatus() const  {
   return outputStream.str();
 }
 
+// Exists so that we can call genPortList() outside of the VHDLComponent class
+// i.e. so that we can get top-level input/output ports
+std::map<std::string, std::string> VHDLComponent::getPortMapping() const {
+  return this->ports;
+}
+
+/**
+   Generate port declarations according to a given port map where:
+   [key: port name, value: signal type].
+
+   @param portMap Populated using addPortMapping().
+
+   @param terminate Whether the port declarations should have a terminating
+   delimiter (default = true).
+
+   @param delim Defines the delimiter between each port declaration
+   (default = ";").
+
+   @param term Defines the terminating character after the last port is declared
+   (default = "").
+
+   @return A string of port declarations.
+ */
+std::string
+VHDLComponent::genPortList(std::map<std::string, std::string> portMap,
+                           bool terminate, std::string delim,
+                           std::string term) const {
+  std::stringstream codeOut;
+  int padAmt = 4;
+  std::string t(padAmt, ' ');
+  std::string lineEnder = delim;
+  for (auto &[port, sigType] : portMap) {
+    if (port == portMap.rbegin()->first && terminate) { lineEnder = term; }
+    codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+  }
+  return codeOut.str();
+}
+
+
 // Generate the VHDL declaration code for the component
 // - dataWidth (default: 34): bit width of data on the input/output ports
 std::string VHDLComponent::genDeclaration() const {
   std::stringstream codeOut;
   std::string t = "    "; // indentation: 4 spaces
-  codeOut << "component " << refName << " is"
+  codeOut << "component " << implRefName << " is"
           << std::endl;
   if (implementationType == TT) {
     if (genericPorts.size()) {
       std::string lineEnder = ";";
       codeOut << "generic (" << std::endl;
-      for (auto &[port, sigType] : genericPorts) {
-        if (port == genericPorts.rbegin()->first) { lineEnder = ");"; }
-        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
-      }
+      codeOut << genPortList(genericPorts);
+      codeOut << ");" << std::endl;
     }
     if (ports.size()) {
       std::string lineEnder = ";";
       codeOut << "port (" << std::endl;
-      for (auto &[port, sigType] : ports) {
-        if (port == ports.rbegin()->first) { lineEnder = ""; }
-        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
-      }
+      codeOut << genPortList(ports);
+      codeOut << ");" << std::endl;
     }
   } else if (implementationType == DD) {
     if (genericPorts.size()) {
@@ -643,7 +688,7 @@ std::string VHDLComponent::genDeclaration() const {
                   "implementation type: "
                   << implementationType);
   }
-  codeOut << "); end component;" << std::endl;
+  codeOut << "end component;" << std::endl;
 
   return codeOut.str();
 }
@@ -654,7 +699,7 @@ std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::str
   std::stringstream codeOut;
   std::string t = "    "; // indentation: 4 spaces
   std::string lineEnder = ",";
-  codeOut << portMapName << "_" << id << " : " << refName << std::endl;
+  codeOut << portMapName << "_" << id << " : " << implRefName << std::endl;
   if (genericMappings.size()) {
     codeOut << "generic map (" << std::endl;
     for (auto &[port, signal] : genericMappings) {

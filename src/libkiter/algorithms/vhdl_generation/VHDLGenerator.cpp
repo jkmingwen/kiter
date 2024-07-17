@@ -1039,25 +1039,21 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOut
                << "    " << "clk : in std_logic;\n"
                << "    " << "rst : in std_logic;\n"
                << std::endl;
-    // Specify ready, valid, and data ports for each input port:
+    // Generate input/output ports:
     std::string portName = "    " + circuit.getName();
     if (!dataDriven) {
       vhdlOutput << "    " << "cycle_count : in integer;\n" << std::endl;
-      for (auto i = 0; i < numInputPorts; i++) {
-        vhdlOutput << portName + "_in_data_" + std::to_string(i) + " : in std_logic_vector("
-                   << "ram_width - 1 downto 0) := (others => '0');\n"
-                   << std::endl;
-      }
-      // Specify ready, valid, and data ports for each output port:
-      for (auto i = 0; i < numOutputPorts; i++) {
-        if (i + 1 == numOutputPorts) {
-          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0) := (others => '0')\n"
-                     << std::endl; // last line of port declaration has no terminating semicolon
-        } else {
-          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0) := (others => '0');\n"
-                     << std::endl;
+      std::map<std::string, int> trackInOutCounts {{"INPUT", 0}, {"OUTPUT", 0}}; // check if component has been declared (only need 1 per component type)
+      for (auto const &[v, comp] : circuit.getComponentMap()) {
+        if (comp.getType() == "INPUT") {
+          vhdlOutput << comp.genPortList(comp.getPortMapping(), false);
+          trackInOutCounts[comp.getType()]++;
+        }
+        if (comp.getType() == "OUTPUT") { // assume we always have (and thus terminate on) output actors
+          bool last = false;
+          if (trackInOutCounts[comp.getType()] + 1 == numOutputPorts) { last = true; }
+          vhdlOutput << comp.genPortList(comp.getPortMapping(), last);
+          trackInOutCounts[comp.getType()]++;
         }
       }
     } else {

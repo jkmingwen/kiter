@@ -63,9 +63,13 @@ class VHDLComponent {
                       std::string direction, bool isGeneric = false,
                       int dataWidth = 34);
   implType getImplType() const;
+  std::map<std::string, std::string> getPortMapping() const;
   std::string printStatus() const;
 
   // Code generation methods
+  std::string genPortList(std::map<std::string, std::string> portMap,
+                          bool terminate = true, std::string delim = ";",
+                          std::string term = "") const;
   std::string genDeclaration() const; // generate instantiation of component
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
@@ -104,7 +108,7 @@ class VHDLComponent {
   std::map<std::string, std::string> genericPorts; // generic port -> signal type
   std::map<std::string, std::string> ports; // port -> signal type
   std::string portMapName; // for use when instantiating component in port mapping
-  std::string refName; // name used to reference implementation // TODO simplify all the different "names"
+  std::string implRefName; // name used to reference implementation // TODO simplify all the different "names"
 
   std::map<std::string, std::vector<std::string>> opInputPorts = {
       {"fp_add", {"X", "Y"}},
