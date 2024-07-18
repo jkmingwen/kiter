@@ -68,7 +68,11 @@ class VHDLComponent {
 
   // Code generation methods
   std::string genPortList(std::map<std::string, std::string> portMap,
-                          bool terminate = true, std::string delim = ";",
+                          bool terminate = true,
+                          std::map<std::string, std::string> replacements =
+                              std::map<std::string, std::string>(),
+                          std::string relation = ":",
+                          std::string delim = ";",
                           std::string term = "") const;
   std::string genDeclaration() const; // generate instantiation of component
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names

@@ -599,7 +599,7 @@ std::map<std::string, std::string> VHDLComponent::getPortMapping() const {
 
 /**
    Generate port declarations according to a given port map where:
-   [key: port name, value: signal type].
+   [key: port name, value: signal/type].
 
    @param portMap Populated using addPortMapping().
 
@@ -616,15 +616,25 @@ std::map<std::string, std::string> VHDLComponent::getPortMapping() const {
  */
 std::string
 VHDLComponent::genPortList(std::map<std::string, std::string> portMap,
-                           bool terminate, std::string delim,
+                           bool terminate,
+                           std::map<std::string, std::string> replacements,
+                           std::string relation,
+                           std::string delim,
                            std::string term) const {
   std::stringstream codeOut;
   int padAmt = 4;
   std::string t(padAmt, ' ');
   std::string lineEnder = delim;
+  std::string r = " " + relation + " "; // spaces for legibility
   for (auto &[port, sigType] : portMap) {
-    if (port == portMap.rbegin()->first && terminate) { lineEnder = term; }
-    codeOut << t << port << " : " << sigType << lineEnder << std::endl;
+    std::string signal = sigType;
+    if (replacements.count(sigType)) {
+      signal = replacements[signal];
+    }
+    if (port == portMap.rbegin()->first && terminate) {
+      lineEnder = term;
+    }
+    codeOut << t << port << r << signal << lineEnder << std::endl;
   }
   return codeOut.str();
 }
@@ -697,35 +707,16 @@ std::string VHDLComponent::genDeclaration() const {
 
 std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::string> replacements) const {
   std::stringstream codeOut;
-  std::string t = "    "; // indentation: 4 spaces
-  std::string lineEnder = ",";
   codeOut << portMapName << "_" << id << " : " << implRefName << std::endl;
   if (genericMappings.size()) {
     codeOut << "generic map (" << std::endl;
-    for (auto &[port, signal] : genericMappings) {
-      if (port == genericMappings.rbegin()->first) { lineEnder = ")"; }
-      if (replacements.count(signal)) {
-        codeOut << t << port << " => " << replacements[signal] << lineEnder
-                << std::endl;
-      } else {
-        codeOut << t << port << " => " << signal << lineEnder
-                << std::endl;
-      }
-    }
+    codeOut << genPortList(genericMappings, true, replacements, "=>", ",");
+    codeOut << ")" << std::endl;
   }
-  lineEnder = ",";
   if (portMappings.size()) {
     codeOut << "port map (" << std::endl;
-    for (auto &[port, signal] : portMappings) {
-      if (port == portMappings.rbegin()->first) { lineEnder = ");"; }
-      if (replacements.count(signal)) {
-        codeOut << t << port << " => " << replacements[signal] << lineEnder
-                << std::endl;
-      } else {
-        codeOut << t << port << " => " << signal << lineEnder
-                << std::endl;
-      }
-    }
+    codeOut << genPortList(portMappings, true, replacements, "=>", ",");
+    codeOut << ");" << std::endl;
   }
 
   return codeOut.str();
