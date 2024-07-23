@@ -321,7 +321,7 @@ void VHDLCircuit::refreshComponentMap() {
 // Instantiate top level input/output port names and the corresponding signals
 // they use
 // To be called only after instantiating component and connection maps
-void VHDLCircuit::updateTopLevelPorts() {
+void VHDLCircuit::updateTopLevelPorts(implType t) {
   std::map<int, std::string> inSignalNames;
   std::map<int, std::string> outSignalNames;
   // TODO check that component and connection maps have been instantiated
@@ -338,10 +338,26 @@ void VHDLCircuit::updateTopLevelPorts() {
           if (conn.getName() == edgeName) {
             if (conn.getInitialTokenCount()) {
               this->addInputPort(conn.getSrcPort(), signalNames);
-              this->topLevelPorts[conn.getSrcPort()] = signalNames[2];
+              if (t == TT) {
+                this->topLevelPorts[conn.getSrcPort()] = signalNames[2];
+              } else { // need to account for HS interface even for top-level ports
+                this->topLevelPorts[conn.getSrcPort() + "_VALID"] =
+                  signalNames[0];
+                this->topLevelPorts[conn.getSrcPort() + "_READY"] =
+                  signalNames[1];
+                this->topLevelPorts[conn.getSrcPort() + "_DATA"] =
+                  signalNames[2];
+              }
+
             } else {
               this->addInputPort(edgeName, signalNames);
-              this->topLevelPorts[edgeName] = signalNames[2];
+              if (t == TT) {
+                this->topLevelPorts[edgeName] = signalNames[2];
+              } else { // need to account for HS interface even for top-level ports
+                this->topLevelPorts[edgeName + "_VALID"] = signalNames[0];
+                this->topLevelPorts[edgeName + "_READY"] = signalNames[1];
+                this->topLevelPorts[edgeName + "_DATA"] = signalNames[2];
+              }
             }
           }
         }
@@ -357,10 +373,25 @@ void VHDLCircuit::updateTopLevelPorts() {
           if (conn.getName() == edgeName) {
             if (conn.getInitialTokenCount()) {
               this->addOutputPort(conn.getDstPort(), signalNames);
-              this->topLevelPorts[conn.getDstPort()] = signalNames[2];
+              if (t == TT) {
+                this->topLevelPorts[conn.getDstPort()] = signalNames[2];
+              } else { // need to account for HS interface even for top-level ports
+                this->topLevelPorts[conn.getDstPort() + "_VALID"] =
+                  signalNames[0];
+                this->topLevelPorts[conn.getDstPort() + "_READY"] =
+                  signalNames[1];
+                this->topLevelPorts[conn.getDstPort() + "_DATA"] =
+                  signalNames[2];
+              }
             } else {
               this->addOutputPort(edgeName, signalNames);
-              this->topLevelPorts[edgeName] = signalNames[2];
+              if (t == TT) {
+                this->topLevelPorts[edgeName] = signalNames[2];
+              } else { // need to account for HS interface even for top-level ports
+                this->topLevelPorts[edgeName + "_VALID"] = signalNames[0];
+                this->topLevelPorts[edgeName + "_READY"] = signalNames[1];
+                this->topLevelPorts[edgeName + "_DATA"] = signalNames[2];
+              }
             }
           }
         }

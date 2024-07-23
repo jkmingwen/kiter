@@ -76,7 +76,7 @@ class VHDLCircuit {
 
   void setName(std::string);
   void refreshComponentMap();
-  void updateTopLevelPorts();
+  void updateTopLevelPorts(implType t);
   std::vector<std::string> generateDataSignalNames();
   std::vector<std::string> generateValidReadySignalNames();
   std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;

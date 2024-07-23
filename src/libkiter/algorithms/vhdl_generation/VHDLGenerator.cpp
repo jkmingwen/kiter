@@ -164,7 +164,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) 
       VHDLConnection newConn(dataflow, edge);
       circuit.addConnection(newConn);
     }}
-  circuit.updateTopLevelPorts();
+  circuit.updateTopLevelPorts(implementationType);
 
   return circuit;
 }
