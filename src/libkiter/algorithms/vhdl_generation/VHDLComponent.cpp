@@ -227,9 +227,16 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   } else if (componentType == "sbuffer") {
     portMapName = componentType;
     implRefName = componentType;
+  } else if (componentType == "Proj") {
+    portMapName = componentType + "_" + std::to_string(outputPorts.size());
+    implRefName = implementationNames[componentType] + "_" + std::to_string(outputPorts.size());
   } else {
     portMapName = componentType;
     implRefName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
+    if (implementationType == DD) {
+      implRefName = componentType;
+    }
+
   }
 
   // Generic and port mappings are mostly set here
@@ -239,7 +246,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     if (componentType == "INPUT") {
       portName += "_in_data_" + std::to_string(ioId);
       addPortMapping(portName, portName, "std_logic_vector", "in");
-    } else { // output
+    } else { // top-level output
       portName += "_out_data_" + std::to_string(ioId);
       addPortMapping(portName, portName, "std_logic_vector", "out");
     }
@@ -251,7 +258,16 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
                      true);
       for (auto o = 0; o < outputSignals.size(); o++) {
-        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+        if (implementationType == DD) { // additional ports for HS protocol
+          addPortMapping("out_ready_" + std::to_string(o),
+                         outputSignals[o] + "_READY", "std_logic", "in");
+          addPortMapping("out_valid_" + std::to_string(o),
+                         outputSignals[o] + "_VALID", "std_logic", "out");
+          addPortMapping("out_data_" + std::to_string(o),
+                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+        } else {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+        }
       }
     } else if (componentType == "input_selector") {
       addPortMapping("ram_width", "ram_width", "integer", "", true);
@@ -288,14 +304,35 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       for (auto o : outputSignals) {
         addPortMapping("out_data", o, "std_logic_vector", "out");
       }
-    } else {
-      std::vector<std::string> inPortNames = opInputPorts.at(componentType);
-      std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+    } else { // FPC operators
+      if (implementationType == DD) { // HS protocol requires reset
+        addPortMapping("rst", "rst", "std_logic", "in");
+      }
       for (auto i = 0; i < inputSignals.size(); i++) {
-        addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        if (implementationType == DD) { // additional ports for HS protocol
+          addPortMapping("op_in_ready_" + std::to_string(i),
+                         inputSignals[i] + "_READY", "std_logic", "out");
+          addPortMapping("op_in_valid_" + std::to_string(i),
+                         inputSignals[i] + "_VALID", "std_logic", "in");
+          addPortMapping("op_in_data_" + std::to_string(i),
+                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+        } else {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
       }
       for (auto o = 0; o < outputSignals.size(); o++) {
-        addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        if (implementationType == DD) { // additional ports for HS protocol
+          addPortMapping("op_out_ready_" + std::to_string(o),
+                         outputSignals[o] + "_READY", "std_logic", "in");
+          addPortMapping("op_out_valid_" + std::to_string(o),
+                         outputSignals[o] + "_VALID", "std_logic", "out");
+          addPortMapping("op_out_data_" + std::to_string(o),
+                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+        } else {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        }
       }
     }
   }
@@ -648,57 +685,16 @@ std::string VHDLComponent::genDeclaration() const {
   std::string t = "    "; // indentation: 4 spaces
   codeOut << "component " << implRefName << " is"
           << std::endl;
-  if (implementationType == TT) {
     if (genericPorts.size()) {
-      std::string lineEnder = ";";
       codeOut << "generic (" << std::endl;
       codeOut << genPortList(genericPorts);
       codeOut << ");" << std::endl;
     }
     if (ports.size()) {
-      std::string lineEnder = ";";
       codeOut << "port (" << std::endl;
       codeOut << genPortList(ports);
       codeOut << ");" << std::endl;
     }
-  } else if (implementationType == DD) {
-    if (genericPorts.size()) {
-      std::string lineEnder = ";";
-      codeOut << "generic (" << std::endl;
-      for (auto &[port, sigType] : genericPorts) {
-        if (port == genericPorts.rbegin()->first) { lineEnder = ");"; }
-        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
-      }
-    }
-    if (ports.size()) { // TODO generate HS interface ports for VHDL components
-      std::string lineEnder = ";";
-      codeOut << "port (" << std::endl;
-      for (auto &[port, sigType] : ports) {
-        if (port == ports.rbegin()->first) { lineEnder = ""; }
-        // codeOut << t << "in_ready_" <<
-        codeOut << t << port << " : " << sigType << lineEnder << std::endl;
-      }
-    }
-    // for (auto i = 0; i < implInPorts.size(); i++) {
-    //   codeOut << t << "in_ready_" << i << " : out std_logic;\n"
-    //           << t << "in_valid_" << i << " : in std_logic;\n"
-    //           << t << "in_data_" << i << " : in std_logic_vector("
-    //           << dataWidth-1 << " downto 0);" << std::endl;
-    // }
-    // std::string lineEnder = ";";
-    // for (auto o = 0; o < implOutPorts.size(); o++) {
-    //   // last line of port declaration has no terminating semicolon
-    //   if (o + 1 == implOutPorts.size()) { lineEnder = ""; }
-    //   codeOut << t << "out_ready_" << o << " : in std_logic;\n"
-    //           << t << "out_valid_" << o << " : out std_logic;\n"
-    //           << t << "out_data_" << o << " : out std_logic_vector("
-    //           << dataWidth-1 << " downto 0)" << lineEnder << std::endl;
-    // }
-  } else {
-    VERBOSE_ERROR("Unable to generate instantiation code for VHDLComponent with "
-                  "implementation type: "
-                  << implementationType);
-  }
   codeOut << "end component;" << std::endl;
 
   return codeOut.str();

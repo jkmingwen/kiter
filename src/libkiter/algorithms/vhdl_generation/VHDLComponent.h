@@ -181,7 +181,8 @@ class VHDLComponent {
       {"nentry", "nentry"},
       {"checkbox", "checkbox"},
       {"button", "button"},
-      {"sbuffer", "sbuffer"}};
+      {"sbuffer", "sbuffer"},
+      {"Proj", "hs_splitter"}};
 
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "vslider",
                                       "nentry", "vbargraph", "hbargraph"}; // NOTE temporary workaround to handle UI components

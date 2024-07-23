@@ -7,9 +7,9 @@ entity hs_splitter_$NUM_OUTPUTS is
   port ( clk        : in std_logic;
          rst      : in std_logic;
 
-         in_ready_0 : out std_logic;
-         in_valid_0 : in std_logic;
-         in_data_0  : in std_logic_vector (bit_width-1 downto 0);
+         op_in_ready_0 : out std_logic;
+         op_in_valid_0 : in std_logic;
+         op_in_data_0  : in std_logic_vector (bit_width-1 downto 0);
 
          $OUTPUT_PORTS
          );
@@ -33,10 +33,10 @@ begin
       else
         -- store data if input available and temp storage not used
         if (is_stored_0 = '0' AND
-            in_valid_0 = '1' AND is_in_ready_0 = '1') then
+            op_in_valid_0 = '1' AND is_in_ready_0 = '1') then
           is_in_ready_0 <= '0';
           is_stored_0 <= '1';
-          temp_data_0(bit_width-1 downto 0) <= in_data_0;
+          temp_data_0(bit_width-1 downto 0) <= op_in_data_0;
         end if;
       end if;
       -- for resetting component
@@ -54,7 +54,7 @@ begin
       if (is_stored_0 = '1') then -- only write when both data ready to send
         $OUT_DATA_MAPPING
       end if;
-      in_ready_0 <= is_in_ready_0;
+      op_in_ready_0 <= is_in_ready_0;
       $OUT_VALID_MAPPING
     end if;
   end process write_data;
