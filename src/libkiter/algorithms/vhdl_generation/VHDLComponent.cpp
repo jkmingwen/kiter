@@ -89,45 +89,31 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           getNameFromPartialName(dataflow, inputVertexName));
       {ForInputEdges(dataflow, this->actor, e) {
           if (dataflow->getEdgeSource(e) == inputVertex) {
-            if (dataflow->getPreload(e)) {
-              this->addHSInputSignal(dataflow->getEdgeOutputPortName(e));
-            } else {
-              this->addHSInputSignal(dataflow->getEdgeName(e));
+            Edge signal = e;
+            if (implementationType == TT) {
+              if (this->getType() != "input_selector") {
+                // share input sigals: use the first output edge from the source
+                // vertex to ensure that the outputs of that vertex use the same
+                // signal even if it has multiple output edges
+                signal = it2Edge(dataflow->getOutputEdges(inputVertex).first);
+              }
             }
-            // we use the first output edge from the source vertex to ensure
-            // that the outputs of that vertex use the same signal even if it
-            // has multiple output edges
-            if (this->getType() == "input_selector") {
-              this->addInputSignal(dataflow->getEdgeName(e));
-            } else {
-              Edge signal = it2Edge(dataflow->getOutputEdges(inputVertex).first);
-              this->addInputSignal(dataflow->getEdgeName(signal));
-            }
+            this->addInputSignal(dataflow, signal);
           }
         }}
     }
-    VERBOSE_ASSERT(this->getHSInputSignals().size() == this->argOrder.size(),
-                   this->getUniqueName() << ": HS input ports after reordering << (" << this->getHSInputSignals().size() << ") != argOrder size (" << this->argOrder.size() << ")");
+    VERBOSE_ASSERT(this->getInputSignals().size() == this->argOrder.size(),
+                   this->getUniqueName() << ": input ports after reordering << (" << this->getInputSignals().size() << ") != argOrder size (" << this->argOrder.size() << ")");
   } else {
     {ForInputEdges(dataflow, this->actor, e) {
-        if (dataflow->getPreload(e)) {
-          this->addHSInputSignal(dataflow->getEdgeOutputPortName(e));
-        } else {
-          this->addHSInputSignal(dataflow->getEdgeName(e));
-        }
-        this->addInputSignal(dataflow->getEdgeName(e));
+        this->addInputSignal(dataflow, e);
       }}
-    VERBOSE_ASSERT(this->getHSInputSignals().size() == this->inputEdges.size(),
-                   this->getUniqueName() << ": HS input signals != input edges");
+    VERBOSE_ASSERT(this->getInputSignals().size() == this->inputEdges.size(),
+                   this->getUniqueName() << ": input signals != input edges");
   }
 
   {ForOutputEdges(dataflow, this->actor, e) {
-      if (dataflow->getPreload(e)) {
-        this->addHSOutputSignal(dataflow->getEdgeInputPortName(e));
-      } else {
-        this->addHSOutputSignal(dataflow->getEdgeName(e));
-      }
-      this->addOutputSignal(dataflow->getEdgeName(e));
+      this->addOutputSignal(dataflow, e);
     }}
   // Rearrange output ports and edges according to output selector phases of execution
   if (this->getType() == "output_selector") {

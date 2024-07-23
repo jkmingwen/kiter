@@ -28,6 +28,7 @@ std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 bool osAsBroadcast = false; // used for when the output selector should act as a simple broadcast
 bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
+implType t = TT;
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
@@ -68,11 +69,16 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     modelOSBroadcastTimings = true;
   }
 
+  if (params.find("DATA_DRIVEN") != params.end()) {
+    VERBOSE_INFO("Setting implementation type to data-driven");
+    t = DD;
+  }
+
   // check and adjust for any operators with multiple I/Os
   // the merge function currently only works with operators with the same number
   // of inputs/outputs
   if (params.find("NORMALISE_OUTPUTS") != params.end()) {
-    VHDLCircuit tmp = generateCircuitObject(dataflow);
+    VHDLCircuit tmp = generateCircuitObject(dataflow, t);
     while (tmp.getMultiOutActors().size() > 0) {
 
       VERBOSE_INFO("getMultiOutActors is not empty");
@@ -88,7 +94,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
         }
       }
       VERBOSE_INFO("Regenerate Circuit");
-      tmp = generateCircuitObject(dataflow);
+      tmp = generateCircuitObject(dataflow, t);
     }
     VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
   }
@@ -162,7 +168,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<std::string> inPortNames;
     std::vector<std::string> outEdgeNames;
     std::vector<std::string> outPortNames;
-    VHDLComponent actorInfo(dataflow, v);
+    VHDLComponent actorInfo(dataflow, v, t);
     std::string actorBaseName = dataflow->getVertexName(v);
     size_t pos = actorBaseName.find("_");
     actorNames.push_back(actorBaseName.substr(0, pos));
@@ -428,7 +434,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
   VHDLCircuit circuit;
 
   {ForEachVertex(dataflow, v) {
-      VHDLComponent op(dataflow, v);
+      VHDLComponent op(dataflow, v, t);
       circuit.addComponent(op);
       // count occurances of mergeable operator types in graph
       if (std::find(mergeableOperators.begin(),
@@ -485,7 +491,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
     for (auto &id : e.second) {
       VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
                     << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
-      VHDLComponent op(dataflow, dataflow->getVertexById(id));
+      VHDLComponent op(dataflow, dataflow->getVertexById(id), t);
       if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) != typesToMerge.end()) {
         mergeableIds[op.getType()].push_back(id);
       }
@@ -515,7 +521,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   VHDLCircuit circuit;
 
   {ForEachVertex(dataflow, v) {
-      VHDLComponent op(dataflow, v);
+      VHDLComponent op(dataflow, v, t);
       circuit.addComponent(op);
       // check for occurances of mergeable operator types
       if (std::find(mergeableOperators.begin(),
@@ -578,7 +584,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
           "\t" << id << "("
                << dataflow->getVertexName(dataflow->getVertexById(id)) << ", "
                << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
-      VHDLComponent op(dataflow, dataflow->getVertexById(id));
+      VHDLComponent op(dataflow, dataflow->getVertexById(id), t);
       if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) !=
           typesToMerge.end()) {
         // group by occurance count to generate separate merge groups for

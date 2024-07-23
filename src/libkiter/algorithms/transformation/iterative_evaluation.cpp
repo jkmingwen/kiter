@@ -35,9 +35,11 @@ std::set<std::string> nonEvalOps = { // operators that can't be evaluated
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
+  implType t = TT;
   bool dataDrivenImpl = false;  // we either prepare the SDF for a data driven or time triggered implementation
   if (params.find("DATA_DRIVEN") != params.end()) {
     dataDrivenImpl = true;
+    t = DD;
   }
 
   VERBOSE_INFO("Beginning iterative evaluation...");
@@ -176,7 +178,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
     }
 
     // enforce single outputs for each operator
-    VHDLCircuit tmp = generateCircuitObject(dataflow_prime);
+    VHDLCircuit tmp = generateCircuitObject(dataflow_prime, t);
     while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
       VERBOSE_INFO("Operators with multiple outputs detected: " << tmp.getMultiOutActors().size());
 
@@ -191,7 +193,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           VERBOSE_WARNING("actor missing!");
         }
       }
-      tmp = generateCircuitObject(dataflow_prime);
+      tmp = generateCircuitObject(dataflow_prime, t);
       // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
     }
   }

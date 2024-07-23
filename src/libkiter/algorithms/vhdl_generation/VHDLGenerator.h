@@ -14,7 +14,7 @@
 #include "VHDLConnection.h"
 #include "VHDLComponent.h"
 
-VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow);
+VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
 void copyFileAndReplaceWords(
     std::string refFile, std::string dstFile,

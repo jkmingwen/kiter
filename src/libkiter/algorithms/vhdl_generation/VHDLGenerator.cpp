@@ -34,6 +34,7 @@ int operatorFreq = 250; // clock frequency (in MHz) VHDL operators are designed 
 bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
+implType implementationType = TT;
 bool osBroadcast = false;
 bool toMerge = false; // if a merge strategy is specified
 int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
@@ -133,7 +134,7 @@ std::map<std::string, std::vector<std::string>>
         // {"fp_floor", {"op_in_data_0"}}
 };
 
-VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
+VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) {
 
   VHDLCircuit circuit;
   std::string circuitName = dataflow->getGraphName();
@@ -145,7 +146,7 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow) {
 
   // populate circuit object with components and connections based on dataflow graph
   {ForEachVertex(dataflow, actor) {
-      VHDLComponent newComp(dataflow, actor);
+      VHDLComponent newComp(dataflow, actor, t);
       circuit.addComponent(newComp);
       // update execution time in dataflow according to component operator type
       VERBOSE_INFO("operator lifespan ("
@@ -368,6 +369,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   if (param_list.find("DATA_DRIVEN") != param_list.end()) {
     VERBOSE_INFO("Using data-driven implementation for VHDL design");
     dataDriven = true;
+    implementationType = DD;
   }
 
   if (param_list.find("BROADCAST") != param_list.end()) {
@@ -402,7 +404,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     }
     algorithms::transformation::merge_operators(dataflow, param_list);
   }
-  VHDLCircuit tmp = generateCircuitObject(dataflow); // VHDLCircuit object specifies operators and how they're connected
+  VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
@@ -422,7 +424,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
       // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
       VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
-      tmp = generateCircuitObject(dataflow);
+      tmp = generateCircuitObject(dataflow, implementationType);
     }
 
     VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
@@ -2815,7 +2817,8 @@ void algorithms::printCircuitInfo(models::Dataflow* const dataflow,
 
   // populate circuit object with components and connections based on dataflow
   {ForEachVertex(dataflow, actor) {
-      VHDLComponent newComp(dataflow, actor);
+      implType t = (dataDriven) ? DD : TT;
+      VHDLComponent newComp(dataflow, actor, t);
       circuit.addComponent(newComp);
     }}
   {ForEachEdge(dataflow, edge) {
