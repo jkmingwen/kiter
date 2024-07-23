@@ -54,8 +54,8 @@ class VHDLComponent {
   void setIOId(int id);
   void addHSInputSignal(const std::string& signalName);
   void addHSOutputSignal(const std::string &signalName);
-  void addInputSignal(const std::string &signalName);
-  void addOutputSignal(const std::string& signalName);
+  void addInputSignal(models::Dataflow *const dataflow, const Edge e);
+  void addOutputSignal(models::Dataflow *const dataflow, const Edge e);
   int getSBufferInitTokens() const;
   void setStartTimes(std::vector<TIME_UNIT> times);
   std::vector<TIME_UNIT> getStartTimes() const;

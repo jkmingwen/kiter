@@ -123,13 +123,12 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         if (inputVector.size() > 1) {
           for (int exec = 0; exec < inputVector.size(); exec++) {
             if (inputVector.at(exec) == 1) {
+              std::string name = dataflow->getEdgeName(e);
               if (dataflow->getPreload(e)) {
-                this->hsOutputSignals.at(exec) = dataflow->getEdgeInputPortName(e);
-              } else {
-                this->hsOutputSignals.at(exec) = dataflow->getEdgeName(e);
+                name = dataflow->getEdgeInputPortName(e);
               }
-              VERBOSE_INFO("Edge for exec " << exec << ": " << dataflow->getEdgeName(e));
-              this->outputSignals.at(exec) = dataflow->getEdgeName(e);
+              VERBOSE_INFO("Edge for exec " << exec << ": " << name);
+              this->outputSignals.at(exec) = name;
             }
           }
         } else { // output selector is the broadcasting type
@@ -137,9 +136,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           outEdgeCount++;
         }
       }}
+    VERBOSE_ASSERT(this->getOutputSignals().size() == this->outputEdges.size(),
+                   this->getUniqueName() << ": Output signals after reordering != output edges(" << this->getOutputSignals().size() << " != " << this->outputEdges.size() << ")");
   }
-  VERBOSE_ASSERT(this->getHSOutputSignals().size() == this->outputEdges.size(),
-                 this->getUniqueName() << ": HS output signals after reordering != output edges");
 
   /* TODO identify data type of component to select appropriate VHDL implementation
      data type produced by constant value and UI components determine their data type
@@ -448,7 +447,15 @@ void VHDLComponent::addHSOutputSignal(const std::string& signalName) {
   }
 }
 
-void VHDLComponent::addInputSignal(const std::string& signalName) {
+void VHDLComponent::addInputSignal(models::Dataflow *const dataflow,
+                                   const Edge e) {
+  std::string signalName = dataflow->getEdgeName(e);
+  if (implementationType == DD) {
+    if (dataflow->getPreload(e)) {
+      signalName = dataflow->getEdgeOutputPortName(e);
+    }
+  }
+  // only add signal if it's not already in the vector
   if (std::find(inputSignals.begin(),
                 inputSignals.end(),
                 signalName) == inputSignals.end()) {
@@ -456,7 +463,15 @@ void VHDLComponent::addInputSignal(const std::string& signalName) {
   }
 }
 
-void VHDLComponent::addOutputSignal(const std::string& signalName) {
+void VHDLComponent::addOutputSignal(models::Dataflow *const dataflow,
+                                    const Edge e) {
+  std::string signalName = dataflow->getEdgeName(e);
+  if (implementationType == DD) {
+    if (dataflow->getPreload(e)) {
+      signalName = dataflow->getEdgeInputPortName(e);
+    }
+  }
+  // only add signal if it's not already in the vector
   if (std::find(outputSignals.begin(),
                 outputSignals.end(),
                 signalName) == outputSignals.end()) {
