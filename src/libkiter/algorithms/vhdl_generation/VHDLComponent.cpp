@@ -636,13 +636,19 @@ std::map<std::string, std::string> VHDLComponent::getPortMapping() const {
 }
 
 /**
-   Generate port declarations according to a given port map where:
+   Generate VHDL port declarations according to a given port map where:
    [key: port name, value: signal/type].
 
    @param portMap Populated using addPortMapping().
 
    @param terminate Whether the port declarations should have a terminating
    delimiter (default = true).
+
+   @param replacements Optional map of signal names that should be replaced
+   (key), and their corresponding replacements (value).
+
+   @param relation Defines the syntax for how the port relates to the signal
+   (default = ":").
 
    @param delim Defines the delimiter between each port declaration
    (default = ";").
