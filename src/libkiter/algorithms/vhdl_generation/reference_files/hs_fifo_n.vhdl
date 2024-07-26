@@ -11,8 +11,8 @@ entity hs_fifo_n is
     ram_depth : natural := 1
     );
   port (
-    buffer_clk : in std_logic;
-    buffer_rst : in std_logic;
+    clk : in std_logic;
+    rst : in std_logic;
 
     -- hs input interface
     buffer_in_ready : out std_logic;
@@ -53,11 +53,11 @@ begin
 
 
   -- FIFO read logic
-  read_logic: process(buffer_clk, buffer_rst)
+  read_logic: process(clk, rst)
   variable tmp_write_index : natural;
   variable tmp_read_index : natural;
   begin
-    if buffer_rst = '0' then
+    if rst = '0' then
 
       read_index <= 0;
       write_index <= ram_init;
@@ -75,11 +75,11 @@ begin
       end if;
 
       --Please don't reset the BRAM that way, or it won't use the BRAM.
-      --for i in 0 to ram_depth - 1 loop
-      --      ram(i) <= (others => '0');
-      --end loop;
+      for i in 0 to ram_depth - 1 loop
+           ram(i) <= (others => '0');
+      end loop;
 
-    elsif falling_edge(buffer_clk) then
+    elsif falling_edge(clk) then
 
       -- Input behavior
       if buffer_in_valid = '1' and fifo_full = '0' then
@@ -114,9 +114,9 @@ begin
     end if;
   end process read_logic;
 
-  write_logic: process(buffer_clk)
+  write_logic: process(clk)
   begin
-    if rising_edge(buffer_clk) then
+    if rising_edge(clk) then
       buffer_in_ready <= not fifo_full;
       buffer_out_valid <= not fifo_empty;
       buffer_out_data <= ram(read_index);

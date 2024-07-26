@@ -652,16 +652,16 @@ void algorithms::generateSplitterOperators(std::map<int, int> outputCounts) {
     for (int outCount = 0; outCount < numOutputs; outCount++) {
       std::string delimiter = ";\n";
       std::string boolAnd = " AND ";
-      outputPorts << "out_ready_" << std::to_string(outCount) << " : in std_logic" << delimiter
-                  << "out_valid_" << std::to_string(outCount) << " : out std_logic" << delimiter;
-      outputDataMapping << "out_data_" << std::to_string(outCount) << " <= temp_data_0(bit_width-1 downto 0);\n";
-      outputValidMapping << "out_valid_" << std::to_string(outCount) << " <= is_stored_0;\n";
+      outputPorts << "op_out_ready_" << std::to_string(outCount) << " : in std_logic" << delimiter
+                  << "op_out_valid_" << std::to_string(outCount) << " : out std_logic" << delimiter;
+      outputDataMapping << "op_out_data_" << std::to_string(outCount) << " <= temp_data_0(bit_width-1 downto 0);\n";
+      outputValidMapping << "op_out_valid_" << std::to_string(outCount) << " <= is_stored_0;\n";
       if (outCount + 1 == numOutputs) {
         delimiter = "\n";
         boolAnd = "";
       }
-      outputPorts << "out_data_" << std::to_string(outCount) << " : out std_logic_vector(bit_width-1 downto 0)" << delimiter;
-      outputReadySigs << "out_ready_" << std::to_string(outCount) << "='1'" << boolAnd;
+      outputPorts << "op_out_data_" << std::to_string(outCount) << " : out std_logic_vector(bit_width-1 downto 0)" << delimiter;
+      outputReadySigs << "op_out_ready_" << std::to_string(outCount) << "='1'" << boolAnd;
     }
     std::map<std::string, std::string> replacementWords = {{"$NUM_OUTPUTS", std::to_string(numOutputs)},
                                                            {"$OUTPUT_PORTS", outputPorts.str()},
@@ -1095,77 +1095,46 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   // 1. Instantiate components for each operator in circuit
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   if (!noOperators) { // only generate components if there are operators
-    if (!dataDriven) {
-      std::map<std::string, int> trackDeclarations; // check if component has been declared (only need 1 per component type)
-      for (auto const &[v, comp] : circuit.getComponentMap()) {
-        if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-          std::string name = comp.getPortMapName();
-          if (!trackDeclarations.count(name)) {
-            trackDeclarations[name] = 1;
-            vhdlOutput << comp.genDeclaration() << std::endl;
-          }
+    // if (!dataDriven) {
+    std::map<std::string, int> trackDeclarations; // check if component has been declared (only need 1 per component type)
+    for (auto const &[v, comp] : circuit.getComponentMap()) {
+      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+        std::string name = comp.getPortMapName();
+        if (!trackDeclarations.count(name)) {
+          trackDeclarations[name] = 1;
+          vhdlOutput << comp.genDeclaration() << std::endl;
         }
       }
-    } else {
-      std::map<int, int> constOutputs;
-      for (auto const &op : operatorMap) {
-        if (op.first != "INPUT" && op.first != "OUTPUT") {
-          std::map<int, int> inputCounts;
-          std::map<int, int> outputCounts;
-          inputCounts = circuit.getNumInputs(op.first);
-          outputCounts = circuit.getNumOutputs(op.first);
-          if (op.first == "Proj") {
-            vhdlOutput << generateSplitterComponents(outputCounts) << std::endl;
-          } else if (op.first == "delay") {
-            vhdlOutput << generateDelayComponent(circuit.getFirstComponentByType(op.first))
-                       << std::endl;
-          } else if (op.first == "const_value" ||
-                     circuit.getFirstComponentByType(op.first).isConst()) {
-            constOutputs.insert(outputCounts.begin(), outputCounts.end()); // workaround for UI components
-          } else if (circuit.getFirstComponentByType(op.first).isUI()) {
-            vhdlOutput << generateUIComponents(circuit.getFirstComponentByType(op.first)) << std::endl;
-            uiDetected = true;
-          } else if (op.first == "input_selector" || op.first == "output_selector") {
-            vhdlOutput << generateInputOutputSelectorComponent(circuit.getFirstComponentByType(op.first),
-                                                               inputCounts, outputCounts)
-                       << std::endl;
-          } else {
-            vhdlOutput << generateComponent(circuit.getFirstComponentByType(op.first))
-                       << std::endl;
-          }
+    }
+  }
+    //   if (uiDetected) {
+    //     for (auto &op : circuit.getOperatorMap()) {
+    //       // NOTE workaround for UI components' pin out that isn't reflected in SDF
+    //       if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
+    //         for (int i = 0; i < op.second; i++) {
+    //           dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
 
+  // FIFO component instantiation
+  if (dataDriven) {
+    for (auto &[e, conn] : circuit.getConnectionMap()) {
+      if (conn.getInitialTokenCount()) {
+        VERBOSE_INFO("Generating HS FIFO buffer implementations");
+        // vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
+        vhdlOutput << conn.genDeclaration() << std::endl;
+        std::vector<std::string> fifoBufferComps = {
+          "hs_fifo", "hs_fifo_n", "hs_fifo_one", "hs_fifo_zero"};
+        for (const auto &component : fifoBufferComps) {
+          const auto copyOptions = std::filesystem::copy_options::update_existing |
+            std::filesystem::copy_options::recursive;
+          std::filesystem::copy(referenceDir + component + ".vhdl",
+                                componentDir + component + ".vhdl", copyOptions);
         }
-      }
-      if (constOutputs.size()) {
-        vhdlOutput << generateConstComponents(constOutputs) << std::endl;
-      }
-
-      // FIFO component instantiation
-      for (auto &conn : circuit.getConnectionMap()) {
-        if (conn.second.getInitialTokenCount()) {
-          VERBOSE_INFO("Generating HS FIFO buffer implementations");
-          vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-          std::vector<std::string> fifoBufferComps = {
-              "hs_fifo", "hs_fifo_n", "hs_fifo_one", "hs_fifo_zero"};
-          for (const auto &component : fifoBufferComps) {
-            const auto copyOptions = std::filesystem::copy_options::update_existing |
-              std::filesystem::copy_options::recursive;
-            std::filesystem::copy(referenceDir + component + ".vhdl",
-                                  componentDir + component + ".vhdl", copyOptions);
-          }
-          break;
-        }
-      }
-
-      if (uiDetected) {
-        for (auto &op : circuit.getOperatorMap()) {
-          // NOTE workaround for UI components' pin out that isn't reflected in SDF
-          if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
-            for (int i = 0; i < op.second; i++) {
-              dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
-            }
-          }
-        }
+        break;
       }
     }
   }
@@ -1176,6 +1145,8 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
     std::map<std::string, std::vector<std::string>> newNames;
     if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
           circuit.getDstComponent(conn).getType() == "OUTPUT")) {
+      // Check the implementation types of both sources and destination to allow
+      // for future implementations with mixed implementations
       if (circuit.getSrcComponent(conn).getImplType() == TT &&
           circuit.getDstComponent(conn).getImplType() == TT) {
         newNames = conn.genSignalNames(TT);
@@ -1192,7 +1163,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
     }
   }
 
-  // 3. Write signal names to VHDL output
+  // 2a. Write signal names to VHDL output
   for (auto const &[type, sigNames] : signalNames) {
     std::string delim = ",\n";
     vhdlOutput << "signal ";
@@ -1203,9 +1174,10 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
     vhdlOutput << " : " << type << ";\n" << std::endl;
   }
 
-  // 4. Generate port mapping
+  // 3. Generate port mapping
   vhdlOutput << "begin\n" << std::endl;
   std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
+    std::map<std::string, int> bufferCounts;
   std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
   for (auto &[v, comp] : circuit.getComponentMap()) {
     if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
@@ -1216,6 +1188,18 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
         opCounts[opName] = 0;
       }
       vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
+    }
+  }
+
+  for (auto const &[e, conn] : circuit.getConnectionMap()) {
+    if (conn.getInitialTokenCount()) {
+      if (bufferCounts.count("fifo")) {
+        bufferCounts["fifo"]++;
+      } else {
+        bufferCounts["fifo"] = 0;
+      }
+      vhdlOutput << conn.genPortMapping(bufferCounts["fifo"], replacementSigs)
+                 << std::endl;
     }
   }
   vhdlOutput << "end behaviour;" << std::endl;

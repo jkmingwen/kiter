@@ -38,8 +38,8 @@ entity hs_fifo_one is
     ram_init  : natural := 0
     );
   port (
-    buffer_clk : in std_logic;
-    buffer_rst : in std_logic;
+    clk : in std_logic;
+    rst : in std_logic;
 
     -- hs input interface
     buffer_in_ready : out std_logic;
@@ -69,8 +69,8 @@ begin
 
   -- copy internal signals to output
 
-  buffer_in_ready <= buffer_rst and  buffer_in_ready_local;
-  buffer_out_valid <= buffer_rst and buffer_out_valid_local;
+  buffer_in_ready <= rst and  buffer_in_ready_local;
+  buffer_out_valid <= rst and buffer_out_valid_local;
 
   buffer_in_ready_local <= (not present);
   buffer_out_valid_local <= present or buffer_in_valid;
@@ -79,9 +79,9 @@ begin
   present_mask <= (others => present);
 
 
-  proc_main : process(buffer_rst, buffer_clk)
+  proc_main : process(rst, clk)
   begin
-    if buffer_rst = '0' then
+    if rst = '0' then
       if ram_init = 0 then
         present <= '0';
       else
@@ -89,7 +89,7 @@ begin
         ram <= (others => '0');
       end if;
     else
-      if rising_edge(buffer_clk) then
+      if rising_edge(clk) then
 
 
         if buffer_in_ready_local = '1' and buffer_in_valid = '1' and buffer_out_ready = '0' and present = '0' then

@@ -306,30 +306,36 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       }
     } else { // FPC operators
       if (implementationType == DD) { // HS protocol requires reset
+        if (componentType == "Proj") {
+          addPortMapping("bit_width", "ram_width", "integer", "", true);
+        }
         addPortMapping("rst", "rst", "std_logic", "in");
-      }
-      for (auto i = 0; i < inputSignals.size(); i++) {
-        if (implementationType == DD) { // additional ports for HS protocol
-          addPortMapping("op_in_ready_" + std::to_string(i),
-                         inputSignals[i] + "_READY", "std_logic", "out");
-          addPortMapping("op_in_valid_" + std::to_string(i),
-                         inputSignals[i] + "_VALID", "std_logic", "in");
-          addPortMapping("op_in_data_" + std::to_string(i),
-                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
-        } else {
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          if (implementationType == DD) { // additional ports for HS protocol
+            addPortMapping("op_in_ready_" + std::to_string(i),
+                           inputSignals[i] + "_READY", "std_logic", "out");
+            addPortMapping("op_in_valid_" + std::to_string(i),
+                           inputSignals[i] + "_VALID", "std_logic", "in");
+            addPortMapping("op_in_data_" + std::to_string(i),
+                           inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          }
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          if (implementationType == DD) { // additional ports for HS protocol
+            addPortMapping("op_out_ready_" + std::to_string(o),
+                           outputSignals[o] + "_READY", "std_logic", "in");
+            addPortMapping("op_out_valid_" + std::to_string(o),
+                           outputSignals[o] + "_VALID", "std_logic", "out");
+            addPortMapping("op_out_data_" + std::to_string(o),
+                           outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          }
+        }
+      } else { // implementationType == TT
+        for (auto i = 0; i < inputSignals.size(); i++) {
           std::vector<std::string> inPortNames = opInputPorts.at(componentType);
           addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
         }
-      }
-      for (auto o = 0; o < outputSignals.size(); o++) {
-        if (implementationType == DD) { // additional ports for HS protocol
-          addPortMapping("op_out_ready_" + std::to_string(o),
-                         outputSignals[o] + "_READY", "std_logic", "in");
-          addPortMapping("op_out_valid_" + std::to_string(o),
-                         outputSignals[o] + "_VALID", "std_logic", "out");
-          addPortMapping("op_out_data_" + std::to_string(o),
-                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
-        } else {
+        for (auto o = 0; o < outputSignals.size(); o++) {
           std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
           addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
         }

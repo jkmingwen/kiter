@@ -16,8 +16,8 @@ entity hs_fifo is
     );
 
   port (
-    buffer_clk : in std_logic;
-    buffer_rst : in std_logic;
+    clk : in std_logic;
+    rst : in std_logic;
 
     -- hs input interface
     buffer_in_ready : out std_logic;
@@ -46,8 +46,8 @@ begin
     DUT : entity work.hs_fifo_zero
       generic map ( ram_width => ram_width
                     )
-      port map ( buffer_clk        => buffer_clk,
-                 buffer_rst      => buffer_rst,
+      port map ( clk        => clk,
+                 rst      => rst,
                  buffer_in_ready => buffer_in_ready,
                  buffer_in_valid => buffer_in_valid,
                  buffer_in_data  => buffer_in_data,
@@ -65,8 +65,8 @@ begin
       generic map ( ram_width => ram_width ,
                     ram_init => ram_init
                     )
-      port map ( buffer_clk        => buffer_clk,
-                 buffer_rst      => buffer_rst,
+      port map ( clk        => clk,
+                 rst      => rst,
                  buffer_in_ready => buffer_in_ready,
                  buffer_in_valid => buffer_in_valid,
                  buffer_in_data  => buffer_in_data,
@@ -85,8 +85,8 @@ begin
                     ram_depth => ram_depth ,
                     ram_init => ram_init
                     )
-      port map ( buffer_clk        => buffer_clk,
-                 buffer_rst      => buffer_rst,
+      port map ( clk        => clk,
+                 rst      => rst,
                  buffer_in_ready => buffer_in_ready,
                  buffer_in_valid => buffer_in_valid,
                  buffer_in_data  => buffer_in_data,

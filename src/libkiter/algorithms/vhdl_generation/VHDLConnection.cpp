@@ -21,6 +21,27 @@ VHDLConnection::VHDLConnection(models::Dataflow* const dataflow, Edge e) {
   dstPort = dataflow->getEdgeOutputPortName(e);
   inputVector = dataflow->getEdgeInVector(e);
   outputVector = dataflow->getEdgeOutVector(e);
+
+  if (initialTokenCount) { // TODO check implementation type for type of
+                           // intemediary component
+    bufferInstanceName = "fifo";
+    bufferImplRefName = "hs_fifo";
+    // HS FIFO ports
+    addPortMapping("clk", "clk", "std_logic", "in");
+    addPortMapping("rst", "rst", "std_logic", "in");
+    addPortMapping("ram_width", "ram_width", "integer", "", true);
+    addPortMapping("ram_depth", std::to_string(bufferSize + 1), "integer", "",
+                   true);
+    addPortMapping("ram_init", std::to_string(initialTokenCount), "integer", "",
+                   true);
+    addPortMapping("buffer_in_ready", srcPort + "_READY", "std_logic", "out");
+    addPortMapping("buffer_in_valid", srcPort + "_VALID", "std_logic", "in");
+    addPortMapping("buffer_in_data", srcPort + "_DATA", "std_logic_vector",
+                   "in");
+    addPortMapping("buffer_out_ready", dstPort + "_READY", "std_logic", "in");
+    addPortMapping("buffer_out_valid", dstPort + "_VALID", "std_logic", "out");
+    addPortMapping("buffer_out_data", dstPort + "_DATA", "std_logic_vector", "out");
+  }
 }
 
 Edge VHDLConnection::getEdge()  const{
@@ -135,4 +156,107 @@ std::string VHDLConnection::printStatus() const {
                << this->getSrcPort() << ", " << this->getDstPort() << std::endl;
 
   return outputStream.str();
+}
+
+void VHDLConnection::addPortMapping(std::string port, std::string signal,
+                                   std::string type, std::string direction,
+                                   bool isGeneric, int dataWidth) {
+ // slv type needs to have a defined width
+  if (type == "std_logic_vector") {
+    type += "(" + std::to_string(dataWidth - 1) + " downto 0)";
+  }
+  if (isGeneric) {
+    genericMappings[port] = signal;
+    genericPorts[port] = type;
+  } else {
+    portMappings[port] = signal;
+    ports[port] = direction + " " + type;
+  }
+}
+
+/**
+   Generate VHDL port declarations according to a given port map where:
+   [key: port name, value: signal/type].
+
+   @param portMap Populated using addPortMapping().
+
+   @param terminate Whether the port declarations should have a terminating
+   delimiter (default = true).
+
+   @param replacements Optional map of signal names that should be replaced
+   (key), and their corresponding replacements (value).
+
+   @param relation Defines the syntax for how the port relates to the signal
+   (default = ":").
+
+   @param delim Defines the delimiter between each port declaration
+   (default = ";").
+
+   @param term Defines the terminating character after the last port is declared
+   (default = "").
+
+   @return A string of port declarations.
+ */
+std::string
+VHDLConnection::genPortList(std::map<std::string, std::string> portMap,
+                            bool terminate,
+                            std::map<std::string, std::string> replacements,
+                            std::string relation,
+                            std::string delim,
+                            std::string term) const {
+  std::stringstream codeOut;
+  int padAmt = 4;
+  std::string t(padAmt, ' ');
+  std::string lineEnder = delim;
+  std::string r = " " + relation + " "; // spaces for legibility
+  for (auto &[port, sigType] : portMap) {
+    std::string signal = sigType;
+    if (replacements.count(sigType)) {
+      signal = replacements[signal];
+    }
+    if (port == portMap.rbegin()->first && terminate) {
+      lineEnder = term;
+    }
+    codeOut << t << port << r << signal << lineEnder << std::endl;
+  }
+  return codeOut.str();
+}
+
+// Generate the VHDL declaration code for the component
+// - dataWidth (default: 34): bit width of data on the input/output ports
+std::string VHDLConnection::genDeclaration() const {
+  std::stringstream codeOut;
+  std::string t = "    "; // indentation: 4 spaces
+  codeOut << "component " << bufferImplRefName << " is"
+          << std::endl;
+    if (genericPorts.size()) {
+      codeOut << "generic (" << std::endl;
+      codeOut << genPortList(genericPorts);
+      codeOut << ");" << std::endl;
+    }
+    if (ports.size()) {
+      codeOut << "port (" << std::endl;
+      codeOut << genPortList(ports);
+      codeOut << ");" << std::endl;
+    }
+  codeOut << "end component;" << std::endl;
+
+  return codeOut.str();
+}
+
+std::string VHDLConnection::genPortMapping(int id, std::map<std::string, std::string> replacements) const {
+  std::stringstream codeOut;
+  codeOut << bufferInstanceName << "_" << id << " : " << bufferImplRefName << std::endl;
+  if (genericMappings.size()) {
+    codeOut << "generic map (" << std::endl;
+    codeOut << genPortList(genericMappings, true, replacements, "=>", ",");
+    codeOut << ")" << std::endl;
+  }
+  if (portMappings.size()) {
+    codeOut << "port map (" << std::endl;
+    codeOut << genPortList(portMappings, true, replacements, "=>", ",");
+    codeOut << ");" << std::endl;
+  }
+
+  return codeOut.str();
 }

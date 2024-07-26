@@ -37,8 +37,8 @@ entity hs_fifo_zero is
     ram_width : natural
     );
   port (
-    buffer_clk : in std_logic;
-    buffer_rst : in std_logic;
+    clk : in std_logic;
+    rst : in std_logic;
 
     -- hs input interface
     buffer_in_ready : out std_logic;
@@ -55,8 +55,8 @@ end hs_fifo_zero;
 architecture rtl of hs_fifo_zero is
 begin
 
-  buffer_in_ready <= buffer_out_ready and buffer_rst;
-  buffer_out_valid <= buffer_in_valid and buffer_rst;
+  buffer_in_ready <= buffer_out_ready and rst;
+  buffer_out_valid <= buffer_in_valid and rst;
   buffer_out_data <= buffer_in_data;
 
 end architecture;
