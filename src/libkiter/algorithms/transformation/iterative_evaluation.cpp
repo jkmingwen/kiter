@@ -218,7 +218,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
   // input/output operation consists of these 3 components:
   TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
-                        getOperatorLifespan("fp_prod", operatorFreq);
+                        getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);
   TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
                          getOperatorLifespan("fp_prod", operatorFreq);
   if (params.find("BROADCAST") != params.end()) {
