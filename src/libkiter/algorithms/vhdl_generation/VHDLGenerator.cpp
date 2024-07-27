@@ -1190,18 +1190,22 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
       vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
     }
   }
-
-  for (auto const &[e, conn] : circuit.getConnectionMap()) {
-    if (conn.getInitialTokenCount()) {
-      if (bufferCounts.count("fifo")) {
-        bufferCounts["fifo"]++;
-      } else {
-        bufferCounts["fifo"] = 0;
+  // Generate FIFO buffers
+  // NOTE for now, only necessary for data driven implementation
+  if (implementationType == DD) {
+    for (auto const &[e, conn] : circuit.getConnectionMap()) {
+      if (conn.getInitialTokenCount()) {
+        if (bufferCounts.count("fifo")) {
+          bufferCounts["fifo"]++;
+        } else {
+          bufferCounts["fifo"] = 0;
+        }
+        vhdlOutput << conn.genPortMapping(bufferCounts["fifo"], replacementSigs)
+                   << std::endl;
       }
-      vhdlOutput << conn.genPortMapping(bufferCounts["fifo"], replacementSigs)
-                 << std::endl;
     }
   }
+
   vhdlOutput << "end behaviour;" << std::endl;
 
   vhdlOutput.close();
