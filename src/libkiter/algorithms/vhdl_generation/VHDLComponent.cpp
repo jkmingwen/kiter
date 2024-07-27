@@ -270,24 +270,69 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         }
       }
     } else if (componentType == "input_selector") {
-      addPortMapping("ram_width", "ram_width", "integer", "", true);
-      addPortMapping("rst", "rst", "std_logic", "in");
-      addPortMapping("cycle_count", "cycle_count", "integer", "in");
-      for (auto i = 0; i < inputSignals.size(); i++) {
-        addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+      if (implementationType == TT) {
+        addPortMapping("ram_width", "ram_width", "integer", "", true);
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addPortMapping("cycle_count", "cycle_count", "integer", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+        }
+      } else {
+        addPortMapping("num_phases", std::to_string(inputSignals.size()),
+                       "integer", "", true);
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("op_in_ready_" + std::to_string(i),
+                         inputSignals[i] + "_READY", "std_logic", "out");
+          addPortMapping("op_in_valid_" + std::to_string(i),
+                         inputSignals[i] + "_VALID", "std_logic", "in");
+          addPortMapping("op_in_data_" + std::to_string(i),
+                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("op_out_ready_" + std::to_string(o),
+                         outputSignals[o] + "_READY", "std_logic", "in");
+          addPortMapping("op_out_valid_" + std::to_string(o),
+                         outputSignals[o] + "_VALID", "std_logic", "out");
+          addPortMapping("op_out_data_" + std::to_string(o),
+                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+        }
       }
-      for (auto o = 0; o < outputSignals.size(); o++) {
-        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
-      }
+
     } else if (componentType == "output_selector") {
-      addPortMapping("ram_width", "ram_width", "integer", "", true);
-      addPortMapping("rst", "rst", "std_logic", "in");
-      addPortMapping("cycle_count", "cycle_count", "integer", "in");
-      for (auto i = 0; i < inputSignals.size(); i++) {
-        addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
-      }
-      for (auto o = 0; o < outputSignals.size(); o++) {
-        addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+      if (implementationType == TT) {
+        addPortMapping("ram_width", "ram_width", "integer", "", true);
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addPortMapping("cycle_count", "cycle_count", "integer", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+        }
+      } else {
+        addPortMapping("num_phases", std::to_string(outputSignals.size()),
+                       "integer", "", true);
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("op_in_ready_" + std::to_string(i),
+                         inputSignals[i] + "_READY", "std_logic", "out");
+          addPortMapping("op_in_valid_" + std::to_string(i),
+                         inputSignals[i] + "_VALID", "std_logic", "in");
+          addPortMapping("op_in_data_" + std::to_string(i),
+                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("op_out_ready_" + std::to_string(o),
+                         outputSignals[o] + "_READY", "std_logic", "in");
+          addPortMapping("op_out_valid_" + std::to_string(o),
+                         outputSignals[o] + "_VALID", "std_logic", "out");
+          addPortMapping("op_out_data_" + std::to_string(o),
+                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+        }
       }
     } else if (componentType == "sbuffer") {
       addPortMapping("ram_width", "ram_width", "integer", "", true);
@@ -539,15 +584,19 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
   // execution time port mapping definition
   for (int n = 0; auto time : times) {
     if (componentType == "input_selector") {
-      VERBOSE_ASSERT(times.size() == inputPorts.size(),
-                     "Number of start times and input ports don't match");
-      addPortMapping("exec_time_" + std::to_string(n),
-                     std::to_string((int)time), "integer", "", true);
+      if (implementationType == TT) {
+        VERBOSE_ASSERT(times.size() == inputPorts.size(),
+                       "Number of start times and input ports don't match");
+        addPortMapping("exec_time_" + std::to_string(n),
+                       std::to_string((int)time), "integer", "", true);
+      }
     } else if (componentType == "output_selector") {
-      VERBOSE_ASSERT(times.size() == outputPorts.size(),
-                     "Number of start times and output ports don't match");
-      addPortMapping("exec_time_" + std::to_string(n),
-                     std::to_string((int)time), "integer", "", true);
+      if (implementationType == TT) {
+        VERBOSE_ASSERT(times.size() == outputPorts.size(),
+                       "Number of start times and output ports don't match");
+        addPortMapping("exec_time_" + std::to_string(n),
+                       std::to_string((int)time), "integer", "", true);
+      }
     } else if (componentType == "sbuffer") {
       addPortMapping("push_start", std::to_string((int)time), "integer", "",
                      true);
