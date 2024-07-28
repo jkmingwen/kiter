@@ -71,22 +71,13 @@ namespace algorithms {
   std::string generateOutputInterfaceSignalNames(int id, int bitWidth);
   std::string generateI2SToFPCSignalNames(int id);
   std::string generateFPCToI2SSignalNames(int id);
-  std::string generateComponent(VHDLComponent comp);
-  std::string generateInputOutputSelectorComponent(VHDLComponent comp,
-                                                   std::map<int, int> inputCounts,
-                                                   std::map<int, int> outputCounts);
-  std::string generateDelayComponent(VHDLComponent comp);
-  std::string generateBufferComponent(std::string circuitName);
   std::string generateSBufferComponent();
   std::string generateCycleCounterComponent();
   std::string generateInputScalingComponents(int i2sBitWidth, int fpcBitWidth);
   std::string generateOutputScalingComponents(int i2sBitWidth, int fpcBitWidth);
-  std::string generateConstComponents(std::map<int, int> outputCounts);
   std::string generateUIComponents(VHDLComponent comp);
-  std::string generateSplitterComponents(std::map<int, int> outputCounts);
   void generateHSInterfaceComponents();
   void generateAudioInterfaceComponents();
-  std::string generatePortMapping(const VHDLCircuit &circuit);
   void printCircuitInfo(models::Dataflow* const dataflow,
                         parameters_list_t param_list);
 }
