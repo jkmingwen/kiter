@@ -1005,7 +1005,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit) {
   generateVHDLEntity(circuit, vhdlOutput);
 
   // 3. Specify architecture (behaviour) of operator type
-  generateVHDLArchitecture(circuit, operatorMap, noOperators, vhdlOutput);
+  generateVHDLArchitecture(circuit, noOperators, vhdlOutput);
 
   // Close the stream
   vhdlOutput.close();
