@@ -49,7 +49,7 @@ namespace algorithms {
     // GenerateCircuit helper functions
     void generateVHDLHeader(std::ofstream &vhdlOutput);
     void generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOutput);
-    void generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
+    void generateVHDLArchitecture(VHDLCircuit &circuit,
                                   bool noOperators, std::ofstream &vhdlOutput);
 
 
