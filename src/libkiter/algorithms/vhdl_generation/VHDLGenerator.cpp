@@ -1031,62 +1031,40 @@ void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
    @param vhdlOutput Output stream to write VHDL code to.
  */
 void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOutput) {
-    int numInputPorts = circuit.getOperatorCount("INPUT");
-    int numOutputPorts = circuit.getOperatorCount("OUTPUT");
-    vhdlOutput << "entity " << circuit.getName() << " is\n"
-               << "generic (\n"
-               << "    " << "ram_width : natural := 34;\n"
-               << "    " << "ram_depth : natural := 2);\n" // buffer size
-               << "port (\n"
-               << "    " << "clk : in std_logic;\n"
-               << "    " << "rst : in std_logic;\n"
-               << std::endl;
-    // Generate input/output ports:
-    std::string portName = "    " + circuit.getName();
-    if (!dataDriven) {
-      vhdlOutput << "    " << "cycle_count : in integer;\n" << std::endl;
-      std::map<std::string, int> trackInOutCounts {{"INPUT", 0}, {"OUTPUT", 0}}; // check if component has been declared (only need 1 per component type)
-      for (auto const &[v, comp] : circuit.getComponentMap()) {
-        if (comp.getType() == "INPUT") {
-          vhdlOutput << comp.genPortList(comp.getPortMapping(), false);
-          trackInOutCounts[comp.getType()]++;
-        }
-        if (comp.getType() == "OUTPUT") { // assume we always have (and thus terminate on) output actors
-          bool last = false;
-          if (trackInOutCounts[comp.getType()] + 1 == numOutputPorts) { last = true; }
-          vhdlOutput << comp.genPortList(comp.getPortMapping(), last);
-          trackInOutCounts[comp.getType()]++;
-        }
-      }
-    } else {
-      for (auto i = 0; i < numInputPorts; i++) {
-        vhdlOutput << portName + "_in_ready_" + std::to_string(i) + " : out std_logic;\n"
-                   << portName + "_in_valid_" + std::to_string(i) + " : in std_logic;\n"
-                   << portName + "_in_data_" + std::to_string(i) + " : in std_logic_vector("
-                   << "ram_width - 1 downto 0) := (others => '0');\n"
-                   << std::endl;
-      }
-      // Specify ready, valid, and data ports for each output port:
-      for (auto i = 0; i < numOutputPorts; i++) {
-        vhdlOutput << portName + "_out_ready_" + std::to_string(i) + " : in std_logic;\n"
-                   << portName + "_out_valid_" + std::to_string(i) + " : out std_logic;\n";
-        if (i + 1 == numOutputPorts) {
-          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0) := (others => '0')\n"
-                     << std::endl; // last line of port declaration has no terminating semicolon
-        } else {
-          vhdlOutput << portName + "_out_data_" + std::to_string(i) + " : out std_logic_vector("
-                     << "ram_width - 1 downto 0) := (others => '0');\n"
-                     << std::endl;
-        }
-      }
+  vhdlOutput << "entity " << circuit.getName() << " is\n"
+             << "generic (\n"
+             << "    " << "ram_width : natural := 34;\n"
+             << "    " << "ram_depth : natural := 2);\n" // buffer size
+             << "port (\n"
+             << "    " << "clk : in std_logic;\n"
+             << "    " << "rst : in std_logic;\n"
+             << std::endl;
+  // Generate input/output ports:
+  if (implementationType == TT) {
+    vhdlOutput << "    " << "cycle_count : in integer;\n" << std::endl;
+  }
+  std::map<std::string, int> trackInOutCounts {{"INPUT", 0}, {"OUTPUT", 0}};
+  for (auto const &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() == "INPUT") {
+      vhdlOutput << comp.genPortList(comp.getPortMapping(), false);
+      trackInOutCounts[comp.getType()]++;
     }
-    vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
+    if (comp.getType() == "OUTPUT") { // assume we always have (and thus terminate on) output actors
+      bool last = false;
+      if (trackInOutCounts[comp.getType()] + 1 ==
+          circuit.getOperatorCount("OUTPUT")) {
+        last = true;
+      }
+      vhdlOutput << comp.genPortList(comp.getPortMapping(), last);
+      trackInOutCounts[comp.getType()]++;
+    }
+  }
+  vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
 }
 
 
 void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
-                                          bool noOperators, std::ofstream &vhdlOutput) {// component declaration
+                                          bool noOperators, std::ofstream &vhdlOutput) {
   // top level intermediate signal names stored in these vectors
   std::vector<std::string> dataSignals;
   std::vector<std::string> validReadySignals;

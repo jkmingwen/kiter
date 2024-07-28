@@ -243,14 +243,31 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   // except for exec time mappings - set in setStartTimes()
   if (componentType == "INPUT" || componentType == "OUTPUT") { // expressed as top level ports
     std::string portName = dataflow->getGraphName();
-    if (componentType == "INPUT") {
-      portName += "_in_data_" + std::to_string(ioId);
-      addPortMapping(portName, portName, "std_logic_vector", "in");
-    } else { // top-level output
-      portName += "_out_data_" + std::to_string(ioId);
-      addPortMapping(portName, portName, "std_logic_vector", "out");
+    if (implementationType == TT) {
+      if (componentType == "INPUT") {
+        portName += "_in_data_" + std::to_string(ioId);
+        addPortMapping(portName, portName, "std_logic_vector", "in");
+      } else { // top-level output
+        portName += "_out_data_" + std::to_string(ioId);
+        addPortMapping(portName, portName, "std_logic_vector", "out");
+      }
+    } else {
+      if (componentType == "INPUT") {
+        std::string rdyPort = portName + "_in_ready_" + std::to_string(ioId);
+        std::string vldPort = portName + "_in_valid_" + std::to_string(ioId);
+        std::string dataPort = portName + "_in_data_" + std::to_string(ioId);
+        addPortMapping(rdyPort, rdyPort, "std_logic", "out");
+        addPortMapping(vldPort, vldPort, "std_logic", "in");
+        addPortMapping(dataPort, dataPort, "std_logic_vector", "in");
+      } else { // top-level output
+        std::string rdyPort = portName + "_out_ready_" + std::to_string(ioId);
+        std::string vldPort = portName + "_out_valid_" + std::to_string(ioId);
+        std::string dataPort = portName + "_out_data_" + std::to_string(ioId);
+        addPortMapping(rdyPort, rdyPort, "std_logic", "in");
+        addPortMapping(vldPort, vldPort, "std_logic", "out");
+        addPortMapping(dataPort, dataPort, "std_logic_vector", "out");
+      }
     }
-
   } else {
     addPortMapping("clk", "clk", "std_logic", "in");
     if (componentType == "const_value") {
