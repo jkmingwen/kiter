@@ -1085,7 +1085,7 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOut
 }
 
 
-void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::string, int> &operatorMap,
+void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
                                           bool noOperators, std::ofstream &vhdlOutput) {// component declaration
   // top level intermediate signal names stored in these vectors
   std::vector<std::string> dataSignals;
@@ -1095,8 +1095,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit, std::map<std::st
   // 1. Instantiate components for each operator in circuit
   vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
   if (!noOperators) { // only generate components if there are operators
-    // if (!dataDriven) {
-    std::map<std::string, int> trackDeclarations; // check if component has been declared (only need 1 per component type)
+    std::map<std::string, int> trackDeclarations; // only need 1 declaratin per component type so use this to check if component has been declared
     for (auto const &[v, comp] : circuit.getComponentMap()) {
       if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
         std::string name = comp.getPortMapName();
