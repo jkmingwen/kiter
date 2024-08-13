@@ -3,26 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 -- top-level entity declaration
-entity $ENTITY_NAME is
-  port ( clk : in std_logic;
-         rst : in std_logic;
-
-         op_in_ready_0 : out std_logic;
-         op_in_valid_0 : in std_logic;
-         op_in_data_0  : in std_logic_vector(33 downto 0) := (others => '0');
-
-         op_in_ready_1 : out std_logic;
-         op_in_valid_1 : in std_logic;
-         op_in_data_1  : in std_logic_vector(33 downto 0) := (others => '0');
-
-         op_in_ready_2 : out std_logic;
-         op_in_valid_2 : in std_logic;
-         op_in_data_2  : in std_logic_vector(33 downto 0) := (others => '0');
-
-         op_out_ready_0  : in std_logic;
-         op_out_valid_0  : out std_logic;
-         op_out_data_0   : out std_logic_vector(33 downto 0) := (others => '0') );
-end $ENTITY_NAME;
+$ENTITY_DECLARATION
 
 architecture connections of $ENTITY_NAME is
   constant operator_lifespan : integer := $OP_LIFESPAN;

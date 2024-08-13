@@ -224,6 +224,11 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     opLifespan = 1;
   }
 
+  // Set implementation name from operator type
+  if (implementationNames.count(componentType)) {
+    implementationName = implementationNames[componentType];
+  }
+
   // Assign instance name and mappings
   if (componentType == "const_value" || componentType == "output_selector") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
@@ -238,7 +243,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     implRefName = componentType;
   } else if (componentType == "Proj") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
-    implRefName = implementationNames[componentType] + "_" + std::to_string(outputPorts.size());
+    implRefName = implementationNames[componentType] + "_" +
+                  std::to_string(outputPorts.size());
+    implReplacementMap["$COMPONENT_NAME"] = implRefName;
   } else {
     portMapName = componentType;
     implRefName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
@@ -321,6 +328,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
         }
       } else {
+        std::stringstream validSignalRouting;
+        std::stringstream dataSignalRouting;
+        std::stringstream readySignalRouting;
         addPortMapping("num_phases", std::to_string(inputSignals.size()),
                        "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
@@ -331,6 +341,32 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                          inputSignals[i] + "_VALID", "std_logic", "in");
           addPortMapping("op_in_data_" + std::to_string(i),
                          inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          // generate implementation according to number of inputs
+          std::string phaseConditional = "elsif (current_phase = " + std::to_string(i) + ") then\n";
+          if (i == 0) {
+            phaseConditional = "if (current_phase = 0) then\n";
+            validSignalRouting << "op_out_valid_0 <= op_in_valid_0 when "
+                                  "(current_phase = 0) else\n";
+            dataSignalRouting << "op_out_data_0 <= op_in_data_0 when (current_phase = 0) else\n";
+          } else {
+            validSignalRouting << "op_in_valid_" << i
+                               << " when (current_phase = " << i << ") else\n";
+            dataSignalRouting << "op_in_data_" << i
+                              << " when (current_phase = " << i << ") else\n";
+          }
+          readySignalRouting << "op_in_ready_" << i
+                             << " <= op_out_ready_0 when (current_phase = " << i
+                             << ") else\n"
+                             << "'0';\n";
+          procBehavStream << phaseConditional
+                          << "        if (op_in_valid_" << i << " = '1' and op_out_ready_0 = '1') then\n"
+                          << "            next_phase <= (current_phase + 1) mod num_phases;\n"
+                          << "        end if;\n";
+          if (i + 1 == inputSignals.size()) {
+            procBehavStream << "    end if;" << std::endl;
+            validSignalRouting << "'0';" << std::endl;
+            dataSignalRouting << "\"0000000000000000000000000000000000\";" << std::endl;
+          }
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
           addPortMapping("op_out_ready_" + std::to_string(o),
@@ -340,6 +376,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           addPortMapping("op_out_data_" + std::to_string(o),
                          outputSignals[o] + "_DATA", "std_logic_vector", "out");
         }
+        implReplacementMap["$VALID_SIGNAL_ROUTING"] = validSignalRouting.str();
+        implReplacementMap["$READY_SIGNAL_ROUTING"] = readySignalRouting.str();
+        implReplacementMap["$DATA_SIGNAL_ROUTING"] = dataSignalRouting.str();
       }
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
@@ -361,6 +400,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                           << " <= in_data_0;" << std::endl;
         }
       } else {
+        std::stringstream validSignalRouting;
+        std::stringstream dataSignalRouting;
+        std::stringstream readySignalRouting;
         addPortMapping("num_phases", std::to_string(outputSignals.size()),
                        "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
@@ -379,7 +421,34 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                          outputSignals[o] + "_VALID", "std_logic", "out");
           addPortMapping("op_out_data_" + std::to_string(o),
                          outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          // generate implementation according to number of outputs
+          std::string phaseConditional =
+            "elsif (current_phase = " + std::to_string(o) + ") then\n";
+          if (o == 0) {
+            phaseConditional = "if (current_phase = " + std::to_string(o) + ") then\n";
+            readySignalRouting << "op_in_ready_0 <= op_out_ready_0 when (current_phase = 0) else\n";
+          } else {
+            readySignalRouting << "op_out_ready_" << o << " when (current_phase = " << o << ") else\n";
+          }
+          procBehavStream << phaseConditional
+                          << "        if (op_in_valid_0 = '1' and op_out_ready_" << o << " = '1') then\n"
+                          << "            next_phase <= (current_phase + 1) mod num_phases;\n"
+                          << "        end if;\n";
+          validSignalRouting << "op_out_valid_" << o
+                             << " <= op_in_valid_0 when (current_phase = " << o
+                             << ") else\n"
+                             << "'0';\n";
+          dataSignalRouting << "op_out_data_" << o
+                            << " <= op_in_data_0 when (current_phase = " << o << ") else\n"
+                            << "\"0000000000000000000000000000000000\";\n";
+          if (o + 1 == outputSignals.size()) {
+            procBehavStream << "end if;" << std::endl;
+            readySignalRouting << "'0';" << std::endl;
+          }
         }
+        implReplacementMap["$VALID_SIGNAL_ROUTING"] = validSignalRouting.str();
+        implReplacementMap["$READY_SIGNAL_ROUTING"] = readySignalRouting.str();
+        implReplacementMap["$DATA_SIGNAL_ROUTING"] = dataSignalRouting.str();
       }
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
@@ -398,32 +467,74 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       for (auto o : outputSignals) {
         addPortMapping("out_data", o, "std_logic_vector", "out");
       }
-    } else { // FPC operators
-      if (implementationType == DD) { // HS protocol requires reset
-        if (componentType == "Proj") {
-          addPortMapping("bit_width", "ram_width", "integer", "", true);
-        }
+    } else if (componentType == "Proj") {
+      std::stringstream outDataStream; // to define implementation behaviour
+      std::stringstream outValidStream;
+      std::stringstream outReadyStream;
+      if (implementationType == DD) { // Proj only used in data driven implementation
+        addPortMapping("bit_width", "ram_width", "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-          if (implementationType == DD) { // additional ports for HS protocol
             addPortMapping("op_in_ready_" + std::to_string(i),
                            inputSignals[i] + "_READY", "std_logic", "out");
             addPortMapping("op_in_valid_" + std::to_string(i),
                            inputSignals[i] + "_VALID", "std_logic", "in");
             addPortMapping("op_in_data_" + std::to_string(i),
                            inputSignals[i] + "_DATA", "std_logic_vector", "in");
-          }
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
-          if (implementationType == DD) { // additional ports for HS protocol
+          std::string boolAnd = " AND ";
+          if (o + 1 == outputSignals.size()) {
+            boolAnd = "";
+          }
             addPortMapping("op_out_ready_" + std::to_string(o),
                            outputSignals[o] + "_READY", "std_logic", "in");
             addPortMapping("op_out_valid_" + std::to_string(o),
                            outputSignals[o] + "_VALID", "std_logic", "out");
             addPortMapping("op_out_data_" + std::to_string(o),
                            outputSignals[o] + "_DATA", "std_logic_vector", "out");
-          }
+            outDataStream << "op_out_data_" << o
+                          << " <= temp_data_0(bit_width-1 downto 0);"
+                          << std::endl;
+            outValidStream << "op_out_valid_" << o << " <= is_stored_0;"
+                           << std::endl;
+            outReadyStream << "op_out_ready_" << o << "='1'" << boolAnd;
         }
+      }
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+      implReplacementMap["$OUT_DATA_MAPPING"] = outDataStream.str();
+      implReplacementMap["$OUT_VALID_MAPPING"] = outValidStream.str();
+      implReplacementMap["$OUT_READY_SIGS"] = outReadyStream.str();
+    } else { // FPC operators
+      if (implementationType == DD) { // HS protocol requires reset
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("op_in_ready_" + std::to_string(i),
+                         inputSignals[i] + "_READY", "std_logic", "out");
+          addPortMapping("op_in_valid_" + std::to_string(i),
+                         inputSignals[i] + "_VALID", "std_logic", "in");
+          addPortMapping("op_in_data_" + std::to_string(i),
+                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("op_out_ready_" + std::to_string(o),
+                         outputSignals[o] + "_READY", "std_logic", "in");
+          addPortMapping("op_out_valid_" + std::to_string(o),
+                         outputSignals[o] + "_VALID", "std_logic", "out");
+          addPortMapping("op_out_data_" + std::to_string(o),
+                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+        }
+        if (inputSignals.size() == 1) {
+          implReplacementMap["$HSM_TYPE"] = "_one";
+        } else {
+          implReplacementMap["$HSM_TYPE"] = "";
+        }
+        implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+        implReplacementMap["$ENTITY_NAME"] = componentType;
+        implReplacementMap["$COMPONENT_NAME"] = componentType + "_implementation";
+        implReplacementMap["$FLOPOCO_OP_NAME"] =
+            implementationNames[componentType] + "_f" + std::to_string(opFreq);
+        implReplacementMap["$OP_LIFESPAN"] = std::to_string(opLifespan);
       } else { // implementationType == TT
         for (auto i = 0; i < inputSignals.size(); i++) {
           std::vector<std::string> inPortNames = opInputPorts.at(componentType);
@@ -866,8 +977,27 @@ void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) co
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
     }
-  } else {
-    std::map<std::string, std::string> replacementWords;
+  } else { // data driven implementation
+    if (componentType == "Proj") {
+      refFileName = "hs_splitter.vhdl";
+      dstFileName = implRefName + ".vhdl";
+    } else if (componentType == "input_selector") {
+      refFileName = "input_selector.vhdl";
+    } else if (componentType == "output_selector") {
+      refFileName = "output_selector.vhdl";
+    } else if (componentType == "const_value") {
+      refFileName = "const_value_n_outputs.vhdl";
+    } else { // FPC operator and HS wrapper
+      refFileName =
+          "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";
+      // copy over FPC operator implementation
+      const auto copyOptions = std::filesystem::copy_options::update_existing |
+        std::filesystem::copy_options::recursive;
+      std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
+                                std::to_string(opFreq) + ".vhdl",
+                            dstDir + implementationName + "_f" +
+                            std::to_string(opFreq) + ".vhdl", copyOptions);
+    }
   }
 
   copyFileAndReplaceWords(refDir + refFileName, dstDir + dstFileName,

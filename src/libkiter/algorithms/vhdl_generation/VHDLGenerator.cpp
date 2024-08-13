@@ -451,48 +451,19 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
 void algorithms::generateOperators(VHDLCircuit &circuit) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
-  // Generate VHDL files for individual components
+  std::map<std::string, int> trackImplementations; // to check if component has been implemented
+  for (auto const &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+      std::string name = comp.getPortMapName();
+      if (!trackImplementations.count(name)) {
+        trackImplementations[name] = 1;
+        comp.genImplementation(referenceDir, componentDir);
+      }
+    }
+  }
+  generateAudioInterfaceComponents();
   if (dataDriven) { // include HS interface components for data driven operator execution
-    for (auto const &op : operatorMap) { // operatorMap <first: operator type, second: occurances>
-      VERBOSE_INFO("Generate VHDL component file for " << op.first);
-      // track number of inputs/outputs for cases where operator can have different number of inputs/outputs
-      std::map<int, int> inputCounts;
-      std::map<int, int> outputCounts;
-      inputCounts = circuit.getNumInputs(op.first);
-      outputCounts = circuit.getNumOutputs(op.first);
-      if (op.first == "Proj") {
-        generateSplitterOperators(outputCounts);
-      } else if (op.first == "const_value") {
-        generateConstOperator(outputCounts);
-      } else if (op.first == "select2") {
-        generateRoutingOperators(circuit.getFirstComponentByType(op.first));
-      } else if (op.first == "fp_floor") {
-        generateFloorOperator(circuit.getFirstComponentByType(op.first));
-      } else if (op.first == "delay") {
-        generateFPCOperator(circuit.getFirstComponentByType(op.first).getImplementationName());
-      } else if (circuit.getFirstComponentByType(op.first).isUI()) {
-        generateUIOperator(circuit.getFirstComponentByType(op.first));
-      } else if (op.first == "input_selector" || op.first == "output_selector") {
-        generateInputOutputSelectorOperator(circuit.getFirstComponentByType(op.first),
-                                            inputCounts, outputCounts);
-      } else {
-        generateOperator(circuit.getFirstComponentByType(op.first));
-      }
-    }
     generateHSInterfaceComponents();
-    generateAudioInterfaceComponents();
-  } else {
-    std::map<std::string, int> trackImplementations; // to check if component has been implemented
-    for (auto const &[v, comp] : circuit.getComponentMap()) {
-      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-        std::string name = comp.getPortMapName();
-        if (!trackImplementations.count(name)) {
-          trackImplementations[name] = 1;
-          comp.genImplementation(referenceDir, componentDir);
-        }
-      }
-    }
-    generateAudioInterfaceComponents();
   }
 }
 

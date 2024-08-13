@@ -4,18 +4,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity $COMPONENT_NAME is
-  generic ( num_phases : integer );
-  port ( clk        : in std_logic;
-         rst      : in std_logic;
-
-         op_in_ready_0 : out std_logic;
-         op_in_valid_0 : in std_logic;
-         op_in_data_0  : in std_logic_vector (33 downto 0);
-
-         $PORT_LIST
-         );
-end $COMPONENT_NAME;
+$ENTITY_DECLARATION
 
 architecture Behavioral of $COMPONENT_NAME is
     signal current_phase, next_phase : integer := 0;

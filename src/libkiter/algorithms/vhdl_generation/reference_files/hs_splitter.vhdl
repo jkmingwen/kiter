@@ -2,20 +2,9 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity hs_splitter_$NUM_OUTPUTS is
-  generic (bit_width : natural);
-  port ( clk        : in std_logic;
-         rst      : in std_logic;
+$ENTITY_DECLARATION
 
-         op_in_ready_0 : out std_logic;
-         op_in_valid_0 : in std_logic;
-         op_in_data_0  : in std_logic_vector (bit_width-1 downto 0);
-
-         $OUTPUT_PORTS
-         );
-end hs_splitter_$NUM_OUTPUTS;
-
-architecture Behavioral of hs_splitter_$NUM_OUTPUTS is
+architecture Behavioral of $COMPONENT_NAME is
   signal temp_data_0   : std_logic_vector (bit_width-1 downto 0);
   signal is_in_ready_0 : std_logic := '1';
   signal is_stored_0   : std_logic := '0';
