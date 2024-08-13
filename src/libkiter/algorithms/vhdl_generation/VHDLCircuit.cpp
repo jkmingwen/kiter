@@ -42,10 +42,12 @@ void VHDLCircuit::addOutputPort(std::string portName,
 
 // Assign start times to component in component map with matching name
 // Needed to use this roundabout method to modify component as getComponentMap is const
-void VHDLCircuit::setCompStartTime(std::string name, std::vector<TIME_UNIT> times) {
+void VHDLCircuit::setCompStartTime(std::string name,
+                                   std::vector<TIME_UNIT> times,
+                                   TIME_UNIT slack) {
   for (auto &[v, comp] : this->componentMap) {
     if (name == comp.getUniqueName()) {
-      comp.setStartTimes(times);
+      comp.setStartTimes(times, slack);
     }
   }
 }

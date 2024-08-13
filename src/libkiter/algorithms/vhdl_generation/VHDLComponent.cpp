@@ -217,13 +217,22 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     }
   }
 
+  // Set lifespan depending on operator type
+  if (operatorLifespans.at(opFreq).count(componentType)) {
+    opLifespan = operatorLifespans.at(opFreq).count(componentType);
+  } else {
+    opLifespan = 1;
+  }
+
   // Assign instance name and mappings
   if (componentType == "const_value" || componentType == "output_selector") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
     implRefName = portMapName;
+    implReplacementMap["$COMPONENT_NAME"] = implRefName;
   } else if (componentType == "input_selector") {
     portMapName = componentType + "_" + std::to_string(inputPorts.size());
     implRefName = portMapName;
+    implReplacementMap["$COMPONENT_NAME"] = implRefName;
   } else if (componentType == "sbuffer") {
     portMapName = componentType;
     implRefName = componentType;
@@ -274,6 +283,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       addPortMapping("rst", "rst", "std_logic", "in");
       addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
                      true);
+      std::stringstream procBehavStream; // to define implementation behaviour
       for (auto o = 0; o < outputSignals.size(); o++) {
         if (implementationType == DD) { // additional ports for HS protocol
           addPortMapping("out_ready_" + std::to_string(o),
@@ -282,17 +292,30 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                          outputSignals[o] + "_VALID", "std_logic", "out");
           addPortMapping("out_data_" + std::to_string(o),
                          outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          procBehavStream << "out_valid_" << o << " <= '1';\n"
+                          << "out_data_" << o << " <= value;\n" << std::endl;
         } else {
-          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                         "std_logic_vector", "out");
+          procBehavStream << "out_data_" << o << " <= value;\n" << std::endl;
         }
       }
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "input_selector") {
+      std::stringstream procBehavStream; // to define implementation behaviour
       if (implementationType == TT) {
         addPortMapping("ram_width", "ram_width", "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
         addPortMapping("cycle_count", "cycle_count", "integer", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-          addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i],
+                         "std_logic_vector", "in");
+          addPortMapping("exec_time_" + std::to_string(i), "0", "integer", "",
+                         true); // NOTE placeholder port so entity declaration can be called and produce the right ports; valid exec times will only be set in setStartTime()
+          procBehavStream << "when exec_time_" << i
+                          << " => out_data_0 <= in_data_" + std::to_string(i)
+                          << ";" << std::endl;
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
           addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
@@ -318,8 +341,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                          outputSignals[o] + "_DATA", "std_logic_vector", "out");
         }
       }
-
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "output_selector") {
+      std::stringstream procBehavStream; // to define implementation behaviour
       if (implementationType == TT) {
         addPortMapping("ram_width", "ram_width", "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
@@ -328,7 +353,12 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
-          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                         "std_logic_vector", "out");
+          addPortMapping("exec_time_" + std::to_string(o), "0", "integer", "",
+                         true); // NOTE placeholder port so entity declaration can be called and produce the right ports; valid exec times will only be set in setStartTime()
+          procBehavStream << "when exec_time_" << o << " => out_data_" << o
+                          << " <= in_data_0;" << std::endl;
         }
       } else {
         addPortMapping("num_phases", std::to_string(outputSignals.size()),
@@ -351,6 +381,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                          outputSignals[o] + "_DATA", "std_logic_vector", "out");
         }
       }
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "sbuffer") {
       addPortMapping("ram_width", "ram_width", "integer", "", true);
       addPortMapping("buffer_size",
@@ -592,7 +624,8 @@ int VHDLComponent::getSBufferInitTokens() const {
   return std::stoi(initTokens);
 }
 
-void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
+void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
+                                  TIME_UNIT slack) {
   if (!times.size()) {
     VERBOSE_WARNING("Adding empty vector of start times for "
                     << this->getUniqueName());
@@ -605,19 +638,19 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times) {
         VERBOSE_ASSERT(times.size() == inputPorts.size(),
                        "Number of start times and input ports don't match");
         addPortMapping("exec_time_" + std::to_string(n),
-                       std::to_string((int)time), "integer", "", true);
+                       std::to_string((int)(time + slack)), "integer", "", true);
       }
     } else if (componentType == "output_selector") {
       if (implementationType == TT) {
         VERBOSE_ASSERT(times.size() == outputPorts.size(),
                        "Number of start times and output ports don't match");
         addPortMapping("exec_time_" + std::to_string(n),
-                       std::to_string((int)time), "integer", "", true);
+                       std::to_string((int)(time + slack)), "integer", "", true);
       }
     } else if (componentType == "sbuffer") {
-      addPortMapping("push_start", std::to_string((int)time), "integer", "",
+      addPortMapping("push_start", std::to_string((int)(time + slack)), "integer", "",
                      true);
-      addPortMapping("pop_start", std::to_string((int)time + 1), "integer", "",
+      addPortMapping("pop_start", std::to_string((int)(time + slack + 1)), "integer", "",
                      true);
     }
     n++;
@@ -778,7 +811,24 @@ std::string VHDLComponent::genDeclaration() const {
   return codeOut.str();
 }
 
+std::string VHDLComponent::genEntityDecl() const {
+  std::stringstream codeOut;
+  codeOut << "entity " << implRefName << " is"
+          << std::endl;
+  if (genericPorts.size()) {
+    codeOut << "generic (" << std::endl;
+    codeOut << genPortList(genericPorts);
+    codeOut << ");" << std::endl;
+  }
+  if (ports.size()) {
+    codeOut << "port (" << std::endl;
+    codeOut << genPortList(ports);
+    codeOut << ");" << std::endl;
+  }
+  codeOut << "end " << implRefName << ";" << std::endl;
 
+  return codeOut.str();
+}
 
 std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::string> replacements) const {
   std::stringstream codeOut;
@@ -795,6 +845,33 @@ std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::str
   }
 
   return codeOut.str();
+}
+
+// Generate VHDL implementation of the given component --- determined by component type
+void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) const {
+  std::string refFileName = implRefName + ".vhdl";
+  std::string dstFileName = portMapName + ".vhdl";
+  if (implementationType == TT) {
+    if (componentType == "input_selector") {
+      refFileName = "s_input_selector.vhdl";
+    } else if (componentType == "output_selector") { // output selector // TODO account for OS broadcast behaviour
+      refFileName = "s_output_selector.vhdl";
+    } else if (componentType == "const_value") {
+      refFileName = "const_value_n_outputs.vhdl";
+    } else if (componentType == "sbuffer") {
+      // do nothing
+    } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+      refDir += "/ui/";
+    } else {
+      refDir += "/operators/";
+      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+    }
+  } else {
+    std::map<std::string, std::string> replacementWords;
+  }
+
+  copyFileAndReplaceWords(refDir + refFileName, dstDir + dstFileName,
+                          implReplacementMap);
 }
 
 implType VHDLComponent::getImplType() const {

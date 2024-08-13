@@ -16,9 +16,6 @@
 
 VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
-void copyFileAndReplaceWords(
-    std::string refFile, std::string dstFile,
-    const std::map<std::string, std::string> &replacementMap);
 int getOperatorLifespan(const std::string &opType, int operatorFreq);
 const std::vector<std::string> getImplementationInputPorts(std::string opType);
 const std::vector<std::string> getImplementationOutputPorts(std::string opType);

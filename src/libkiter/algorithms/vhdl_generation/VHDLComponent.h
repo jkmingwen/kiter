@@ -57,7 +57,7 @@ class VHDLComponent {
   void addInputSignal(models::Dataflow *const dataflow, const Edge e);
   void addOutputSignal(models::Dataflow *const dataflow, const Edge e);
   int getSBufferInitTokens() const;
-  void setStartTimes(std::vector<TIME_UNIT> times);
+  void setStartTimes(std::vector<TIME_UNIT> times, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
                       std::string direction, bool isGeneric = false,
@@ -74,14 +74,17 @@ class VHDLComponent {
                           std::string relation = ":",
                           std::string delim = ";",
                           std::string term = "") const;
-  std::string genDeclaration() const; // generate instantiation of component
+  std::string genDeclaration() const; // generate instantiation of component (when used in another component)
+  std::string genEntityDecl() const; // generate entity declaration (for component itself)
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
+  void genImplementation(std::string refDir, std::string dstDir) const;
 
  private:
   Vertex actor;
   implType implementationType;
   int opFreq;
+  int opLifespan;
   std::string uniqueName;
   std::vector<std::string> inputPorts;
   std::vector<std::string> outputPorts;
@@ -112,7 +115,11 @@ class VHDLComponent {
   std::map<std::string, std::string> genericPorts; // generic port -> signal type
   std::map<std::string, std::string> ports; // port -> signal type
   std::string portMapName; // for use when instantiating component in port mapping
-  std::string implRefName; // name used to reference implementation // TODO simplify all the different "names"
+  std::string implRefName; // name used to reference implementation // TODO
+                           // simplify all the different "names"
+  std::map<std::string, std::string>
+      implReplacementMap; // key words that need to replaced to properly define
+                          // the implementation of the given component
 
   std::map<std::string, std::vector<std::string>> opInputPorts = {
       {"fp_add", {"X", "Y"}},

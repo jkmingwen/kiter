@@ -6,17 +6,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity $COMPONENT_NAME is
-    generic (ram_width : integer;
-             $EXEC_TIME_PORTS
-             );
-    port (
-        clk         : in  std_logic;
-        rst       : in  std_logic;
-        cycle_count : in integer;
-        $OUTPUT_PORTS
-        in_data_0   : in  std_logic_vector(ram_width-1 downto 0));
-end $COMPONENT_NAME;
+$ENTITY_DECLARATION
 
 architecture Behavioral of $COMPONENT_NAME is
 
