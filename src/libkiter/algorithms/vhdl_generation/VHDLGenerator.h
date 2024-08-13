@@ -28,19 +28,11 @@ namespace algorithms {
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(VHDLCircuit &circuit);
-  void generateConstOperator(std::map<int, int> outputCounts);
   void generateSplitterOperators(std::map<int, int> outputCounts);
   void generateRoutingOperators(VHDLComponent comp);
   void generateFloorOperator(VHDLComponent comp);
-  void generateInputOutputSelectorOperator(VHDLComponent comp,
-                                           std::map<int, int> inputCounts,
-                                           std::map<int, int> outputCounts);
-  void generateInputOutputSelectorImplementation(VHDLComponent comp,
-                                                 std::map<int, int> inputCounts,
-                                                 std::map<int, int> outputCounts);
   void generateFPCOperator(std::string compImplementationName);
   void generateUIOperator(VHDLComponent comp);
-  void generateOperator(VHDLComponent comp);
 
 
     // GenerateCircuit helper functions
