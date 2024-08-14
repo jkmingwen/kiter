@@ -227,6 +227,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   // Set implementation name from operator type
   if (implementationNames.count(componentType)) {
     implementationName = implementationNames[componentType];
+  } else {
+    VERBOSE_WARNING("No implementation name for " << componentType);
   }
 
   // Assign instance name and mappings
@@ -999,7 +1001,6 @@ void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) co
                             std::to_string(opFreq) + ".vhdl", copyOptions);
     }
   }
-
   copyFileAndReplaceWords(refDir + refFileName, dstDir + dstFileName,
                           implReplacementMap);
 }

@@ -17,7 +17,6 @@ VHDLCircuit::VHDLCircuit() {}
    @param newComp VHDLComponent to add to the circuit.
  */
 void VHDLCircuit::addComponent(VHDLComponent newComp) {
-  newComp.setImplementationName(this->getOperatorImplementationName(newComp.getType()));
   this->componentMap.insert(std::make_pair(newComp.getActor(), newComp));
   // keep track of counts of operator types present in circuit
   if (this->operatorMap.count(newComp.getType())) {
