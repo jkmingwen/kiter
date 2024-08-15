@@ -19,10 +19,10 @@ architecture Behavioral of cycle_counter is
 begin
 
     process (clk)
-    begin
         if rising_edge(clk) then
-            clock_count <= clock_count + 1;
-            if clock_count = period-1 then
+            if clock_count < period-1 then
+                clock_count <= clock_count + 1;
+            else
                 clock_count <= 0;
             end if;
         end if;
