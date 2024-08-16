@@ -31,7 +31,7 @@ begin
             end if;
         end if;
         if (rst = '0') then
-            clk_cnt := 0;
+            clk_cnt := -1;
         end if;
     end process;
 
