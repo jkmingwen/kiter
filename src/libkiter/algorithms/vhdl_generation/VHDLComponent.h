@@ -56,7 +56,7 @@ class VHDLComponent {
   void addHSOutputSignal(const std::string &signalName);
   void addInputSignal(models::Dataflow *const dataflow, const Edge e);
   void addOutputSignal(models::Dataflow *const dataflow, const Edge e);
-  int getSBufferInitTokens() const;
+  int getInitTokens() const;
   void setStartTimes(std::vector<TIME_UNIT> times, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
@@ -189,7 +189,8 @@ class VHDLComponent {
       {"checkbox", "checkbox"},
       {"button", "button"},
       {"sbuffer", "sbuffer"},
-      {"Proj", "hs_splitter"}};
+      {"Proj", "hs_splitter"},
+      {"shiftreg", "pipo_shift_reg"}};
 
   std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "vslider",
                                       "nentry", "vbargraph", "hbargraph"}; // NOTE temporary workaround to handle UI components

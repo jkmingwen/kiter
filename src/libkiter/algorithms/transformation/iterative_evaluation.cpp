@@ -35,11 +35,15 @@ std::set<std::string> nonEvalOps = { // operators that can't be evaluated
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
+  bool useShiftReg = false;
   implType t = TT;
   bool dataDrivenImpl = false;  // we either prepare the SDF for a data driven or time triggered implementation
   if (params.find("DATA_DRIVEN") != params.end()) {
     dataDrivenImpl = true;
     t = DD;
+  }
+  if (params.find("SHIFT_REG") != params.end()) {
+    useShiftReg = true;
   }
 
   VERBOSE_INFO("Beginning iterative evaluation...");
@@ -63,7 +67,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               VERBOSE_INFO("\tDetected static delay");
               VERBOSE_INFO("\t\tDelay amount: " << delayAmt
                            << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
-              delayToBuffer(dataflow_prime, v, delayArg, delayAmt);
+              delayToBuffer(dataflow_prime, v, delayArg, delayAmt, useShiftReg);
               delayDetected = true;
               break;
             }
@@ -221,10 +225,10 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
                         getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);
   TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
                          getOperatorLifespan("fp_prod", operatorFreq);
-  if (params.find("BROADCAST") != params.end()) {
-    inExecDur += getOperatorLifespan("sbuffer", operatorFreq);
-    outExecDur += getOperatorLifespan("sbuffer", operatorFreq);
-  }
+  // if (params.find("BROADCAST") != params.end()) {
+  //   inExecDur += getOperatorLifespan("sbuffer", operatorFreq);
+  //   outExecDur += getOperatorLifespan("sbuffer", operatorFreq);
+  // }
   Vertex lIn, rIn;
     VERBOSE_INFO("Binding input/output selector edges in graph:");
       {ForEachVertex(dataflow_prime, v) {
@@ -567,17 +571,22 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
 }
 
-// replace delay with SBuffer --- amount of delay is encoded in the name of the
+// replace delay with SBuffer/Shift register --- amount of delay is encoded in the name of the
 // SBuffer rather than initial token to be later reflected in the SBuffer's VHDL implementation
 void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
-                               Edge delayArg, int delayAmt) {
+                               Edge delayArg, int delayAmt, bool useShiftReg) {
   std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
 
   std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
   TIME_UNIT compDur = 2;
-  dataflow->setVertexType(v, "sbuffer");
+  std::string newType = "sbuffer";
+  if (useShiftReg) {
+    newType = "shiftreg";
+    compDur = 1;
+  }
+  dataflow->setVertexType(v, newType);
   dataflow->setVertexDuration(v, {compDur});
   dataflow->setVertexName(v, newName);
   dataflow->setReentrancyFactor(v, 1);

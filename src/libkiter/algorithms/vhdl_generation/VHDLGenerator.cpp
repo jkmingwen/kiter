@@ -329,6 +329,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
+    VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
     while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
 
       VERBOSE_INFO("getMultiOutActors is not empty");
@@ -379,7 +380,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       scheduling::CSDF_1PeriodicScheduling(broadcastTimingModel, 0);
     for (const auto &item : res.getTaskSchedule()) {
       std::string actorBaseName =
-          broadcastTimingModel->getVertexName(broadcastTimingModel->getVertexById(item.first));
+        broadcastTimingModel->getVertexName(broadcastTimingModel->getVertexById(item.first));
       actorBaseName = actorBaseName.substr(0, actorBaseName.find("_"));
       execTimes[actorBaseName] = item.second.periodic_starts.second;
     }
@@ -401,10 +402,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
         outputStarts[comp.getIOId()] = startTimes.front();
       }
-    } else if (comp.getType() == "sbuffer" && dataflow->getPhasesQuantity(v) > 1) {
+    } else if ((comp.getType() == "sbuffer" || comp.getType() == "shiftreg") &&
+               dataflow->getPhasesQuantity(v) > 1) {
       // sbuffers used for broadcasting OS signal have >1 exec phase
       VERBOSE_ASSERT(comp.getInputEdges().size() == 1,
-                     "sbuffers should only have 1 input");
+                     "buffers should only have 1 input");
       std::string srcName = dataflow->getVertexName(dataflow->getEdgeSource(
           dataflow->getEdgeByName(comp.getInputEdges().front())));
       srcName = srcName.substr(0, srcName.find("_"));

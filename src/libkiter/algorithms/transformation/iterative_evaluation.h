@@ -39,7 +39,7 @@ namespace algorithms {
   void bypassDelay(models::Dataflow *const dataflow, Vertex v, Edge inputSig,
                    Edge delayArg, int delayAmt);
   void delayToBuffer(models::Dataflow *const dataflow, Vertex v,
-                     Edge delayArg, int delayAmt);
+                     Edge delayArg, int delayAmt, bool useShiftReg);
   void bypassProj(models::Dataflow *const dataflow, Vertex v);
   void routeMultiOutDelay(models::Dataflow* const dataflow, Vertex v);
   void applyResult(models::Dataflow* const dataflow, Vertex v, std::string result);

@@ -234,7 +234,7 @@ void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
         if (!visited[adj.first]) {
           visited[adj.first] = true;
           visitQueue.push_back(adj.first);
-          VERBOSE_ASSERT(dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).size() == 1, "Currently only supports computing execution timings of single phase actors.")
+          VERBOSE_ASSERT(dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).size() == 1, "Currently only supports computing execution timings of single phase actors, " << dataflow->getVertexName(dataflow->getVertexById(adj.first)) << " (" << dataflow->getVertexType(dataflow->getVertexById(adj.first)) << ") has more than 1 phase.")
           int opLifespan = dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).front();
           if (execTimes[adj.first] <= execTimes[vId] + opLifespan) { // always set to any higher existing computed exec time
             execTimes[adj.first] = execTimes[vId] + opLifespan;

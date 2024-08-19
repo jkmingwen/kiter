@@ -248,6 +248,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     implRefName = implementationNames[componentType] + "_" +
                   std::to_string(outputPorts.size());
     implReplacementMap["$COMPONENT_NAME"] = implRefName;
+  } else if (componentType == "shiftreg") {
+    portMapName = "pipo";
+    implRefName = "pipo_shift_reg";
   } else {
     portMapName = componentType;
     implRefName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
@@ -457,12 +460,23 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     } else if (componentType == "sbuffer") {
       addPortMapping("ram_width", "ram_width", "integer", "", true);
       addPortMapping("buffer_size",
-                     std::to_string(this->getSBufferInitTokens() + 1), "integer",
+                     std::to_string(this->getInitTokens() + 1), "integer",
                      "", true);
-      addPortMapping("init", std::to_string(this->getSBufferInitTokens()),
+      addPortMapping("init", std::to_string(this->getInitTokens()),
                      "integer", "", true);
       addPortMapping("rst", "rst", "std_logic", "in");
       addPortMapping("cycle_count", "cycle_count", "integer", "in");
+      for (auto i : inputSignals) {
+        addPortMapping("in_data", i, "std_logic_vector", "in");
+      }
+      for (auto o : outputSignals) {
+        addPortMapping("out_data", o, "std_logic_vector", "out");
+      }
+    } else if (componentType == "shiftreg") {
+      addPortMapping("depth", std::to_string(this->getInitTokens()),
+                     "integer", "", true);
+      addPortMapping("period", std::to_string(5209), "integer", "", true);
+      addPortMapping("rst", "rst", "std_logic", "in");
       for (auto i : inputSignals) {
         addPortMapping("in_data", i, "std_logic_vector", "in");
       }
@@ -729,8 +743,8 @@ void VHDLComponent::addOutputSignal(models::Dataflow *const dataflow,
   }
 }
 
-int VHDLComponent::getSBufferInitTokens() const {
-  VERBOSE_ASSERT(this->getType() == "sbuffer",
+int VHDLComponent::getInitTokens() const {
+  VERBOSE_ASSERT((this->getType() == "sbuffer" || this->getType() == "shiftreg"),
                  "Can only get initial tokens from SBuffers");
   std::string initTokens =
       this->getUniqueName().substr(this->getUniqueName().find("INIT") + 4);
@@ -756,7 +770,7 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
     } else if (componentType == "output_selector") {
       if (implementationType == TT) {
         VERBOSE_ASSERT(times.size() == outputPorts.size(),
-                       "Number of start times and output ports don't match");
+                       "Number of start times (" << times.size() << ") and output ports (" << outputPorts.size()<< ") don't match");
         addPortMapping("exec_time_" + std::to_string(n),
                        std::to_string((int)(time + slack)), "integer", "", true);
       }
@@ -764,6 +778,9 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
       addPortMapping("push_start", std::to_string((int)(time + slack)), "integer", "",
                      true);
       addPortMapping("pop_start", std::to_string((int)(time + slack + 1)), "integer", "",
+                     true);
+    } else if (componentType == "shiftreg") {
+      addPortMapping("load", std::to_string((int)(time + slack + 1)), "integer", "",
                      true);
     }
     n++;
@@ -961,7 +978,10 @@ std::string VHDLComponent::genPortMapping(int id, std::map<std::string, std::str
 }
 
 // Generate VHDL implementation of the given component --- determined by component type
-void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) const {
+void VHDLComponent::genImplementation(std::string refDir,
+                                      std::string dstDir) const {
+  const auto copyOptions = std::filesystem::copy_options::update_existing |
+        std::filesystem::copy_options::recursive;
   std::string refFileName = implRefName + ".vhdl";
   std::string dstFileName = portMapName + ".vhdl";
   if (implementationType == TT) {
@@ -973,6 +993,13 @@ void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) co
       refFileName = "const_value_n_outputs.vhdl";
     } else if (componentType == "sbuffer") {
       // do nothing
+    } else if (componentType == "shiftreg") {
+      refFileName = "pipo_shift_reg.vhdl";
+      // extra implementation files for shift register
+      std::filesystem::copy(refDir + "pipo_shift_reg_n.vhdl",
+                            dstDir + "pipo_shift_reg_n.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "pipo_shift_reg_one.vhdl",
+                            dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refDir += "/ui/";
     } else {
@@ -993,8 +1020,6 @@ void VHDLComponent::genImplementation(std::string refDir, std::string dstDir) co
       refFileName =
           "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";
       // copy over FPC operator implementation
-      const auto copyOptions = std::filesystem::copy_options::update_existing |
-        std::filesystem::copy_options::recursive;
       std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
                                 std::to_string(opFreq) + ".vhdl",
                             dstDir + implementationName + "_f" +

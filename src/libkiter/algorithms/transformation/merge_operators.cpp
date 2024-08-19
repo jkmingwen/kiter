@@ -297,7 +297,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       if (!modelOSBroadcastTimings) {
         dataflow->setVertexDuration(new_os, execDurations);
       } else {
-        // to get the right execution timings, OS has longer exec duration (equal to SBuffer)
+        // workaround to get the right execution timings; OS set to exec duration equal to SBuffer
         dataflow->setVertexDuration(new_os, std::vector<TIME_UNIT>(vertices.size(), 2));
       }
     }
