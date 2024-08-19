@@ -29,6 +29,8 @@ bool osAsBroadcast = false; // used for when the output selector should act as a
 bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
 implType t = TT;
+std::string bufferType = "sbuffer"; // by default
+std::string initTokens = "0"; // SBuffer initial tokens
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
@@ -72,6 +74,12 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   if (params.find("DATA_DRIVEN") != params.end()) {
     VERBOSE_INFO("Setting implementation type to data-driven");
     t = DD;
+  }
+
+  if (params.find("SHIFT_REG") != params.end()) {
+    VERBOSE_INFO("Setting buffer type to shift registers");
+    bufferType = "shiftreg";
+    initTokens = "1";
   }
 
   // check and adjust for any operators with multiple I/Os
@@ -339,8 +347,8 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       if (osAsBroadcast) {
         std::string edgeName = ("broadcast" + edge.second[i]);
         Vertex buffer = dataflow->addVertex(
-            "sbuffer" + std::to_string(broadcastBufferCnt) + "INIT0");
-        dataflow->setVertexType(buffer, "sbuffer");
+            bufferType + std::to_string(broadcastBufferCnt) + "INIT" + initTokens);
+        dataflow->setVertexType(buffer, bufferType);
         dataflow->setPhasesQuantity(buffer, vertices.size());
         dataflow->setVertexDuration(buffer, std::vector<TIME_UNIT>(vertices.size(), 2));
         broadcastBufferCnt++;
