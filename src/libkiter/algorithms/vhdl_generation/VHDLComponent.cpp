@@ -117,7 +117,6 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     }}
   // Rearrange output ports and edges according to output selector phases of execution
   if (this->getType() == "output_selector") {
-    int outEdgeCount = 0;
     {ForOutputEdges(dataflow, this->actor, e) {
         std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
         if (inputVector.size() > 1) {
@@ -131,10 +130,22 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
               this->outputSignals.at(exec) = name;
             }
           }
-        } else { // output selector is the broadcasting type
+        }
+      }}
+    VERBOSE_ASSERT(this->getOutputSignals().size() == this->outputEdges.size(),
+                   this->getUniqueName() << ": Output signals after reordering != output edges(" << this->getOutputSignals().size() << " != " << this->outputEdges.size() << ")");
+  }
+
+  if (this->getType() == "broadcast") {
+    int outEdgeCount = 0;
+    {ForOutputEdges(dataflow, this->actor, e) {
+        std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
+        VERBOSE_ASSERT(inputVector.size() == 1,
+                       "Broadcast component should only have 1 phase of "
+                       "execution, currently has "
+                           << inputVector.size());
           this->outputSignals.at(outEdgeCount) = dataflow->getEdgeName(e);
           outEdgeCount++;
-        }
       }}
     VERBOSE_ASSERT(this->getOutputSignals().size() == this->outputEdges.size(),
                    this->getUniqueName() << ": Output signals after reordering != output edges(" << this->getOutputSignals().size() << " != " << this->outputEdges.size() << ")");
@@ -232,7 +243,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   }
 
   // Assign instance name and mappings
-  if (componentType == "const_value" || componentType == "output_selector") {
+  if (componentType == "const_value" || componentType == "output_selector" ||
+      componentType == "broadcast") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
     implRefName = portMapName;
     implReplacementMap["$COMPONENT_NAME"] = implRefName;
@@ -454,6 +466,19 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         implReplacementMap["$VALID_SIGNAL_ROUTING"] = validSignalRouting.str();
         implReplacementMap["$READY_SIGNAL_ROUTING"] = readySignalRouting.str();
         implReplacementMap["$DATA_SIGNAL_ROUTING"] = dataSignalRouting.str();
+      }
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
+    } else if (componentType == "broadcast") {
+      std::stringstream procBehavStream; // to define implementation behaviour
+      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      for (auto i = 0; i < inputSignals.size(); i++) {
+        addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+      }
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                       "std_logic_vector", "out");
+        procBehavStream << "out_data_" << o << " <= in_data_0;" << std::endl;
       }
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
@@ -687,7 +712,8 @@ const std::vector<std::string> VHDLComponent::getInputSignals() const {
 const std::vector<std::string> VHDLComponent::getOutputSignals() const {
   if (this->getType() == "input_selector" ||
       this->getType() == "output_selector" ||
-      this->getType() == "const_value") {
+      this->getType() == "const_value" ||
+      this->getType() == "broadcast") {
     return this->outputSignals;
   } else {
     return std::vector<std::string>(1, this->sharedOutputSignal);
@@ -989,6 +1015,8 @@ void VHDLComponent::genImplementation(std::string refDir,
       refFileName = "s_input_selector.vhdl";
     } else if (componentType == "output_selector") { // output selector // TODO account for OS broadcast behaviour
       refFileName = "s_output_selector.vhdl";
+    } else if (componentType == "broadcast") {
+      refFileName = "broadcast.vhdl";
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
     } else if (componentType == "sbuffer") {

@@ -301,7 +301,11 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
         dataflow->setVertexDuration(new_os, std::vector<TIME_UNIT>(vertices.size(), 2));
       }
     }
-    dataflow->setVertexType(new_os, "output_selector");
+    if (osAsBroadcast) {
+      dataflow->setVertexType(new_os, "broadcast");
+    } else {
+      dataflow->setVertexType(new_os, "output_selector");
+    }
     // connect merged actors to output selector
     std::string edgeType = (outDataTypes[i]).begin()->first;
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
@@ -334,21 +338,21 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       dataflow->removeEdge(ogEdge);
       if (osAsBroadcast) {
         std::string edgeName = ("broadcast" + edge.second[i]);
-        Vertex sBuffer = dataflow->addVertex(
+        Vertex buffer = dataflow->addVertex(
             "sbuffer" + std::to_string(broadcastBufferCnt) + "INIT0");
-        dataflow->setVertexType(sBuffer, "sbuffer");
-        dataflow->setPhasesQuantity(sBuffer, vertices.size());
-        dataflow->setVertexDuration(sBuffer, std::vector<TIME_UNIT>(vertices.size(), 2));
+        dataflow->setVertexType(buffer, "sbuffer");
+        dataflow->setPhasesQuantity(buffer, vertices.size());
+        dataflow->setVertexDuration(buffer, std::vector<TIME_UNIT>(vertices.size(), 2));
         broadcastBufferCnt++;
-        Edge toSBuffer = dataflow->addEdge(new_os, sBuffer, edgeName);
-        dataflow->setEdgeInPhases(toSBuffer, {1});
-        dataflow->setEdgeOutPhases(toSBuffer,
+        Edge toBuffer = dataflow->addEdge(new_os, buffer, edgeName);
+        dataflow->setEdgeInPhases(toBuffer, {1});
+        dataflow->setEdgeOutPhases(toBuffer,
                                    std::vector<TOKEN_UNIT>(vertices.size(), 1));
-        dataflow->setEdgeInputPortName(toSBuffer, ("in_" + edgeName));
-        dataflow->setEdgeOutputPortName(toSBuffer, ("out_" + edgeName));
-        dataflow->setPreload(toSBuffer, 0);
-        dataflow->setTokenSize(toSBuffer, tokenSize);
-        Edge newEdge = dataflow->addEdge(sBuffer, ogTarget, (edge.second[i]));
+        dataflow->setEdgeInputPortName(toBuffer, ("in_" + edgeName));
+        dataflow->setEdgeOutputPortName(toBuffer, ("out_" + edgeName));
+        dataflow->setPreload(toBuffer, 0);
+        dataflow->setTokenSize(toBuffer, tokenSize);
+        Edge newEdge = dataflow->addEdge(buffer, ogTarget, (edge.second[i]));
         inPhases[edge.first] = 1; // the order of execution is reflected here
         dataflow->setEdgeInPhases(newEdge, inPhases);
         dataflow->setEdgeOutPhases(newEdge, outPhases);
@@ -360,7 +364,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
         dataflow->setVertexName(
             ogTarget,
             replaceActorName(dataflow->getVertexName(ogTarget), baseName,
-                             dataflow->getVertexName(sBuffer)));
+                             dataflow->getVertexName(buffer)));
       } else {
         Edge newEdge = dataflow->addEdge(new_os, ogTarget, (edge.second[i]));
         inPhases[edge.first] = 1; // the order of execution is reflected here

@@ -218,7 +218,10 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    be set unless you have your own directory of reference files.
    - BUFFERLESS: 't' to activate; indicates whether each connection in the VHDL
    design should include a FIFO buffer. Set to buffered (t) by default.
-   - FREQUENCY: Clock cycle frequency of VHDL design.
+   - FREQUENCY: Clock cycle frequency (in MHz) of VHDL design.
+   - SLACK: System slack given (in clock cycles) to exec time of scheduled
+   operators; may be necessary to account for phase shifts due to mismatching
+   operating frequency of audio interface clock and generated VHDL design.
    - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
    - BROADCAST: Change output selector behaviour to simply broadcast input
    data and add SBuffers to each output edge.
@@ -267,12 +270,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
 
-  // check if operator frequencies have been specified
+  // check if system slack defined
   if (param_list.find("SLACK") != param_list.end()) {
     VERBOSE_INFO("Operator frequency set to " << param_list["SLACK"]);
     systemSlack = std::stoi(param_list["SLACK"]);
   } else {
-    VERBOSE_INFO("Default system slack used (" << systemSlack << "), you can use -p SLACK=slack_in_clock_cycles to set the operator frequency");
+    VERBOSE_INFO("Default system slack used (" << systemSlack << "), you can use -p SLACK=slack_in_clock_cycles to set system slack");
   }
 
   // define location of VHDL generation reference files
@@ -296,7 +299,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
 
   if (param_list.find("BROADCAST") != param_list.end()) {
-    VERBOSE_INFO("Adding SBuffers to the output edges of output selectors");
+    VERBOSE_INFO("Add SBuffers to the output edges of output selectors");
     osBroadcast = true;
   }
 
