@@ -8,6 +8,8 @@
 #include <bitset>
 #include <string>
 #include <filesystem>
+#include <iostream>
+#include <fstream>
 #include "VHDLGenerator.h"
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
@@ -360,6 +362,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
   // schedule execution times
   models::Dataflow *dataflowScheduled = new models::Dataflow(*dataflow);
+  models::Scheduling res;
   // model periodic audio input by adding components
   // (these extra components have no use in VHDL code - used purely to get
   // scheduling numbers)
@@ -369,8 +372,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                                                           param_list);
     VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),
                    "inconsistent graph");
-    models::Scheduling res =
-        scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
+    res = scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
     for (const auto &item : res.getTaskSchedule()) {
       execTimes[dataflowScheduled->getVertexName(dataflowScheduled->getVertexById(item.first))] = item.second.periodic_starts.second;
     }
@@ -379,8 +381,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                                                           param_list);
     VERBOSE_ASSERT(computeRepetitionVector(broadcastTimingModel),
                    "inconsistent graph");
-    models::Scheduling res =
-      scheduling::CSDF_1PeriodicScheduling(broadcastTimingModel, 0);
+    res = scheduling::CSDF_1PeriodicScheduling(broadcastTimingModel, 0);
     for (const auto &item : res.getTaskSchedule()) {
       std::string actorBaseName =
         broadcastTimingModel->getVertexName(broadcastTimingModel->getVertexById(item.first));
@@ -407,7 +408,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       }
     } else if ((comp.getType() == "sbuffer" || comp.getType() == "shiftreg") &&
                dataflow->getPhasesQuantity(v) > 1) {
-      // sbuffers used for broadcasting OS signal have >1 exec phase
+      // buffers used for broadcasting OS signal have >1 exec phase (equal to
+      // number of outputs of broadcast )
+      // we use prod exec rates as a mask to identify exec time relevant to given buffer
       VERBOSE_ASSERT(comp.getInputEdges().size() == 1,
                      "buffers should only have 1 input");
       std::string srcName = dataflow->getVertexName(dataflow->getEdgeSource(
@@ -417,7 +420,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       TIME_UNIT startTime = 0;
       {ForOutputEdges(dataflow, v, outEdge) {
           for (auto i = 0; i < dataflow->getEdgeInPhasesCount(outEdge); i++) {
-            // use prod exec rates as a mask to identify relevant exec time
             if (dataflow->getEdgeInVector(outEdge)[i] == 1) {
               startTime = srcOSStarts[i];
             }
@@ -446,6 +448,10 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
                             dataflow);
     VERBOSE_INFO("VHDL files generated in: " << topDir);
+    std::ofstream tikzFile;
+    tikzFile.open(topDir + dataflow->getGraphName() + "_schedule.tex");
+    tikzFile << generateTikzSchedule(res) << std::endl;
+    tikzFile.close();
   } else {
     VERBOSE_WARNING("No VHDL files created.");
   }

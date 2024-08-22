@@ -29,8 +29,9 @@ bool osAsBroadcast = false; // used for when the output selector should act as a
 bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
 implType t = TT;
-std::string bufferType = "sbuffer"; // by default
-std::string initTokens = "0"; // SBuffer initial tokens
+// variables for buffers on output edges when using broadcast output selector
+std::string bufferType = "sbuffer"; // by default (alternative: shift register)
+std::string initTokens = "0"; // initial tokens in buffer (requirements differ between buffer implementations)
 
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
