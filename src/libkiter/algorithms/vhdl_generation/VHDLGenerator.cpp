@@ -21,6 +21,7 @@
 #include <algorithms/transformation/iterative_evaluation.h>
 #include <printers/SDF3Wrapper.h>
 #include "VHDLCommons.h"
+#include "printers/stdout.h"
 
 // for signal name retrieval
 #define VALID 0
@@ -448,10 +449,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
                             dataflow);
     VERBOSE_INFO("VHDL files generated in: " << topDir);
+    // print schedule and corresponding signal graph
     std::ofstream tikzFile;
     tikzFile.open(topDir + dataflow->getGraphName() + "_schedule.tex");
     tikzFile << generateTikzSchedule(res) << std::endl;
     tikzFile.close();
+    param_list["filename"] = topDir + dataflow->getGraphName() + "_scheduled.dot";
+    printers::printSigGraph(dataflowScheduled, param_list);
   } else {
     VERBOSE_WARNING("No VHDL files created.");
   }

@@ -102,6 +102,7 @@ inline void copyFileAndReplaceWords(std::string refFile, std::string dstFile,
 }
 
 inline std::string generateTikzFill(std::string name, std::string type,
+                                    ARRAY_INDEX id,
                                     std::vector<TIME_UNIT> startTimes,
                                     std::vector<TIME_UNIT> durations,
                                     int row, bool truncNames) {
@@ -110,6 +111,10 @@ inline std::string generateTikzFill(std::string name, std::string type,
   int labelX = 0;
   float labelY = row + 0.5;
   size_t nameMaxLength = 15;
+  size_t typeMaxLength = 5;
+
+  // tikz requires underscores to be escaped
+  type = std::regex_replace(type, std::regex("_"), "\\_");
   // shorten names by:
   // 1. removing everything after the first underscore (just used to indicate
   // arg order in dadop)
@@ -119,14 +124,15 @@ inline std::string generateTikzFill(std::string name, std::string type,
     if (name.length() > nameMaxLength) {
       name = name.substr(0, nameMaxLength) + "...";
     }
+    if (type.length() > typeMaxLength) {
+      type = type.substr(0, typeMaxLength) + "...";
+    }
   }
- // tikz requires underscores to be escaped
-  type = std::regex_replace(type, std::regex("_"), "\\_");
 
   // add labels for actor names and type
   output << "\\draw (" << labelX << "," << labelY
          << ") node[anchor=east, align=right] {\\begin{varwidth}{3cm}" << name << "\\\\"
-         << "(" << type << ")" << "\\end{varwidth}};" << std::endl;
+         << "(" << type << ")" << " [ " << id << " ]" << "\\end{varwidth}};" << std::endl;
   for (int p = 0; p < startTimes.size(); p++) {
     VERBOSE_ASSERT(startTimes.size() == durations.size(), "Vector of start times and durations should have equal number of elements");
     std::string btmLeftCoords = std::to_string((int) startTimes[p]) + "," + std::to_string(row); // x,y
@@ -222,11 +228,12 @@ generateTikzSchedule(models::Scheduling schedule) {
     Vertex v = refGraph->getVertexById(item.first);
     std::string name = refGraph->getVertexName(v);
     std::string type = refGraph->getVertexType(v);
+    ARRAY_INDEX id = refGraph->getVertexId(v);
     std::vector<TIME_UNIT> startTimes = item.second.periodic_starts.second;
     std::vector<TIME_UNIT> durations = refGraph->getVertexPhaseDuration(v);
     int row = find(names.begin(), names.end(), name) -
                 names.begin(); // use name order to determine row number
-    output << generateTikzFill(name, type, startTimes, durations, row, true) << std::endl;
+    output << generateTikzFill(name, type, id, startTimes, durations, row, true) << std::endl;
   }
 
   output << "\\end{tikzpicture}\n"

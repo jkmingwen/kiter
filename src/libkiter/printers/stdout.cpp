@@ -629,7 +629,7 @@ std::string printers::GenerateSigGraphDOT    (models::Dataflow* const  dataflow 
 
       returnStream << "  t_" << tid << " ["
                    << "shape=circle,  fixedsize=\"shape\", fontsize=\"7\","
-                   << "label=\"" << dataflow->getVertexType(t) << "\", "
+                   << "label=\"" << dataflow->getVertexType(t) << "\\n[" << tid << "]\", "
                    << "tooltip=\"" << dataflow->getVertexName(t);
       if (!simple) {
           returnStream	  << "\nid:" << tid
