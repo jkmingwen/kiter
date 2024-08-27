@@ -16,6 +16,7 @@
 #include "VHDLCircuit.h"
 #include "algorithms/schedulings.h"
 #include "algorithms/transformation/merge_operators.h"
+#include "commons/KiterRegistry.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
 #include <algorithms/transformation/iterative_evaluation.h>
@@ -456,6 +457,22 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     tikzFile.close();
     param_list["filename"] = topDir + dataflow->getGraphName() + "_scheduled.dot";
     printers::printSigGraph(dataflowScheduled, param_list);
+
+    // generate PIPO numbers
+    std::ofstream pipoCSV;
+    std::string nameAndMerge = "flat";
+    if (param_list.find("MERGE_STRATEGY") != param_list.end()) {
+      nameAndMerge = param_list["MERGE_STRATEGY"];
+    }
+    nameAndMerge = tmp.getName() + "," + nameAndMerge + ",";
+    pipoCSV.open(topDir + "pipo_numbers.csv");
+    pipoCSV << "graph,merge,depth,load,period" << std::endl;
+    for (auto &[v, comp] : tmp.getComponentMap()) {
+      if (comp.getType() == "shiftreg") {
+        pipoCSV << nameAndMerge << comp.writePIPOCSV() << std::endl;
+      }
+    }
+    pipoCSV.close();
   } else {
     VERBOSE_WARNING("No VHDL files created.");
   }
@@ -615,6 +632,7 @@ void algorithms::generateCircuit(VHDLCircuit &circuit) {
 
   // Close the stream
   vhdlOutput.close();
+
 }
 
 void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
@@ -762,6 +780,7 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
   std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
     std::map<std::string, int> bufferCounts;
   std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
+
   for (auto &[v, comp] : circuit.getComponentMap()) {
     if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
       std::string opName = comp.getPortMapName();

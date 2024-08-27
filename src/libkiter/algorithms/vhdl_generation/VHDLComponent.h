@@ -80,6 +80,10 @@ class VHDLComponent {
   std::string getPortMapName() const;
   void genImplementation(std::string refDir, std::string dstDir) const;
 
+  // temporary function to log shift register numbers
+  std::string writePIPOCSV() const;
+  std::map<std::string, int> getPIPONumbers();
+
  private:
   Vertex actor;
   implType implementationType;
@@ -120,6 +124,8 @@ class VHDLComponent {
   std::map<std::string, std::string>
       implReplacementMap; // key words that need to replaced to properly define
                           // the implementation of the given component
+
+  std::map<std::string, int> pipoNumbers;
 
   std::map<std::string, std::vector<std::string>> opInputPorts = {
       {"fp_add", {"X", "Y"}},

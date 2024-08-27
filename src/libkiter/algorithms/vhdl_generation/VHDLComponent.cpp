@@ -501,6 +501,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       addPortMapping("depth", std::to_string(this->getInitTokens()),
                      "integer", "", true);
       addPortMapping("period", std::to_string(5209), "integer", "", true);
+      pipoNumbers["depth"] = this->getInitTokens();
+      pipoNumbers["period"] = 5209;
       addPortMapping("rst", "rst", "std_logic", "in");
       for (auto i : inputSignals) {
         addPortMapping("in_data", i, "std_logic_vector", "in");
@@ -808,6 +810,7 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
     } else if (componentType == "shiftreg") {
       addPortMapping("load", std::to_string((int)(time + slack + 1)), "integer", "",
                      true);
+      pipoNumbers["load"] = (int)(time + slack + 1);
     }
     n++;
   }
@@ -1060,6 +1063,26 @@ void VHDLComponent::genImplementation(std::string refDir,
 
 implType VHDLComponent::getImplType() const {
   return this->implementationType;
+}
+
+std::string VHDLComponent::writePIPOCSV() const {
+  VERBOSE_ASSERT(
+      componentType == "shiftreg",
+      "Write CSV function currently only used for PIPO shift registers");
+  VERBOSE_ASSERT(pipoNumbers.size(),
+                 "Populate PIPO numbers before attempting to write CSV");
+  std::string outputString;
+  std::string delim = "";
+  for (auto &[colName, data] : pipoNumbers) {
+    outputString += delim + std::to_string(data);
+    delim = ",";
+  }
+
+  return outputString;
+}
+
+std::map<std::string, int> VHDLComponent::getPIPONumbers() {
+  return this->pipoNumbers;
 }
 
 std::string getNameFromPartialName(models::Dataflow* const dataflow,
