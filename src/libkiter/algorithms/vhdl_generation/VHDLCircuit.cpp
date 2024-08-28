@@ -7,6 +7,7 @@
 
 #include <models/Dataflow.h>
 #include "VHDLCircuit.h"
+#include "algorithms/vhdl_generation/VHDLCommons.h"
 
 VHDLCircuit::VHDLCircuit() {}
 
@@ -482,4 +483,41 @@ std::string VHDLCircuit::generateSignalNames(std::string &name,
   }
 
   return signalName;
+}
+
+std::string VHDLCircuit::genBypassMapping(implType t) const {
+  std::stringstream codeOut;
+
+  for (auto const &[v, comp] : componentMap) {
+    if (comp.getType() == "INPUT") {
+      int inId = comp.getIOId();
+      for (auto const &[vTarget, compTarget] : componentMap) {
+        if (compTarget.getType() == "OUTPUT") {
+          if (this->getConnectionNameFromComponents(comp.getUniqueName(),
+                                                    compTarget.getUniqueName()).size()) {
+            int outId = compTarget.getIOId();
+            if (t == TT) {
+              codeOut << this->getName() << "_out_data_" << outId
+                      << " <= " << this->getName() << "_in_data_" << inId << ";"
+                      << std::endl;
+            } else if (t == DD) {
+              codeOut << this->getName() << "_out_data_" << outId
+                      << " <= " << this->getName() << "_in_data_" << inId << ";"
+                      << std::endl;
+              codeOut << this->getName() << "_out_valid_" << outId
+                      << " <= " << this->getName() << "_in_valid_" << inId
+                      << ";" << std::endl;
+              codeOut << this->getName() << "_in_ready_" << outId
+                      << " <= " << this->getName() << "_out_ready_" << inId << ";"
+                      << std::endl;
+            } else {
+              VERBOSE_ERROR("Implementation type " << t << " is not supported.");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return codeOut.str();
 }

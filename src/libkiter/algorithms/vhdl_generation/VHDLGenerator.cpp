@@ -808,6 +808,20 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
     }
   }
 
+  // Edge case where there are only input/outputs
+  if (noOperators) {
+    bool routeInToOut = true;
+    for (auto const &[e, conn] : circuit.getConnectionMap()) {
+      if (conn.getInitialTokenCount()) {
+        routeInToOut = false;
+        break;
+      }
+    }
+    if (routeInToOut) {
+      vhdlOutput << circuit.genBypassMapping(implementationType);
+    }
+  }
+
   vhdlOutput << "end behaviour;" << std::endl;
 
   vhdlOutput.close();

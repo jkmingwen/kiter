@@ -74,7 +74,7 @@ class VHDLCircuit {
   VHDLComponent getSrcComponent(const VHDLConnection &conn) const;
   std::vector<VHDLComponent> getDstComponents(const VHDLComponent &srcComponent) const;
   std::vector<VHDLComponent> getSrcComponents(const VHDLComponent &dstComponent) const;
-
+  std::string genBypassMapping(implType t) const;
   void setName(std::string);
   void refreshComponentMap();
   void updateTopLevelPorts(implType t);
