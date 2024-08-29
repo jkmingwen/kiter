@@ -117,7 +117,7 @@ class VHDLComponent {
   std::map<std::string, std::string> genericMappings; // generic port name -> signal
   std::map<std::string, std::string> portMappings;    // port name -> signal
   std::map<std::string, std::string> genericPorts; // generic port -> signal type
-  std::map<std::string, std::string> ports; // port -> signal type
+  std::map<std::string, std::string> ports;        // port -> signal type
   std::string portMapName; // for use when instantiating component in port mapping
   std::string implRefName; // name used to reference implementation // TODO
                            // simplify all the different "names"

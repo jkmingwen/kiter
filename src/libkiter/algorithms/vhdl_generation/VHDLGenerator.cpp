@@ -46,6 +46,8 @@ int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
 int computeL = 0; // total compute time for left channel
 int computeR = 0; // total compute time for right channel
+std::string bufferImpl = "sbuffer"; // defines type of buffer to be implemented
+                                    // in time triggered implementation
 
 std::map<std::string, std::vector<std::string>>
     operatorImplementationInputPorts = {
@@ -227,8 +229,11 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    operators; may be necessary to account for phase shifts due to mismatching
    operating frequency of audio interface clock and generated VHDL design.
    - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
+   - MERGE_STRATEGY: Combine operators using specified strategy (smart/greedy).
    - BROADCAST: Change output selector behaviour to simply broadcast input
-   data and add SBuffers to each output edge.
+   data and add buffers to each output edge.
+   - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
+   buffer components in VHDL implementation. Options: shiftreg/sbuffer (default).
 
    @return void; VHDL code generated in location specified in OUTPUT_DIR
    parameter.
@@ -303,7 +308,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
 
   if (param_list.find("BROADCAST") != param_list.end()) {
-    VERBOSE_INFO("Add SBuffers to the output edges of output selectors");
+    VERBOSE_INFO("Add buffers to the output edges of output selectors");
     osBroadcast = true;
   }
 
@@ -313,6 +318,17 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_INFO("No merge strategy specified; you can specify a merge "
                  "strategy with -pMERGE_STRATEGY={greedy/smart}");
   }
+
+  if (param_list.find("BUFFER_TYPE") != param_list.end()) {
+    VERBOSE_INFO("Set buffer implementation to type: " << param_list["BUFFER_TYPE"]);
+    bufferImpl = param_list["BUFFER_TYPE"];
+  }
+  // Set buffer type to specified implementation
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "buffer") {
+        dataflow->setVertexType(v, bufferImpl);
+      }
+    }}
 
   if (!isBufferless) {
     {ForEachEdge(dataflow, e) {
@@ -326,8 +342,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   std::map<std::string, std::vector<TIME_UNIT>> osBroadcastTimes; // only used when osBroadcast = true
   if (toMerge) {
     if (osBroadcast) {
+      /* in order to generate a schedule defining execution times of buffers on
+         the output edges of broadcast actors, it's necessary to schedule the
+         dataflow without those buffers to compute the start times of the output
+         selector. These start times are then passed on to the buffers that are
+         added afterwards. */
       param_list.erase(param_list.find("BROADCAST"));
       param_list["OS_BROADCAST_SCHED_MODEL"] = "true";
+      // schedule for broadcast implementation taken from this graph
       algorithms::transformation::merge_operators(broadcastTimingModel,
                                                   param_list);
       param_list["BROADCAST"] = "true";
@@ -402,7 +424,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       tmp.setCompStartTime(comp.getUniqueName(), startTimes, (TIME_UNIT) systemSlack);
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
-        inputEnds[comp.getIOId()] = startTimes.front() + dataflowScheduled->getVertexDuration(v);
+        inputEnds[comp.getIOId()] = startTimes.front() + dataflow->getVertexDuration(v);
       }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
@@ -437,8 +459,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
   computeL = outputStarts[0] - inputEnds[0];
   computeR = outputStarts[1] - inputEnds[1];
-  printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduled.xml",
-                          dataflow);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing
@@ -455,8 +475,21 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     tikzFile.open(topDir + dataflow->getGraphName() + "_schedule.tex");
     tikzFile << generateTikzSchedule(res) << std::endl;
     tikzFile.close();
-    param_list["filename"] = topDir + dataflow->getGraphName() + "_scheduled.dot";
-    printers::printSigGraph(dataflowScheduled, param_list);
+    // print diagram of graph that is being scheduled for the
+    // VHDL implementation (we don't use broadcastTimingModel
+    // graph here as it doesn't include the buffers)
+    param_list["filename"] =
+        topDir + dataflow->getGraphName() + "_scheduledmodel.dot";
+    printers::printSigGraph(
+        dataflowScheduled,
+        param_list);
+    // generate SDF XML and diagram of the graph after applying various
+    // implementation strategies
+    printers::writeSDF3File(
+        topDir + dataflow->getGraphName() + "_implementation.xml", dataflow);
+    param_list["filename"] =
+      topDir + dataflow->getGraphName() + "_implementation.dot";
+    printers::printSigGraph(dataflow, param_list);
 
     // generate PIPO numbers
     std::ofstream pipoCSV;

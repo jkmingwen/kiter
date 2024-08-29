@@ -67,7 +67,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               VERBOSE_INFO("\tDetected static delay");
               VERBOSE_INFO("\t\tDelay amount: " << delayAmt
                            << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
-              delayToBuffer(dataflow_prime, v, delayArg, delayAmt, useShiftReg);
+              delayToBuffer(dataflow_prime, v, delayArg, delayAmt);
               delayDetected = true;
               break;
             }
@@ -571,21 +571,18 @@ void algorithms::bypassDelay(models::Dataflow* const dataflow, Vertex v,
   dataflow->removeVertex(dataflow->getVertexByName(delayName));
 }
 
-// replace delay with SBuffer/Shift register --- amount of delay is encoded in the name of the
-// SBuffer rather than initial token to be later reflected in the SBuffer's VHDL implementation
+// replace delay with buffer --- amount of delay is encoded in the name of the
+// buffer rather than initial tokens to be later reflected in the buffer's VHDL implementation
 void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
-                               Edge delayArg, int delayAmt, bool useShiftReg) {
+                               Edge delayArg, int delayAmt) {
   std::string delayArgSourceName = dataflow->getVertexName(dataflow->getEdgeSource(delayArg));
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
 
   std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
-  TIME_UNIT compDur = 2;
-  std::string newType = "sbuffer";
-  if (useShiftReg) {
-    newType = "shiftreg";
-    compDur = 1;
-  }
+  TIME_UNIT compDur = 1; // duration to be instantiated according to buffer
+                         // implementation type in VHDLComponent.cpp
+  std::string newType = "buffer";
   dataflow->setVertexType(v, newType);
   dataflow->setVertexDuration(v, {compDur});
   dataflow->setVertexName(v, newName);

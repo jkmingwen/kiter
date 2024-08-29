@@ -33,6 +33,26 @@ implType t = TT;
 std::string bufferType = "sbuffer"; // by default (alternative: shift register)
 std::string initTokens = "0"; // initial tokens in buffer (requirements differ between buffer implementations)
 
+/**
+   Applies a specified merging strategy to the given dataflow graph.
+
+   @param dataflow HSDF/SDF graph
+
+   @param params Parameters that dictate how the dataflow graph is transformed
+   by the merging operations. Parameters are as follows:
+   - MERGE_STRATEGY: Strategy to define which actors are merged -
+   smart/greedy (greedy).
+   - FREQUENCY: Clock cycle frequency (in MHz) of VHDL design; affects execution
+   duration (and thus schedule and mergeability) of actors.
+   - BROADCAST: Define as t to set output selectors act as broadcasters
+   (default: false). Scheduled buffers are placed on each output edge of the
+   broadcaster instead to imitate functionality of output selector.
+   - OS_BROADCAST_SCHED_MODEL: Modify execution duration of output selector
+   actor such that schedule is able to determine when scheduled buffers are
+   supposed to push/pop data.
+   - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
+   buffer components in VHDL implementation. Options: shiftreg/sbuffer (default).
+ */
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
   bool mergeStrategySpecified = false;
@@ -77,11 +97,20 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     t = DD;
   }
 
-  if (params.find("SHIFT_REG") != params.end()) {
-    VERBOSE_INFO("Setting buffer type to shift registers");
-    bufferType = "shiftreg";
+  if (params.find("BUFFER_TYPE") != params.end()) {
+    VERBOSE_INFO("Set buffer implementation to type: " << params["BUFFER_TYPE"]);
+    bufferType = params["BUFFER_TYPE"];
+    // for now, only buffer type other than sbuffer is shift register, which
+    // requires a depth of at least 1 to function as anything other than a
+    // bypass
     initTokens = "1";
   }
+  // Set buffer type to specified implementation
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "buffer") {
+        dataflow->setVertexType(v, bufferType);
+      }
+    }}
 
   // check and adjust for any operators with multiple I/Os
   // the merge function currently only works with operators with the same number
@@ -306,8 +335,12 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       if (!modelOSBroadcastTimings) {
         dataflow->setVertexDuration(new_os, execDurations);
       } else {
-        // workaround to get the right execution timings; OS set to exec duration equal to SBuffer
-        dataflow->setVertexDuration(new_os, std::vector<TIME_UNIT>(vertices.size(), 2));
+        // workaround to get the right execution timings; OS set to exec
+        // duration equal to buffer
+        TIME_UNIT bufferDuration = 2; // sbuffer exec duration = 2
+        if (bufferType == "shiftreg") { bufferDuration = 1; }
+        dataflow->setVertexDuration(
+            new_os, std::vector<TIME_UNIT>(vertices.size(), bufferDuration));
       }
     }
     if (osAsBroadcast) {
