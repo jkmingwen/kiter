@@ -35,7 +35,6 @@ std::string componentDir;
 std::string tbDir; // testbench directory
 std::string referenceDir = "./src/libkiter/algorithms/vhdl_generation/reference_files/";
 int operatorFreq = 250; // clock frequency (in MHz) VHDL operators are designed to run at
-bool isBufferless = false; // if VHDL design should include FIFO buffers along every connection
 int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
 implType implementationType = TT;
@@ -222,8 +221,8 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    VHDL code will only be generated if this is specified.
    - REFERENCE_DIR: Path to directory containing VHDL reference files. Shouldn't
    be set unless you have your own directory of reference files.
-   - BUFFERLESS: 't' to activate; indicates whether each connection in the VHDL
-   design should include a FIFO buffer. Set to buffered (t) by default.
+   - FULLY_BUFFERED: 't' to activate; indicates whether every connection in the VHDL
+   design should include a buffer. Set to false by default.
    - FREQUENCY: Clock cycle frequency (in MHz) of VHDL design.
    - SLACK: System slack given (in clock cycles) to exec time of scheduled
    operators; may be necessary to account for phase shifts due to mismatching
@@ -262,10 +261,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
 
   // check if FIFO buffers should be generated in VHDL implementation
-  if (param_list.find("BUFFERLESS") != param_list.end() &&
-      param_list["BUFFERLESS"] == "t") {
-    VERBOSE_INFO("Bufferless mode activated");
-    isBufferless = true;
+  if (param_list.find("FULLY_BUFFERED") != param_list.end() &&
+      param_list["FULLY_BUFFERED"] == "t") {
+    VERBOSE_INFO("Fully buffered implementation activated");
+    {ForEachEdge(dataflow, e) {
+        if (!dataflow->getPreload(e)) {
+          dataflow->setPreload(e, 1);
+        }
+      }}
   } else {
     VERBOSE_INFO("Please use '-p BUFFERLESS=t' to generate VHDL without FIFO buffers");
   }
@@ -330,13 +333,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       }
     }}
 
-  if (!isBufferless) {
-    {ForEachEdge(dataflow, e) {
-        if (!dataflow->getPreload(e)) {
-          dataflow->setPreload(e, 1);
-        }
-      }}
-  }
   // implement merge strategy if specified
   models::Dataflow *broadcastTimingModel = new models::Dataflow(*dataflow);
   std::map<std::string, std::vector<TIME_UNIT>> osBroadcastTimes; // only used when osBroadcast = true
