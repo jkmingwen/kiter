@@ -14,9 +14,15 @@ end pipo_shift_reg;
 architecture Behavioral of pipo_shift_reg is
 
 begin
-  assert (depth > 0) report "Shift register size must be positive" severity error;
+  assert (depth >= 0) report "Shift register size must be positive" severity error;
   assert (period > 0) report "Period must be positive" severity error;
   assert (load > 0) report "Load time must be positive" severity error;
+
+  gen_pipo_zero : if (depth = 0) generate
+    pipo : entity work.pipo_shift_reg_zero
+        port map ( in_data => in_data,
+                   out_data => out_data);
+  end generate gen_pipo_zero;
 
   gen_pipo_one : if (depth = 1) generate
     pipo : entity work.pipo_shift_reg_one
