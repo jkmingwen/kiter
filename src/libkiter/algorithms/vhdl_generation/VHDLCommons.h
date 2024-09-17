@@ -111,7 +111,7 @@ inline std::string generateTikzFill(std::string name, std::string type,
   int labelX = 0;
   float labelY = row + 0.5;
   size_t nameMaxLength = 15;
-  size_t typeMaxLength = 5;
+  size_t typeMaxLength = 15;
 
   // tikz requires underscores to be escaped
   type = std::regex_replace(type, std::regex("_"), "\\_");
@@ -130,9 +130,12 @@ inline std::string generateTikzFill(std::string name, std::string type,
   }
 
   // add labels for actor names and type
+  // output << "\\draw (" << labelX << "," << labelY
+  //        << ") node[anchor=east, align=right] {\\begin{varwidth}{3cm}" << name << "\\\\"
+  //        << "(" << type << ")" << " [ " << id << " ]" << "\\end{varwidth}};" << std::endl;
   output << "\\draw (" << labelX << "," << labelY
-         << ") node[anchor=east, align=right] {\\begin{varwidth}{3cm}" << name << "\\\\"
-         << "(" << type << ")" << " [ " << id << " ]" << "\\end{varwidth}};" << std::endl;
+         << ") node[anchor=east, align=right] {\\begin{varwidth}{3cm}" << type << "\\\\"
+         << " (" << id << ")" << "\\end{varwidth}};" << std::endl;
   for (int p = 0; p < startTimes.size(); p++) {
     VERBOSE_ASSERT(startTimes.size() == durations.size(), "Vector of start times and durations should have equal number of elements");
     std::string btmLeftCoords = std::to_string((int) startTimes[p]) + "," + std::to_string(row); // x,y
