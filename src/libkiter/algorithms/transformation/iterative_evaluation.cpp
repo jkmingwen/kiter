@@ -74,7 +74,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           }
         }}
     }
-    VERBOSE_INFO("No further possible delays to replace (with SBuffers) detected");
+    VERBOSE_INFO("No further possible delays to replace (with buffers) detected");
   }
   while (changeDetected) {
     VERBOSE_INFO("");
@@ -219,7 +219,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
   // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
-  std::vector<TIME_UNIT> audioPeriod (2,2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
+  std::vector<TIME_UNIT> audioPeriod (2, 2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
   // input/output operation consists of these 3 components:
   TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
                         getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);

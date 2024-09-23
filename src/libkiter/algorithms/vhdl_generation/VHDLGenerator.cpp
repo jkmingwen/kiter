@@ -254,10 +254,10 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     tbDir = topDir + "/testbenches/";
     VERBOSE_INFO("Update output directory to " << topDir);
 
-    // create both topDir and componentDir directories
+    // create topDir/componentDir directories if they don't already exist
     std::filesystem::create_directories(componentDir);
   } else {
-    VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory.");
+    VERBOSE_WARNING("Please use '-p OUTPUT_DIR=topDir' to set output directory. No VHDL code will be generated without a specified output directory.");
   }
 
   // check if FIFO buffers should be generated in VHDL implementation
@@ -438,16 +438,33 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       srcName = srcName.substr(0, srcName.find("_"));
       std::vector<TIME_UNIT> srcOSStarts = execTimes[srcName];
       TIME_UNIT startTime = 0;
+      TIME_UNIT dstStartTime = 0;
       {ForOutputEdges(dataflow, v, outEdge) {
           for (auto i = 0; i < dataflow->getEdgeInPhasesCount(outEdge); i++) {
             if (dataflow->getEdgeInVector(outEdge)[i] == 1) {
               startTime = srcOSStarts[i];
             }
           }
+          Vertex dstActor = dataflow->getEdgeTarget(outEdge);
+          std::string dstName =
+              dataflow->getVertexName(dstActor);
+          dstName = dstName.substr(0, dstName.find("_"));
+          std::vector<TIME_UNIT> dstActorStarts = execTimes[dstName];
+          for (auto i = 0; i < dataflow->getEdgeOutPhasesCount(outEdge); i++) {
+            if (dataflow->getEdgeOutVector(outEdge)[i] == 1) {
+              dstStartTime = dstActorStarts[i];
+            }
+          }
         }
       }
       srcOSStarts = {startTime};
-      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts, (TIME_UNIT) systemSlack);
+      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts,
+                           (TIME_UNIT)systemSlack);
+      if (param_list.find("BUFFER_MIN") != param_list.end()) {
+        if (startTime + getOperatorLifespan(comp.getType(), operatorFreq) == dstStartTime) {
+          tmp.bypassBufferComponent(comp.getUniqueName());
+        }
+      }
     } else {
       VERBOSE_WARNING("No schedule generated for "
                       << comp.getUniqueName() << " (" << comp.getType() << ")");

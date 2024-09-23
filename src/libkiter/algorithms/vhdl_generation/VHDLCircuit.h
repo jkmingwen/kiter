@@ -28,6 +28,7 @@ class VHDLCircuit {
   void addOutputPort(std::string portName, const std::vector<std::string> &signalNames);
   void setCompStartTime(std::string name, std::vector<TIME_UNIT> times,
                         TIME_UNIT slack = 0);
+  void bypassBufferComponent(std::string name);
 
   std::string printStatus();
 

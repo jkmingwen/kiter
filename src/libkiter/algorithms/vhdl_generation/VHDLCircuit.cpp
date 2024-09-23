@@ -52,6 +52,20 @@ void VHDLCircuit::setCompStartTime(std::string name,
   }
 }
 
+void VHDLCircuit::bypassBufferComponent(std::string name) {
+  for (auto &[v, comp] : this->componentMap) {
+    if (name == comp.getUniqueName()) {
+      std::string port;
+      if (comp.getType() == "shiftreg") {
+        port = "depth";
+      } else {
+        port = "buffer_size";
+      }
+      comp.addPortMapping(port, std::to_string(0), "integer", "", true);
+    }
+  }
+}
+
 int VHDLCircuit::getOperatorCount(const std::string &op) const {
     const auto &op_map = this->getOperatorMap();
     auto it = op_map.find(op);
