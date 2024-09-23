@@ -1023,7 +1023,12 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
     } else if (componentType == "sbuffer") {
-      // do nothing
+      // refFileName = "sbuffer.vhdl"; // already set by default
+      // extra implementation files for sbuffer
+      std::filesystem::copy(refDir + "sbuffer_n.vhdl",
+                            dstDir + "sbuffer_n.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "sbuffer_bypass.vhdl",
+                            dstDir + "sbuffer_bypass.vhdl", copyOptions);
     } else if (componentType == "shiftreg") {
       refFileName = "pipo_shift_reg.vhdl";
       // extra implementation files for shift register
@@ -1031,6 +1036,8 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "pipo_shift_reg_n.vhdl", copyOptions);
       std::filesystem::copy(refDir + "pipo_shift_reg_one.vhdl",
                             dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
+                            dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refDir += "/ui/";
     } else {

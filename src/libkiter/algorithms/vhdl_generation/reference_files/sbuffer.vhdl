@@ -1,10 +1,3 @@
--- Scheduled buffer
--- Time-driven buffer: stores data from in_data to memory at given push_start
--- time; writes data from memory at given pop_start time.
--- Operates on a FIFO basis, with the possibility of having N<buffer_size-1
--- initial null (0) values. Write and read indexes advance after each push/pop
--- operation.
--- Requires an input of clock cycle counts (we use cycle_counter.vhd) to function.
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -23,43 +16,30 @@ entity sbuffer is
         out_data    : out std_logic_vector(ram_width-1 downto 0));
 end entity sbuffer;
 
-architecture Behavioral of sbuffer is
-    type mem_type is array (0 to buffer_size-1) of std_logic_vector(ram_width-1 downto 0);
-    signal memory : mem_type := (others => (others => '0'));
-    signal write_index : integer range 0 to buffer_size-1 := init;
-    signal read_index : integer range 0 to buffer_size-1 := 0;
+architecture Behavioural of sbuffer is
+
 begin
+  assert (buffer_size >= 0) report "Shift register size must be positive" severity error;
 
-    push_operation :  process (clk)
-    begin
-        if rising_edge(clk) then
-            case (cycle_count) is
-                when push_start =>
-                    memory(write_index) <= in_data;
-                    write_index <= (write_index + 1) mod buffer_size;
-                when others =>
-                    null;
-            end case;
-        end if;
-        if (rst = '0') then
-            write_index <= init;
-        end if;
-    end process push_operation;
+    gen_sbuffer_n : if (buffer_size > 0) generate
+        sbuff : entity work.sbuffer_n
+            generic map (ram_width => ram_width,
+                         buffer_size => buffer_size,
+                         push_start => push_start,
+                         pop_start => pop_start,
+                         init => init)
+            port map (clk => clk,
+                      rst => rst,
+                      cycle_count => cycle_count,
+                      in_data => in_data,
+                      out_data => out_data);
+    end generate gen_sbuffer_n;
 
-    pop_operation :  process (clk)
-    begin
-        if rising_edge(clk) then
-            case (cycle_count) is
-                when pop_start =>
-                    out_data <= memory(read_index);
-                    read_index <= (read_index + 1) mod buffer_size;
-                when others =>
-                    null;
-            end case;
-        end if;
-        if (rst = '0') then
-            read_index <= 0;
-        end if;
-    end process pop_operation;
+    gen_sbuffer_bypass : if (buffer_size = 0) generate
+        sbuff : entity work.sbuffer_bypass
+            generic map (ram_width => ram_width)
+            port map (in_data => in_data,
+                      out_data  => out_data);
+    end generate gen_sbuffer_bypass;
 
-end architecture Behavioral;
+end Behavioural;
