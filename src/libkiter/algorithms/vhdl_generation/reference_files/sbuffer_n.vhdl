@@ -9,7 +9,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity sbuffer is
+entity sbuffer_n is
     generic (ram_width : integer;
              buffer_size : integer;
              push_start : integer; -- start time of write operation
@@ -21,9 +21,9 @@ entity sbuffer is
         cycle_count : in integer;
         in_data   : in  std_logic_vector(ram_width-1 downto 0);
         out_data    : out std_logic_vector(ram_width-1 downto 0));
-end entity sbuffer;
+end entity sbuffer_n;
 
-architecture Behavioral of sbuffer is
+architecture Behavioral of sbuffer_n is
     type mem_type is array (0 to buffer_size-1) of std_logic_vector(ram_width-1 downto 0);
     signal memory : mem_type := (others => (others => '0'));
     signal write_index : integer range 0 to buffer_size-1 := init;
