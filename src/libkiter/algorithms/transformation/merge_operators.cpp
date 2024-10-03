@@ -337,7 +337,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       } else {
         // workaround to get the right execution timings; OS set to exec
         // duration equal to buffer
-        TIME_UNIT bufferDuration = 2; // sbuffer exec duration = 2
+        TIME_UNIT bufferDuration = 1; // sbuffer exec duration = 2
         if (bufferType == "shiftreg") { bufferDuration = 1; }
         dataflow->setVertexDuration(
             new_os, std::vector<TIME_UNIT>(vertices.size(), bufferDuration));

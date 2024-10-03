@@ -1029,6 +1029,8 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "sbuffer_n.vhdl", copyOptions);
       std::filesystem::copy(refDir + "sbuffer_bypass.vhdl",
                             dstDir + "sbuffer_bypass.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "sbuffer_one.vhdl",
+                            dstDir + "sbuffer_one.vhdl", copyOptions);
     } else if (componentType == "shiftreg") {
       refFileName = "pipo_shift_reg.vhdl";
       // extra implementation files for shift register

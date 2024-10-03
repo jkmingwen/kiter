@@ -461,7 +461,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts,
                            (TIME_UNIT)systemSlack);
       if (param_list.find("BUFFER_MIN") != param_list.end()) {
-        if (startTime + getOperatorLifespan(comp.getType(), operatorFreq) == dstStartTime) {
+        if (startTime + 1 == dstStartTime) { // use output selector execution time (1)
           tmp.bypassBufferComponent(comp.getUniqueName());
         }
       }

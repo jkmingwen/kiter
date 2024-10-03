@@ -21,7 +21,27 @@ architecture Behavioural of sbuffer is
 begin
   assert (buffer_size >= 0) report "Shift register size must be positive" severity error;
 
-    gen_sbuffer_n : if (buffer_size > 0) generate
+    gen_sbuffer_bypass : if (buffer_size = 0) generate
+        sbuff : entity work.sbuffer_bypass
+            generic map (ram_width => ram_width)
+            port map (in_data => in_data,
+                      out_data  => out_data);
+    end generate gen_sbuffer_bypass;
+
+    gen_sbuffer_one : if (buffer_size = 1 and init = 0) generate
+        sbuff : entity work.sbuffer_one
+            generic map (ram_width => ram_width,
+                         buffer_size => buffer_size,
+                         push_start => push_start,
+                         init => init)
+            port map (
+                        clk => clk,
+                        cycle_count => cycle_count,
+                        in_data => in_data,
+                        out_data => out_data);
+    end generate gen_sbuffer_one;
+
+    gen_sbuffer_n : if (buffer_size > 1 and init >= 0) generate
         sbuff : entity work.sbuffer_n
             generic map (ram_width => ram_width,
                          buffer_size => buffer_size,
@@ -34,12 +54,5 @@ begin
                       in_data => in_data,
                       out_data => out_data);
     end generate gen_sbuffer_n;
-
-    gen_sbuffer_bypass : if (buffer_size = 0) generate
-        sbuff : entity work.sbuffer_bypass
-            generic map (ram_width => ram_width)
-            port map (in_data => in_data,
-                      out_data  => out_data);
-    end generate gen_sbuffer_bypass;
 
 end Behavioural;
