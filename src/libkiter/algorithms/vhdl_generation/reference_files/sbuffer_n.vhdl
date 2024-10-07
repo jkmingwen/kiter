@@ -20,7 +20,7 @@ entity sbuffer_n is
         rst       : in  std_logic;
         cycle_count : in integer;
         in_data   : in  std_logic_vector(ram_width-1 downto 0);
-        out_data    : out std_logic_vector(ram_width-1 downto 0));
+        out_data    : out std_logic_vector(ram_width-1 downto 0) := (others => '0'));
 end entity sbuffer_n;
 
 architecture Behavioral of sbuffer_n is
