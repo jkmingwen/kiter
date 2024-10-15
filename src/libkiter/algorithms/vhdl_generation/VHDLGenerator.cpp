@@ -269,8 +269,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
           dataflow->setPreload(e, 1);
         }
       }}
-  } else {
-    VERBOSE_INFO("Please use '-p BUFFERLESS=t' to generate VHDL without FIFO buffers");
   }
 
   // check if operator frequencies have been specified
