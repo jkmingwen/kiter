@@ -38,8 +38,13 @@ namespace algorithms {
                                                     int operatorFreq);
   std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow,
                                                    int operatorFreq);
-  void findCausalDependency(models::Dataflow* const dataflow, Vertex v,
-                            abstractDepGraph &g, std::map<ARRAY_INDEX, bool> &visited);
+  void findCausalDependency(models::Dataflow *const dataflow, Vertex v,
+                            abstractDepGraph &g,
+                            std::map<ARRAY_INDEX, bool> &visited);
+
+  void sequentialiseVertices(models::Dataflow *const dataflow, Vertex v1,
+                             Vertex v2);
+  void pipelineBuffers(models::Dataflow *const dataflow, Vertex src);
 
 }
 ADD_TRANSFORMATION(MergeOperators,

@@ -16,6 +16,7 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "commons/commons.h"
 #include "singleOutput.h"
 
 std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
@@ -666,3 +667,93 @@ void algorithms::findCausalDependency(models::Dataflow *const dataflow,
       }
     }}
 }
+
+// place vertices along the same path, thereby enforcing a sequential operation
+// the output of the first vertex is broadcasted to the second vertex as well as
+// the original target vertex
+void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
+                                       Vertex v1, Vertex v2) {
+  Edge a1, a2, b1, b2;
+  {ForInputEdges(dataflow, v1, e) { a1 = e; }}
+  {ForOutputEdges(dataflow, v1, e) { a2 = e; }}
+  {ForInputEdges(dataflow, v2, e) { b1 = e; }}
+  {ForOutputEdges(dataflow, v2, e) { b2 = e; }}
+  Vertex v1Target = dataflow->getEdgeTarget(a2);
+  Vertex v2Target = dataflow->getEdgeTarget(b2);
+  std::string a2Name = dataflow->getEdgeName(a2);
+  std::string b1Name = dataflow->getEdgeName(b1);
+  Vertex broadcast = dataflow->addVertex("broadcast" + dataflow->getVertexName(v1));
+  dataflow->setVertexType(broadcast, "broadcast");
+  dataflow->setPhasesQuantity(broadcast, 1);
+  dataflow->setVertexDuration(broadcast, {0});
+  dataflow->setReentrancyFactor(broadcast, 1);
+  std::vector<TOKEN_UNIT> a2InPhases = dataflow->getEdgeInVector(a2);
+  std::vector<TOKEN_UNIT> a2OutPhases = dataflow->getEdgeOutVector(a2);
+  dataflow->removeEdge(a2);
+  dataflow->removeEdge(b1);
+
+  // connect broadcast actor to graph (between edges a2 and b1)
+  Edge a2New = dataflow->addEdge(v1, broadcast, a2Name);
+  dataflow->setEdgeInPhases(a2New, {1});
+  dataflow->setEdgeOutPhases(a2New, {1});
+  dataflow->setEdgeInputPortName(a2New, ("in_" + a2Name));
+  dataflow->setEdgeOutputPortName(a2New, ("out_" + a2Name));
+  Edge a2Prime = dataflow->addEdge(broadcast, v1Target, "broadcast" + a2Name);
+  dataflow->setEdgeInPhases(a2Prime, a2InPhases);
+  dataflow->setEdgeOutPhases(a2Prime, a2OutPhases);
+  dataflow->setEdgeInputPortName(a2Prime, ("in_broadcast" + a2Name));
+  dataflow->setEdgeOutputPortName(a2Prime, ("out_broadcast" + a2Name));
+  Edge b1New = dataflow->addEdge(broadcast, v2, b1Name);
+  dataflow->setEdgeInPhases(b1New, {1});
+  dataflow->setEdgeOutPhases(b1New, {1});
+  dataflow->setEdgeInputPortName(b1New, ("in_" + b1Name));
+  dataflow->setEdgeOutputPortName(b1New, ("out_" + b1Name));
+  // dataflow->setPreload(b1New, 1); // need initial token to maintain schedule
+
+  std::string srcName = dataflow->getVertexName(broadcast);
+  std::string v1TargetNewName = dataflow->getVertexName(v1Target);
+  v1TargetNewName.replace(v1TargetNewName.find(dataflow->getVertexName(v1)),
+                          dataflow->getVertexName(v1).length(),
+                          srcName);
+  dataflow->setVertexName(v1Target, v1TargetNewName);
+}
+
+void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
+  // sort buffers on output edges of src actor by init tokens
+  std::map<int, std::vector<Vertex>> buffers;
+  ForOutputEdges(dataflow, src, e) {
+    Vertex targetActor = dataflow->getEdgeTarget(e);
+    // initial tokens encoded in actor name (i.e. bufferNameINITN)
+    int initTokens = std::stoi(
+        dataflow->getVertexName(targetActor)
+            .substr(dataflow->getVertexName(targetActor).find("INIT") + 4));
+    buffers[initTokens].push_back(targetActor);
+  }
+
+  for (auto it = buffers.begin(); it != buffers.end(); it++) {
+    auto next = std::next(it);
+    if (next != buffers.end()) {
+      std::string v1Init = "INIT0";
+      if (it == buffers.begin()) {
+        v1Init = "INIT1";
+      }
+      std::string v1OldName = dataflow->getVertexName(it->second.front());
+      std::string v2OldName = dataflow->getVertexName(next->second.front());
+      std::string v1Name = v1OldName;
+      std::string v2Name = v2OldName;
+      v1Name.replace(v1Name.find("INIT"), v1Name.back(), v1Init);
+      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT0");
+      dataflow->setVertexName(it->second.front(), v1Name);
+      dataflow->setVertexName(next->second.front(), v2Name);
+      {ForEachVertex(dataflow, v) {
+          std::string newName =
+              replaceActorName(dataflow->getVertexName(v), v1OldName, v1Name);
+          dataflow->setVertexName(v, newName);
+          newName = replaceActorName(dataflow->getVertexName(v), v2OldName, v2Name);
+          dataflow->setVertexName(v, newName);
+        }}
+      sequentialiseVertices(dataflow, it->second.front(), next->second.front());
+    }
+  }
+}
+

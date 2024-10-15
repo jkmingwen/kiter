@@ -352,6 +352,15 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     }
     algorithms::transformation::merge_operators(dataflow, param_list);
   }
+  if (param_list.find("BUFFER_PIPELINE") != param_list.end()) {
+    Vertex input;
+    {ForEachVertex(dataflow, v) {
+        if (dataflow->getVertexType(v) == "INPUT_0") { // TODO parameterise input actor selection
+          input = v;
+        }
+      }}
+    pipelineBuffers(dataflow, input);
+  }
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
@@ -493,9 +502,8 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     // graph here as it doesn't include the buffers)
     param_list["filename"] =
         topDir + dataflow->getGraphName() + "_scheduledmodel.dot";
-    printers::printSigGraph(
-        dataflowScheduled,
-        param_list);
+    printers::printSigGraph(dataflowScheduled, param_list);
+    printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduledmodel.xml", dataflowScheduled);
     // generate SDF XML and diagram of the graph after applying various
     // implementation strategies
     printers::writeSDF3File(
