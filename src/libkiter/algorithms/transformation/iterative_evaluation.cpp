@@ -285,12 +285,12 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
       }
       // add dependencies and actor to simulate periodic audio input data
       // dependencies between left and right input actors
-      Edge lDep = dataflow_prime->addEdge(lIn, rIn);
+      Edge lDep = dataflow_prime->addEdge(lIn, rIn, "l_dependency");
       dataflow_prime->setEdgeInPhases(lDep, {1});
       dataflow_prime->setEdgeOutPhases(lDep, {1});
       dataflow_prime->setPreload(lDep, 1);
       dataflow_prime->setTokenSize(lDep, 1);
-      Edge rDep = dataflow_prime->addEdge(rIn, lIn);
+      Edge rDep = dataflow_prime->addEdge(rIn, lIn, "r_dependency");
       dataflow_prime->setEdgeInPhases(rDep, {1});
       dataflow_prime->setEdgeOutPhases(rDep, {1});
       dataflow_prime->setPreload(rDep, 0);
@@ -301,12 +301,12 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
       dataflow_prime->setPhasesQuantity(audioIn, 2);
       dataflow_prime->setVertexDuration(audioIn, audioPeriod);
       dataflow_prime->setReentrancyFactor(audioIn, 1);
-      Edge lChannel = dataflow_prime->addEdge(audioIn, lIn);
+      Edge lChannel = dataflow_prime->addEdge(audioIn, lIn, "l_audio_in");
       dataflow_prime->setEdgeInPhases(lChannel, {1,0});
       dataflow_prime->setEdgeOutPhases(lChannel, {1});
       dataflow_prime->setPreload(lChannel, 0);
       dataflow_prime->setTokenSize(lChannel, 1);
-      Edge rChannel = dataflow_prime->addEdge(audioIn, rIn);
+      Edge rChannel = dataflow_prime->addEdge(audioIn, rIn, "r_audio_in");
       dataflow_prime->setEdgeInPhases(rChannel, {0,1});
       dataflow_prime->setEdgeOutPhases(rChannel, {1});
       dataflow_prime->setPreload(rChannel, 1);
@@ -590,8 +590,10 @@ void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
   {ForEachVertex(dataflow, a) { // update any occurances of delay name in other vertex names
       dataflow->setVertexName(
           a, replaceActorName(dataflow->getVertexName(a), delayName, newName));
-    }
-  }
+    }}
+  {ForOutputEdges(dataflow, v, e) {
+      dataflow->setPreload(e, delayAmt);
+    }}
 
   /* remove vertex providing delay argument:
      note that if the delay arg actor has multiple output edges,
