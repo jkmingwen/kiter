@@ -29,21 +29,17 @@ std::set<std::string> trigOps = {
 };
 
 std::set<std::string> nonEvalOps = { // operators that can't be evaluated
-  "select2", "input_selector", "output_selector", "sbuffer"
+  "select2", "input_selector", "output_selector", "buffer"
 };
 
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
-  bool useShiftReg = false;
   implType t = TT;
   bool dataDrivenImpl = false;  // we either prepare the SDF for a data driven or time triggered implementation
   if (params.find("DATA_DRIVEN") != params.end()) {
     dataDrivenImpl = true;
     t = DD;
-  }
-  if (params.find("SHIFT_REG") != params.end()) {
-    useShiftReg = true;
   }
 
   VERBOSE_INFO("Beginning iterative evaluation...");
