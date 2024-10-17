@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include "VHDLComponent.h"
+#include "commons/verbose.h"
 
 /**
  * \brief Each instance represents a vertex to be implemented as an
@@ -780,6 +781,7 @@ int VHDLComponent::getInitTokens() const {
 }
 
 void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
+                                  std::vector<TIME_UNIT> popTime,
                                   TIME_UNIT slack) {
   if (!times.size()) {
     VERBOSE_WARNING("Adding empty vector of start times for "
@@ -803,9 +805,18 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
                        std::to_string((int)(time + slack)), "integer", "", true);
       }
     } else if (componentType == "sbuffer") {
-      addPortMapping("push_start", std::to_string((int)(time + slack)), "integer", "",
-                     true);
-      addPortMapping("pop_start", std::to_string((int)(time + slack + 1)), "integer", "",
+      if (popTime.size() > 1) {
+        VERBOSE_WARNING("More than 1 pop time defined for buffer; using first "
+                        "time in vector");
+      }
+      if (popTime.front() == 0 && slack == 0) {
+        VERBOSE_ERROR("Buffer with pop time = 0 (" << this->getUniqueName() << "), requires slack of >= 1 using -pSLACK=slack");
+      }
+      addPortMapping("push_start", std::to_string((int)(time + slack)),
+                     "integer", "", true);
+      // Subtract 1 from pop time to account for 1 cycle delay between
+      // pop time and data output
+      addPortMapping("pop_start", std::to_string((int)(popTime.front() - 1 + slack)), "integer", "",
                      true);
     } else if (componentType == "shiftreg") {
       addPortMapping("load", std::to_string((int)(time + slack + 1)), "integer", "",

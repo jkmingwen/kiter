@@ -57,7 +57,8 @@ class VHDLComponent {
   void addInputSignal(models::Dataflow *const dataflow, const Edge e);
   void addOutputSignal(models::Dataflow *const dataflow, const Edge e);
   int getInitTokens() const;
-  void setStartTimes(std::vector<TIME_UNIT> times, TIME_UNIT slack = 0);
+  void setStartTimes(std::vector<TIME_UNIT> times,
+                     std::vector<TIME_UNIT> popTime, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
                       std::string direction, bool isGeneric = false,

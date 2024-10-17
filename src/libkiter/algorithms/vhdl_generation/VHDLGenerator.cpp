@@ -22,6 +22,7 @@
 #include <algorithms/transformation/iterative_evaluation.h>
 #include <printers/SDF3Wrapper.h>
 #include "VHDLCommons.h"
+#include "models/Dataflow.h"
 #include "printers/stdout.h"
 
 // for signal name retrieval
@@ -393,7 +394,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // model periodic audio input by adding components
   // (these extra components have no use in VHDL code - used purely to get
   // scheduling numbers)
-  std::map<std::string, std::vector<TIME_UNIT>> execTimes;
+  std::map<std::string, std::vector<TIME_UNIT>> execTimes; // actor names -> execution times
   if (!osBroadcast) {
     algorithms::transformation::generate_audio_components(dataflowScheduled,
                                                           param_list);
@@ -424,7 +425,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     if (execTimes.count(name)) {
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[name]);
-      tmp.setCompStartTime(comp.getUniqueName(), startTimes, (TIME_UNIT) systemSlack);
+      std::vector<TIME_UNIT> bufferPopTime;
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
         inputEnds[comp.getIOId()] = startTimes.front() + dataflow->getVertexDuration(v);
@@ -433,6 +434,21 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
         outputStarts[comp.getIOId()] = startTimes.front();
       }
+      if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+        {ForOutputEdges(dataflow, v, outEdge) {
+            // actor names after "_" redundant (only indicate order of args)
+            Vertex dstActor = dataflow->getEdgeTarget(outEdge);
+            std::string dstName = dataflow->getVertexName(dstActor);
+            if (osBroadcast) {dstName = dstName.substr(0, dstName.find("_"));}
+            std::vector<TIME_UNIT> dstActorStarts = execTimes[dstName];
+            for (auto i = 0; i < dataflow->getEdgeOutPhasesCount(outEdge); i++) {
+              if (dataflow->getEdgeOutVector(outEdge)[i] == 1) {
+                bufferPopTime = {dstActorStarts[i]};
+              }
+            }
+          }}
+      }
+      tmp.setCompStartTime(comp.getUniqueName(), startTimes, bufferPopTime, (TIME_UNIT) systemSlack);
     } else if ((comp.getType() == "sbuffer" || comp.getType() == "shiftreg") &&
                dataflow->getPhasesQuantity(v) > 1) {
       // buffers used for broadcasting OS signal have >1 exec phase (equal to
@@ -455,7 +471,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
           Vertex dstActor = dataflow->getEdgeTarget(outEdge);
           std::string dstName =
               dataflow->getVertexName(dstActor);
-          dstName = dstName.substr(0, dstName.find("_"));
+          dstName = dstName.substr(0, dstName.find("_")); // names after "_" indicate order of args
           std::vector<TIME_UNIT> dstActorStarts = execTimes[dstName];
           for (auto i = 0; i < dataflow->getEdgeOutPhasesCount(outEdge); i++) {
             if (dataflow->getEdgeOutVector(outEdge)[i] == 1) {
@@ -465,7 +481,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         }
       }
       srcOSStarts = {startTime};
-      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts,
+      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts, {dstStartTime},
                            (TIME_UNIT)systemSlack);
       if (param_list.find("BUFFER_MIN") != param_list.end()) {
         if (startTime + 1 == dstStartTime) { // use output selector execution time (1)
