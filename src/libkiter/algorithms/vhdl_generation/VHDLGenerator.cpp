@@ -493,8 +493,10 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                       << comp.getUniqueName() << " (" << comp.getType() << ")");
     }
   }
-  computeL = outputStarts[0] - inputEnds[0];
-  computeR = outputStarts[1] - inputEnds[1];
+  computeL = outputStarts[0] + getOperatorLifespan("fp2fix", operatorFreq) +
+    getOperatorLifespan("fp_prod", operatorFreq);
+  computeR = outputStarts[1] + getOperatorLifespan("fp2fix", operatorFreq) +
+    getOperatorLifespan("fp_prod", operatorFreq);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing
