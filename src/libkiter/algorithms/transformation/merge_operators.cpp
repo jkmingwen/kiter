@@ -679,7 +679,6 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
   {ForInputEdges(dataflow, v2, e) { b1 = e; }}
   {ForOutputEdges(dataflow, v2, e) { b2 = e; }}
   Vertex v1Target = dataflow->getEdgeTarget(a2);
-  Vertex v2Target = dataflow->getEdgeTarget(b2);
   std::string a2Name = dataflow->getEdgeName(a2);
   std::string b1Name = dataflow->getEdgeName(b1);
   Vertex broadcast = dataflow->addVertex("broadcast" + dataflow->getVertexName(v1));
@@ -710,6 +709,10 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
   dataflow->setEdgeOutputPortName(b1New, ("out_" + b1Name));
   // dataflow->setPreload(b1New, 1); // need initial token to maintain schedule
 
+  // update initial tokens
+  dataflow->setPreload(a2New, 1);
+  dataflow->setPreload(b2, 1);
+
   std::string srcName = dataflow->getVertexName(broadcast);
   std::string v1TargetNewName = dataflow->getVertexName(v1Target);
   v1TargetNewName.replace(v1TargetNewName.find(dataflow->getVertexName(v1)),
@@ -723,26 +726,22 @@ void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
   std::map<int, std::vector<Vertex>> buffers;
   ForOutputEdges(dataflow, src, e) {
     Vertex targetActor = dataflow->getEdgeTarget(e);
-    // initial tokens encoded in actor name (i.e. bufferNameINITN)
-    int initTokens = std::stoi(
-        dataflow->getVertexName(targetActor)
-            .substr(dataflow->getVertexName(targetActor).find("INIT") + 4));
-    buffers[initTokens].push_back(targetActor);
+    VERBOSE_ASSERT(dataflow->getVertexOutDegree(targetActor) == 1,
+                   "buffer " << targetActor << " has more than one output edge");
+    {ForOutputEdges(dataflow, targetActor, outEdge) {
+        buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
+      }}
   }
 
   for (auto it = buffers.begin(); it != buffers.end(); it++) {
     auto next = std::next(it);
     if (next != buffers.end()) {
-      std::string v1Init = "INIT0";
-      if (it == buffers.begin()) {
-        v1Init = "INIT1";
-      }
       std::string v1OldName = dataflow->getVertexName(it->second.front());
       std::string v2OldName = dataflow->getVertexName(next->second.front());
       std::string v1Name = v1OldName;
       std::string v2Name = v2OldName;
-      v1Name.replace(v1Name.find("INIT"), v1Name.back(), v1Init);
-      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT0");
+      v1Name.replace(v1Name.find("INIT"), v1Name.back(), "INIT1");
+      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT1");
       dataflow->setVertexName(it->second.front(), v1Name);
       dataflow->setVertexName(next->second.front(), v2Name);
       {ForEachVertex(dataflow, v) {
