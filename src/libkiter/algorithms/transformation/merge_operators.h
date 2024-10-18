@@ -25,7 +25,10 @@ namespace models {
 
 namespace algorithms {
   namespace transformation {
-    void merge_operators(models::Dataflow* const dataflow, parameters_list_t  parameters);
+  void merge_operators(models::Dataflow *const dataflow,
+                       parameters_list_t parameters);
+  void broadcast_os(models::Dataflow *const dataflow,
+                    parameters_list_t parameters);
   }
   void generateMergedGraph(models::Dataflow* dataflow,
                            std::vector<Vertex> &vertices,
@@ -47,8 +50,19 @@ namespace algorithms {
   void pipelineBuffers(models::Dataflow *const dataflow, Vertex src);
 
 }
-ADD_TRANSFORMATION(MergeOperators,
-                   transformation_t({ "MergeOperators" , "Identify operators (via a given merging strategy) and merge into a single occurance.", algorithms::transformation::merge_operators}));
+ADD_TRANSFORMATION(
+    MergeOperators,
+    transformation_t({"MergeOperators",
+                      "Identify operators (via a given merging strategy) and "
+                      "merge into a single occurance.",
+                      algorithms::transformation::merge_operators}));
+ADD_TRANSFORMATION(
+    BroadcastOS,
+    transformation_t({"BroadcastOS",
+                      "Replace output selectors with broadcasts with buffers "
+                      "on its output edges (used in conjuction with SDFs that "
+                      "have been merged via MergeOperators algorithm).",
+                      algorithms::transformation::broadcast_os}));
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_MERGE_OPERATORS_H_ */

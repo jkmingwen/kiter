@@ -56,25 +56,21 @@ std::string initTokens = "0"; // initial tokens in buffer (requirements differ b
  */
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
-  bool mergeStrategySpecified = false;
-  std::string outputName = dataflow->getGraphName() + "_merged" + ".xml"; // use graph name as default
-  std::string mergeStrategy = "greedy";
+  std::string mergeStrategy = "greedy"; // default strategy used if none specified
   int operatorFreq = 250; // operator compute frequency in MHz
 
   if (params.find("MERGE_STRATEGY") != params.end()) {
+    VERBOSE_INFO("MERGE STRATEGY: " << params["MERGE_STRATEGY"]);
     if (std::find(mergeStrategies.begin(),
                   mergeStrategies.end(),
                   params["MERGE_STRATEGY"]) != mergeStrategies.end()) {
-      mergeStrategySpecified = true;
       mergeStrategy = params["MERGE_STRATEGY"];
-      VERBOSE_INFO("MERGE STRATEGY: " << params["MERGE_STRATEGY"]);
     } else {
       VERBOSE_ERROR("Specified merge strategy (" << params["MERGE_STRATEGY"]
                     << ") is unsupported."); // TODO list valid merge strategies
     }
-  }
-  if (!mergeStrategySpecified) {
-    VERBOSE_INFO("No merge strategy specified, defaulting to greedy merge.");
+  } else {
+    VERBOSE_INFO("No merge strategy specified, defaulting to: " << mergeStrategy);
   }
   // check if operator frequencies have been specified
   if (params.find("FREQUENCY") != params.end()) {
@@ -328,39 +324,17 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<TIME_UNIT> execDurations(vertices.size(), 1);
     std::vector<TOKEN_UNIT> execRates(vertices.size(), 1);
     auto new_os = dataflow->addVertex(outputSelectorName);
-    if (osAsBroadcast) { // OS simply broadcasts in this case; so just need 1 phase of execution
-      dataflow->setPhasesQuantity(new_os, 1);
-      dataflow->setVertexDuration(new_os, {1});
-    } else {
-      dataflow->setPhasesQuantity(new_os, vertices.size());
-      if (!modelOSBroadcastTimings) {
-        dataflow->setVertexDuration(new_os, execDurations);
-      } else {
-        // workaround to get the right execution timings; OS set to exec
-        // duration equal to buffer
-        TIME_UNIT bufferDuration = 1; // sbuffer exec duration = 2
-        if (bufferType == "shiftreg") { bufferDuration = 1; }
-        dataflow->setVertexDuration(
-            new_os, std::vector<TIME_UNIT>(vertices.size(), bufferDuration));
-      }
-    }
-    if (osAsBroadcast) {
-      dataflow->setVertexType(new_os, "broadcast");
-    } else {
-      dataflow->setVertexType(new_os, "output_selector");
-    }
+    dataflow->setPhasesQuantity(new_os, vertices.size());
+    dataflow->setVertexDuration(new_os, execDurations);
+    dataflow->setVertexType(new_os, "output_selector");
+
     // connect merged actors to output selector
     std::string edgeType = (outDataTypes[i]).begin()->first;
     Edge mergedToOS = dataflow->addEdge(mergedActor, new_os);
     std::string outEdgeName = "channel_" + commons::toString(dataflow->getEdgeId(mergedToOS) + dataflow->getEdgesCount()) + "_" + edgeType;
     dataflow->setEdgeName(mergedToOS, outEdgeName);
-    if (osAsBroadcast) {
-      dataflow->setEdgeInPhases(mergedToOS, execRates);
-      dataflow->setEdgeOutPhases(mergedToOS, {1}); // if just broadcasting signal, then only need 1 exec phase
-    } else {
-      dataflow->setEdgeInPhases(mergedToOS, execRates);
-      dataflow->setEdgeOutPhases(mergedToOS, execRates);
-    }
+    dataflow->setEdgeInPhases(mergedToOS, execRates);
+    dataflow->setEdgeOutPhases(mergedToOS, execRates);
     dataflow->setEdgeInputPortName(mergedToOS, "in_" + outEdgeName);
     dataflow->setEdgeOutputPortName(mergedToOS, "out_" + outEdgeName);
     dataflow->setPreload(mergedToOS, 0);
@@ -379,45 +353,14 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       TOKEN_UNIT preload = dataflow->getPreload(ogEdge);
       DATA_UNIT tokenSize = dataflow->getTokenSize(ogEdge);
       dataflow->removeEdge(ogEdge);
-      if (osAsBroadcast) {
-        std::string edgeName = ("broadcast" + edge.second[i]);
-        Vertex buffer = dataflow->addVertex(
-            bufferType + std::to_string(broadcastBufferCnt) + "INIT" + initTokens);
-        dataflow->setVertexType(buffer, bufferType);
-        dataflow->setPhasesQuantity(buffer, vertices.size());
-        dataflow->setVertexDuration(buffer, std::vector<TIME_UNIT>(vertices.size(), 2));
-        broadcastBufferCnt++;
-        Edge toBuffer = dataflow->addEdge(new_os, buffer, edgeName);
-        dataflow->setEdgeInPhases(toBuffer, {1});
-        dataflow->setEdgeOutPhases(toBuffer,
-                                   std::vector<TOKEN_UNIT>(vertices.size(), 1));
-        dataflow->setEdgeInputPortName(toBuffer, ("in_" + edgeName));
-        dataflow->setEdgeOutputPortName(toBuffer, ("out_" + edgeName));
-        dataflow->setPreload(toBuffer, 0);
-        dataflow->setTokenSize(toBuffer, tokenSize);
-        Edge newEdge = dataflow->addEdge(buffer, ogTarget, (edge.second[i]));
-        inPhases[edge.first] = 1; // the order of execution is reflected here
-        dataflow->setEdgeInPhases(newEdge, inPhases);
-        dataflow->setEdgeOutPhases(newEdge, outPhases);
-        dataflow->setEdgeInputPortName(newEdge, ("in_" + edge.second[i]));
-        dataflow->setEdgeOutputPortName(newEdge, ("out_" + edge.second[i]));
-        dataflow->setPreload(newEdge, preload);
-        dataflow->setTokenSize(newEdge, tokenSize);
-        // update name for arg order
-        dataflow->setVertexName(
-            ogTarget,
-            replaceActorName(dataflow->getVertexName(ogTarget), baseName,
-                             dataflow->getVertexName(buffer)));
-      } else {
-        Edge newEdge = dataflow->addEdge(new_os, ogTarget, (edge.second[i]));
-        inPhases[edge.first] = 1; // the order of execution is reflected here
-        dataflow->setEdgeInPhases(newEdge, inPhases);
-        dataflow->setEdgeOutPhases(newEdge, outPhases);
-        dataflow->setEdgeInputPortName(newEdge, ("in_" + edge.second[i]));
-        dataflow->setEdgeOutputPortName(newEdge, ("out_" + edge.second[i]));
-        dataflow->setPreload(newEdge, preload);
-        dataflow->setTokenSize(newEdge, tokenSize);
-      }
+      Edge newEdge = dataflow->addEdge(new_os, ogTarget, (edge.second[i]));
+      inPhases[edge.first] = 1; // the order of execution is reflected here
+      dataflow->setEdgeInPhases(newEdge, inPhases);
+      dataflow->setEdgeOutPhases(newEdge, outPhases);
+      dataflow->setEdgeInputPortName(newEdge, ("in_" + edge.second[i]));
+      dataflow->setEdgeOutputPortName(newEdge, ("out_" + edge.second[i]));
+      dataflow->setPreload(newEdge, preload);
+      dataflow->setTokenSize(newEdge, tokenSize);
     }
 
     // add re-entrancy edges/ports
@@ -754,5 +697,82 @@ void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
       sequentialiseVertices(dataflow, it->second.front(), next->second.front());
     }
   }
+}
+
+/**
+   Replaces output selectors.
+
+   @param dataflow HSDF/SDF graph
+
+   @param params Parameters that dictate how the dataflow graph is transformed
+   by the merging operations. Parameters are as follows:
+   - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
+   buffer components in VHDL implementation. Options: shiftreg/sbuffer (default).
+ */
+void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
+                                              parameters_list_t params) {
+  int bufferCount = 0; // append count to names to avoid naming conflicts
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "output_selector") {
+        // Update number of phases:
+        // broadcast just needs 1 phase of execution as opposed to OS
+        EXEC_COUNT numPhases =
+            dataflow->getPhasesQuantity(v); // passed on to buffers
+        std::vector<TOKEN_UNIT> osInPhases;
+        dataflow->setVertexType(v, "broadcast");
+        dataflow->setPhasesQuantity(v, 1);
+        dataflow->setVertexDuration(v, {1});
+        {ForInputEdges(dataflow, v, inputEdge) {
+            osInPhases = dataflow->getEdgeOutVector(inputEdge); // passed on to buffer
+            dataflow->setEdgeOutPhases(inputEdge, {1});
+          }}
+
+        // Add buffers on each output edge between OS and target
+        std::vector<Edge> outputEdges;
+        {ForOutputEdges(dataflow, v, e) { outputEdges.push_back(e); }}
+        for (auto e : outputEdges) {
+          bufferCount++;
+          std::string edgeName =
+            "broadcast" + dataflow->getEdgeName(e);
+          Vertex ogTarget = dataflow->getEdgeTarget(e);
+          TOKEN_UNIT preload = dataflow->getPreload(e);
+          DATA_UNIT tokenSize = dataflow->getTokenSize(e);
+          Vertex buffer = dataflow->addVertex(
+                                              bufferType + std::to_string(bufferCount) +
+                                              "INIT0"); // TODO remove INIT postfix once it's unnecessary
+          dataflow->setVertexType(buffer, bufferType);
+          dataflow->setPhasesQuantity(buffer, numPhases);
+          dataflow->setVertexDuration(
+                                      buffer,
+                                      std::vector<TIME_UNIT>(numPhases, 1)); // NOTE might cause a bug
+          Edge toBuffer = dataflow->addEdge(v, buffer, "broadcast" + edgeName);
+          dataflow->setEdgeInPhases(toBuffer, {1});
+          dataflow->setEdgeOutPhases(toBuffer, osInPhases);
+          dataflow->setPreload(toBuffer, 0);
+          dataflow->setTokenSize(toBuffer, tokenSize);
+          Edge newEdge = dataflow->addEdge(buffer, ogTarget, edgeName);
+          dataflow->setEdgeInPhases(newEdge, dataflow->getEdgeInVector(e));
+          dataflow->setEdgeOutPhases(newEdge, dataflow->getEdgeOutVector(e));
+          dataflow->setEdgeInputPortName(newEdge, ("in_" + edgeName));
+          dataflow->setEdgeOutputPortName(newEdge, ("out_" + edgeName));
+          dataflow->setPreload(newEdge, preload);
+          dataflow->setTokenSize(newEdge, tokenSize);
+
+          // update name for arg order
+          std::string baseName =
+            dataflow->getVertexName(dataflow->getEdgeSource(e));
+          baseName = baseName.substr(0, baseName.find("_"));
+          dataflow->setVertexName(
+              ogTarget,
+              replaceActorName(dataflow->getVertexName(ogTarget), baseName,
+                               dataflow->getVertexName(buffer)));
+        }
+
+        // remove old edges
+        for (auto e : outputEdges) {
+          dataflow->removeEdge(e);
+        }
+      }
+    }}
 }
 
