@@ -185,6 +185,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       } else if (type.first == "int") {
         isInt = true;
       } else {
+        VERBOSE_ERROR("Input type error on " << this->getUniqueName());
         VERBOSE_ERROR("\tUndefined input type detected: " << type.first << ", input types: " << commons::toString(inputTypes));
       }
     }

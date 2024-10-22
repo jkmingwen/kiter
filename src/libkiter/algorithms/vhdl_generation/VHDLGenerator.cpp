@@ -247,6 +247,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   tbDir = topDir + "/testbenches/";
   bool outputDirSpecified = false;
 
+  // to store schedule for VHDL implementation
+  std::map<std::string, std::vector<TIME_UNIT>>
+      execTimes; // actor names -> execution times // TODO try with actor ID
+                 // instead of names
+  models::Scheduling res;
+
   // check for specified VHDL output directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
     outputDirSpecified = true;
@@ -321,45 +327,51 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                  "strategy with -pMERGE_STRATEGY={greedy/smart}");
   }
 
+  // Generate schedule for given VHDL implementation
+  if (param_list.find("BROADCAST") != param_list.end()) {
+    /* use audio component artifacts for scheduling (scheduledDataflow),
+       and broadcast transformed graph (dataflow) for VHDL implementation */
+    /* in order to generate a schedule defining execution times of buffers on
+       the output edges of broadcast actors, it's necessary to schedule the
+       dataflow without those buffers to compute the start times of the output
+       selector. These start times are then passed on to the buffers that are
+       added afterwards. */
+    models::Dataflow *scheduledDataflow = new models::Dataflow(*dataflow);
+    algorithms::transformation::generate_audio_components(scheduledDataflow,
+                                                          param_list);
+    VERBOSE_ASSERT(computeRepetitionVector(scheduledDataflow),
+                   "inconsistent graph");
+    res = scheduling::CSDF_1PeriodicScheduling(scheduledDataflow, 0);
+    for (const auto &item : res.getTaskSchedule()) {
+      std::string actorBaseName =
+        scheduledDataflow->getVertexName(scheduledDataflow->getVertexById(item.first));
+      actorBaseName = actorBaseName.substr(0, actorBaseName.find("_"));
+      execTimes[actorBaseName] = item.second.periodic_starts.second;
+    }
+    algorithms::transformation::broadcast_os(dataflow, param_list);
+  } else {
+    models::Dataflow *scheduledDataflow = new models::Dataflow(*dataflow);
+    algorithms::transformation::generate_audio_components(scheduledDataflow,
+                                                          param_list);
+    VERBOSE_ASSERT(computeRepetitionVector(scheduledDataflow),
+                   "inconsistent graph");
+    res = scheduling::CSDF_1PeriodicScheduling(scheduledDataflow, 0);
+    for (const auto &item : res.getTaskSchedule()) {
+      execTimes[scheduledDataflow->getVertexName(scheduledDataflow->getVertexById(item.first))] = item.second.periodic_starts.second;
+    }
+  }
+
+  // Set buffer type to specified implementation
   if (param_list.find("BUFFER_TYPE") != param_list.end()) {
     VERBOSE_INFO("Set buffer implementation to type: " << param_list["BUFFER_TYPE"]);
     bufferImpl = param_list["BUFFER_TYPE"];
   }
-  // Set buffer type to specified implementation
   {ForEachVertex(dataflow, v) {
       if (dataflow->getVertexType(v) == "buffer") {
         dataflow->setVertexType(v, bufferImpl);
       }
     }}
 
-  // implement merge strategy if specified
-  models::Dataflow *broadcastTimingModel = new models::Dataflow(*dataflow);
-  std::map<std::string, std::vector<TIME_UNIT>> osBroadcastTimes; // only used when osBroadcast = true
-  if (toMerge) {
-    if (osBroadcast) {
-      /* in order to generate a schedule defining execution times of buffers on
-         the output edges of broadcast actors, it's necessary to schedule the
-         dataflow without those buffers to compute the start times of the output
-         selector. These start times are then passed on to the buffers that are
-         added afterwards. */
-      param_list.erase(param_list.find("BROADCAST"));
-      param_list["OS_BROADCAST_SCHED_MODEL"] = "true";
-      // schedule for broadcast implementation taken from this graph
-      algorithms::transformation::merge_operators(broadcastTimingModel,
-                                                  param_list);
-      param_list["BROADCAST"] = "true";
-    }
-    algorithms::transformation::merge_operators(dataflow, param_list);
-  }
-  if (param_list.find("BUFFER_PIPELINE") != param_list.end()) {
-    Vertex input;
-    {ForEachVertex(dataflow, v) {
-        if (dataflow->getVertexType(v) == "INPUT_0") { // TODO parameterise input actor selection
-          input = v;
-        }
-      }}
-    pipelineBuffers(dataflow, input);
-  }
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
@@ -388,35 +400,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_INFO("Output Circuit");
   }
 
-  // schedule execution times
-  models::Dataflow *dataflowScheduled = new models::Dataflow(*dataflow);
-  models::Scheduling res;
-  // model periodic audio input by adding components
-  // (these extra components have no use in VHDL code - used purely to get
-  // scheduling numbers)
-  std::map<std::string, std::vector<TIME_UNIT>> execTimes; // actor names -> execution times
-  if (!osBroadcast) {
-    algorithms::transformation::generate_audio_components(dataflowScheduled,
-                                                          param_list);
-    VERBOSE_ASSERT(computeRepetitionVector(dataflowScheduled),
-                   "inconsistent graph");
-    res = scheduling::CSDF_1PeriodicScheduling(dataflowScheduled, 0);
-    for (const auto &item : res.getTaskSchedule()) {
-      execTimes[dataflowScheduled->getVertexName(dataflowScheduled->getVertexById(item.first))] = item.second.periodic_starts.second;
-    }
-  } else {
-    algorithms::transformation::generate_audio_components(broadcastTimingModel,
-                                                          param_list);
-    VERBOSE_ASSERT(computeRepetitionVector(broadcastTimingModel),
-                   "inconsistent graph");
-    res = scheduling::CSDF_1PeriodicScheduling(broadcastTimingModel, 0);
-    for (const auto &item : res.getTaskSchedule()) {
-      std::string actorBaseName =
-        broadcastTimingModel->getVertexName(broadcastTimingModel->getVertexById(item.first));
-      actorBaseName = actorBaseName.substr(0, actorBaseName.find("_"));
-      execTimes[actorBaseName] = item.second.periodic_starts.second;
-    }
-  }
   std::vector<TIME_UNIT> inputEnds(2, 0);
   std::vector<TIME_UNIT> outputStarts(2, 0);
   for (auto &[v, comp] : tmp.getComponentMap()) {
@@ -509,17 +492,18 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                             dataflow);
     VERBOSE_INFO("VHDL files generated in: " << topDir);
     // print schedule and corresponding signal graph
-    std::ofstream tikzFile;
-    tikzFile.open(topDir + dataflow->getGraphName() + "_schedule.tex");
-    tikzFile << generateTikzSchedule(res) << std::endl;
-    tikzFile.close();
-    // print diagram of graph that is being scheduled for the
-    // VHDL implementation (we don't use broadcastTimingModel
-    // graph here as it doesn't include the buffers)
-    param_list["filename"] =
-        topDir + dataflow->getGraphName() + "_scheduledmodel.dot";
-    printers::printSigGraph(dataflowScheduled, param_list);
-    printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduledmodel.xml", dataflowScheduled);
+    // TODO fix schedule generation given separation of transformation and VHDL implementation
+    // std::ofstream tikzFile;
+    // tikzFile.open(topDir + dataflow->getGraphName() + "_schedule.tex");
+    // tikzFile << generateTikzSchedule(res) << std::endl;
+    // tikzFile.close();
+    //// print diagram of graph that is being scheduled for the
+    //// VHDL implementation (we don't use broadcastTimingModel
+    //// graph here as it doesn't include the buffers)
+    // param_list["filename"] =
+    //     topDir + dataflow->getGraphName() + "_scheduledmodel.dot";
+    // printers::printSigGraph(dataflowScheduled, param_list);
+    // printers::writeSDF3File(topDir + dataflow->getGraphName() + "_scheduledmodel.xml", dataflowScheduled);
     // generate SDF XML and diagram of the graph after applying various
     // implementation strategies
     printers::writeSDF3File(

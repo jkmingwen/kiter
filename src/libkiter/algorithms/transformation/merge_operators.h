@@ -29,12 +29,14 @@ namespace algorithms {
                        parameters_list_t parameters);
   void broadcast_os(models::Dataflow *const dataflow,
                     parameters_list_t parameters);
+  void pipeline_buffers(models::Dataflow *const dataflow,
+                        parameters_list_t parameters);
   }
   void generateMergedGraph(models::Dataflow* dataflow,
                            std::vector<Vertex> &vertices,
                            int &isOffset, int &osOffset);
   std::string replaceActorName(std::string originalName, const std::string& toReplace,
-                               const std::string& replacement);
+                               const std::string& replacement, std::vector<TOKEN_UNIT> replacementMask = {0});
 
   // Merge strategies
   std::vector<std::vector<ARRAY_INDEX>> greedyMerge(models::Dataflow* const dataflow,
@@ -64,5 +66,11 @@ ADD_TRANSFORMATION(
                       "have been merged via MergeOperators algorithm).",
                       algorithms::transformation::broadcast_os}));
 
+ADD_TRANSFORMATION(PipelineBuffers,
+                   transformation_t({
+                       "PipelineBuffers",
+                       "Sequentialise buffers that store data from the same "
+                       "actor to maximise data re-use.",
+                       algorithms::transformation::pipeline_buffers}));
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_MERGE_OPERATORS_H_ */

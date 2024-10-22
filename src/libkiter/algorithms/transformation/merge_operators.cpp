@@ -387,27 +387,61 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
   }
 }
 
-// replace all occurances of actor name with replacement name
-// from https://stackoverflow.com/questions/5343190/how-do-i-replace-all-instances-of-a-string-with-another-string
-std::string algorithms::replaceActorName(std::string originalName, const std::string& toReplace,
-                                         const std::string& replacement) {
-  size_t startPos = originalName.find("_");
-  if (startPos != std::string::npos) { // we only replace occurances of toReplace after the first "_" delimiter
-    while ((startPos = originalName.find(toReplace, startPos)) != std::string::npos) {
-      if (startPos + toReplace.length() < originalName.length()) {
-        if (originalName.substr(startPos + toReplace.length(), 3) != "Dup") {
-          originalName.replace(startPos, toReplace.length(), replacement);
+/**
+   Replace occurances of a string with a specified replacement
+
+   @param targetString String to operate on.
+   @param toReplace Phrase to replace in targetString.
+   @param replacement Replacement for string specified by toReplace.
+   @param replacementMask Mask defining which phrases to replace given multiple matches.
+**/ // TODO break into modular functions: e.g. splitIntoPhrases, replacePhrase, replaceActorName
+std::string algorithms::replaceActorName(std::string targetString,
+                                         const std::string &toReplace,
+                                         const std::string &replacement,
+                                         std::vector<TOKEN_UNIT> replacementMask) {
+  if (replacementMask.size() == 1) { // replace all occurances of toReplace with replacement
+    size_t startPos = targetString.find("_");
+    if (startPos != std::string::npos) { // we only replace occurances of toReplace after the first "_" delimiter
+      while ((startPos = targetString.find(toReplace, startPos)) != std::string::npos) {
+        if (startPos + toReplace.length() < targetString.length()) {
+          if (targetString.substr(startPos + toReplace.length(), 3) != "Dup") {
+            targetString.replace(startPos, toReplace.length(), replacement);
+            startPos += replacement.length();
+          } else {
+            startPos += toReplace.length(); // we ignore this occurance if it ends with a DupN
+          }
+        } else { // if it's the last occurance, then we replace it
+          targetString.replace(startPos, toReplace.length(), replacement);
           startPos += replacement.length();
-        } else {
-          startPos += toReplace.length(); // we ignore this occurance if it ends with a DupN
         }
-      } else { // if it's the last occurance, then we replace it
-        originalName.replace(startPos, toReplace.length(), replacement);
-        startPos += replacement.length();
+      }
+    }
+  } else if (replacementMask.size() > 1) { // only replace at unmasked positions
+    std::vector<size_t> argStartPos;
+    size_t startPos = targetString.find("_");
+    if (startPos != std::string::npos) {
+      while ((startPos = targetString.find("_", startPos)) !=
+             std::string::npos) {
+        // populate vector with start positions of matched replacement
+        argStartPos.push_back(startPos + 1);
+        startPos += 1;
+      }
+      // use replacementMask vector to define matched instances to replace
+      for (auto i = 0; i < replacementMask.size(); i++) {
+        if (replacementMask[i]) {
+          VERBOSE_ASSERT(
+              targetString.substr(argStartPos[i], toReplace.length()) ==
+                  toReplace,
+              "argument identified for replacement ("
+                  << targetString.substr(argStartPos[i], toReplace.length())
+                  << ") doesn't match intended replacement: " << toReplace);
+          targetString.replace(argStartPos[i], toReplace.length(), replacement);
+        }
       }
     }
   }
-  return originalName;
+
+  return targetString;
 }
 
 std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* const dataflow,
@@ -665,6 +699,12 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
 }
 
 void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
+  Vertex source;
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "INPUT_0") { // TODO parameterise input actor selection
+        source = v;
+      }
+    }}
   // sort buffers on output edges of src actor by init tokens
   std::map<int, std::vector<Vertex>> buffers;
   ForOutputEdges(dataflow, src, e) {
@@ -700,14 +740,12 @@ void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
 }
 
 /**
-   Replaces output selectors.
+   Replace output selectors with broadcast components with buffers on each
+   output edge.
 
-   @param dataflow HSDF/SDF graph
-
+   @param dataflow HSDF/SDF graph.
    @param params Parameters that dictate how the dataflow graph is transformed
-   by the merging operations. Parameters are as follows:
-   - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
-   buffer components in VHDL implementation. Options: shiftreg/sbuffer (default).
+   by the given algorithm. Parameter options (if they exist) are as follows:
  */
 void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
                                               parameters_list_t params) {
@@ -728,29 +766,31 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           }}
 
         // Add buffers on each output edge between OS and target
+        // OS ---{toBuffer}--> buffer --{newEdge}--> target
         std::vector<Edge> outputEdges;
         {ForOutputEdges(dataflow, v, e) { outputEdges.push_back(e); }}
         for (auto e : outputEdges) {
           bufferCount++;
-          std::string edgeName =
-            "broadcast" + dataflow->getEdgeName(e);
+          std::string edgeName = dataflow->getEdgeName(e);
           Vertex ogTarget = dataflow->getEdgeTarget(e);
           TOKEN_UNIT preload = dataflow->getPreload(e);
           DATA_UNIT tokenSize = dataflow->getTokenSize(e);
           Vertex buffer = dataflow->addVertex(
-                                              bufferType + std::to_string(bufferCount) +
-                                              "INIT0"); // TODO remove INIT postfix once it's unnecessary
-          dataflow->setVertexType(buffer, bufferType);
+              "osbuffer" + std::to_string(bufferCount) +
+              "INIT0"); // TODO remove INIT postfix once it's unnecessary
+          dataflow->setReentrancyFactor(buffer, 1);
+          dataflow->setVertexType(buffer, "buffer"); // buffer type defined during VHDL generation
           dataflow->setPhasesQuantity(buffer, numPhases);
-          dataflow->setVertexDuration(
-                                      buffer,
-                                      std::vector<TIME_UNIT>(numPhases, 1)); // NOTE might cause a bug
+          dataflow->setVertexDuration(buffer,
+                                      std::vector<TIME_UNIT>(numPhases, 1));
           Edge toBuffer = dataflow->addEdge(v, buffer, "broadcast" + edgeName);
           dataflow->setEdgeInPhases(toBuffer, {1});
           dataflow->setEdgeOutPhases(toBuffer, osInPhases);
+          dataflow->setEdgeInputPortName(toBuffer, ("in_broadcast" + edgeName));
+          dataflow->setEdgeOutputPortName(toBuffer, ("out_broadcast" + edgeName));
           dataflow->setPreload(toBuffer, 0);
           dataflow->setTokenSize(toBuffer, tokenSize);
-          Edge newEdge = dataflow->addEdge(buffer, ogTarget, edgeName);
+          Edge newEdge = dataflow->addEdge(buffer, ogTarget, "tmp"); // rename later to avoid naming with same name
           dataflow->setEdgeInPhases(newEdge, dataflow->getEdgeInVector(e));
           dataflow->setEdgeOutPhases(newEdge, dataflow->getEdgeOutVector(e));
           dataflow->setEdgeInputPortName(newEdge, ("in_" + edgeName));
@@ -765,14 +805,65 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           dataflow->setVertexName(
               ogTarget,
               replaceActorName(dataflow->getVertexName(ogTarget), baseName,
-                               dataflow->getVertexName(buffer)));
-        }
+                               dataflow->getVertexName(buffer),
+                               dataflow->getEdgeOutVector(e)));
 
-        // remove old edges
-        for (auto e : outputEdges) {
+          // restore original name to new edge
           dataflow->removeEdge(e);
+          dataflow->setEdgeName(newEdge, edgeName);
         }
       }
     }}
 }
 
+/**
+   Sequentialises buffers with parallel data storage to multiple instances of
+   data storage.
+
+   @param dataflow HSDF/SDF graph
+   @param params Parameters that dictate how the dataflow graph is transformed
+   by the given algorithm. Parameter options (if they exist) are as follows:
+ */
+void algorithms::transformation::pipeline_buffers(models::Dataflow *const dataflow,
+                                                  parameters_list_t params) {
+  // TODO parameterise source actor selection
+  Vertex src;
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "INPUT_0") {
+        src = v;
+      }
+    }}
+
+  // sort buffers on output edges of src actor by init tokens
+  std::map<int, std::vector<Vertex>> buffers;
+  ForOutputEdges(dataflow, src, e) {
+    Vertex targetActor = dataflow->getEdgeTarget(e);
+    VERBOSE_ASSERT(dataflow->getVertexOutDegree(targetActor) == 1,
+                   "buffer " << targetActor << " has more than one output edge");
+    {ForOutputEdges(dataflow, targetActor, outEdge) {
+        buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
+      }}
+  }
+
+  for (auto it = buffers.begin(); it != buffers.end(); it++) {
+    auto next = std::next(it);
+    if (next != buffers.end()) {
+      std::string v1OldName = dataflow->getVertexName(it->second.front());
+      std::string v2OldName = dataflow->getVertexName(next->second.front());
+      std::string v1Name = v1OldName;
+      std::string v2Name = v2OldName;
+      v1Name.replace(v1Name.find("INIT"), v1Name.back(), "INIT1");
+      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT1");
+      dataflow->setVertexName(it->second.front(), v1Name);
+      dataflow->setVertexName(next->second.front(), v2Name);
+      {ForEachVertex(dataflow, v) {
+          std::string newName =
+              replaceActorName(dataflow->getVertexName(v), v1OldName, v1Name);
+          dataflow->setVertexName(v, newName);
+          newName = replaceActorName(dataflow->getVertexName(v), v2OldName, v2Name);
+          dataflow->setVertexName(v, newName);
+        }}
+      sequentialiseVertices(dataflow, it->second.front(), next->second.front());
+    }
+  }
+}
