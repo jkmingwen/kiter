@@ -486,11 +486,16 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "sbuffer") {
       addPortMapping("ram_width", "ram_width", "integer", "", true);
-      addPortMapping("buffer_size",
-                     std::to_string(this->getInitTokens() + 1), "integer",
-                     "", true);
-      addPortMapping("init", std::to_string(this->getInitTokens()),
-                     "integer", "", true);
+      VERBOSE_ASSERT(dataflow->getVertexOutDegree(actor) == 1,
+                     "buffers should only have 1 output");
+      // get initial token from output edge
+      {ForOutputEdges(dataflow, actor, outEdge) {
+          addPortMapping("buffer_size",
+                         std::to_string(dataflow->getPreload(outEdge) + 1),
+                         "integer", "", true);
+          addPortMapping("init", std::to_string(dataflow->getPreload(outEdge)),
+                         "integer", "", true);
+        }}
       addPortMapping("rst", "rst", "std_logic", "in");
       addPortMapping("cycle_count", "cycle_count", "integer", "in");
       for (auto i : inputSignals) {
@@ -500,10 +505,15 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         addPortMapping("out_data", o, "std_logic_vector", "out");
       }
     } else if (componentType == "shiftreg") {
-      addPortMapping("depth", std::to_string(this->getInitTokens()),
+      // get depth from output edge
+      int initTokens = 0;
+      {ForOutputEdges(dataflow, actor, outEdge) {
+          initTokens = dataflow->getPreload(outEdge);
+        }}
+      addPortMapping("depth", std::to_string(initTokens),
                      "integer", "", true);
       addPortMapping("period", std::to_string(5209), "integer", "", true);
-      pipoNumbers["depth"] = this->getInitTokens();
+      pipoNumbers["depth"] = initTokens;
       pipoNumbers["period"] = 5209;
       addPortMapping("rst", "rst", "std_logic", "in");
       for (auto i : inputSignals) {
@@ -771,14 +781,6 @@ void VHDLComponent::addOutputSignal(models::Dataflow *const dataflow,
                 signalName) == outputSignals.end()) {
     outputSignals.push_back(signalName);
   }
-}
-
-int VHDLComponent::getInitTokens() const {
-  VERBOSE_ASSERT((this->getType() == "sbuffer" || this->getType() == "shiftreg"),
-                 "Can only get initial tokens from SBuffers");
-  std::string initTokens =
-      this->getUniqueName().substr(this->getUniqueName().find("INIT") + 4);
-  return std::stoi(initTokens);
 }
 
 void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,

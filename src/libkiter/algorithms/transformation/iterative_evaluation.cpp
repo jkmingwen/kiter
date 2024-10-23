@@ -575,18 +575,10 @@ void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
   std::string delayName = dataflow->getVertexName(v);
   unsigned int delayArgOutputCnt = dataflow->getVertexOutDegree(dataflow->getEdgeSource(delayArg)); // need to store output count separately to avoid breakage after removing vertices
 
-  std::string newName = delayName + "INIT" + std::to_string(delayAmt); // initial tokens encoded in unique name
-  TIME_UNIT compDur = 1; // duration to be instantiated according to buffer
-                         // implementation type in VHDLComponent.cpp
-  std::string newType = "buffer";
-  dataflow->setVertexType(v, newType);
-  dataflow->setVertexDuration(v, {compDur});
-  dataflow->setVertexName(v, newName);
+  dataflow->setVertexType(v, "buffer");
+  dataflow->setVertexDuration(v, {1}); // duration instantiated by VHDLComponent
+  // dataflow->setVertexName(v, newName);
   dataflow->setReentrancyFactor(v, 1);
-  {ForEachVertex(dataflow, a) { // update any occurances of delay name in other vertex names
-      dataflow->setVertexName(
-          a, replaceActorName(dataflow->getVertexName(a), delayName, newName));
-    }}
   {ForOutputEdges(dataflow, v, e) {
       dataflow->setPreload(e, delayAmt);
     }}

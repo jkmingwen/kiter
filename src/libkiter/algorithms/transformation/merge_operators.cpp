@@ -50,7 +50,8 @@ implType t = TT;
 void algorithms::transformation::merge_operators(models::Dataflow* const dataflow,
                                                  parameters_list_t params) {
   std::string mergeStrategy = "greedy"; // default strategy used if none specified
-  int operatorFreq = 250; // operator compute frequency in MHz
+  int operatorFreq = 250;               // operator compute frequency in MHz
+  std::string bufferImpl = "sbuffer";   // default buffer type if none specified
 
   if (params.find("MERGE_STRATEGY") != params.end()) {
     VERBOSE_INFO("MERGE STRATEGY: " << params["MERGE_STRATEGY"]);
@@ -77,6 +78,18 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     VERBOSE_INFO("Adding gates to the output edges of output selectors");
     osAsBroadcast = true;
   }
+
+  // Necessary to update placeholder buffer type to a specified implementation
+  // as VHDLComponent types are instantiated during merge
+  if (params.find("BUFFER_TYPE") != params.end()) {
+    VERBOSE_INFO("Set buffer implementation to type: " << params["BUFFER_TYPE"]);
+    bufferImpl = params["BUFFER_TYPE"];
+  }
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == "buffer") {
+        dataflow->setVertexType(v, bufferImpl);
+      }
+    }}
 
   if (params.find("DATA_DRIVEN") != params.end()) {
     VERBOSE_INFO("Setting implementation type to data-driven");
@@ -138,6 +151,13 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     }
     generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
   }
+
+  // revert buffer type to generic placeholder after transform
+  {ForEachVertex(dataflow, v) {
+      if (dataflow->getVertexType(v) == bufferImpl) {
+        dataflow->setVertexType(v, "buffer");
+      }
+    }}
 
 }
 
@@ -672,47 +692,6 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
   dataflow->setVertexName(v1Target, v1TargetNewName);
 }
 
-void algorithms::pipelineBuffers(models::Dataflow *const dataflow, Vertex src) {
-  Vertex source;
-  {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexType(v) == "INPUT_0") { // TODO parameterise input actor selection
-        source = v;
-      }
-    }}
-  // sort buffers on output edges of src actor by init tokens
-  std::map<int, std::vector<Vertex>> buffers;
-  ForOutputEdges(dataflow, src, e) {
-    Vertex targetActor = dataflow->getEdgeTarget(e);
-    VERBOSE_ASSERT(dataflow->getVertexOutDegree(targetActor) == 1,
-                   "buffer " << targetActor << " has more than one output edge");
-    {ForOutputEdges(dataflow, targetActor, outEdge) {
-        buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
-      }}
-  }
-
-  for (auto it = buffers.begin(); it != buffers.end(); it++) {
-    auto next = std::next(it);
-    if (next != buffers.end()) {
-      std::string v1OldName = dataflow->getVertexName(it->second.front());
-      std::string v2OldName = dataflow->getVertexName(next->second.front());
-      std::string v1Name = v1OldName;
-      std::string v2Name = v2OldName;
-      v1Name.replace(v1Name.find("INIT"), v1Name.back(), "INIT1");
-      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT1");
-      dataflow->setVertexName(it->second.front(), v1Name);
-      dataflow->setVertexName(next->second.front(), v2Name);
-      {ForEachVertex(dataflow, v) {
-          std::string newName =
-              replaceActorName(dataflow->getVertexName(v), v1OldName, v1Name);
-          dataflow->setVertexName(v, newName);
-          newName = replaceActorName(dataflow->getVertexName(v), v2OldName, v2Name);
-          dataflow->setVertexName(v, newName);
-        }}
-      sequentialiseVertices(dataflow, it->second.front(), next->second.front());
-    }
-  }
-}
-
 /**
    Replace output selectors with broadcast components with buffers on each
    output edge.
@@ -750,8 +729,7 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           TOKEN_UNIT preload = dataflow->getPreload(e);
           DATA_UNIT tokenSize = dataflow->getTokenSize(e);
           Vertex buffer = dataflow->addVertex(
-              "osbuffer" + std::to_string(bufferCount) +
-              "INIT0"); // TODO remove INIT postfix once it's unnecessary
+              "osbuffer" + std::to_string(bufferCount));
           dataflow->setReentrancyFactor(buffer, 1);
           dataflow->setVertexType(buffer, "buffer"); // buffer type defined during VHDL generation
           dataflow->setPhasesQuantity(buffer, numPhases);
@@ -822,21 +800,6 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
   for (auto it = buffers.begin(); it != buffers.end(); it++) {
     auto next = std::next(it);
     if (next != buffers.end()) {
-      std::string v1OldName = dataflow->getVertexName(it->second.front());
-      std::string v2OldName = dataflow->getVertexName(next->second.front());
-      std::string v1Name = v1OldName;
-      std::string v2Name = v2OldName;
-      v1Name.replace(v1Name.find("INIT"), v1Name.back(), "INIT1");
-      v2Name.replace(v2Name.find("INIT"), v2Name.back(), "INIT1");
-      dataflow->setVertexName(it->second.front(), v1Name);
-      dataflow->setVertexName(next->second.front(), v2Name);
-      {ForEachVertex(dataflow, v) {
-          std::string newName =
-              replaceActorName(dataflow->getVertexName(v), v1OldName, v1Name);
-          dataflow->setVertexName(v, newName);
-          newName = replaceActorName(dataflow->getVertexName(v), v2OldName, v2Name);
-          dataflow->setVertexName(v, newName);
-        }}
       sequentialiseVertices(dataflow, it->second.front(), next->second.front());
     }
   }

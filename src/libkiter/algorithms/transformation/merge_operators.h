@@ -49,7 +49,6 @@ namespace algorithms {
 
   void sequentialiseVertices(models::Dataflow *const dataflow, Vertex v1,
                              Vertex v2);
-  void pipelineBuffers(models::Dataflow *const dataflow, Vertex src);
 
 }
 ADD_TRANSFORMATION(

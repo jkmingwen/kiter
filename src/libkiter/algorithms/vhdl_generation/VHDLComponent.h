@@ -56,7 +56,6 @@ class VHDLComponent {
   void addHSOutputSignal(const std::string &signalName);
   void addInputSignal(models::Dataflow *const dataflow, const Edge e);
   void addOutputSignal(models::Dataflow *const dataflow, const Edge e);
-  int getInitTokens() const;
   void setStartTimes(std::vector<TIME_UNIT> times,
                      std::vector<TIME_UNIT> popTime, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
@@ -125,7 +124,6 @@ class VHDLComponent {
   std::map<std::string, std::string>
       implReplacementMap; // key words that need to replaced to properly define
                           // the implementation of the given component
-
   std::map<std::string, int> pipoNumbers;
 
   std::map<std::string, std::vector<std::string>> opInputPorts = {
