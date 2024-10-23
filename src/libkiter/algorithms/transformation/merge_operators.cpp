@@ -27,12 +27,8 @@ std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                 "fp_min", "fp_abs" };
 std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 bool osAsBroadcast = false; // used for when the output selector should act as a simple broadcast
-bool modelOSBroadcastTimings = false;
 int broadcastBufferCnt = 0;
 implType t = TT;
-// variables for buffers on output edges when using broadcast output selector
-std::string bufferType = "sbuffer"; // by default (alternative: shift register)
-std::string initTokens = "0"; // initial tokens in buffer (requirements differ between buffer implementations)
 
 /**
    Applies a specified merging strategy to the given dataflow graph.
@@ -45,12 +41,9 @@ std::string initTokens = "0"; // initial tokens in buffer (requirements differ b
    smart/greedy (greedy).
    - FREQUENCY: Clock cycle frequency (in MHz) of VHDL design; affects execution
    duration (and thus schedule and mergeability) of actors.
-   - BROADCAST: Define as t to set output selectors act as broadcasters
+   - BROADCAST: Define as t to set output selectors to act as broadcasters
    (default: false). Scheduled buffers are placed on each output edge of the
    broadcaster instead to imitate functionality of output selector.
-   - OS_BROADCAST_SCHED_MODEL: Modify execution duration of output selector
-   actor such that schedule is able to determine when scheduled buffers are
-   supposed to push/pop data.
    - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
    buffer components in VHDL implementation. Options: shiftreg/sbuffer (default).
  */
@@ -85,29 +78,10 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     osAsBroadcast = true;
   }
 
-  if (params.find("OS_BROADCAST_SCHED_MODEL") != params.end()) {
-    modelOSBroadcastTimings = true;
-  }
-
   if (params.find("DATA_DRIVEN") != params.end()) {
     VERBOSE_INFO("Setting implementation type to data-driven");
     t = DD;
   }
-
-  if (params.find("BUFFER_TYPE") != params.end()) {
-    VERBOSE_INFO("Set buffer implementation to type: " << params["BUFFER_TYPE"]);
-    bufferType = params["BUFFER_TYPE"];
-    // for now, only buffer type other than sbuffer is shift register, which
-    // requires a depth of at least 1 to function as anything other than a
-    // bypass
-    initTokens = "1";
-  }
-  // Set buffer type to specified implementation
-  {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexType(v) == "buffer") {
-        dataflow->setVertexType(v, bufferType);
-      }
-    }}
 
   // check and adjust for any operators with multiple I/Os
   // the merge function currently only works with operators with the same number

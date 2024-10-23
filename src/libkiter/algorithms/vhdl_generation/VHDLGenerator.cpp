@@ -40,7 +40,6 @@ int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
 implType implementationType = TT;
 bool osBroadcast = false;
-bool toMerge = false; // if a merge strategy is specified
 int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
 int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
@@ -229,7 +228,6 @@ const std::vector<std::string> getImplementationOutputPorts(std::string opType) 
    operators; may be necessary to account for phase shifts due to mismatching
    operating frequency of audio interface clock and generated VHDL design.
    - NORMALISE_OUTPUTS: Enforce single outputs for all operators.
-   - MERGE_STRATEGY: Combine operators using specified strategy (smart/greedy).
    - BROADCAST: Change output selector behaviour to simply broadcast input
    data and add buffers to each output edge.
    - BUFFER_TYPE: Use specified buffer type instead of scheduled buffers for
@@ -320,11 +318,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     osBroadcast = true;
   }
 
-  if (param_list.find("MERGE_STRATEGY") != param_list.end()) {
-    toMerge = true;
-  } else {
-    VERBOSE_INFO("No merge strategy specified; you can specify a merge "
-                 "strategy with -pMERGE_STRATEGY={greedy/smart}");
+  if (param_list.find("BUFFER_TYPE") != param_list.end()) {
+    VERBOSE_INFO("Set buffer implementation to type: " << param_list["BUFFER_TYPE"]);
+    bufferImpl = param_list["BUFFER_TYPE"];
   }
 
   // Generate schedule for given VHDL implementation
@@ -361,17 +357,13 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     }
   }
 
-  // Set buffer type to specified implementation
-  if (param_list.find("BUFFER_TYPE") != param_list.end()) {
-    VERBOSE_INFO("Set buffer implementation to type: " << param_list["BUFFER_TYPE"]);
-    bufferImpl = param_list["BUFFER_TYPE"];
-  }
+  // Update placeholder buffer type to specified implementation after graph
+  // transformations to generate circuit object for VHDL generation
   {ForEachVertex(dataflow, v) {
       if (dataflow->getVertexType(v) == "buffer") {
         dataflow->setVertexType(v, bufferImpl);
       }
     }}
-
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
@@ -512,21 +504,21 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       topDir + dataflow->getGraphName() + "_implementation.dot";
     printers::printSigGraph(dataflow, param_list);
 
-    // generate PIPO numbers
-    std::ofstream pipoCSV;
-    std::string nameAndMerge = "flat";
-    if (param_list.find("MERGE_STRATEGY") != param_list.end()) {
-      nameAndMerge = param_list["MERGE_STRATEGY"];
-    }
-    nameAndMerge = tmp.getName() + "," + nameAndMerge + ",";
-    pipoCSV.open(topDir + "pipo_numbers.csv");
-    pipoCSV << "graph,merge,depth,load,period" << std::endl;
-    for (auto &[v, comp] : tmp.getComponentMap()) {
-      if (comp.getType() == "shiftreg") {
-        pipoCSV << nameAndMerge << comp.writePIPOCSV() << std::endl;
-      }
-    }
-    pipoCSV.close();
+    // // generate PIPO numbers
+    // std::ofstream pipoCSV;
+    // std::string nameAndMerge = "flat";
+    // if (param_list.find("MERGE_STRATEGY") != param_list.end()) {
+    //   nameAndMerge = param_list["MERGE_STRATEGY"];
+    // }
+    // nameAndMerge = tmp.getName() + "," + nameAndMerge + ",";
+    // pipoCSV.open(topDir + "pipo_numbers.csv");
+    // pipoCSV << "graph,merge,depth,load,period" << std::endl;
+    // for (auto &[v, comp] : tmp.getComponentMap()) {
+    //   if (comp.getType() == "shiftreg") {
+    //     pipoCSV << nameAndMerge << comp.writePIPOCSV() << std::endl;
+    //   }
+    // }
+    // pipoCSV.close();
   } else {
     VERBOSE_WARNING("No VHDL files created.");
   }
