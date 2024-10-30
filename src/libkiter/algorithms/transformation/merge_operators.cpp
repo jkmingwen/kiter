@@ -16,6 +16,7 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "algorithms/transformation/merge_output.h"
 #include "algorithms/vhdl_generation/VHDLCommons.h"
 #include "commons/commons.h"
 #include "singleOutput.h"
@@ -123,6 +124,21 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
   }
 
+  while (getMultiOutputActors(dataflow).size() > 0) {
+    VERBOSE_INFO("getMultiOutputActors is not empty");
+    for (std::string actorName : getMultiOutputActors(dataflow)) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("merge output for actor " << actorName);
+      try {
+        merge_output(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    VERBOSE_INFO("Regenerate Circuit");
+  }
+
   // Begin merge operation
   int isOffset = 0;
   int osOffset = 0;
@@ -202,15 +218,16 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::string actorBaseName = dataflow->getVertexName(v);
     size_t pos = actorBaseName.find("_");
     actorNames.push_back(actorBaseName.substr(0, pos));
-    // argOrder[actorCount] = actorInfo.getArgOrder();
-    // outDataTypes[actorCount] = actorInfo.getOutputTypes();
     argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
     outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
     for (auto a : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
       std::string actorName = dataflow->getVertexName(v);
       {ForInputEdges(dataflow, dataflow->getVertexByName(actorName), inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
+          VERBOSE_INFO("Looking for " << a << " in " << dataflow->getVertexName(inputActor));
           if (dataflow->getVertexName(inputActor).rfind(a, 0) == 0) { // the edge connects the input actor to this actor
+            VERBOSE_INFO("input edge for " << dataflow->getVertexName(v) << ": "
+                                           << dataflow->getEdgeName(inEdge));
             inEdgeNames.push_back(dataflow->getEdgeName(inEdge));
             inPortNames.push_back(dataflow->getEdgeOutputPortName(inEdge));
           }
