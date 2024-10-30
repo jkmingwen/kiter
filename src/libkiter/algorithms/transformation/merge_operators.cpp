@@ -16,6 +16,7 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "algorithms/vhdl_generation/VHDLCommons.h"
 #include "commons/commons.h"
 #include "singleOutput.h"
 
@@ -81,6 +82,7 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
 
   // Necessary to update placeholder buffer type to a specified implementation
   // as VHDLComponent types are instantiated during merge
+  // NOTE might not be necessary anymore
   if (params.find("BUFFER_TYPE") != params.end()) {
     VERBOSE_INFO("Set buffer implementation to type: " << params["BUFFER_TYPE"]);
     bufferImpl = params["BUFFER_TYPE"];
@@ -197,13 +199,14 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<std::string> inPortNames;
     std::vector<std::string> outEdgeNames;
     std::vector<std::string> outPortNames;
-    VHDLComponent actorInfo(dataflow, v, t);
     std::string actorBaseName = dataflow->getVertexName(v);
     size_t pos = actorBaseName.find("_");
     actorNames.push_back(actorBaseName.substr(0, pos));
-    argOrder[actorCount] = actorInfo.getArgOrder();
-    outDataTypes[actorCount] = actorInfo.getOutputTypes();
-    for (auto a : actorInfo.getArgOrder()) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
+    // argOrder[actorCount] = actorInfo.getArgOrder();
+    // outDataTypes[actorCount] = actorInfo.getOutputTypes();
+    argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
+    outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
+    for (auto a : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
       std::string actorName = dataflow->getVertexName(v);
       {ForInputEdges(dataflow, dataflow->getVertexByName(actorName), inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
@@ -449,21 +452,19 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
   std::map<int, std::vector<ARRAY_INDEX>> executionTime; // execution time, vector of vertex IDs
   std::vector<std::string> outputActorNames;
   std::map<std::string, int> opCounts;
-  VHDLCircuit circuit;
 
   {ForEachVertex(dataflow, v) {
-      VHDLComponent op(dataflow, v, t);
-      circuit.addComponent(op);
+      std::string opType = deriveOpCat(dataflow, v);
       // count occurances of mergeable operator types in graph
       if (std::find(mergeableOperators.begin(),
                     mergeableOperators.end(),
-                    op.getType()) != mergeableOperators.end()) {
-        opCounts[op.getType()]++;
+                    opType) != mergeableOperators.end()) {
+        opCounts[opType]++;
       }
       // update execution time in dataflow according to component operator type
       std::vector<TIME_UNIT> opLifespans(
           dataflow->getVertexPhaseDuration(v).size(),
-         getOperatorLifespan(op.getType(), operatorFreq));
+         getOperatorLifespan(opType, operatorFreq));
         dataflow->setVertexDuration(v, opLifespans);
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
@@ -509,9 +510,9 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::greedyMerge(models::Dataflow* 
     for (auto &id : e.second) {
       VERBOSE_DEBUG("\t" << id << "(" << dataflow->getVertexName(dataflow->getVertexById(id))
                     << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
-      VHDLComponent op(dataflow, dataflow->getVertexById(id), t);
-      if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) != typesToMerge.end()) {
-        mergeableIds[op.getType()].push_back(id);
+      std::string opType = deriveOpCat(dataflow, dataflow->getVertexById(id));
+      if (std::find(typesToMerge.begin(), typesToMerge.end(), opType) != typesToMerge.end()) {
+        mergeableIds[opType].push_back(id);
       }
     }
   }
@@ -536,21 +537,19 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   std::map<int, std::vector<ARRAY_INDEX>> executionTime; // execution time, vector of vertex IDs
   std::vector<std::string> outputActorNames;
   std::map<std::string, int> opCounts;
-  VHDLCircuit circuit;
 
   {ForEachVertex(dataflow, v) {
-      VHDLComponent op(dataflow, v, t);
-      circuit.addComponent(op);
+      std::string opType = deriveOpCat(dataflow, v);
       // check for occurances of mergeable operator types
       if (std::find(mergeableOperators.begin(),
                     mergeableOperators.end(),
-                    op.getType()) != mergeableOperators.end()) {
-        opCounts[op.getType()]++;
+                    opType) != mergeableOperators.end()) {
+        opCounts[opType]++;
       }
       // update execution time in dataflow according to component operator type
       std::vector<TIME_UNIT> opLifespans(
                                          dataflow->getVertexPhaseDuration(v).size(),
-                                         getOperatorLifespan(op.getType(), operatorFreq));
+                                         getOperatorLifespan(opType, operatorFreq));
       dataflow->setVertexDuration(v, opLifespans);
     }}
   // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
@@ -561,7 +560,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   }
 
   // to identify all relevant causal dependencies, we look for dependencies from the output actors
-    std::map<ARRAY_INDEX, bool> visited;
+  std::map<ARRAY_INDEX, bool> visited;
   {ForEachVertex(dataflow, v) {
       std::string actorName = dataflow->getVertexName(v);
       visited[dataflow->getVertexId(v)] = false;
@@ -586,7 +585,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
     }}
   // group actor IDs by execution times so we know which ones execute at the same time
   for (auto &time : execTimes) {
-    executionTime[time.second].push_back(time.first);
+    executionTime[time.second].push_back(time.first); // exec time -> actor ID
   }
 
   // generate mergeable operators
@@ -602,13 +601,13 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
           "\t" << id << "("
                << dataflow->getVertexName(dataflow->getVertexById(id)) << ", "
                << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
-      VHDLComponent op(dataflow, dataflow->getVertexById(id), t);
-      if (std::find(typesToMerge.begin(), typesToMerge.end(), op.getType()) !=
+      std::string opType = deriveOpCat(dataflow, dataflow->getVertexById(id));
+      if (std::find(typesToMerge.begin(), typesToMerge.end(), opType) !=
           typesToMerge.end()) {
         // group by occurance count to generate separate merge groups for
         // operators (of the same type) executing in parallel
-        mergeableIds[op.getType() + std::to_string(opCountForExecTime[op.getType()])].push_back(id);
-        opCountForExecTime[op.getType()]++;
+        mergeableIds[opType + std::to_string(opCountForExecTime[opType])].push_back(id);
+        opCountForExecTime[opType]++;
       }
     }
   }

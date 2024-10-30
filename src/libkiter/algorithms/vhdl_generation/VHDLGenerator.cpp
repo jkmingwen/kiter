@@ -178,16 +178,6 @@ std::string binaryValue(VHDLComponent const comp) {
   return binaryRepresentation;
 }
 
-int getOperatorLifespan(const std::string &opType, int operatorFreq) {
-  if (operatorLifespans.at(operatorFreq).count(opType)) {
-    return operatorLifespans.at(operatorFreq).at(opType);
-  } else {
-    // some components have no lifespan (e.g. Proj, const_val) but need a
-    // positive lifespan for SDF to remain valid
-    return 1;
-  }
-}
-
 const std::vector<std::string> getImplementationInputPorts(std::string opType) {
   std::vector<std::string> inPortNames;
   if (operatorImplementationInputPorts.count(opType)) {

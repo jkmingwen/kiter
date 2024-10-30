@@ -197,11 +197,5 @@ class VHDLComponent {
       {"Proj", "hs_splitter"},
       {"shiftreg", "pipo_shift_reg"}};
 
-  std::vector<std::string> uiTypes = {"button", "checkbox", "hslider", "vslider",
-                                      "nentry", "vbargraph", "hbargraph"}; // NOTE temporary workaround to handle UI components
-  std::vector<std::string> arithmeticTypes = {"add", "prod", "diff", "div",
-                                              "prod", "sqrt", "pow"};
-  std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"}; // operators that act on numbers to produce numbers
-  std::vector<std::string> routingTypes = {"select2", "select3", "attach"}; // operators that route input signals to outputs
 };
 #endif /* VHDL_COMPONENT_H_ */
