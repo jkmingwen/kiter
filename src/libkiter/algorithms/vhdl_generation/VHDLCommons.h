@@ -73,9 +73,9 @@ inline std::map<std::string, std::vector<std::string>> opInputPorts = {
       {"fp_abs", {"X"}},
       {"int_abs", {"X"}},
       {"select2", {"X", "Y", "Z"}},
-      {"attach", {"X", "Y"}} // ,
+      {"attach", {"X", "Y"}},
       // {"vbargraph", {"X"}},
-      // {"fp_floor", {"op_in_data_0"}}
+      {"fp_floor", {"I"}}
   };
 
 inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
@@ -85,9 +85,9 @@ inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
       {"float2int", {"R"}}, {"int2float", {"R"}}, {"sbuffer", {"out_data"}},
       {"int_max", {"R"}},   {"int_min", {"R"}},   {"fp_max", {"R"}},
       {"fp_min", {"R"}},    {"fp_abs", {"R"}},    {"int_abs", {"R"}},
-      {"select2", {"R"}},   {"attach", {"R"}} // ,
+      {"select2", {"R"}},   {"attach", {"R"}},
                                               // {"vbargraph", {"X"}},
-                                              // {"fp_floor", {"op_in_data_0"}}
+      {"fp_floor", {"O"}}
   };
 
 inline std::map<std::string, std::string> implementationNames = {

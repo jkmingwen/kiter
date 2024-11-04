@@ -215,35 +215,38 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<std::string> inPortNames;
     std::vector<std::string> outEdgeNames;
     std::vector<std::string> outPortNames;
-    std::string actorBaseName = dataflow->getVertexName(v);
-    size_t pos = actorBaseName.find("_");
-    actorNames.push_back(actorBaseName.substr(0, pos));
+    std::string actorBaseName = commons::split<std::string>(dataflow->getVertexName(v), '_').front();
+    actorNames.push_back(actorBaseName);
     argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
     outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
+    std::string actorName = dataflow->getVertexName(v);
     for (auto a : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
-      std::string actorName = dataflow->getVertexName(v);
-      {ForInputEdges(dataflow, dataflow->getVertexByName(actorName), inEdge) {
+      {ForInputEdges(dataflow, v, inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
-          VERBOSE_INFO("Looking for " << a << " in " << dataflow->getVertexName(inputActor));
-          if (dataflow->getVertexName(inputActor).rfind(a, 0) == 0) { // the edge connects the input actor to this actor
-            VERBOSE_INFO("input edge for " << dataflow->getVertexName(v) << ": "
-                                           << dataflow->getEdgeName(inEdge));
+          if (dataflow->getVertexName(inputActor).rfind(a, 0) == 0) { // the edge connects the input actor to this actor TODO use split and then front to find matches instead of this rfind thing...
             inEdgeNames.push_back(dataflow->getEdgeName(inEdge));
             inPortNames.push_back(dataflow->getEdgeOutputPortName(inEdge));
           }
-        }}
-      {ForOutputEdges(dataflow, dataflow->getVertexByName(actorName), outEdge) {
-          Vertex outputActor = dataflow->getEdgeTarget(outEdge);
-          // NOTE assuming here that there's only ever 1 output edge per vertice
-          outEdgeNames.push_back(dataflow->getEdgeName(outEdge));
-          outPortNames.push_back(dataflow->getEdgeInputPortName(outEdge));
-        }}
+        }
+      }
     }
+    VERBOSE_ASSERT(dataflow->getVertexOutDegree(v) == 1,
+                   "Out degree for: " << dataflow->getVertexName(v) << ": "
+                                      << dataflow->getVertexOutDegree(v));
+    {ForOutputEdges(dataflow, v, outEdge) {
+        // NOTE assuming here that there's only ever 1 output edge per vertice
+        outEdgeNames.push_back(dataflow->getEdgeName(outEdge));
+        outPortNames.push_back(dataflow->getEdgeInputPortName(outEdge));
+      }}
     inEdges[actorCount] = inEdgeNames;
     inPorts[actorCount] = inPortNames;
     outEdges[actorCount] = outEdgeNames;
     outPorts[actorCount] = outPortNames;
     actorCount++;
+    VERBOSE_ASSERT(dataflow->getVertexInDegree(v) == inEdgeNames.size(),
+                   "Vertex in degree unequal for " << dataflow->getVertexName(v) << ", " << dataflow->getVertexType(v) << ": " << dataflow->getVertexInDegree(v) << "!=" << inEdgeNames.size());
+    VERBOSE_ASSERT(dataflow->getVertexOutDegree(v) == outEdgeNames.size(),
+                   "Vertex out degree unequal for "  << dataflow->getVertexName(v)  << ", " << dataflow->getVertexType(v) << ": " << dataflow->getVertexOutDegree(v) << "!=" << outEdgeNames.size() << "\n" << commons::toString(outEdgeNames));
   }
 
   dataflow->reset_computation(); // necessary to edit dataflow graph
@@ -382,9 +385,9 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     // rename affected actors (targets of merged vertices) with updated source actor name (of output selector)
     for (auto name : actorNames) {
       {ForEachVertex(dataflow, v) {
-          std::string newName = replaceActorName(dataflow->getVertexName(v),
-                                                 name,
-                                                 "outputselector" + commons::toString(osId));
+          std::string newName =
+              replaceActorName(dataflow->getVertexName(v), name,
+                               "outputselector" + commons::toString(osId));
           dataflow->setVertexName(v, newName);
         }}
     }
@@ -413,24 +416,22 @@ std::string algorithms::replaceActorName(std::string targetString,
                                          const std::string &toReplace,
                                          const std::string &replacement,
                                          std::vector<TOKEN_UNIT> replacementMask) {
+  std::vector<std::string> actorNames =
+      commons::split<std::string>(targetString, '_');
+  VERBOSE_ASSERT(actorNames.size() > 0, "Non-empty string must be used.");
+  if (actorNames.size() == 1) {
+    return targetString; // nothing to replace if no args listed after base name
+  }
+
   if (replacementMask.size() == 1) { // replace all occurances of toReplace with replacement
-    size_t startPos = targetString.find("_");
-    if (startPos != std::string::npos) { // we only replace occurances of toReplace after the first "_" delimiter
-      while ((startPos = targetString.find(toReplace, startPos)) != std::string::npos) {
-        if (startPos + toReplace.length() < targetString.length()) {
-          if (targetString.substr(startPos + toReplace.length(), 3) != "Dup") {
-            targetString.replace(startPos, toReplace.length(), replacement);
-            startPos += replacement.length();
-          } else {
-            startPos += toReplace.length(); // we ignore this occurance if it ends with a DupN
-          }
-        } else { // if it's the last occurance, then we replace it
-          targetString.replace(startPos, toReplace.length(), replacement);
-          startPos += replacement.length();
-        }
+    // actorNames.erase(actorNames.begin());
+    for (auto i = 1; i < actorNames.size(); i++) { // only elements after the first are its args
+      if (actorNames[i] == toReplace) {
+        actorNames[i] = replacement;
       }
     }
-  } else if (replacementMask.size() > 1) { // only replace at unmasked positions
+    targetString = commons::join(actorNames.begin(), actorNames.end(), std::string("_"));
+  } else if (replacementMask.size() > 1) { // only replace at unmasked positions // TODO update this clause section to use split and join functions
     std::vector<size_t> argStartPos;
     size_t startPos = targetString.find("_");
     if (startPos != std::string::npos) {
@@ -668,6 +669,7 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
   Vertex v1Target = dataflow->getEdgeTarget(a2);
   std::string a2Name = dataflow->getEdgeName(a2);
   std::string b1Name = dataflow->getEdgeName(b1);
+  // TODO test with using just base name of v1
   Vertex broadcast = dataflow->addVertex("broadcast" + dataflow->getVertexName(v1));
   dataflow->setVertexType(broadcast, "broadcast");
   dataflow->setPhasesQuantity(broadcast, 1);
@@ -701,10 +703,9 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
   dataflow->setPreload(b2, 1);
 
   std::string srcName = dataflow->getVertexName(broadcast);
-  std::string v1TargetNewName = dataflow->getVertexName(v1Target);
-  v1TargetNewName.replace(v1TargetNewName.find(dataflow->getVertexName(v1)),
-                          dataflow->getVertexName(v1).length(),
-                          srcName);
+  // TODO test with replacing with just base name of actors
+  std::string v1TargetNewName = replaceActorName(
+      dataflow->getVertexName(v1Target), dataflow->getVertexName(v1), srcName);
   dataflow->setVertexName(v1Target, v1TargetNewName);
 }
 
