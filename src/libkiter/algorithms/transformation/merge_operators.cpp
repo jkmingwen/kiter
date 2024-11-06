@@ -382,16 +382,20 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
 
     // add re-entrancy edges/ports
     dataflow->setReentrancyFactor(new_os, 1);
-    // rename affected actors (targets of merged vertices) with updated source actor name (of output selector)
-    for (auto name : actorNames) {
+    // batch renaming of affected actors (targets of merged vertices)
+    std::map<Vertex, std::string> newNames;
+    for (const auto &name : actorNames) {
       {ForEachVertex(dataflow, v) {
           std::string newName =
               replaceActorName(dataflow->getVertexName(v), name,
                                "outputselector" + commons::toString(osId));
-          if (newName != name) {
-            dataflow->setVertexName(v, newName);
+          if (newName != dataflow->getVertexName(v)) {
+            newNames[v] = newName;
           }
         }}
+    }
+    for (const auto &[vertex, newName] : newNames) {
+      dataflow->setVertexName(vertex, newName);
     }
   }
   osOffset += outDeg;
