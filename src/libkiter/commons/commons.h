@@ -325,11 +325,18 @@ template<class T>
 template<typename T>
 std::vector<T> split(const std::string &s, const char &delim) {
     std::vector<T> elems;
-    std::stringstream ss(s);
-    std::string item;
-    while(std::getline(ss, item, delim)) {
-        elems.push_back(commons::fromString<T>(item));
+    std::string_view str_view(s);
+    size_t start = 0;
+    size_t end = str_view.find(delim);
+
+    while (end != std::string_view::npos) {
+        elems.push_back(commons::fromString<T>(std::string(str_view.substr(start, end - start))));
+        start = end + 1;
+        end = str_view.find(delim, start);
     }
+    // Add the last segment
+    elems.push_back(commons::fromString<T>(std::string(str_view.substr(start))));
+
     return elems;
 }
 

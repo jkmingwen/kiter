@@ -218,47 +218,53 @@ void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
                                        std::map<ARRAY_INDEX, int> &execTimes) {
   std::map<ARRAY_INDEX, bool> visited;
   std::list<ARRAY_INDEX> visitQueue;
-  {ForEachVertex(dataflow, v) { // initialise visit queue to avoid visiting same actors twice
-      visited[dataflow->getVertexId(v)] = false;
-    }}
+
+  // Initialize visited map and set the starting vertex
+  ForEachVertex(dataflow, v) {
+    visited[dataflow->getVertexId(v)] = false;
+  }
   visited[vId] = true;
   visitQueue.push_back(vId);
   execTimes[vId] = 0;
 
+  // BFS traversal to compute execution times
   while (!visitQueue.empty()) {
-    vId = visitQueue.front();
+    ARRAY_INDEX currentId = visitQueue.front();
     visitQueue.pop_front();
 
-    for (auto &adj : this->abstractDependencyGraph[vId]) {
-      if (adj.second) { // this vertex is adjacent to vId
-        if (!visited[adj.first]) {
-          visited[adj.first] = true;
-          visitQueue.push_back(adj.first);
-          VERBOSE_ASSERT(dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).size() == 1, "Currently only supports computing execution timings of single phase actors, " << dataflow->getVertexName(dataflow->getVertexById(adj.first)) << " (" << dataflow->getVertexType(dataflow->getVertexById(adj.first)) << ") has more than 1 phase.")
-          int opLifespan = dataflow->getVertexPhaseDuration(dataflow->getVertexById(adj.first)).front();
-          if (execTimes[adj.first] <= execTimes[vId] + opLifespan) { // always set to any higher existing computed exec time
-            execTimes[adj.first] = execTimes[vId] + opLifespan;
-          }
-        }
+    int currentExecTime = execTimes[currentId];
+
+    for (const auto& [adjId, isDependent] : this->abstractDependencyGraph[currentId]) {
+      if (isDependent && !visited[adjId]) {
+        visited[adjId] = true;
+        visitQueue.push_back(adjId);
+
+        // Fetch phase duration once for each adjacent vertex
+        const auto& adjVertex = dataflow->getVertexById(adjId);
+        auto phaseDurations = dataflow->getVertexPhaseDuration(adjVertex);
+        VERBOSE_ASSERT(phaseDurations.size() == 1,
+                       "Only single-phase actors supported. Actor "
+                           << dataflow->getVertexName(adjVertex) << "("
+                           << dataflow->getVertexType(adjVertex)
+                           << ") has multiple phases.");
+
+        int opLifespan = phaseDurations.front();
+
+        // Update execution time if greater than the current recorded time
+        execTimes[adjId] = std::max(execTimes[adjId], currentExecTime + opLifespan);
       }
     }
   }
-
-  return;
 }
 
 bool abstractDepGraph::hasDependency(ARRAY_INDEX vId) {
-  bool hasDependency = false;
-  for (auto const &srcId : this->abstractDependencyGraph) {
-    for (auto const &depId  : srcId.second) {
-      if (depId.second && depId.first == vId) {
-        hasDependency = true;
-        break;
+  for (const auto& [srcId, depMap] : this->abstractDependencyGraph) {
+      auto it = depMap.find(vId);
+      if (it != depMap.end() && it->second) {
+          return true; // dependency found
       }
-    }
   }
-
-  return hasDependency;
+  return false;
 }
 
 std::string abstractDepGraph::printStatus() {

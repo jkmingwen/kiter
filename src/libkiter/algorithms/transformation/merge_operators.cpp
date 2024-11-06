@@ -388,7 +388,9 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
           std::string newName =
               replaceActorName(dataflow->getVertexName(v), name,
                                "outputselector" + commons::toString(osId));
-          dataflow->setVertexName(v, newName);
+          if (newName != name) {
+            dataflow->setVertexName(v, newName);
+          }
         }}
     }
   }
