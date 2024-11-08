@@ -803,21 +803,47 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
                                                   parameters_list_t params) {
   // TODO parameterise source actor selection
   Vertex src;
+  bool isInitialised = false;
   {ForEachVertex(dataflow, v) {
       if (dataflow->getVertexType(v) == "INPUT_0") {
         src = v;
+        isInitialised = true;
       }
     }}
+  if (!isInitialised) {
+    VERBOSE_WARNING("No input actor found. Transformation bypassed.");
+    return;
+  }
 
   // sort buffers on output edges of src actor by init tokens
   std::map<int, std::vector<Vertex>> buffers;
   ForOutputEdges(dataflow, src, e) {
     Vertex targetActor = dataflow->getEdgeTarget(e);
-    VERBOSE_ASSERT(dataflow->getVertexOutDegree(targetActor) == 1,
-                   "buffer " << targetActor << " has more than one output edge");
+    if (dataflow->getVertexType(targetActor) != "buffer") {
+      VERBOSE_WARNING("Pipelining only works when all target actors are "
+                      "buffers. Transformation bypassed.");
+      return;
+    }
     {ForOutputEdges(dataflow, targetActor, outEdge) {
         buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
-      }}
+      }
+    }
+
+    // checks for whether pipelining can be performed
+    if (buffers.size() < 2) {
+      VERBOSE_WARNING("Insufficient buffers to perform pipelining. "
+                      "Transformation bypassed.");
+      return;
+    }
+    int expectedTokens = buffers.begin()->first;
+    for (const auto &[initTokens, bufferVertices] : buffers) {
+      if (initTokens != expectedTokens) {
+        VERBOSE_WARNING("Pipelining not supported when tokens not in running "
+                        "order. Transformation bypassed.");
+        return;
+      }
+      expectedTokens++;
+    }
   }
 
   for (auto it = buffers.begin(); it != buffers.end(); it++) {
