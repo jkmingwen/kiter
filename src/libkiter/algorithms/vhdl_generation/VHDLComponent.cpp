@@ -30,7 +30,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   opFreq = freq;
   uniqueName = dataflow->getVertexName(a); // unique ID per VHDLComponent
   implementationName = "default"; // name of top-level component for the given operator in VHDL
-  componentType = dataflow->getVertexType(a); // vertex type denotes computation performed (sans data type)
+  componentType = deriveOpCat(dataflow, a); // denotes computation performed
   isMixedType = false; // some components (e.g. pow) take in a mix of data types as arguments
 
   // port names denote input/output data types --- check and track these
@@ -50,10 +50,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   outputTypes = getOutputDataTypes(dataflow, a);
 
   // IDs of input/output actors used for signal matching in generateVHDLArchitecture
-  if (componentType.find("INPUT") != std::string::npos ||
-      componentType.find("OUTPUT") != std::string::npos) {
-    ioId = std::stoi(componentType.substr(componentType.find('_') + 1, std::string::npos));
-    componentType = componentType.substr(0, componentType.find("_")); // necessary to strip ID from name (e.g. "INPUT_0") so we can parse it as a generic INPUT/OUTPUT component
+  if (componentType == "INPUT" || componentType == "OUTPUT") {
+    std::string vType = dataflow->getVertexType(a);
+    ioId = std::stoi(commons::split<std::string>(vType, '_').back());
   }
 
   /* Identify order of arguments for operators.
@@ -64,8 +63,8 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   }
 
   // Rearrange input ports and edges according to argument order
-  if (this->argOrder.size() && this->getType() != "INPUT" &&
-      this->getType() != "OUTPUT") {
+  if (argOrder.size() && componentType != "INPUT" &&
+      componentType != "OUTPUT") {
     for (auto const &inputVertexName : this->argOrder) {
       Vertex inputVertex = dataflow->getVertexByName(
           getNameFromPartialName(dataflow, inputVertexName));
@@ -73,7 +72,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           if (dataflow->getEdgeSource(e) == inputVertex) {
             Edge signal = e;
             if (implementationType == TT) {
-              if (this->getType() != "input_selector") {
+              if (componentType != "input_selector") {
                 // share input sigals: use the first output edge from the source
                 // vertex to ensure that the outputs of that vertex use the same
                 // signal even if it has multiple output edges
@@ -98,7 +97,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       this->addOutputSignal(dataflow, e);
     }}
   // Rearrange output ports and edges according to output selector phases of execution
-  if (this->getType() == "output_selector") {
+  if (componentType == "output_selector") {
     {ForOutputEdges(dataflow, this->actor, e) {
         std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
         if (inputVector.size() > 1) {
@@ -118,7 +117,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                    this->getUniqueName() << ": Output signals after reordering != output edges(" << this->getOutputSignals().size() << " != " << this->outputEdges.size() << ")");
   }
 
-  if (this->getType() == "broadcast") {
+  if (componentType == "broadcast") {
     int outEdgeCount = 0;
     {ForOutputEdges(dataflow, this->actor, e) {
         std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
@@ -133,64 +132,28 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                    this->getUniqueName() << ": Output signals after reordering != output edges(" << this->getOutputSignals().size() << " != " << this->outputEdges.size() << ")");
   }
 
-  /* TODO identify data type of component to select appropriate VHDL implementation
-     data type produced by constant value and UI components determine their data type
+  /* data type produced by constant value and UI components determine their data type
      all other types of operators use input types */
-  std::istringstream stringAsNumber(componentType); // just to test if strings are numbers
-  float compTypeAsFloat;
-  stringAsNumber >> std::noskipws >> compTypeAsFloat;
   if (std::count(uiTypes.begin(), uiTypes.end(), componentType) ||
-      (stringAsNumber.eof() && !stringAsNumber.fail())) {
-    if (outputTypes.size() > 1 || !outputTypes.size()) {
-      VERBOSE_ERROR("UI/Constant value component "
-                    << uniqueName
-                    << " should have just one output data type");
-    }
-    if (outputTypes.begin()->first == "real") {
-      dataType = "fp";
-    } else if (outputTypes.begin()->first == "int") {
-      dataType = "int";
-    } else {
-      VERBOSE_ERROR("Unsupported data type: " << dataType);
-    }
+      componentType == "const_value") {
+    dataType = getOpDataType(outputTypes);
   } else {
-    if (inputTypes.empty() && componentType != "INPUT") {
-      VERBOSE_ERROR(uniqueName << " (" << componentType << ")"
-                                  << " should have at least 1 input");
-    }
     // determine data type via input ports
-    bool isInt = false, isFloat = false;
-    for (auto &type : inputTypes) {
-      if (type.first == "real") {
-        isFloat = true;
-      } else if (type.first == "int") {
-        isInt = true;
-      } else {
-        VERBOSE_ERROR("Input type error on " << this->getUniqueName());
-        VERBOSE_ERROR("\tUndefined input type detected: " << type.first << ", input types: " << commons::toString(inputTypes));
-      }
-    }
-    if (isInt && isFloat) {
-      VERBOSE_WARNING("\tBoth Int and Float types detected for "
-                      << uniqueName << "(" << componentType
-                      << "), setting type to floating point");
-      dataType = "fp";
+    dataType = getOpDataType(inputTypes);
+    if (inputTypes.find("real") != inputTypes.end() &&
+        inputTypes.find("int") != inputTypes.end()) {
       isMixedType = true;
-    } else if (isFloat) {
-      dataType = "fp";
-    } else if (isInt) {
-      dataType = "int";
     }
   }
 
-  // data type added to componentType to determine appropriate VHDL implementation to use
-  if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), componentType) ||
-      std::count(numOperatorTypes.begin(), numOperatorTypes.end(), componentType)) {
-    componentType = dataType + "_" + componentType;
-  } else if ((stringAsNumber.eof() && !stringAsNumber.fail())) { // string is a number
-    componentType = "const_value";
+  // set numeric and binary values of constant values
+  if (componentType == "const_value") {
+    std::istringstream stringAsNumber(dataflow->getVertexType(a));
+    float compTypeAsFloat;
+    stringAsNumber >> std::noskipws >> compTypeAsFloat;
     if (dataType == "fp") {
       fpValue = compTypeAsFloat;
+      // get binary value from float
       std::string prefix = (fpValue ? "01" : "00");
       std::stringstream binaryRep;
       size_t size = sizeof(fpValue);
@@ -205,7 +168,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         p--;
       }
       binaryValue = prefix + binaryRep.str();
-    } else {
+    } else { // data type == "int"
       intValue = (int)compTypeAsFloat;
       binaryValue = std::bitset<34>(intValue).to_string(); // unsigned binary representation
     }
@@ -590,7 +553,7 @@ std::string VHDLComponent::getUniqueName() const {
 }
 
 int VHDLComponent::getIOId() const {
-  VERBOSE_ASSERT((this->getType() == "INPUT" || this->getType() == "OUTPUT"),
+  VERBOSE_ASSERT((componentType == "INPUT" || componentType == "OUTPUT"),
                  "Trying to get I/O ID for a component that hasn't been declared as type input/output.");
   return this->ioId;
 }
@@ -683,7 +646,7 @@ void VHDLComponent::setImplementationName(const std::string& newName) {
 }
 
 void VHDLComponent::setIOId(int id) {
-  VERBOSE_ASSERT((this->getType() == "INPUT" || this->getType() == "OUTPUT"),
+  VERBOSE_ASSERT((componentType == "INPUT" || componentType == "OUTPUT"),
                  "Trying to set I/O ID for a component that hasn't been declared as type input/output.");
   this->ioId = id;
 }
@@ -701,10 +664,10 @@ const std::vector<std::string> VHDLComponent::getInputSignals() const {
 }
 
 const std::vector<std::string> VHDLComponent::getOutputSignals() const {
-  if (this->getType() == "input_selector" ||
-      this->getType() == "output_selector" ||
-      this->getType() == "const_value" ||
-      this->getType() == "broadcast") {
+  if (componentType == "input_selector" ||
+      componentType == "output_selector" ||
+      componentType == "const_value" ||
+      componentType == "broadcast") {
     return this->outputSignals;
   } else {
     return std::vector<std::string>(1, this->sharedOutputSignal);
@@ -835,7 +798,7 @@ std::string VHDLComponent::printStatus() const  {
   std::stringstream outputStream;
 
   outputStream << "\nActor " << this->getUniqueName() << std::endl;
-  outputStream << "\tType: " << this->getType() << std::endl;
+  outputStream << "\tType: " << componentType << std::endl;
   outputStream << "\tData type: " << this->getDataType() << std::endl;
   if (!argOrder.empty()) {
     outputStream << "\tArgument actors:" << std::endl;
