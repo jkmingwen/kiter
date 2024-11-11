@@ -163,16 +163,18 @@ std::string deriveOpCat(models::Dataflow *const dataflow, Vertex v) {
   // Arithmetic operators
   if (std::count(arithmeticTypes.begin(), arithmeticTypes.end(), opType)) {
     // data type of arithmetic operators determined by output types
-    std::string dataType = getOpDataType(getOutputDataTypes(dataflow, v));
-    opType = dataType + "_" + opType;
+    std::string dataType = getOpDataType(getInputDataTypes(dataflow, v));
+    return opType = dataType + "_" + opType;
   }
 
   // Numeric operators
   if (std::count(numOperatorTypes.begin(), numOperatorTypes.end(), opType)) {
     // data type of numeric operators determined by output types
-    std::string dataType = getOpDataType(getOutputDataTypes(dataflow, v));
-    opType = dataType + "_" + opType;
+    std::string dataType = getOpDataType(getInputDataTypes(dataflow, v));
+    return opType = dataType + "_" + opType;
   }
+
+  // TODO routing operators
 
   return opType;
 }
