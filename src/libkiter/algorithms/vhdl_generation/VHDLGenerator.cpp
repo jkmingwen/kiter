@@ -1335,6 +1335,7 @@ std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) 
   int halfPeriod = 2604;
   std::string pushStart;
   std::string popStart;
+  int codecId = id / 2; // 2 inputs per codec
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
     pushStart = "SLACK";
@@ -1356,16 +1357,16 @@ std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) 
                  << "    " << "clk => sys_clk_sig,\n"
                  << "    " << "rst => rst_sig,\n"
                  << "    " << "cycle_count => counter_sig,\n"
-                 << "    " << "in_data => " << "i2s_transceiver_" << std::to_string(id)
+                 << "    " << "in_data => " << "i2s_transceiver_" << std::to_string(codecId)
                  << "_" << channel << "_data_rx,\n"
-                 << "    " << "out_data => fix2fp_" << std::to_string(id)
+                 << "    " << "out_data => fix2fp_" << std::to_string(codecId)
                  << "_" << channel << "_data_in);"
                  << std::endl;
     outputStream << channel << "_fix2fp : fix2fp_and_scaledown\n"
                  << "    " << "port map (\n"
                  << "    " << "clk => sys_clk_sig,\n"
                  << "    " << "rst => rst_sig,\n"
-                 << "    " << "i2s_in => fix2fp_" << std::to_string(id)
+                 << "    " << "i2s_in => fix2fp_" << std::to_string(codecId)
                  << "_" << channel << "_data_in,\n"
                  << "    " << "fp_out => " << entityName << "_in_data_"
                  << std::to_string(id) << ");" << std::endl;
@@ -1398,6 +1399,7 @@ std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) 
   int halfPeriod = std::floor(systemPeriod/2); // Round down so that sum of half periods doesn't exceed period
   std::string pushStart;
   std::string popStart;
+  int codecId = id / 2; // 2 inputs per codec
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
     pushStart = "2*SLACK + COMPUTE_R";
@@ -1419,9 +1421,9 @@ std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) 
                  << "    " << "clk => sys_clk_sig,\n"
                  << "    " << "rst => rst_sig,\n"
                  << "    " << "cycle_count => counter_sig,\n"
-                 << "    " << "in_data => fp2fix_" << std::to_string(id)
+                 << "    " << "in_data => fp2fix_" << std::to_string(codecId)
                  << "_" << channel << "_data_out,\n"
-                 << "    " << "out_data => " << "i2s_transceiver_" << std::to_string(id)
+                 << "    " << "out_data => " << "i2s_transceiver_" << std::to_string(codecId)
                  << "_" << channel << "_data_tx);\n"
                  << std::endl;
     outputStream << channel << "_fp2fix : fp2fix_and_scaleup\n"
@@ -1430,7 +1432,7 @@ std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) 
                  << "    " << "rst => rst_sig,\n"
                  << "    " << "fp_in => " << entityName << "_out_data_"
                  << std::to_string(id) << ",\n"
-                 << "    " << "i2s_out => fp2fix_" << std::to_string(id)
+                 << "    " << "i2s_out => fp2fix_" << std::to_string(codecId)
                  << "_" << channel << "_data_out);" << std::endl;
   } else {
     outputStream << "fpc_to_i2s_" << id << ": component fpc_to_i2s\n"
@@ -1693,7 +1695,8 @@ void algorithms::generateAudioInterfaceComponents() {
   std::vector<std::string> operatorNames; // need separate path for FloPoCo operators as they're stored in different subdirectory
   if (!dataDriven) {
     componentNames = {"fix2fp_and_scaledown", "fp2fix_and_scaleup",
-                      "i2s_transceiver", "cycle_counter", "sbuffer"};
+                      "i2s_transceiver", "cycle_counter", "sbuffer",
+                      "sbuffer_n", "sbuffer_bypass", "sbuffer_one"};
     // separate path for FloPoCo operators as they're stored in different subdirectory
     operatorNames = {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
   } else {
