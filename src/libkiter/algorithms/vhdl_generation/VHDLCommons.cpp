@@ -155,7 +155,8 @@ std::string deriveOpCat(models::Dataflow *const dataflow, Vertex v) {
   std::istringstream stringAsNumber(opType);
   float compTypeAsFloat;
   stringAsNumber >> std::noskipws >> compTypeAsFloat;
-  if ((stringAsNumber.eof() && !stringAsNumber.fail())) {
+  if ((stringAsNumber.eof() && !stringAsNumber.fail()) ||
+      (opType == "fSamplingFreq" || opType == "fSampleRate")) {
     return "const_value";
   }
 

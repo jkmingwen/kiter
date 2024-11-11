@@ -32,6 +32,10 @@ std::set<std::string> nonEvalOps = { // operators that can't be evaluated
   "select2", "input_selector", "output_selector", "buffer"
 };
 
+std::map<std::string, std::string> specialConstants = { // constants and their numerical values
+  {"fSamplingFreq", "44100"}, {"fSampleRate", "44100"}
+};
+
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
@@ -107,6 +111,10 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
               changeDetected = true;
               break;
             }
+          }
+          // substitute certain constant variables with predefined numerical values
+          if (specialConstants.find(opName) != specialConstants.end()) {
+            dataflow_prime->setVertexType(v, specialConstants[opName]);
           }
           if (checkForNumericInputs(dataflow_prime, v)) {
             std::vector<std::string> inputArgs;
