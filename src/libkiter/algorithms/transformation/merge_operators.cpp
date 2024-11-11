@@ -384,15 +384,18 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     dataflow->setReentrancyFactor(new_os, 1);
     // batch renaming of affected actors (targets of merged vertices)
     std::map<Vertex, std::string> newNames;
+    {ForEachVertex(dataflow, v) {
+        newNames[v] = dataflow->getVertexName(v);
+      }}
     for (const auto &name : actorNames) {
-      {ForEachVertex(dataflow, v) {
-          std::string newName =
-              replaceActorName(dataflow->getVertexName(v), name,
-                               "outputselector" + commons::toString(osId));
-          if (newName != dataflow->getVertexName(v)) {
-            newNames[v] = newName;
-          }
-        }}
+      for (const auto &[vertex, newName] : newNames) {
+        std::string replName = replaceActorName(
+            newNames[vertex], name, "outputselector" + commons::toString(osId));
+        // store and retain name updates as we iterate
+        if (newNames[vertex] != replName) {
+          newNames[vertex] = replName;
+        }
+      }
     }
     for (const auto &[vertex, newName] : newNames) {
       dataflow->setVertexName(vertex, newName);
