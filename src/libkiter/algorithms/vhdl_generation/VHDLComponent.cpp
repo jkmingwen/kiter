@@ -994,9 +994,11 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
       std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
                             dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
-    } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
-      refDir += "/ui/";
-    } else {
+    }
+    else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+      refDir += "/operators/";
+    }
+    else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
     }

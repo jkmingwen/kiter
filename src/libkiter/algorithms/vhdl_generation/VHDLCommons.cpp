@@ -174,7 +174,10 @@ std::string deriveOpCat(models::Dataflow *const dataflow, Vertex v) {
     return opType = dataType + "_" + opType;
   }
 
-  // TODO routing operators
+  // Routing operators
+  if (std::count(routingTypes.begin(), routingTypes.end(), opType)) {
+    return opType;
+  }
 
   return opType;
 }

@@ -48,58 +48,6 @@ int computeR = 0; // total compute time for right channel
 std::string bufferImpl = "sbuffer"; // defines type of buffer to be implemented
                                     // in time triggered implementation
 
-std::map<std::string, std::vector<std::string>>
-    operatorImplementationInputPorts = {
-        {"fp_add", {"X", "Y"}},
-        {"fp_prod", {"X", "Y"}},
-        {"fp_div", {"X", "Y"}},
-        {"fp_sqrt", {"X"}},
-        {"fp_diff", {"X", "Y"}},
-        {"fp_pow", {"X", "Y"}},
-        {"int_add", {"X", "Y"}},
-        {"int_prod", {"X", "Y"}},
-        {"int_diff", {"X", "Y"}},
-        {"float2int", {"X"}},
-        {"int2float", {"X"}},
-        {"sbuffer", {"in_data"}},
-        {"int_max", {"X", "Y"}},
-        {"int_min", {"X", "Y"}},
-        {"fp_max", {"X", "Y"}},
-        {"fp_min", {"X", "Y"}},
-        {"fp_abs", {"X"}},
-        {"int_abs", {"X"}},
-        {"select2", {"X", "Y", "Z"}},
-        {"attach", {"X", "Y"}} // ,
-                               // {"vbargraph", {"X"}},
-                               // {"fp_floor", {"op_in_data_0"}}
-};
-
-std::map<std::string, std::vector<std::string>>
-    operatorImplementationOutputPorts = {
-        {"fp_add", {"R"}},
-        {"fp_prod", {"R"}},
-        {"fp_div", {"R"}},
-        {"fp_sqrt", {"R"}},
-        {"fp_diff", {"R"}},
-        {"fp_pow", {"R"}},
-        {"int_add", {"R"}},
-        {"int_prod", {"R"}},
-        {"int_diff", {"R"}},
-        {"float2int", {"R"}},
-        {"int2float", {"R"}},
-        {"sbuffer", {"out_data"}},
-        {"int_max", {"R"}},
-        {"int_min", {"R"}},
-        {"fp_max", {"R"}},
-        {"fp_min", {"R"}},
-        {"fp_abs", {"R"}},
-        {"int_abs", {"R"}},
-        {"select2", {"R"}},
-        {"attach", {"R"}}// ,
-        // {"vbargraph", {"X"}},
-        // {"fp_floor", {"op_in_data_0"}}
-};
-
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) {
 
   VHDLCircuit circuit;
@@ -176,28 +124,6 @@ std::string binaryValue(VHDLComponent const comp) {
   }
 
   return binaryRepresentation;
-}
-
-const std::vector<std::string> getImplementationInputPorts(std::string opType) {
-  std::vector<std::string> inPortNames;
-  if (operatorImplementationInputPorts.count(opType)) {
-    inPortNames = operatorImplementationInputPorts.at(opType);
-  } else {
-    VERBOSE_WARNING("No input ports listed for given operator type " << opType <<
-                    " --- check operatorImplementationInputPorts for entry.");
-  }
-  return inPortNames;
-}
-
-const std::vector<std::string> getImplementationOutputPorts(std::string opType) {
-  std::vector<std::string> outPortNames;
-  if (operatorImplementationOutputPorts.count(opType)) {
-    outPortNames = operatorImplementationOutputPorts.at(opType);
-  } else {
-    VERBOSE_WARNING("No output ports listed for given operator type " << opType <<
-                    " --- check operatorImplementationOutputPorts for entry.");
-  }
-  return outPortNames;
 }
 
 /**

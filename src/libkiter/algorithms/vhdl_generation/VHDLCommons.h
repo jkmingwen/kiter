@@ -54,76 +54,74 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
   };
 
 inline std::map<std::string, std::vector<std::string>> opInputPorts = {
-    {"fp_add", {"X", "Y"}},
-    {"fp_prod", {"X", "Y"}},
-    {"fp_div", {"X", "Y"}},
-    {"fp_sqrt", {"X"}},
-    {"fp_diff", {"X", "Y"}},
-    {"fp_pow", {"X", "Y"}},
-    {"int_add", {"X", "Y"}},
-    {"int_prod", {"X", "Y"}},
-    {"int_diff", {"X", "Y"}},
-    {"float2int", {"X"}},
-    {"int2float", {"X"}},
-    {"sbuffer", {"in_data"}},
-    {"int_max", {"X", "Y"}},
-    {"int_min", {"X", "Y"}},
-    {"fp_max", {"X", "Y"}},
-    {"fp_min", {"X", "Y"}},
-    {"fp_abs", {"X"}},
-    {"int_abs", {"X"}},
-    {"select2", {"S", "X", "Y"}},
-    {"select3", {"S", "X", "Y", "Z"}},
-    {"attach", {"X", "Y"}},
-    // {"vbargraph", {"X"}},
-    {"fp_floor", {"X"}}
+  // arithmetic types
+  {"fp_add", {"X", "Y"}}, {"fp_prod", {"X", "Y"}},
+  {"fp_div", {"X", "Y"}}, {"fp_sqrt", {"X"}},
+  {"fp_diff", {"X", "Y"}}, {"fp_pow", {"X", "Y"}},
+  {"int_add", {"X", "Y"}}, {"int_prod", {"X", "Y"}},
+  {"int_diff", {"X", "Y"}},
+  // numeric types
+  {"float2int", {"X"}}, {"int2float", {"X"}},
+  {"int_max", {"X", "Y"}}, {"int_min", {"X", "Y"}},
+  {"fp_max", {"X", "Y"}}, {"fp_min", {"X", "Y"}},
+  {"fp_abs", {"X"}}, {"int_abs", {"X"}},
+  // routing types
+  {"select2", {"S", "X", "Y"}},
+  {"select3", {"S", "X", "Y", "Z"}},
+  {"attach", {"X", "Y"}}, {"fp_floor", {"X"}},
+  // ui types
+  {"button", {"X"}}, {"checkbox", {"X"}},
+  {"hslider", {"X"}}, {"vslider", {"X"}},
+  {"nentry", {"X"}}, {"vbargraph", {"X"}},
+  {"hbargraph", {"X"}},
+  // others
+  {"sbuffer", {"in_data"}},
   };
 
 inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
+  // arithmetic types
   {"fp_add", {"R"}},    {"fp_prod", {"R"}},   {"fp_div", {"R"}},
   {"fp_sqrt", {"R"}},   {"fp_diff", {"R"}},   {"fp_pow", {"R"}},
   {"int_add", {"R"}},   {"int_prod", {"R"}},  {"int_diff", {"R"}},
-  {"float2int", {"R"}}, {"int2float", {"R"}}, {"sbuffer", {"out_data"}},
+  // numeric types
+  {"float2int", {"R"}}, {"int2float", {"R"}},
   {"int_max", {"R"}},  {"int_min", {"R"}},   {"fp_max", {"R"}},
   {"fp_min", {"R"}},  {"fp_abs", {"R"}},    {"int_abs", {"R"}},
+  {"fp_floor", {"R"}},
+  // routing types
   {"select2", {"R"}}, {"select3", {"R"}}, {"attach", {"R"}},
-  // {"vbargraph", {"X"}},
-  {"fp_floor", {"R"}}
+  // ui types
+  {"button", {"R"}}, {"checkbox", {"R"}},
+  {"hslider", {"R"}}, {"vslider", {"R"}}, {"nentry", {"R"}},
+  {"vbargraph", {"R"}}, {"hbargraph", {"R"}},
+  // others
+  {"sbuffer", {"out_data"}}
 };
 
 inline std::map<std::string, std::string> implementationNames = {
-    {"fp_add", "fp_add_flopoco"},
-    {"fp_prod", "fp_prod_flopoco"},
-    {"fp_div", "fp_div_flopoco"},
-    {"fp_sqrt", "fp_sqrt_flopoco"},
-    {"fp_diff", "fp_diff_flopoco"},
-    {"fp_pow", "fp_pow_flopoco"},
-    {"int_add", "int_add_flopoco"},
-    {"int_diff", "int_diff_flopoco"},
+    // arithmetic types
+    {"fp_add", "fp_add_flopoco"}, {"fp_prod", "fp_prod_flopoco"},
+    {"fp_div", "fp_div_flopoco"}, {"fp_sqrt", "fp_sqrt_flopoco"},
+    {"fp_diff", "fp_diff_flopoco"}, {"fp_pow", "fp_pow_flopoco"},
+    {"int_add", "int_add_flopoco"}, {"int_diff", "int_diff_flopoco"},
     {"int_prod", "int_prod_flopoco"},
-    {"float2int", "float2int_flopoco"},
-    {"int2float", "int2float_flopoco"},
-    {"fp_floor", "fp_floor_flopoco"},
-    {"int_max", "int_max"},
-    {"int_min", "int_min"},
-    {"fp_max", "fp_max"},
-    {"fp_min", "fp_min"},
-    {"fp_abs", "fp_abs"},
-    {"select2", "select2"},
-    {"select3", "select3"},
-    {"attach", "attach"},
-    {"delay", "delay"},
+    // numeric types
+    {"float2int", "float2int_flopoco"}, {"int2float", "int2float_flopoco"},
+    {"fp_floor", "fp_floor_flopoco"}, {"int_max", "int_max"},
+    {"int_min", "int_min"}, {"fp_max", "fp_max"},
+    {"fp_min", "fp_min"}, {"fp_abs", "fp_abs"},
     {"int_abs", "int_abs"},
-    {"vbargraph", "vbargraph"},
-    {"hbargraph", "hbargraph"},
-    {"hslider", "hslider"},
-    {"vslider", "vslider"},
-    {"nentry", "nentry"},
-    {"checkbox", "checkbox"},
+    // routing types
+    {"select2", "select2"}, {"select3", "select3"},
+    {"attach", "attach"},
+    // ui types
+    {"vbargraph", "vbargraph"}, {"hbargraph", "hbargraph"},
+    {"hslider", "hslider"}, {"vslider", "vslider"},
+    {"nentry", "nentry"}, {"checkbox", "checkbox"},
     {"button", "button"},
-    {"sbuffer", "sbuffer"},
-    {"Proj", "hs_splitter"},
-    {"shiftreg", "pipo_shift_reg"}};
+    // others
+    {"delay", "delay"}, {"sbuffer", "sbuffer"},
+    {"Proj", "hs_splitter"}, {"shiftreg", "pipo_shift_reg"}};
 
 inline std::vector<std::string> uiTypes = {"button",   "checkbox", "hslider",
                                            "vslider",  "nentry",   "vbargraph",

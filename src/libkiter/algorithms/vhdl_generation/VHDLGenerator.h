@@ -16,8 +16,6 @@
 
 VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
-const std::vector<std::string> getImplementationInputPorts(std::string opType);
-const std::vector<std::string> getImplementationOutputPorts(std::string opType);
 
 namespace models {
   class Dataflow;
