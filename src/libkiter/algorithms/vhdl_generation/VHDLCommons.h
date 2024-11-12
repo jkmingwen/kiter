@@ -75,7 +75,8 @@ inline std::map<std::string, std::vector<std::string>> opInputPorts = {
   {"nentry", {"X"}}, {"vbargraph", {"X"}},
   {"hbargraph", {"X"}},
   // others
-  {"sbuffer", {"in_data"}},
+  {"sbuffer", {"in_data"}}, {"shiftreg", {"in_data"}},
+  {"buffer", {"in_data"}}
   };
 
 inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
@@ -95,7 +96,8 @@ inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
   {"hslider", {"R"}}, {"vslider", {"R"}}, {"nentry", {"R"}},
   {"vbargraph", {"R"}}, {"hbargraph", {"R"}},
   // others
-  {"sbuffer", {"out_data"}}
+  {"sbuffer", {"out_data"}}, {"shiftreg", {"out_data"}},
+  {"buffer", {"out_data"}}
 };
 
 inline std::map<std::string, std::string> implementationNames = {

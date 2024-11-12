@@ -188,7 +188,6 @@ std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow) 
       std::string name = dataflow->getVertexName(v);
       std::string opType = deriveOpCat(dataflow, v);
       if (opOutputPorts.find(opType) != opOutputPorts.end() && opType != "output_selector") {
-        VERBOSE_ASSERT(opType != "output_selector", "Not supposed to match");
         if (dataflow->getVertexOutDegree(v) > opOutputPorts.at(opType).size()) {
           actorNames.push_back(name);
         }

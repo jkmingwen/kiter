@@ -16,6 +16,7 @@
 #include "VHDLCircuit.h"
 #include "algorithms/schedulings.h"
 #include "algorithms/transformation/merge_operators.h"
+#include "algorithms/transformation/merge_output.h"
 #include "commons/KiterRegistry.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
@@ -237,6 +238,21 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   if (param_list.find("BUFFER_TYPE") != param_list.end()) {
     VERBOSE_INFO("Set buffer implementation to type: " << param_list["BUFFER_TYPE"]);
     bufferImpl = param_list["BUFFER_TYPE"];
+  }
+
+  while (getMultiOutputActors(dataflow).size() > 0) {
+    VERBOSE_INFO("getMultiOutputActors is not empty");
+    for (std::string actorName : getMultiOutputActors(dataflow)) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("merge output for actor " << actorName);
+      try {
+        transformation::merge_output(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    VERBOSE_INFO("Regenerate Circuit");
   }
 
   // Generate schedule for given VHDL implementation
