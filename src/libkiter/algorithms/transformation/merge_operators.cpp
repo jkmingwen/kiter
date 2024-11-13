@@ -220,12 +220,20 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
     outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
     std::string actorName = dataflow->getVertexName(v);
-    for (auto a : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
+    for (auto argActorName : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
       {ForInputEdges(dataflow, v, inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
-          if (dataflow->getVertexName(inputActor).rfind(a, 0) == 0) { // the edge connects the input actor to this actor TODO use split and then front to find matches instead of this rfind thing...
-            inEdgeNames.push_back(dataflow->getEdgeName(inEdge));
-            inPortNames.push_back(dataflow->getEdgeOutputPortName(inEdge));
+          std::string inputActorName = commons::split<std::string> (dataflow->getVertexName(inputActor), '_').front();
+          if (inputActorName == argActorName) { // the edge connects the input actor to this actor
+            std::string edgeName = dataflow->getEdgeName(inEdge);
+            std::string inPortName = dataflow->getEdgeOutputPortName(inEdge);
+            if (std::find(inEdgeNames.begin(), inEdgeNames.end(), edgeName) ==
+                inEdgeNames.end() &&
+                std::find(inPortNames.begin(), inPortNames.end(), inPortName) ==
+                inPortNames.end()) { // avoid adding duplicate edge/port names
+              inEdgeNames.push_back(edgeName);
+              inPortNames.push_back(inPortName);
+            }
           }
         }
       }
@@ -739,6 +747,7 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
         dataflow->setVertexType(v, "broadcast");
         dataflow->setPhasesQuantity(v, 1);
         dataflow->setVertexDuration(v, {1});
+        std::string osName = dataflow->getVertexName(v); // store for replacement later in affected target actors
         {ForInputEdges(dataflow, v, inputEdge) {
             osInPhases = dataflow->getEdgeOutVector(inputEdge); // passed on to buffer
             dataflow->setEdgeOutPhases(inputEdge, {1});
@@ -747,6 +756,7 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
         // Add buffers on each output edge between OS and target
         // OS ---{toBuffer}--> buffer --{newEdge}--> target
         std::vector<Edge> outputEdges;
+        std::map<Vertex, std::vector<std::string>> newArgNames; // track names to update
         {ForOutputEdges(dataflow, v, e) { outputEdges.push_back(e); }}
         for (auto e : outputEdges) {
           bufferCount++;
@@ -761,6 +771,7 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           dataflow->setPhasesQuantity(buffer, numPhases);
           dataflow->setVertexDuration(buffer,
                                       std::vector<TIME_UNIT>(numPhases, 1));
+          newArgNames[ogTarget].push_back("osbuffer" + std::to_string(bufferCount)); // add new name for updating later
           Edge toBuffer = dataflow->addEdge(v, buffer, "broadcast" + edgeName);
           dataflow->setEdgeInPhases(toBuffer, {1});
           dataflow->setEdgeOutPhases(toBuffer, osInPhases);
@@ -776,19 +787,26 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           dataflow->setPreload(newEdge, preload);
           dataflow->setTokenSize(newEdge, tokenSize);
 
-          // update name for arg order
-          std::string baseName =
-            dataflow->getVertexName(dataflow->getEdgeSource(e));
-          baseName = baseName.substr(0, baseName.find("_"));
-          dataflow->setVertexName(
-              ogTarget,
-              replaceActorName(dataflow->getVertexName(ogTarget), baseName,
-                               dataflow->getVertexName(buffer),
-                               dataflow->getEdgeOutVector(e)));
-
           // restore original name to new edge
           dataflow->removeEdge(e);
           dataflow->setEdgeName(newEdge, edgeName);
+        }
+        // update names for arg order
+        for (const auto &[vertex, names] : newArgNames) {
+          std::vector<std::string> newArgOrder;
+          std::string vertexName = dataflow->getVertexName(vertex);
+          newArgOrder.push_back(commons::split<std::string>(vertexName, '_').front());
+          std::vector<std::string> argOrder = getArgOrderFromName(vertexName);
+          int i = 0;
+          for (auto const &oldArg : argOrder) {
+            if (oldArg == osName) { // replace occurances of output selector name with new arg
+              newArgOrder.push_back(names[i]);
+              i++;
+            } else {
+              newArgOrder.push_back(oldArg);
+            }
+          }
+          dataflow->setVertexName(vertex, commons::join(newArgOrder, "_"));
         }
       }
     }}

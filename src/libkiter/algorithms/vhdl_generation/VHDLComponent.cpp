@@ -63,23 +63,13 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   }
 
   // Rearrange input ports and edges according to argument order
-  if (argOrder.size() && componentType != "INPUT" &&
-      componentType != "OUTPUT") {
+  if (argOrder.size() && componentType != "OUTPUT") {
     for (auto const &inputVertexName : this->argOrder) {
       Vertex inputVertex = dataflow->getVertexByName(
           getNameFromPartialName(dataflow, inputVertexName));
       {ForInputEdges(dataflow, this->actor, e) {
           if (dataflow->getEdgeSource(e) == inputVertex) {
-            Edge signal = e;
-            if (implementationType == TT) {
-              if (componentType != "input_selector") {
-                // share input sigals: use the first output edge from the source
-                // vertex to ensure that the outputs of that vertex use the same
-                // signal even if it has multiple output edges
-                signal = it2Edge(dataflow->getOutputEdges(inputVertex).first);
-              }
-            }
-            this->addInputSignal(dataflow, signal);
+            this->addInputSignal(dataflow, e);
           }
         }}
     }
@@ -1054,18 +1044,15 @@ std::string getNameFromPartialName(models::Dataflow* const dataflow,
                                    const std::string &partialName) {
   std::vector<std::string> matchingNames;
   {ForEachVertex(dataflow, v) {
-      std::string vertexName = dataflow->getVertexName(v);
-      std::size_t found = vertexName.find(partialName + "_");
-      if ((found == 0) || (vertexName == partialName)) {
-        matchingNames.push_back(vertexName);
+      std::string fullName = dataflow->getVertexName(v);
+      std::string baseName =
+          commons::split<std::string>(fullName, '_').front();
+      if (baseName == partialName) {
+        matchingNames.push_back(fullName);
       }
     }}
 
   VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns '" << matchingNames[0] << "'");
-  if(matchingNames.size() != 1) {
-      VERBOSE_ERROR("Wrong name count for '" << partialName << "': " << commons::toString(matchingNames));
-  }
-
-  assert(matchingNames.size() == 1);
+  VERBOSE_ASSERT(matchingNames.size() == 1, "Non-unique matches for '" << partialName << "': " << commons::toString(matchingNames));
   return matchingNames.front();
 }

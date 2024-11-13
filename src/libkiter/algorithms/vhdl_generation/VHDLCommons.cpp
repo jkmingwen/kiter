@@ -187,13 +187,16 @@ std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow) 
   {ForEachVertex(dataflow, v) {
       std::string name = dataflow->getVertexName(v);
       std::string opType = deriveOpCat(dataflow, v);
+      int numOutputs = dataflow->getVertexOutDegree(v);
       if (opOutputPorts.find(opType) != opOutputPorts.end() && opType != "output_selector") {
-        if (dataflow->getVertexOutDegree(v) > opOutputPorts.at(opType).size()) {
+        if (numOutputs > opOutputPorts.at(opType).size()) {
           actorNames.push_back(name);
         }
-        if (dataflow->getVertexOutDegree(v) < opOutputPorts.at(opType).size()) {
+        if (numOutputs < opOutputPorts.at(opType).size()) {
           VERBOSE_ERROR("Too few outputs for " << name << " (" << opType << ")." );
         }
+      } else if (opType == "INPUT" && numOutputs > 1) {
+        actorNames.push_back(name);
       } else {
         VERBOSE_INFO("Ignoring multioutput check for " << name << " (" << opType << ")");
       }
