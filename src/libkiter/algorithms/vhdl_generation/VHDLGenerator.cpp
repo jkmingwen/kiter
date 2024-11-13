@@ -303,6 +303,16 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       }
     }}
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
+  if (tmp.getOperatorCount("INPUT") > 2 ||
+      tmp.getOperatorCount("OUTPUT") > 2) {
+    VERBOSE_WARNING("Given design has "
+                    << tmp.getOperatorCount("INPUT") << " inputs, "
+                    << tmp.getOperatorCount("OUTPUT")
+                    << " outputs. Only stereo designs are currently supported "
+                       "for VHDL generation; unable to generate VHDL.");
+    return;
+  }
+
   if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
     VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
     while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
@@ -330,8 +340,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     VERBOSE_INFO("Output Circuit");
   }
 
-  std::vector<TIME_UNIT> inputEnds(2, 0);
-  std::vector<TIME_UNIT> outputStarts(2, 0);
+  std::vector<TIME_UNIT> outputStarts(tmp.getOperatorCount("OUTPUT"), 0);
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
     if (osBroadcast) { name = name.substr(0, name.find("_")); }
@@ -339,13 +348,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[name]);
       std::vector<TIME_UNIT> bufferPopTime;
-      if (comp.getType() == "INPUT") {
-        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
-        inputEnds[comp.getIOId()] = startTimes.front() + dataflow->getVertexDuration(v);
-      }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
-        outputStarts[comp.getIOId()] = startTimes.front();
+        outputStarts.at(comp.getIOId()) = startTimes.front();
       }
       if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
         {ForOutputEdges(dataflow, v, outEdge) {
@@ -465,7 +470,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
 }
 
-void algorithms::generateOperators(VHDLCircuit &circuit) {
+void algorithms::generateOperators(const VHDLCircuit &circuit) {
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
   std::map<std::string, int> trackImplementations; // to check if component has been implemented
   for (auto const &[v, comp] : circuit.getComponentMap()) {
@@ -596,7 +601,7 @@ void algorithms::generateUIOperator(VHDLComponent comp) {
 }
 
 
-void algorithms::generateCircuit(VHDLCircuit &circuit) {
+void algorithms::generateCircuit(const VHDLCircuit &circuit) {
   std::ofstream vhdlOutput;
   std::string graphName = circuit.getName() + "_circuit"; // TODO decide on naming convention
   std::map<std::string, int> operatorMap = circuit.getOperatorMap();
@@ -638,7 +643,7 @@ void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
 
    @param vhdlOutput Output stream to write VHDL code to.
  */
-void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOutput) {
+void algorithms::generateVHDLEntity(const VHDLCircuit &circuit, std::ofstream &vhdlOutput) {
   vhdlOutput << "entity " << circuit.getName() << " is\n"
              << "generic (\n"
              << "    " << "ram_width : natural := 34;\n"
@@ -671,7 +676,7 @@ void algorithms::generateVHDLEntity(VHDLCircuit &circuit, std::ofstream &vhdlOut
 }
 
 
-void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
+void algorithms::generateVHDLArchitecture(const VHDLCircuit &circuit,
                                           bool noOperators, std::ofstream &vhdlOutput) {
   // top level intermediate signal names stored in these vectors
   std::vector<std::string> dataSignals;
@@ -728,24 +733,40 @@ void algorithms::generateVHDLArchitecture(VHDLCircuit &circuit,
   std::map<std::string, std::vector<std::string>> signalNames;
   for (auto const &[e, conn] : circuit.getConnectionMap()) {
     std::map<std::string, std::vector<std::string>> newNames;
-    if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
-          circuit.getDstComponent(conn).getType() == "OUTPUT")) {
-      // Check the implementation types of both sources and destination to allow
-      // for future implementations with mixed implementations
-      if (circuit.getSrcComponent(conn).getImplType() == TT &&
-          circuit.getDstComponent(conn).getImplType() == TT) {
-        newNames = conn.genSignalNames(TT);
-      } else if (circuit.getSrcComponent(conn).getImplType() == DD &&
-                 circuit.getDstComponent(conn).getImplType() == DD) {
-        newNames = conn.genSignalNames(DD);
-      } else {
-        VERBOSE_ERROR("Implementation type for signal name generation not yet supported");
-      }
-      for (auto const &[type, name] : newNames) {
+    VERBOSE_INFO("Generate signal name for " << conn.getName());
+    // if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
+    //       circuit.getDstComponent(conn).getType() == "OUTPUT")) {
+    //   // Check the implementation types of both sources and destination to allow
+    //   // for future implementations with mixed implementations
+    //   if (circuit.getSrcComponent(conn).getImplType() == TT &&
+    //       circuit.getDstComponent(conn).getImplType() == TT) {
+    //     VERBOSE_INFO("\tGenerating signal names for " << conn.getName());
+    //     newNames = conn.genSignalNames(TT);
+    //   } else if (circuit.getSrcComponent(conn).getImplType() == DD &&
+    //              circuit.getDstComponent(conn).getImplType() == DD) {
+    //     newNames = conn.genSignalNames(DD);
+    //   } else {
+    //     VERBOSE_ERROR("Implementation type for signal name generation not yet supported");
+    //   }
+    //   for (auto const &[type, name] : newNames) {
+    //     signalNames[type].insert(signalNames[type].end(), name.begin(),
+    //                              name.end());
+    //   }
+    // }
+
+    // NOTE this is a workaround --- previously we'd check for the types of the
+    // src/dst components of each connection so we know if its necessary to
+    // generate signals for them (input/output connections don't require
+    // internal signals), but this leads to a seg fault when trying to generate
+    // for matrix.dsp. This workaround means that we'll always have excess
+    // signals, but shouldn't affect resource utilization since they're never
+    // used. The previous implementation was pretty unelegant, so it might be
+    // worth trying to modify this instead.
+    newNames = conn.genSignalNames(implementationType);
+    for (auto const &[type, name] : newNames) {
         signalNames[type].insert(signalNames[type].end(), name.begin(),
                                  name.end());
       }
-    }
   }
 
   // 2a. Write signal names to VHDL output
