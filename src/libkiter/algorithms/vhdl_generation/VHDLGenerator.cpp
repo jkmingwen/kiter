@@ -292,8 +292,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // Update placeholder buffer type to specified implementation after graph
   // transformations to generate circuit object for VHDL generation
   {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexType(v) == "buffer") {
+      std::string vertexType = dataflow->getVertexType(v);
+      if (vertexType == "buffer") {
         dataflow->setVertexType(v, bufferImpl);
+      }
+      if (unsupportedOperators.find(vertexType) != unsupportedOperators.end()) {
+        VERBOSE_WARNING("Unsupported operator "
+                        << vertexType << " detected; unable to generate VHDL");
+        return;
       }
     }}
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected

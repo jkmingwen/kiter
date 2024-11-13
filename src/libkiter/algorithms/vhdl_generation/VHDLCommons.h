@@ -136,6 +136,8 @@ inline std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"
 
 inline std::vector<std::string> routingTypes = {"select2", "select3", "attach"};
 
+inline std::unordered_set<std::string> unsupportedOperators = {"delay", "cos", "sin"};
+
 int getOperatorLifespan(const std::string &opType, int opFreq);
 std::vector<std::string> getArgOrderFromName(std::string name);
 std::map<std::string, int> getInputDataTypes(models::Dataflow *const dataflow,
