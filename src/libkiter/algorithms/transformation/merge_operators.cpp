@@ -826,9 +826,29 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
   Vertex src;
   bool isInitialised = false;
   {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexType(v) == "INPUT_0") {
+      std::string vertexType = deriveOpCat(dataflow, v);
+      if (vertexType == "INPUT") {
         src = v;
         isInitialised = true;
+      } else if (vertexType == "broadcast") {
+        // also pipeline buffers from broadcast components
+        // connected to the top input components
+        bool broadcastInput = false;
+        {ForInputEdges(dataflow, v, inEdge) {
+            Vertex inputVertex = dataflow->getEdgeSource(inEdge);
+            std::string inputType = deriveOpCat(dataflow, inputVertex);
+            VERBOSE_INFO(inputType);
+            if (inputType == "INPUT") {
+              broadcastInput = true;
+            } else {
+              broadcastInput = false;
+              break;
+            }
+          }}
+        if (broadcastInput) {
+          src = v;
+          isInitialised = true;
+        }
       }
     }}
   if (!isInitialised) {
@@ -838,7 +858,7 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
 
   // sort buffers on output edges of src actor by init tokens
   std::map<int, std::vector<Vertex>> buffers;
-  ForOutputEdges(dataflow, src, e) {
+  {ForOutputEdges(dataflow, src, e) {
     Vertex targetActor = dataflow->getEdgeTarget(e);
     if (dataflow->getVertexType(targetActor) != "buffer") {
       VERBOSE_WARNING("Pipelining only works when all target actors are "
@@ -847,9 +867,8 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
     }
     {ForOutputEdges(dataflow, targetActor, outEdge) {
         buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
-      }
-    }
-
+      }}
+    }}
     // checks for whether pipelining can be performed
     if (buffers.size() < 2) {
       VERBOSE_WARNING("Insufficient buffers to perform pipelining. "
@@ -865,7 +884,6 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
       }
       expectedTokens++;
     }
-  }
 
   for (auto it = buffers.begin(); it != buffers.end(); it++) {
     auto next = std::next(it);
