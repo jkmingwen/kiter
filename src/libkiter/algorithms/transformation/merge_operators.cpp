@@ -822,33 +822,13 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
  */
 void algorithms::transformation::pipeline_buffers(models::Dataflow *const dataflow,
                                                   parameters_list_t params) {
-  // TODO parameterise source actor selection
   Vertex src;
   bool isInitialised = false;
   {ForEachVertex(dataflow, v) {
       std::string vertexType = deriveOpCat(dataflow, v);
-      if (vertexType == "INPUT") {
+      if (vertexType == "INPUT" || vertexType == "broadcast") {
         src = v;
         isInitialised = true;
-      } else if (vertexType == "broadcast") {
-        // also pipeline buffers from broadcast components
-        // connected to the top input components
-        bool broadcastInput = false;
-        {ForInputEdges(dataflow, v, inEdge) {
-            Vertex inputVertex = dataflow->getEdgeSource(inEdge);
-            std::string inputType = deriveOpCat(dataflow, inputVertex);
-            VERBOSE_INFO(inputType);
-            if (inputType == "INPUT") {
-              broadcastInput = true;
-            } else {
-              broadcastInput = false;
-              break;
-            }
-          }}
-        if (broadcastInput) {
-          src = v;
-          isInitialised = true;
-        }
       }
     }}
   if (!isInitialised) {
@@ -859,31 +839,31 @@ void algorithms::transformation::pipeline_buffers(models::Dataflow *const datafl
   // sort buffers on output edges of src actor by init tokens
   std::map<int, std::vector<Vertex>> buffers;
   {ForOutputEdges(dataflow, src, e) {
-    Vertex targetActor = dataflow->getEdgeTarget(e);
-    if (dataflow->getVertexType(targetActor) != "buffer") {
-      VERBOSE_WARNING("Pipelining only works when all target actors are "
-                      "buffers. Transformation bypassed.");
-      return;
-    }
-    {ForOutputEdges(dataflow, targetActor, outEdge) {
-        buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
-      }}
-    }}
-    // checks for whether pipelining can be performed
-    if (buffers.size() < 2) {
-      VERBOSE_WARNING("Insufficient buffers to perform pipelining. "
-                      "Transformation bypassed.");
-      return;
-    }
-    int expectedTokens = buffers.begin()->first;
-    for (const auto &[initTokens, bufferVertices] : buffers) {
-      if (initTokens != expectedTokens) {
-        VERBOSE_WARNING("Pipelining not supported when tokens not in running "
-                        "order. Transformation bypassed.");
+      Vertex targetActor = dataflow->getEdgeTarget(e);
+      if (dataflow->getVertexType(targetActor) != "buffer") {
+        VERBOSE_WARNING("Pipelining only works when all target actors are "
+                        "buffers. Transformation bypassed.");
         return;
       }
-      expectedTokens++;
+      {ForOutputEdges(dataflow, targetActor, outEdge) {
+          buffers[(int)dataflow->getPreload(outEdge)].push_back(targetActor);
+        }}
+    }}
+  // checks for whether pipelining can be performed
+  if (buffers.size() < 2) {
+    VERBOSE_WARNING("Insufficient buffers to perform pipelining. "
+                    "Transformation bypassed.");
+    return;
+  }
+  int expectedTokens = buffers.begin()->first;
+  for (const auto &[initTokens, bufferVertices] : buffers) {
+    if (initTokens != expectedTokens) {
+      VERBOSE_WARNING("Pipelining not supported when tokens not in running "
+                      "order. Transformation bypassed.");
+      return;
     }
+    expectedTokens++;
+  }
 
   for (auto it = buffers.begin(); it != buffers.end(); it++) {
     auto next = std::next(it);
