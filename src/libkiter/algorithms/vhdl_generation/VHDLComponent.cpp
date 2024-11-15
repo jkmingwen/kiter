@@ -42,10 +42,6 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       outputPorts.push_back(dataflow->getEdgeInputPortName(outEdge));
       outputEdges.push_back(dataflow->getEdgeName(outEdge));
     }}
-  // for when we want to use a single signal to send output to multiple actors (not data driven)
-  if (dataflow->getVertexOutDegree(a)) {
-    this->sharedOutputSignal = dataflow->getEdgeName(it2Edge(dataflow->getOutputEdges(a).first));
-  }
   inputTypes = getInputDataTypes(dataflow, a);
   outputTypes = getOutputDataTypes(dataflow, a);
 
@@ -654,15 +650,7 @@ const std::vector<std::string> VHDLComponent::getInputSignals() const {
 }
 
 const std::vector<std::string> VHDLComponent::getOutputSignals() const {
-  if (componentType == "input_selector" ||
-      componentType == "output_selector" ||
-      componentType == "const_value" ||
-      componentType == "broadcast") {
     return this->outputSignals;
-  } else {
-    return std::vector<std::string>(1, this->sharedOutputSignal);
-  }
-
 }
 
 void VHDLComponent::addHSInputSignal(const std::string& signalName) {
@@ -825,7 +813,7 @@ std::string VHDLComponent::printStatus() const  {
   outputStream << "\tIs constant?";
   if (this->componentType == "const_value") {
     outputStream << " Y" << std::endl;
-    if (this->dataType == "real") {
+    if (this->dataType == "fp") {
       outputStream <<"\t\tValue: " << this->fpValue << std::endl;
     } else if (this->dataType == "int") {
       outputStream <<"\t\tValue: " << this->intValue << std::endl;
