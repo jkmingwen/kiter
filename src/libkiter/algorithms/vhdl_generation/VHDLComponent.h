@@ -15,9 +15,6 @@ namespace models {
   class Dataflow;
 }
 
-std::string getNameFromPartialName(models::Dataflow *const dataflow,
-                                   const std::string &partialName);
-
 class VHDLComponent {
  public:
   // VHDLComponent();

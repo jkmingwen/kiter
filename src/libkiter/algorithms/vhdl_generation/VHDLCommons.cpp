@@ -204,6 +204,24 @@ std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow) 
   return actorNames;
 }
 
+// TODO rename
+std::string getNameFromPartialName(models::Dataflow* const dataflow,
+                                   const std::string &partialName) {
+  std::vector<std::string> matchingNames;
+  {ForEachVertex(dataflow, v) {
+      std::string fullName = dataflow->getVertexName(v);
+      std::string baseName =
+          commons::split<std::string>(fullName, '_').front();
+      if (baseName == partialName) {
+        matchingNames.push_back(fullName);
+      }
+    }}
+
+  VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns '" << matchingNames[0] << "'");
+  VERBOSE_ASSERT(matchingNames.size() == 1, "Non-unique matches for '" << partialName << "': " << commons::toString(matchingNames));
+  return matchingNames.front();
+}
+
 /**
    Generates a file based on a reference, optionally replacing words in the
    resulting file.
