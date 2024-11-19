@@ -57,8 +57,11 @@ class VHDLComponent {
                      std::vector<TIME_UNIT> popTime, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
-                      std::string direction, bool isGeneric = false,
-                      int dataWidth = 34);
+                      std::string direction, int dataWidth = 34);
+  void addHSPortMapping(std::string portPrefix, std::string signal,
+                        int id, std::string direction);
+  void addGenericMapping(std::string port, std::string signal,
+                         std::string type, int dataWidth =34);
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
   std::string printStatus() const;

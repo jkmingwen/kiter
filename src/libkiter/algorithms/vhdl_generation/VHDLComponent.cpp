@@ -233,17 +233,11 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     addPortMapping("clk", "clk", "std_logic", "in");
     if (componentType == "const_value") {
       addPortMapping("rst", "rst", "std_logic", "in");
-      addPortMapping("value", "\"" + binaryValue + "\"", "std_logic_vector", "",
-                     true);
+      addGenericMapping("value", "\"" + binaryValue + "\"", "std_logic_vector");
       std::stringstream procBehavStream; // to define implementation behaviour
       for (auto o = 0; o < outputSignals.size(); o++) {
         if (implementationType == DD) { // additional ports for HS protocol
-          addPortMapping("out_ready_" + std::to_string(o),
-                         outputSignals[o] + "_READY", "std_logic", "in");
-          addPortMapping("out_valid_" + std::to_string(o),
-                         outputSignals[o] + "_VALID", "std_logic", "out");
-          addPortMapping("out_data_" + std::to_string(o),
-                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          addHSPortMapping("out", outputSignals[o], o, "out");
           procBehavStream << "out_valid_" << o << " <= '1';\n"
                           << "out_data_" << o << " <= value;\n" << std::endl;
         } else {
@@ -257,7 +251,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     } else if (componentType == "input_selector") {
       std::stringstream procBehavStream; // to define implementation behaviour
       if (implementationType == TT) {
-        addPortMapping("ram_width", "ram_width", "integer", "", true);
+        addGenericMapping("ram_width", "ram_width", "integer");
         addPortMapping("rst", "rst", "std_logic", "in");
         addPortMapping("cycle_count", "cycle_count", "integer", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
@@ -280,12 +274,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                        "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-          addPortMapping("op_in_ready_" + std::to_string(i),
-                         inputSignals[i] + "_READY", "std_logic", "out");
-          addPortMapping("op_in_valid_" + std::to_string(i),
-                         inputSignals[i] + "_VALID", "std_logic", "in");
-          addPortMapping("op_in_data_" + std::to_string(i),
-                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          addHSPortMapping("op", inputSignals[i], i, "in");
           // generate implementation according to number of inputs
           std::string phaseConditional = "elsif (current_phase = " + std::to_string(i) + ") then\n";
           if (i == 0) {
@@ -314,12 +303,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
           }
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
-          addPortMapping("op_out_ready_" + std::to_string(o),
-                         outputSignals[o] + "_READY", "std_logic", "in");
-          addPortMapping("op_out_valid_" + std::to_string(o),
-                         outputSignals[o] + "_VALID", "std_logic", "out");
-          addPortMapping("op_out_data_" + std::to_string(o),
-                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          addHSPortMapping("op", outputSignals[o], o, "out");
         }
         implReplacementMap["$VALID_SIGNAL_ROUTING"] = validSignalRouting.str();
         implReplacementMap["$READY_SIGNAL_ROUTING"] = readySignalRouting.str();
@@ -330,7 +314,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     } else if (componentType == "output_selector") {
       std::stringstream procBehavStream; // to define implementation behaviour
       if (implementationType == TT) {
-        addPortMapping("ram_width", "ram_width", "integer", "", true);
+        addGenericMapping("ram_width", "ram_width", "integer");
         addPortMapping("rst", "rst", "std_logic", "in");
         addPortMapping("cycle_count", "cycle_count", "integer", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
@@ -352,20 +336,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
                        "integer", "", true);
         addPortMapping("rst", "rst", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-          addPortMapping("op_in_ready_" + std::to_string(i),
-                         inputSignals[i] + "_READY", "std_logic", "out");
-          addPortMapping("op_in_valid_" + std::to_string(i),
-                         inputSignals[i] + "_VALID", "std_logic", "in");
-          addPortMapping("op_in_data_" + std::to_string(i),
-                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          addHSPortMapping("op", inputSignals[i], i, "in");
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
-          addPortMapping("op_out_ready_" + std::to_string(o),
-                         outputSignals[o] + "_READY", "std_logic", "in");
-          addPortMapping("op_out_valid_" + std::to_string(o),
-                         outputSignals[o] + "_VALID", "std_logic", "out");
-          addPortMapping("op_out_data_" + std::to_string(o),
-                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          addHSPortMapping("op", outputSignals[o], o, "out");
           // generate implementation according to number of outputs
           std::string phaseConditional =
             "elsif (current_phase = " + std::to_string(o) + ") then\n";
@@ -399,7 +373,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "broadcast") {
       std::stringstream procBehavStream; // to define implementation behaviour
-      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      addGenericMapping("ram_width", "ram_width", "integer");
       for (auto i = 0; i < inputSignals.size(); i++) {
         addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
       }
@@ -411,7 +385,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehavStream.str();
     } else if (componentType == "sbuffer") {
-      addPortMapping("ram_width", "ram_width", "integer", "", true);
+      addGenericMapping("ram_width", "ram_width", "integer");
       VERBOSE_ASSERT(dataflow->getVertexOutDegree(actor) == 1,
                      "buffers should only have 1 output");
       // get initial token from output edge
@@ -438,7 +412,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         }}
       addPortMapping("depth", std::to_string(initTokens),
                      "integer", "", true);
-      addPortMapping("period", std::to_string(5209), "integer", "", true);
+      addGenericMapping("period", std::to_string(5209), "integer");
       pipoNumbers["depth"] = initTokens;
       pipoNumbers["period"] = 5209;
       addPortMapping("rst", "rst", "std_logic", "in");
@@ -453,33 +427,23 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       std::stringstream outValidStream;
       std::stringstream outReadyStream;
       if (implementationType == DD) { // Proj only used in data driven implementation
-        addPortMapping("bit_width", "ram_width", "integer", "", true);
+        addGenericMapping("bit_width", "ram_width", "integer");
         addPortMapping("rst", "rst", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-            addPortMapping("op_in_ready_" + std::to_string(i),
-                           inputSignals[i] + "_READY", "std_logic", "out");
-            addPortMapping("op_in_valid_" + std::to_string(i),
-                           inputSignals[i] + "_VALID", "std_logic", "in");
-            addPortMapping("op_in_data_" + std::to_string(i),
-                           inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          addHSPortMapping("op", inputSignals[i], i, "in");
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
           std::string boolAnd = " AND ";
           if (o + 1 == outputSignals.size()) {
             boolAnd = "";
           }
-            addPortMapping("op_out_ready_" + std::to_string(o),
-                           outputSignals[o] + "_READY", "std_logic", "in");
-            addPortMapping("op_out_valid_" + std::to_string(o),
-                           outputSignals[o] + "_VALID", "std_logic", "out");
-            addPortMapping("op_out_data_" + std::to_string(o),
-                           outputSignals[o] + "_DATA", "std_logic_vector", "out");
-            outDataStream << "op_out_data_" << o
-                          << " <= temp_data_0(bit_width-1 downto 0);"
-                          << std::endl;
-            outValidStream << "op_out_valid_" << o << " <= is_stored_0;"
-                           << std::endl;
-            outReadyStream << "op_out_ready_" << o << "='1'" << boolAnd;
+          addHSPortMapping("op", outputSignals[o], o, "out");
+          outDataStream << "op_out_data_" << o
+                        << " <= temp_data_0(bit_width-1 downto 0);"
+                        << std::endl;
+          outValidStream << "op_out_valid_" << o << " <= is_stored_0;"
+                         << std::endl;
+          outReadyStream << "op_out_ready_" << o << "='1'" << boolAnd;
         }
       }
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl();
@@ -490,20 +454,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
       if (implementationType == DD) { // HS protocol requires reset
         addPortMapping("rst", "rst", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
-          addPortMapping("op_in_ready_" + std::to_string(i),
-                         inputSignals[i] + "_READY", "std_logic", "out");
-          addPortMapping("op_in_valid_" + std::to_string(i),
-                         inputSignals[i] + "_VALID", "std_logic", "in");
-          addPortMapping("op_in_data_" + std::to_string(i),
-                         inputSignals[i] + "_DATA", "std_logic_vector", "in");
+          addHSPortMapping("op", inputSignals[i], i, "in");
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
-          addPortMapping("op_out_ready_" + std::to_string(o),
-                         outputSignals[o] + "_READY", "std_logic", "in");
-          addPortMapping("op_out_valid_" + std::to_string(o),
-                         outputSignals[o] + "_VALID", "std_logic", "out");
-          addPortMapping("op_out_data_" + std::to_string(o),
-                         outputSignals[o] + "_DATA", "std_logic_vector", "out");
+          addHSPortMapping("op", outputSignals[o], o, "out");
         }
         if (inputSignals.size() == 1) {
           implReplacementMap["$HSM_TYPE"] = "_one";
@@ -754,18 +708,44 @@ std::vector<TIME_UNIT> VHDLComponent::getStartTimes() const {
 
 void VHDLComponent::addPortMapping(std::string port, std::string signal,
                                    std::string type, std::string direction,
-                                   bool isGeneric, int dataWidth) {
- // slv type needs to have a defined width
+                                   int dataWidth) {
+  // slv type needs to have a defined width
   if (type == "std_logic_vector") {
     type += "(" + std::to_string(dataWidth - 1) + " downto 0)";
   }
-  if (isGeneric) {
-    genericMappings[port] = signal;
-    genericPorts[port] = type;
-  } else {
-    portMappings[port] = signal;
-    ports[port] = direction + " " + type;
+  portMappings[port] = signal;
+  ports[port] = direction + " " + type;
+}
+
+void VHDLComponent::addHSPortMapping(std::string portPrefix, std::string signal,
+                                     int id, std::string direction) {
+  portPrefix = portPrefix + "_" + direction;
+  std::string rdyPort = portPrefix + "_ready_" + std::to_string(id);
+  std::string vldPort = portPrefix + "_valid_" + std::to_string(id);
+  std::string dataPort = portPrefix + "_data_" + std::to_string(id);
+  std::string rdySignal = signal + "_READY";
+  std::string vldSignal = signal + "_VALID";
+  std::string dataSignal = signal + "_DATA";
+
+  if (direction == "in") {
+    addPortMapping(rdyPort, rdySignal, "std_logic", "out");
+    addPortMapping(vldPort, vldSignal, "std_logic", "in");
+    addPortMapping(dataPort, dataSignal, "std_logic_vector", "in");
+  } else { // out
+    addPortMapping(rdyPort, rdySignal, "std_logic", "in");
+    addPortMapping(vldPort, vldSignal, "std_logic", "out");
+    addPortMapping(dataPort, dataSignal, "std_logic_vector", "out");
   }
+}
+
+void VHDLComponent::addGenericMapping(std::string port, std::string signal,
+                                      std::string type, int dataWidth) {
+  // slv type needs to have a defined width
+  if (type == "std_logic_vector") {
+    type += "(" + std::to_string(dataWidth - 1) + " downto 0)";
+  }
+  genericMappings[port] = signal;
+  genericPorts[port] = type;
 }
 
 std::string VHDLComponent::getPortMapName() const {
