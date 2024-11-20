@@ -607,8 +607,8 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
       } else if (componentType == "input_selector") {
         addPortMapping("clk", "clk", "std_logic", "in");
         addPortMapping("rst", "rst", "std_logic", "in");
-        addPortMapping("num_phases", std::to_string(inputSignals.size()),
-                       "integer", "", true);
+        addGenericMapping("num_phases", std::to_string(inputSignals.size()),
+                          "integer");
         for (auto i = 0; i < inputSignals.size(); i++) {
           addHSPortMapping("op", inputSignals[i], i, "in");
         }
@@ -618,8 +618,8 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
       } else if (componentType == "output_selector") {
         addPortMapping("clk", "clk", "std_logic", "in");
         addPortMapping("rst", "rst", "std_logic", "in");
-        addPortMapping("num_phases", std::to_string(outputSignals.size()),
-                       "integer", "", true);
+        addGenericMapping("num_phases", std::to_string(outputSignals.size()),
+                          "integer");
         for (auto i = 0; i < inputSignals.size(); i++) {
           addHSPortMapping("op", inputSignals[i], i, "in");
         }

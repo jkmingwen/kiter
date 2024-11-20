@@ -319,33 +319,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     return;
   }
 
-  if (param_list.find("NORMALISE_OUTPUTS") != param_list.end()) {
-    VERBOSE_ASSERT(implementationType == DD, "Output normalisation only supported in data-driven implementations (due to use of Proj operator)");
-    while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
-
-      VERBOSE_INFO("getMultiOutActors is not empty");
-
-      /*  This block removes multiIO actors and replaces them with a router that splits their output */
-      for (std::string actorName: tmp.getMultiOutActors()) {
-        parameters_list_t parameters;
-        parameters["name"] = actorName;
-        VERBOSE_INFO("singleOutput actor " << actorName);
-        try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
-          algorithms::transformation::singleOutput(dataflow, parameters);
-        } catch (...) {
-          VERBOSE_WARNING("actor missing!");
-        }
-      }
-
-      // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
-      VERBOSE_INFO("Generate updated circuit (with multi-output actors removed)");
-      tmp = generateCircuitObject(dataflow, implementationType);
-    }
-
-    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
-    VERBOSE_INFO("Output Circuit");
-  }
-
   std::vector<TIME_UNIT> outputStarts(2, 0);
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
@@ -1198,18 +1171,11 @@ std::string algorithms::generateI2STransceiverMapping(int id, int bitWidth) {
                << "    " << "l_data_rx" << vectorSize << " => i2s_transceiver_"
                << id << "_l_data_rx" << vectorSize << ",\n"
                << "    " << "r_data_rx" << vectorSize << " => i2s_transceiver_"
-               << id << "_r_data_rx" << vectorSize << "," << std::endl;
-  if (!dataDriven) {
-    outputStream << "    " << "l_data_tx" << vectorSize << " => i2s_transceiver_"
-                 << id << "_l_data_tx" << vectorSize << ",\n"
-                 << "    " << "r_data_tx" << vectorSize << " => i2s_transceiver_"
-                 << id << "_r_data_tx" << vectorSize << "\n);";
-  } else {
-    outputStream << "    " << "l_data_tx" << vectorSize << " => output_interface_"
-                 << id << "_l_data_out" << vectorSize << ",\n"
-                 << "    " << "r_data_tx" << vectorSize << " => output_interface_"
-                 << id << "_r_data_out" << vectorSize << "\n);";
-  }
+               << id << "_r_data_rx" << vectorSize << ",\n"
+               << "    " << "l_data_tx" << vectorSize << " => i2s_transceiver_"
+               << id << "_l_data_tx" << vectorSize << ",\n"
+               << "    " << "r_data_tx" << vectorSize << " => i2s_transceiver_"
+               << id << "_r_data_tx" << vectorSize << "\n);" << std::endl;
   return outputStream.str();
 }
 
@@ -1253,14 +1219,14 @@ std::string algorithms::generateOutputInterfaceMapping(int id, int bitWidth) {
                  << "    " << "l_data_in" << vectorSize << " => fpc_to_i2s_"
                  << std::to_string(id) << "_op_out_data_0" << vectorSize << ",\n"
                  << "    " << "l_data_out" << vectorSize << " => "
-                 << outputInterface << "_l_data_out" << vectorSize << ",\n"
+                 << i2sTransceiver << "_l_data_tx" << vectorSize << ",\n"
                  << "    " << "l_ready => " << outputInterface << "_l_ready,\n"
                  << "    " << "l_valid => fpc_to_i2s_"
                  << std::to_string(id) << "_op_out_valid_0,\n"
                  << "    " << "r_data_in" << vectorSize << " => fpc_to_i2s_"
                  << std::to_string(id + 1) << "_op_out_data_0" << vectorSize << ",\n"
                  << "    " << "r_data_out" << vectorSize << " => "
-                 << outputInterface << "_r_data_out" << vectorSize << ",\n"
+                 << i2sTransceiver << "_r_data_tx" << vectorSize << ",\n"
       // NOTE right channel connected to other i2s_to_fpc component
                  << "    " << "r_ready => " << outputInterface << "_r_ready,\n"
                  << "    " << "r_valid => fpc_to_i2s_"

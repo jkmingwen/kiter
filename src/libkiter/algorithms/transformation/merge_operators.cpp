@@ -30,7 +30,6 @@ std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
 std::vector<std::string> mergeStrategies = {"greedy", "smart"};
 bool osAsBroadcast = false; // used for when the output selector should act as a simple broadcast
 int broadcastBufferCnt = 0;
-implType t = TT;
 
 /**
    Applies a specified merging strategy to the given dataflow graph.
@@ -79,49 +78,6 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   if (params.find("BROADCAST") != params.end()) {
     VERBOSE_INFO("Adding gates to the output edges of output selectors");
     osAsBroadcast = true;
-  }
-
-  // Necessary to update placeholder buffer type to a specified implementation
-  // as VHDLComponent types are instantiated during merge
-  // NOTE might not be necessary anymore
-  if (params.find("BUFFER_TYPE") != params.end()) {
-    VERBOSE_INFO("Set buffer implementation to type: " << params["BUFFER_TYPE"]);
-    bufferImpl = params["BUFFER_TYPE"];
-  }
-  {ForEachVertex(dataflow, v) {
-      if (dataflow->getVertexType(v) == "buffer") {
-        dataflow->setVertexType(v, bufferImpl);
-      }
-    }}
-
-  if (params.find("DATA_DRIVEN") != params.end()) {
-    VERBOSE_INFO("Setting implementation type to data-driven");
-    t = DD;
-  }
-
-  // check and adjust for any operators with multiple I/Os
-  // the merge function currently only works with operators with the same number
-  // of inputs/outputs
-  if (params.find("NORMALISE_OUTPUTS") != params.end()) {
-    VHDLCircuit tmp = generateCircuitObject(dataflow, t);
-    while (tmp.getMultiOutActors().size() > 0) {
-
-      VERBOSE_INFO("getMultiOutActors is not empty");
-      /*  This block remove multiIO actors and replace them  */
-      for (std::string actorName: tmp.getMultiOutActors()) {
-        parameters_list_t parameters;
-        parameters["name"] = actorName;
-        VERBOSE_INFO("singleOutput actor " << actorName);
-        try {
-          singleOutput(dataflow, parameters);
-        } catch (...) {
-          VERBOSE_WARNING("actor missing!");
-        }
-      }
-      VERBOSE_INFO("Regenerate Circuit");
-      tmp = generateCircuitObject(dataflow, t);
-    }
-    VERBOSE_ASSERT (tmp.getMultiOutActors().size() == 0, "Error while add Dups") ;
   }
 
   while (getMultiOutputActors(dataflow).size() > 0) {
