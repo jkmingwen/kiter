@@ -293,8 +293,14 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // transformations to generate circuit object for VHDL generation
   {ForEachVertex(dataflow, v) {
       std::string vertexType = dataflow->getVertexType(v);
-      if (vertexType == "buffer") {
-        dataflow->setVertexType(v, bufferImpl);
+      if (implementationType == TT) {
+        if (vertexType == "buffer") {
+          dataflow->setVertexType(v, bufferImpl);
+        }
+      } else {
+        if (vertexType == "buffer") {
+          dataflow->setVertexType(v, "hs_fifo");
+        }
       }
       if (unsupportedOperators.find(vertexType) != unsupportedOperators.end()) {
         VERBOSE_WARNING("Unsupported operator "
@@ -709,26 +715,6 @@ void algorithms::generateVHDLArchitecture(const VHDLCircuit &circuit,
     //   }
     // }
 
-  // FIFO buffer instantiation
-  if (dataDriven) {
-    for (auto &[e, conn] : circuit.getConnectionMap()) {
-      if (conn.getInitialTokenCount()) {
-        VERBOSE_INFO("Generating HS FIFO buffer implementations");
-        // vhdlOutput << generateBufferComponent(circuit.getName()) << std::endl;
-        vhdlOutput << conn.genDeclaration() << std::endl;
-        std::vector<std::string> fifoBufferComps = {
-          "hs_fifo", "hs_fifo_n", "hs_fifo_one", "hs_fifo_zero"};
-        for (const auto &component : fifoBufferComps) {
-          const auto copyOptions = std::filesystem::copy_options::update_existing |
-            std::filesystem::copy_options::recursive;
-          std::filesystem::copy(referenceDir + component + ".vhdl",
-                                componentDir + component + ".vhdl", copyOptions);
-        }
-        break;
-      }
-    }
-  }
-
   // 2. Generate intermediate signal names
   std::map<std::string, std::vector<std::string>> signalNames;
   for (auto const &[e, conn] : circuit.getConnectionMap()) {
@@ -795,21 +781,6 @@ void algorithms::generateVHDLArchitecture(const VHDLCircuit &circuit,
         opCounts[opName] = 0;
       }
       vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
-    }
-  }
-  // Generate FIFO buffers
-  // NOTE for now, only necessary for data driven implementation
-  if (implementationType == DD) {
-    for (auto const &[e, conn] : circuit.getConnectionMap()) {
-      if (conn.getInitialTokenCount()) {
-        if (bufferCounts.count("fifo")) {
-          bufferCounts["fifo"]++;
-        } else {
-          bufferCounts["fifo"] = 0;
-        }
-        vhdlOutput << conn.genPortMapping(bufferCounts["fifo"], replacementSigs)
-                   << std::endl;
-      }
     }
   }
 

@@ -123,20 +123,9 @@ VHDLConnection::genSignalNames(implType t) const {
     std::string dataType =
       "std_logic_vector(" + std::to_string(dataTypeWidth - 1) + " downto 0)";
     std::string vldRdyType = "std_logic";
-    // initial tokens means that FIFO is placed there; need intermediate signals;
-    // generate names using ports instead
-    if (initialTokenCount > 0) {
-      names[dataType].push_back(srcPort + "_DATA");
-      names[dataType].push_back(dstPort + "_DATA");
-      names[vldRdyType].push_back(srcPort + "_VALID");
-      names[vldRdyType].push_back(srcPort + "_READY");
-      names[vldRdyType].push_back(dstPort + "_VALID");
-      names[vldRdyType].push_back(dstPort + "_READY");
-    } else {
-      names[dataType].push_back(connectionName + "_DATA");
-      names[vldRdyType].push_back(connectionName + "_VALID");
-      names[vldRdyType].push_back(connectionName + "_READY");
-    }
+    names[dataType].push_back(connectionName + "_DATA");
+    names[vldRdyType].push_back(connectionName + "_VALID");
+    names[vldRdyType].push_back(connectionName + "_READY");
   } else {
     VERBOSE_ERROR("Invalid implementation type (" << t << ") specified for signal name generation.");
   }

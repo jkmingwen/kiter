@@ -123,7 +123,9 @@ inline std::map<std::string, std::string> implementationNames = {
     {"button", "button"},
     // others
     {"delay", "delay"}, {"sbuffer", "sbuffer"},
-    {"Proj", "hs_splitter"}, {"shiftreg", "pipo_shift_reg"}};
+    {"Proj", "hs_splitter"}, {"shiftreg", "pipo_shift_reg"},
+    {"hs_fifo", "hs_fifo"}
+};
 
 inline std::vector<std::string> uiTypes = {"button",   "checkbox", "hslider",
                                            "vslider",  "nentry",   "vbargraph",

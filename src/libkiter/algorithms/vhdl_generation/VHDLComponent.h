@@ -64,6 +64,8 @@ class VHDLComponent {
                          std::string type, int dataWidth =34);
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
+  void portMappingInit(models::Dataflow *const dataflow);
+  void implementationInit();
   std::string printStatus() const;
 
   // Code generation methods
