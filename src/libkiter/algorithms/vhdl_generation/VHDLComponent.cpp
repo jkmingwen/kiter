@@ -83,20 +83,28 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   {ForOutputEdges(dataflow, this->actor, e) {
       this->addOutputSignal(dataflow, e);
     }}
-  // Rearrange output ports and edges according to output selector phases of execution
+
+  // Rearrange input edges according to input selector phases of execution
+  if (componentType == "input_selector") {
+    {ForInputEdges(dataflow, this->actor, e) {
+        std::vector<TOKEN_UNIT> outExecRates = dataflow->getEdgeOutVector(e);
+        for (int execPhase = 0; execPhase < outExecRates.size(); execPhase++) {
+          if (outExecRates.at(execPhase) == 1) {
+            std::string name = dataflow->getEdgeName(e);
+            this->inputSignals.at(execPhase) = name;
+          }
+        }
+      }}
+  }
+  // Rearrange output edges according to output selector phases of execution
   if (componentType == "output_selector") {
     {ForOutputEdges(dataflow, this->actor, e) {
-        std::vector<TOKEN_UNIT> inputVector = dataflow->getEdgeInVector(e);
-        if (inputVector.size() > 1) {
-          for (int exec = 0; exec < inputVector.size(); exec++) {
-            if (inputVector.at(exec) == 1) {
-              std::string name = dataflow->getEdgeName(e);
-              if (dataflow->getPreload(e)) {
-                name = dataflow->getEdgeInputPortName(e);
-              }
-              VERBOSE_INFO("Edge for exec " << exec << ": " << name);
-              this->outputSignals.at(exec) = name;
-            }
+        std::vector<TOKEN_UNIT> inExecRates = dataflow->getEdgeInVector(e);
+        for (int execPhase = 0; execPhase < inExecRates.size(); execPhase++) {
+          if (inExecRates.at(execPhase) == 1) {
+            std::string name = dataflow->getEdgeName(e);
+            VERBOSE_INFO("Edge for exec " << execPhase << ": " << name);
+            this->outputSignals.at(execPhase) = name;
           }
         }
       }}
