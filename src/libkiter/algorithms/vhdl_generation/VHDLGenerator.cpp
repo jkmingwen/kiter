@@ -1657,3 +1657,26 @@ void algorithms::printCircuitInfo(models::Dataflow* const dataflow,
   }
   return;
 }
+
+void algorithms::printOperatorCounts(models::Dataflow *const dataflow,
+                                     parameters_list_t param_list) {
+  std::stringstream csvOut;
+  std::map<std::string, int> opCounts;
+  std::string appName = dataflow->getGraphName();
+
+  {ForEachVertex(dataflow, actor) {
+      std::string opType = deriveOpCat(dataflow, actor);
+      if (opCounts.count(opType)) {
+        opCounts[opType]++;
+      } else {
+        opCounts[opType] = 1;
+      }
+    }}
+  // no header so we can append counts to the same file
+  for (auto const &[opName, count] : opCounts) {
+    csvOut << appName << "," << opName << "," << count << std::endl;
+  }
+  std::cout << csvOut.str() << std::flush;
+
+  return;
+}
