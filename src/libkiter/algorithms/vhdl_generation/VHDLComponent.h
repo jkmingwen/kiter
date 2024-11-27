@@ -61,7 +61,7 @@ class VHDLComponent {
   void addHSPortMapping(std::string portPrefix, std::string signal,
                         int id, std::string direction);
   void addGenericMapping(std::string port, std::string signal,
-                         std::string type, int dataWidth =34);
+                         std::string type, int dataWidth = 34);
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
   void portMappingInit(models::Dataflow *const dataflow);
