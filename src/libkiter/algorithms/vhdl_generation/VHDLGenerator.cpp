@@ -85,49 +85,6 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) 
 }
 
 /**
-   Generate the binary representation of a VHDLComponent's
-   numerical value.
-
-   @param comp Only works on a VHDLComponent of type "const_val".
-
-   @return A string representing the binary form of the value
-   transmitted by the given component. An empty string is
-   returned if the given component has a data type that is
-   not fp/real/int.
- */
-std::string binaryValue(VHDLComponent const comp) {
-  std::string binaryRepresentation;
-  // adapted from https://www.codeproject.com/Questions/678447/Can-any-one-tell-me-how-to-convert-a-float-to-bina
-  if (comp.getDataType() == "fp") {
-    std::stringstream outputStream;
-    float fpVal = comp.getFPValue();
-    std::string fpcFloatPrefix = (fpVal ? "01" : "00"); // NOTE might need to account for NaN (11) and Inf (10) values in the future
-    size_t size = sizeof(fpVal);
-    unsigned char *p = (unsigned char *) &fpVal;
-    p += size-1;
-    while (size--) {
-      int n;
-      for (n=0; n<8; n++)
-        {
-          char bit = ('0' + (*p & 128 ? 1 : 0));
-          outputStream << bit;
-          *p <<= 1;
-        }
-      p--;
-    }
-    binaryRepresentation = fpcFloatPrefix + outputStream.str();
-  } else if (comp.getDataType() == "int") {
-    binaryRepresentation = std::bitset<34>(comp.getIntValue()).to_string(); // NOTE assuming unsigned binary representation here
-  } else {
-    VERBOSE_WARNING("Representing the value a VHDLComponent of type "
-                    << comp.getType() << " (data type: " << comp.getDataType()
-                    << ") as a binary value is not supported.");
-  }
-
-  return binaryRepresentation;
-}
-
-/**
    Generates VHDL code for the given dataflow graph
 
    @param dataflow HSDF/SDF graph; generate with Faust using `-sdf` flag.
@@ -256,7 +213,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
 
   // Generate schedule for given VHDL implementation
-  if (param_list.find("BROADCAST") != param_list.end()) {
+  if (osBroadcast) {
     /* use audio component artifacts for scheduling (scheduledDataflow),
        and broadcast transformed graph (dataflow) for VHDL implementation */
     /* in order to generate a schedule defining execution times of buffers on
@@ -1239,17 +1196,17 @@ std::string algorithms::generateI2SToFPCMapping(int id, std::string entityName) 
   std::stringstream outputStream;
   std::string channel;
   int halfPeriod = 2604;
-  std::string pushStart;
-  std::string popStart;
+  int pushStart = 0;
+  int popStart = 0;
   int codecId = id / 2; // 2 inputs per codec
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
-    pushStart = "SLACK";
-    popStart = "SLACK + 1";
+    pushStart = systemSlack;
+    popStart = systemSlack + 1;
   } else { // even ids assigned to L channel
     channel = "l";
-    pushStart = std::to_string(halfPeriod) + " + SLACK";
-    popStart = std::to_string(halfPeriod) + " + SLACK + 1";
+    pushStart = halfPeriod + systemSlack;
+    popStart = halfPeriod + systemSlack + 1;
   }
   if (!dataDriven) {
     outputStream << "rx_buffer_" << std::to_string(id) << " : component sbuffer\n"
@@ -1303,17 +1260,17 @@ std::string algorithms::generateFPCToI2SMapping(int id, std::string entityName) 
   std::stringstream outputStream;
   std::string channel;
   int halfPeriod = std::floor(systemPeriod/2); // Round down so that sum of half periods doesn't exceed period
-  std::string pushStart;
-  std::string popStart;
+  int pushStart = 0;
+  int popStart = 0;
   int codecId = id / 2; // 2 inputs per codec
   if (id % 2 == 1) { // odd ids assigned to R channel
     channel = "r";
-    pushStart = "2*SLACK + COMPUTE_R";
-    popStart = "2*SLACK + COMPUTE_R + 1";
+    pushStart = 2 * systemSlack + computeR;
+    popStart = 2 * systemSlack + computeR + 1;
   } else { // even ids assigned to L channel
     channel = "l";
-    pushStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L";
-    popStart = std::to_string(halfPeriod) + " + 2*SLACK + COMPUTE_L + 1";
+    pushStart = halfPeriod + (2 * systemSlack) + computeL;
+    popStart = halfPeriod + (2 * systemSlack) + computeL + 1;
   }
   if (!dataDriven) {
     outputStream << "tx_buffer_" << std::to_string(id) << " : component sbuffer\n"

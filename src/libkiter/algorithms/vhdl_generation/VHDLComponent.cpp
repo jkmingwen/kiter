@@ -383,22 +383,21 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
     VERBOSE_WARNING("Adding empty vector of start times for "
                     << this->getUniqueName());
   }
-  this->startTimes = times;
   // execution time port mapping definition
   for (int n = 0; auto time : times) {
     if (componentType == "input_selector") {
       if (implementationType == TT) {
         VERBOSE_ASSERT(times.size() == inputPorts.size(),
                        "Number of start times and input ports don't match");
-        addPortMapping("exec_time_" + std::to_string(n),
-                       std::to_string((int)(time + slack)), "integer", "", true);
+        addGenericMapping("exec_time_" + std::to_string(n),
+                          std::to_string((int)(time + slack)), "integer");
       }
     } else if (componentType == "output_selector") {
       if (implementationType == TT) {
         VERBOSE_ASSERT(times.size() == outputPorts.size(),
                        "Number of start times (" << times.size() << ") and output ports (" << outputPorts.size()<< ") don't match");
-        addPortMapping("exec_time_" + std::to_string(n),
-                       std::to_string((int)(time + slack)), "integer", "", true);
+        addGenericMapping("exec_time_" + std::to_string(n),
+                          std::to_string((int)(time + slack)), "integer");
       }
     } else if (componentType == "sbuffer") {
       if (popTime.size() > 1) {
@@ -408,23 +407,17 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
       if (popTime.front() == 0 && slack == 0) {
         VERBOSE_ERROR("Buffer with pop time = 0 (" << this->getUniqueName() << "), requires slack of >= 1 using -pSLACK=slack");
       }
-      addPortMapping("push_start", std::to_string((int)(time + slack)),
-                     "integer", "", true);
+      addGenericMapping("push_start", std::to_string((int)(time + slack)),
+                        "integer");
       // Subtract 1 from pop time to account for 1 cycle delay between
       // pop time and data output
-      addPortMapping("pop_start", std::to_string((int)(popTime.front() - 1 + slack)), "integer", "",
-                     true);
+      addGenericMapping("pop_start", std::to_string((int)(popTime.front() - 1 + slack)), "integer");
     } else if (componentType == "shiftreg") {
-      addPortMapping("load", std::to_string((int)(time + slack + 1)), "integer", "",
-                     true);
+      addGenericMapping("load", std::to_string((int)(time + slack + 1)), "integer");
       pipoNumbers["load"] = (int)(time + slack + 1);
     }
     n++;
   }
-}
-
-std::vector<TIME_UNIT> VHDLComponent::getStartTimes() const {
-  return this->startTimes;
 }
 
 void VHDLComponent::addPortMapping(std::string port, std::string signal,
@@ -482,8 +475,8 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
       } else {
         direction = "out";
       }
-      portName += "_" + direction + "_" + std::to_string(ioId);
-      addPortMapping(portName, portName, "std_logic_vector", "in");
+      portName += "_" + direction + "_data_" + std::to_string(ioId);
+      addPortMapping(portName, portName, "std_logic_vector", direction);
     } else {
       if (componentType == "const_value") {
         addPortMapping("clk", "clk", "std_logic", "in");
@@ -501,8 +494,7 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
         for (auto i = 0; i < inputSignals.size(); i++) {
           addPortMapping("in_data_" + std::to_string(i), inputSignals[i],
                          "std_logic_vector", "in");
-          addPortMapping("exec_time_" + std::to_string(i), "0", "integer", "",
-                         true); // NOTE just a placeholder port for entity declaration; valid exec times set in setStartTime()
+          addGenericMapping("exec_time_" + std::to_string(i), "0", "integer"); // NOTE just a placeholder port for entity declaration; valid exec times set in setStartTime()
         }
         for (auto o = 0; o < outputSignals.size(); o++) {
           addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
@@ -518,8 +510,7 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
         for (auto o = 0; o < outputSignals.size(); o++) {
           addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
                          "std_logic_vector", "out");
-          addPortMapping("exec_time_" + std::to_string(o), "0", "integer", "",
-                         true); // NOTE placeholder port so entity declaration can be called and produce the right ports; valid exec times will only be set in setStartTime()
+          addGenericMapping("exec_time_" + std::to_string(o), "0", "integer"); // NOTE placeholder port so entity declaration can be called and produce the right ports; valid exec times will only be set in setStartTime()
         }
       } else if (componentType == "broadcast") {
         addGenericMapping("ram_width", "ram_width", "integer");
