@@ -6,10 +6,15 @@
  */
 
 #include <models/Dataflow.h>
+#include <string>
 #include "VHDLCircuit.h"
 #include "algorithms/vhdl_generation/VHDLCommons.h"
 
 VHDLCircuit::VHDLCircuit() {}
+
+VHDLCircuit::VHDLCircuit(implType t) {
+  implementationType = t;
+}
 
 /**
    Insert a component into the circuit. Components with mixed input types will trigger a scan
@@ -87,16 +92,6 @@ const VHDLComponent& VHDLCircuit::getFirstComponentByType(const std::string &op)
   // if component of matching type not found
   std::cout << "No component of matching type found" << std::endl;
   // TODO return null VHDL component if nothing found
-}
-
-std::string VHDLCircuit::getOperatorImplementationName(const std::string &opType) const {
-  if (this->implementationNames.count(opType)) {
-    return this->implementationNames.at(opType);
-  } else {
-    VERBOSE_WARNING("No implementation name listed for " << opType
-                    << ", check implementationNames in VHDLCircuit.h");
-    return "UNIMPLEMENTED_OPERATOR_" + opType;
-  }
 }
 
 // return input counts for each occurance of the given operator
@@ -198,6 +193,7 @@ std::string VHDLCircuit::getComponentFullName(const std::string &partialName) co
 
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
+  implRefName = newName;
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
@@ -386,7 +382,47 @@ void VHDLCircuit::updateTopLevelPorts(implType t) {
       }
     }
   }
+
 }
+
+void VHDLCircuit::portMappingInit() {
+  addGenericMapping("ram_width", "34", "natural", 34, "34");
+  addGenericMapping("ram_depth", "2", "natural", 2, "2");
+  addPortMapping("clk", "sys_clk_sig", "std_logic", "in");
+  addPortMapping("rst", "rst_sig", "std_logic", "in");
+  if (implementationType == TT) {
+    addPortMapping("cycle_count", "counter_sig", "integer", "in");
+    for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
+      std::string portName = graphName + "_in_data_" + std::to_string(i);
+      addPortMapping(portName, portName, "std_logic_vector", "in");
+    }
+    for (auto o = 0; o < getOperatorCount("OUTPUT"); o++) {
+      std::string portName = graphName + "_out_data_" + std::to_string(o);
+      addPortMapping(portName, portName, "std_logic_vector", "out");
+    }
+  } else if (implementationType == DD) {
+    std::string portName = graphName;
+    for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
+      std::string rdyPort = portName + "_in_ready_" + std::to_string(i);
+      std::string vldPort = portName + "_in_valid_" + std::to_string(i);
+      std::string dataPort = portName + "_in_data_" + std::to_string(i);
+      addPortMapping(rdyPort, rdyPort, "std_logic", "out");
+      addPortMapping(vldPort, vldPort, "std_logic", "in");
+      addPortMapping(dataPort, dataPort, "std_logic_vector", "in");
+    }
+    for (auto o = 0; o < getOperatorCount("OUTPUT"); o++) {
+      std::string rdyPort = portName + "_out_ready_" + std::to_string(o);
+      std::string vldPort = portName + "_out_valid_" + std::to_string(o);
+      std::string dataPort = portName + "_out_data_" + std::to_string(o);
+      addPortMapping(rdyPort, rdyPort, "std_logic", "in");
+      addPortMapping(vldPort, vldPort, "std_logic", "out");
+      addPortMapping(dataPort, dataPort, "std_logic_vector", "out");
+    }
+  } else {
+    VERBOSE_ERROR("Implementation type " << implementationType << " not supported");
+  }
+}
+
 
 std::vector<std::string> VHDLCircuit::generateDataSignalNames() {
   std::vector<std::string> signalNames;
@@ -506,4 +542,123 @@ std::string VHDLCircuit::genBypassMapping(implType t) const {
   }
 
   return codeOut.str();
+}
+
+void VHDLCircuit::writeImplementation(std::ofstream &vhdlOutput) {
+  // account for case where Faust program has no only inputs/outputs
+  bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") &&
+                     operatorMap.count("OUTPUT");
+  // VHDL header
+  vhdlOutput << "library ieee;\n"
+             << "use ieee.std_logic_1164.all;\n"
+             << "use ieee.numeric_std.all;\n"
+             << std::endl;
+
+  // Initialise top level ports (necessary before running genEntityDecl)
+  portMappingInit();
+  vhdlOutput << genEntityDecl() << std::endl;
+
+  // House constituent components of circuit
+  // 1. Instantiate components for each operator in circuit
+  vhdlOutput << "architecture behaviour of " << this->getName() << " is\n"
+             << std::endl;
+  if (!noOperators) { // only generate components if there are operators
+    std::map<std::string, int> trackDeclarations; // only need 1 declaration per component type so use this to check if component has been declared
+    for (auto const &[v, comp] : componentMap) {
+      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+        std::string name = comp.getPortMapName();
+        if (!trackDeclarations.count(name)) {
+          trackDeclarations[name] = 1;
+          vhdlOutput << comp.genDeclaration() << std::endl;
+        }
+      }
+    }
+  }
+
+  // 2. Generate intermediate signal names
+  std::map<std::string, std::vector<std::string>> signalNames;
+  for (auto const &[e, conn] : connectionMap) {
+    std::map<std::string, std::vector<std::string>> newNames;
+    VERBOSE_INFO("Generate signal name for " << conn.getName());
+    // if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
+    //       circuit.getDstComponent(conn).getType() == "OUTPUT")) {
+    //   // Check the implementation types of both sources and destination to allow
+    //   // for future implementations with mixed implementations
+    //   if (circuit.getSrcComponent(conn).getImplType() == TT &&
+    //       circuit.getDstComponent(conn).getImplType() == TT) {
+    //     VERBOSE_INFO("\tGenerating signal names for " << conn.getName());
+    //     newNames = conn.genSignalNames(TT);
+    //   } else if (circuit.getSrcComponent(conn).getImplType() == DD &&
+    //              circuit.getDstComponent(conn).getImplType() == DD) {
+    //     newNames = conn.genSignalNames(DD);
+    //   } else {
+    //     VERBOSE_ERROR("Implementation type for signal name generation not yet supported");
+    //   }
+    //   for (auto const &[type, name] : newNames) {
+    //     signalNames[type].insert(signalNames[type].end(), name.begin(),
+    //                              name.end());
+    //   }
+    // }
+
+    // NOTE this is a workaround --- previously we'd check for the types of the
+    // src/dst components of each connection so we know if its necessary to
+    // generate signals for them (input/output connections don't require
+    // internal signals), but this leads to a seg fault when trying to generate
+    // for matrix.dsp. This workaround means that we'll always have excess
+    // signals, but shouldn't affect resource utilization since they're never
+    // used. The previous implementation was pretty unelegant, so it might be
+    // worth trying to modify this instead.
+    newNames = conn.genSignalNames(implementationType);
+    for (auto const &[type, name] : newNames) {
+        signalNames[type].insert(signalNames[type].end(), name.begin(),
+                                 name.end());
+      }
+  }
+
+  // 2a. Write signal names to VHDL output
+  for (auto const &[type, sigNames] : signalNames) {
+    std::string delim = ",\n";
+    vhdlOutput << "signal ";
+    for (auto const &name : sigNames) {
+      if (name == sigNames.back()) { delim = ""; }
+      vhdlOutput << name << delim;
+    }
+    vhdlOutput << " : " << type << ";\n" << std::endl;
+  }
+
+    // 3. Generate port mapping
+  vhdlOutput << "begin\n" << std::endl;
+  std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
+  std::map<std::string, int> bufferCounts;
+  std::map<std::string, std::string> replacementSigs = this->getTopLevelPorts();
+
+  for (auto &[v, comp] : componentMap) {
+    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
+      std::string opName = comp.getPortMapName();
+      if (opCounts.count(opName)) {
+        opCounts[opName]++;
+      } else {
+        opCounts[opName] = 0;
+      }
+      vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
+    }
+  }
+
+  // Edge case where there are only input/outputs
+  if (noOperators) {
+    bool routeInToOut = true;
+    for (auto const &[e, conn] : connectionMap) {
+      if (conn.getInitialTokenCount()) {
+        routeInToOut = false;
+        break;
+      }
+    }
+    if (routeInToOut) {
+      vhdlOutput << genBypassMapping(implementationType);
+    }
+  }
+
+  vhdlOutput << "end behaviour;" << std::endl;
+
+  vhdlOutput.close();
 }

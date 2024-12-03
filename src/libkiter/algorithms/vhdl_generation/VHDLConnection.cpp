@@ -1,5 +1,5 @@
 /*
- * VHDLComponent.cpp
+ * VHDLConnection.cpp
  *
  *  Created on: 15 June 2021
  *      Author: jkmingwen

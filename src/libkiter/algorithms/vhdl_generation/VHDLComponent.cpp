@@ -15,6 +15,12 @@
 #include "commons/commons.h"
 #include "commons/verbose.h"
 
+VHDLComponent::VHDLComponent() {}
+
+VHDLComponent::VHDLComponent(implType t) {
+  implementationType = t;
+}
+
 /**
  * \brief Each instance represents a vertex to be implemented as an
  * operator in VHDL.
@@ -50,6 +56,14 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   if (componentType == "INPUT" || componentType == "OUTPUT") {
     std::string vType = dataflow->getVertexType(a);
     ioId = std::stoi(commons::split<std::string>(vType, '_').back());
+    graphName = dataflow->getGraphName();
+  }
+
+  if (componentType == "sbuffer" || componentType == "hs_fifo" ||
+      componentType == "shiftreg") {
+    {ForOutputEdges(dataflow, actor, outEdge) {
+        initialTokens = dataflow->getPreload(outEdge);
+      }}
   }
 
   /* Identify order of arguments for operators.
@@ -211,7 +225,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
 
   // Generic and port mappings are mostly set here
   // except for exec time mappings - set in setStartTimes()
-  portMappingInit(dataflow);
+  portMappingInit();
   implementationInit();
 }
 
@@ -453,10 +467,14 @@ void VHDLComponent::addHSPortMapping(std::string portPrefix, std::string signal,
 }
 
 void VHDLComponent::addGenericMapping(std::string port, std::string signal,
-                                      std::string type, int dataWidth) {
+                                      std::string type, int dataWidth,
+                                      std::string defaultVal) {
   // slv type needs to have a defined width
   if (type == "std_logic_vector") {
     type += "(" + std::to_string(dataWidth - 1) + " downto 0)";
+  }
+  if (!defaultVal.empty()) {
+    type += " := " + defaultVal;
   }
   genericMappings[port] = signal;
   genericPorts[port] = type;
@@ -464,11 +482,11 @@ void VHDLComponent::addGenericMapping(std::string port, std::string signal,
 
 std::string VHDLComponent::getPortMapName() const { return this->portMapName; }
 
-void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
+void VHDLComponent::portMappingInit() {
   // Time-triggered port mappings
   if (implementationType == TT) {
     if (componentType == "INPUT" || componentType == "OUTPUT") {
-      std::string portName = dataflow->getGraphName();
+      std::string portName = graphName;
       std::string direction;
       if (componentType == "INPUT") {
         direction = "in";
@@ -525,16 +543,9 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
       } else if (componentType == "sbuffer") {
         addGenericMapping("ram_width", "ram_width", "integer");
         addPortMapping("clk", "clk", "std_logic", "in");
-        VERBOSE_ASSERT(dataflow->getVertexOutDegree(actor) == 1,
-                       "buffers should only have 1 output");
-        // get initial token from output edge
-        {ForOutputEdges(dataflow, actor, outEdge) {
-            addGenericMapping("buffer_size",
-                              std::to_string(dataflow->getPreload(outEdge) + 1),
-                              "integer");
-            addGenericMapping("init", std::to_string(dataflow->getPreload(outEdge)),
-                              "integer");
-          }}
+        addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
+                          "integer");
+        addGenericMapping("init", std::to_string(initialTokens), "integer");
         addPortMapping("rst", "rst", "std_logic", "in");
         addPortMapping("cycle_count", "cycle_count", "integer", "in");
         for (auto i : inputSignals) {
@@ -545,14 +556,11 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
         }
       } else if (componentType == "shiftreg") {
         // get depth from output edge
-        int initTokens = 0;
-        {ForOutputEdges(dataflow, actor, outEdge) {
-            initTokens = dataflow->getPreload(outEdge);
-          }}
+        int initTokens = initialTokens;
         addGenericMapping("period", std::to_string(5209), "integer");
         addPortMapping("clk", "clk", "std_logic", "in");
-        addPortMapping("depth", std::to_string(initTokens),
-                       "integer", "", true);
+        addPortMapping("depth", std::to_string(initTokens), "integer", "",
+                       true);
         pipoNumbers["depth"] = initTokens;
         pipoNumbers["period"] = 5209;
         addPortMapping("rst", "rst", "std_logic", "in");
@@ -579,7 +587,7 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
   // Data-driven port mappings
   else if (implementationType == DD) {
     if (componentType == "INPUT" || componentType == "OUTPUT") {
-      std::string portName = dataflow->getGraphName();
+      std::string portName = graphName;
       if (componentType == "INPUT") {
         std::string rdyPort = portName + "_in_ready_" + std::to_string(ioId);
         std::string vldPort = portName + "_in_valid_" + std::to_string(ioId);
@@ -639,16 +647,9 @@ void VHDLComponent::portMappingInit(models::Dataflow *const dataflow) {
         addGenericMapping("ram_width", "ram_width", "natural");
         addPortMapping("clk", "clk", "std_logic", "in");
         addPortMapping("rst", "rst", "std_logic", "in");
-        // get initial token from output edge
-        VERBOSE_ASSERT(dataflow->getVertexOutDegree(actor) == 1,
-                       "buffers should only have 1 output");
-        {ForOutputEdges(dataflow, actor, outEdge) {
-            addGenericMapping("buffer_size",
-                              std::to_string(dataflow->getPreload(outEdge) + 1),
-                              "natural");
-            addGenericMapping("init", std::to_string(dataflow->getPreload(outEdge)),
-                              "natural");
-          }}
+        addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
+                          "natural");
+        addGenericMapping("init", std::to_string(initialTokens), "natural");
         for (auto i = 0; i < inputSignals.size(); i++) {
           addHSPortMapping("buffer", inputSignals[i], i, "in");
         }

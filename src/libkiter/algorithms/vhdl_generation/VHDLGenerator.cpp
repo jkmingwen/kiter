@@ -5,6 +5,7 @@
  *      Author: jkmingwen
  */
 
+#include <algorithm>
 #include <bitset>
 #include <string>
 #include <filesystem>
@@ -51,7 +52,7 @@ std::string bufferImpl = "sbuffer"; // defines type of buffer to be implemented
 
 VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) {
 
-  VHDLCircuit circuit;
+  VHDLCircuit circuit(t);
   std::string circuitName = dataflow->getGraphName();
   // replace prohibited characters with underscores
   std::replace(circuitName.begin(), circuitName.end(), '-', '_');
@@ -537,200 +538,12 @@ void algorithms::generateUIOperator(VHDLComponent comp) {
 }
 
 
-void algorithms::generateCircuit(const VHDLCircuit &circuit) {
+void algorithms::generateCircuit(VHDLCircuit &circuit) {
   std::ofstream vhdlOutput;
   std::string graphName = circuit.getName() + "_circuit"; // TODO decide on naming convention
-  std::map<std::string, int> operatorMap = circuit.getOperatorMap();
-  bool noOperators = operatorMap.size() == 2 && operatorMap.count("INPUT") && operatorMap.count("OUTPUT"); // edge case where Faust program has no operators (only inputs/outputs)
 
-  // Open the stream
-  vhdlOutput.open(topDir + graphName + ".vhd"); // instantiate VHDL file
-
-  // 1. Define libraries used
-  generateVHDLHeader(vhdlOutput);
-
-  // 2. Port declarations
-  generateVHDLEntity(circuit, vhdlOutput);
-
-  // 3. Specify architecture (behaviour) of operator type
-  generateVHDLArchitecture(circuit, noOperators, vhdlOutput);
-
-  // Close the stream
-  vhdlOutput.close();
-
-}
-
-void algorithms::generateVHDLHeader(std::ofstream &vhdlOutput) {
-    vhdlOutput << "library ieee;\n"
-                 << "use ieee.std_logic_1164.all;\n"
-                 << "use ieee.numeric_std.all;\n" << std::endl;
-}
-
-/**
-   Generates VHDL code for the entity declaration of the VHDL component that
-   will contain the port mapping of the rest of the constituent components that
-   make up the circuit.
-
-   @param circuit Circuit object to declare as VHDL entity.
-
-   @param numInputPorts Number of input ports of entity.
-
-   @param numOutputPorts Number of output ports of entity.
-
-   @param vhdlOutput Output stream to write VHDL code to.
- */
-void algorithms::generateVHDLEntity(const VHDLCircuit &circuit, std::ofstream &vhdlOutput) {
-  vhdlOutput << "entity " << circuit.getName() << " is\n"
-             << "generic (\n"
-             << "    " << "ram_width : natural := 34;\n"
-             << "    " << "ram_depth : natural := 2);\n" // buffer size
-             << "port (\n"
-             << "    " << "clk : in std_logic;\n"
-             << "    " << "rst : in std_logic;\n"
-             << std::endl;
-  // Generate input/output ports:
-  if (implementationType == TT) {
-    vhdlOutput << "    " << "cycle_count : in integer;\n" << std::endl;
-  }
-  std::map<std::string, int> trackInOutCounts {{"INPUT", 0}, {"OUTPUT", 0}};
-  for (auto const &[v, comp] : circuit.getComponentMap()) {
-    if (comp.getType() == "INPUT") {
-      vhdlOutput << comp.genPortList(comp.getPortMapping(), false);
-      trackInOutCounts[comp.getType()]++;
-    }
-    if (comp.getType() == "OUTPUT") { // assume we always have (and thus terminate on) output actors
-      bool last = false;
-      if (trackInOutCounts[comp.getType()] + 1 ==
-          circuit.getOperatorCount("OUTPUT")) {
-        last = true;
-      }
-      vhdlOutput << comp.genPortList(comp.getPortMapping(), last);
-      trackInOutCounts[comp.getType()]++;
-    }
-  }
-  vhdlOutput << ");\nend " << circuit.getName() << ";\n" << std::endl;
-}
-
-
-void algorithms::generateVHDLArchitecture(const VHDLCircuit &circuit,
-                                          bool noOperators, std::ofstream &vhdlOutput) {
-  // top level intermediate signal names stored in these vectors
-  std::vector<std::string> dataSignals;
-  std::vector<std::string> validReadySignals;
-  bool uiDetected = false;
-
-  // 1. Instantiate components for each operator in circuit
-  vhdlOutput << "architecture behaviour of " << circuit.getName() << " is\n" << std::endl;
-  if (!noOperators) { // only generate components if there are operators
-    std::map<std::string, int> trackDeclarations; // only need 1 declaration per component type so use this to check if component has been declared
-    for (auto const &[v, comp] : circuit.getComponentMap()) {
-      if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-        std::string name = comp.getPortMapName();
-        if (!trackDeclarations.count(name)) {
-          trackDeclarations[name] = 1;
-          vhdlOutput << comp.genDeclaration() << std::endl;
-        }
-      }
-    }
-  }
-    //   if (uiDetected) {
-    //     for (auto &op : circuit.getOperatorMap()) {
-    //       // NOTE workaround for UI components' pin out that isn't reflected in SDF
-    //       if (circuit.getFirstComponentByType(op.first).isUI()) { // TODO push this workaround down into VHDLComponent class
-    //         for (int i = 0; i < op.second; i++) {
-    //           dataSignals.push_back(op.first + "_" + std::to_string(i) + "_data_in");
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
-
-  // 2. Generate intermediate signal names
-  std::map<std::string, std::vector<std::string>> signalNames;
-  for (auto const &[e, conn] : circuit.getConnectionMap()) {
-    std::map<std::string, std::vector<std::string>> newNames;
-    VERBOSE_INFO("Generate signal name for " << conn.getName());
-    // if (!(circuit.getSrcComponent(conn).getType() == "INPUT" ||
-    //       circuit.getDstComponent(conn).getType() == "OUTPUT")) {
-    //   // Check the implementation types of both sources and destination to allow
-    //   // for future implementations with mixed implementations
-    //   if (circuit.getSrcComponent(conn).getImplType() == TT &&
-    //       circuit.getDstComponent(conn).getImplType() == TT) {
-    //     VERBOSE_INFO("\tGenerating signal names for " << conn.getName());
-    //     newNames = conn.genSignalNames(TT);
-    //   } else if (circuit.getSrcComponent(conn).getImplType() == DD &&
-    //              circuit.getDstComponent(conn).getImplType() == DD) {
-    //     newNames = conn.genSignalNames(DD);
-    //   } else {
-    //     VERBOSE_ERROR("Implementation type for signal name generation not yet supported");
-    //   }
-    //   for (auto const &[type, name] : newNames) {
-    //     signalNames[type].insert(signalNames[type].end(), name.begin(),
-    //                              name.end());
-    //   }
-    // }
-
-    // NOTE this is a workaround --- previously we'd check for the types of the
-    // src/dst components of each connection so we know if its necessary to
-    // generate signals for them (input/output connections don't require
-    // internal signals), but this leads to a seg fault when trying to generate
-    // for matrix.dsp. This workaround means that we'll always have excess
-    // signals, but shouldn't affect resource utilization since they're never
-    // used. The previous implementation was pretty unelegant, so it might be
-    // worth trying to modify this instead.
-    newNames = conn.genSignalNames(implementationType);
-    for (auto const &[type, name] : newNames) {
-        signalNames[type].insert(signalNames[type].end(), name.begin(),
-                                 name.end());
-      }
-  }
-
-  // 2a. Write signal names to VHDL output
-  for (auto const &[type, sigNames] : signalNames) {
-    std::string delim = ",\n";
-    vhdlOutput << "signal ";
-    for (auto const &name : sigNames) {
-      if (name == sigNames.back()) { delim = ""; }
-      vhdlOutput << name << delim;
-    }
-    vhdlOutput << " : " << type << ";\n" << std::endl;
-  }
-
-  // 3. Generate port mapping
-  vhdlOutput << "begin\n" << std::endl;
-  std::map<std::string, int> opCounts; // track counts of operators for instantiation in port mapping
-  std::map<std::string, int> bufferCounts;
-  std::map<std::string, std::string> replacementSigs = circuit.getTopLevelPorts();
-
-  for (auto &[v, comp] : circuit.getComponentMap()) {
-    if (comp.getType() != "INPUT" && comp.getType() != "OUTPUT") {
-      std::string opName = comp.getPortMapName();
-      if (opCounts.count(opName)) {
-        opCounts[opName]++;
-      } else {
-        opCounts[opName] = 0;
-      }
-      vhdlOutput << comp.genPortMapping(opCounts[opName], replacementSigs) << std::endl;
-    }
-  }
-
-  // Edge case where there are only input/outputs
-  if (noOperators) {
-    bool routeInToOut = true;
-    for (auto const &[e, conn] : circuit.getConnectionMap()) {
-      if (conn.getInitialTokenCount()) {
-        routeInToOut = false;
-        break;
-      }
-    }
-    if (routeInToOut) {
-      vhdlOutput << circuit.genBypassMapping(implementationType);
-    }
-  }
-
-  vhdlOutput << "end behaviour;" << std::endl;
-
-  vhdlOutput.close();
+  vhdlOutput.open(topDir + graphName + ".vhdl"); // instantiate VHDL file
+  circuit.writeImplementation(vhdlOutput);
 
 }
 
@@ -785,11 +598,7 @@ void algorithms::generateAudioInterfaceWrapper(const VHDLCircuit &circuit) {
   } else {
     numOutputInterfaces = numOutputPorts / 2;
   }
-  if (numInputPorts >= numOutputPorts) { // match number of audio codecs to input/output interfaces
-    numAudioCodecs = numInputInterfaces;
-  } else {
-    numAudioCodecs = numOutputInterfaces;
-  }
+  numAudioCodecs = std::max(numInputInterfaces, numOutputInterfaces);
   VERBOSE_ASSERT (numAudioCodecs > 0, "At least 1 audio codec required");
 
   /* NOTE I2S transceiver declaration is already in audio interface wrapper by default as

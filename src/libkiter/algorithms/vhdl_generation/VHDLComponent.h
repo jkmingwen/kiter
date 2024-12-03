@@ -16,10 +16,11 @@ namespace models {
 }
 
 class VHDLComponent {
- public:
-  // VHDLComponent();
-   VHDLComponent(models::Dataflow *const dataflow, Vertex a,
-                 implType t = TT, int freq = 250);
+public:
+  VHDLComponent();
+  VHDLComponent(implType t);
+  VHDLComponent(models::Dataflow *const dataflow, Vertex a,
+                implType t = TT, int freq = 250);
 
   Vertex getActor()const;
   std::string getUniqueName()const;
@@ -60,12 +61,12 @@ class VHDLComponent {
                       std::string direction, int dataWidth = 34);
   void addHSPortMapping(std::string portPrefix, std::string signal,
                         int id, std::string direction);
-  void addGenericMapping(std::string port, std::string signal,
-                         std::string type, int dataWidth = 34);
+  void addGenericMapping(std::string port, std::string signal, std::string type,
+                         int dataWidth = 34, std::string defaultVal = "");
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
-  void portMappingInit(models::Dataflow *const dataflow);
-  void implementationInit();
+  virtual void portMappingInit();
+  virtual void implementationInit();
   std::string printStatus() const;
 
   // Code generation methods
@@ -77,7 +78,7 @@ class VHDLComponent {
                           std::string delim = ";",
                           std::string term = "") const;
   std::string genDeclaration() const; // generate instantiation of component (when used in another component)
-  std::string genEntityDecl() const; // generate entity declaration (for component itself)
+  virtual std::string genEntityDecl() const; // generate entity declaration (for component itself)
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
   void genImplementation(std::string refDir, std::string dstDir) const;
@@ -86,9 +87,16 @@ class VHDLComponent {
   std::string writePIPOCSV() const;
   std::map<std::string, int> getPIPONumbers();
 
+protected:
+  std::string portMapName; // for use when instantiating component in port mapping
+  std::string implRefName; // name used to reference implementation // TODO
+                           // simplify all the different "names"
+  std::map<std::string, std::string>
+  implReplacementMap; // key words that need to replaced to properly define
+  // the implementation of the given component
+  implType implementationType;
  private:
   Vertex actor;
-  implType implementationType;
   int opFreq;
   int opLifespan;
   std::string uniqueName;
@@ -120,13 +128,9 @@ class VHDLComponent {
   std::map<std::string, std::string> portMappings;    // port name -> signal
   std::map<std::string, std::string> genericPorts; // generic port -> signal type
   std::map<std::string, std::string> ports;        // port -> signal type
-  std::string portMapName; // for use when instantiating component in port mapping
-  std::string implRefName; // name used to reference implementation // TODO
-                           // simplify all the different "names"
-  std::map<std::string, std::string>
-      implReplacementMap; // key words that need to replaced to properly define
-                          // the implementation of the given component
   std::map<std::string, int> pipoNumbers;
+  int initialTokens; // specifically for buffer type operators // TODO make specific VHDLBufferComp
+  std::string graphName; // specifically for INPUT/OUTPUT components // TODO make specific VHDLTop component
 
 };
 #endif /* VHDL_COMPONENT_H_ */

@@ -10,17 +10,16 @@
 #include <models/Dataflow.h>
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
+#include "VHDLCommons.h"
 
 namespace models {
   class Dataflow;
 }
 
-class VHDLComponent;
-class VHDLConnection;
-
-class VHDLCircuit {
+class VHDLCircuit : public VHDLComponent {
  public:
   VHDLCircuit();
+  VHDLCircuit(implType t);
 
   void addComponent(VHDLComponent newComp);
   void addConnection(VHDLConnection newConnect);
@@ -62,7 +61,6 @@ class VHDLCircuit {
   int getOperatorCount(const std::string &op) const;
   const VHDLComponent&  getFirstComponentByType(const std::string &op) const;
 
-  std::string getOperatorImplementationName(const std::string &opType) const;
   std::map<int, int> getNumInputs(const  std::string &opType) const;
   std::map<int, int> getNumOutputs(const  std::string &opType) const;
   std::vector<std::string> getConnectionNameFromComponents(const std::string &srcActorName,
@@ -79,10 +77,13 @@ class VHDLCircuit {
   void setName(std::string);
   void refreshComponentMap();
   void updateTopLevelPorts(implType t);
+  void portMappingInit();
   std::vector<std::string> generateDataSignalNames();
   std::vector<std::string> generateValidReadySignalNames();
   std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;
   std::string generateSignalNames(std::string &name, bool isInputSig) const;
+
+  void writeImplementation(std::ofstream &vhdlOutput);
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;
@@ -93,38 +94,6 @@ class VHDLCircuit {
   std::map<std::string, std::vector<std::string>> inputPorts;
   std::map<std::string, std::vector<std::string>> outputPorts;
   std::map<std::string, std::string> topLevelPorts;
-  std::map<std::string, std::string> implementationNames = {
-      {"fp_add", "fp_add_flopoco"},
-      {"fp_prod", "fp_prod_flopoco"},
-      {"fp_div", "fp_div_flopoco"},
-      {"fp_sqrt", "fp_sqrt_flopoco"},
-      {"fp_diff", "fp_diff_flopoco"},
-      {"fp_pow", "fp_pow_flopoco"},
-      {"int_add", "int_add_flopoco"},
-      {"int_diff", "int_diff_flopoco"},
-      {"int_prod", "int_prod_flopoco"},
-      {"float2int", "float2int_flopoco"},
-      {"int2float", "int2float_flopoco"},
-      {"fp_floor", "fp_floor"},
-      {"int_max", "int_max"},
-      {"int_min", "int_min"},
-      {"fp_max", "fp_max"},
-      {"fp_min", "fp_min"},
-      {"fp_abs", "fp_abs"},
-      {"select2", "select2"},
-      {"attach", "attach"},
-      {"delay", "delay"}, // NOTE delay doesn't have a fixed lifespan, which is
-                          // why it's not in the operatorLifespan map
-      {"int_abs", "int_abs"},
-      {"vbargraph", "vbargraph"},
-      {"hbargraph", "hbargraph"},
-      {"hslider", "hslider"},
-      {"vslider", "vslider"},
-      {"nentry", "nentry"},
-      {"checkbox", "checkbox"},
-      {"button", "button"},
-      {"sbuffer", "sbuffer"}
-  };
 
 }; // End of VHDLCircuit
 #endif /* VHDL_CIRCUIT_H_ */

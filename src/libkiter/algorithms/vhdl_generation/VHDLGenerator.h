@@ -31,15 +31,7 @@ namespace algorithms {
   void generateFPCOperator(std::string compImplementationName);
   void generateUIOperator(VHDLComponent comp);
 
-
-    // GenerateCircuit helper functions
-    void generateVHDLHeader(std::ofstream &vhdlOutput);
-    void generateVHDLEntity(const VHDLCircuit &circuit, std::ofstream &vhdlOutput);
-    void generateVHDLArchitecture(const VHDLCircuit &circuit,
-                                  bool noOperators, std::ofstream &vhdlOutput);
-
-
-  void generateCircuit(const VHDLCircuit &circuit);
+  void generateCircuit(VHDLCircuit &circuit);
   void generateAudioInterfaceWrapper(const VHDLCircuit &circuit);
   std::string generateAudioInterfaceWrapperPorts(int id);
   std::string generateAudioInterfaceWrapperMapping(int id);
