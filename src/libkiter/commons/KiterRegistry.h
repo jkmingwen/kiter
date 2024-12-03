@@ -92,6 +92,18 @@ class KiterRegistry {
     	return true;
     }
 
+    static const std::vector<std::string>  get_names() {
+        tools_map& m = getSingletonMap();
+        std::vector<std::string> keys;
+        keys.reserve(m.size()); // Reserve memory to improve performance
+        std::transform(m.begin(), m.end(), std::back_inserter(keys),
+                       [](const auto& pair) {
+                           return pair.first;
+                       });
+        return keys;
+
+    }
+
     static const T* get(const std::string& name) {
         tools_map& map = getSingletonMap();
     	if (map.find(name) == map.end()) return nullptr;

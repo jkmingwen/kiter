@@ -18,9 +18,16 @@ public:
 
 private slots:
     void loadGraph();
+    void onGenerateActionTriggered();
+    void onTransformationActionTriggered();
+    void onBufferSizingActionTriggered();
+    void onPrinterActionTriggered();
 
 private:
     Ui::MainWindow *ui;
-    GraphWidget *graphWidget; 
+    GraphWidget *graphWidget;
+
+    template <typename ActionType, typename ResultType, typename ActionFunction, typename PostAction>
+    void handleAction(ActionFunction actionFunction, PostAction postAction) ;
 };
 #endif // MAINWINDOW_H

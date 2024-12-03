@@ -16,6 +16,9 @@ Q_OBJECT
 public:
     GraphWidget(QWidget *parent = nullptr);
     void setDataflow(models::Dataflow *dataflow);
+    inline models::Dataflow * getDataflow() {
+        return this->dataflow;
+    }
     void drawGraph();
     void startLayout();
 

@@ -13,6 +13,8 @@ set(SOURCE_FILES
         graphwidget.cpp
         qtNode.cpp
         qtEdge.cpp
+        ParameterInputDialog.h
+        ParameterInputDialog.cpp
 )
 
 add_executable(qiter ${SOURCE_FILES})
