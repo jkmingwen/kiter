@@ -15,6 +15,8 @@
 #include "commons/commons.h"
 #include "commons/verbose.h"
 
+// VHDLComponent::~VHDLComponent() {}
+
 VHDLComponent::VHDLComponent() {}
 
 VHDLComponent::VHDLComponent(implType t) {
@@ -280,6 +282,10 @@ const std::map<std::string, int>& VHDLComponent::getInputTypes() const{
 
 const std::map<std::string, int>& VHDLComponent::getOutputTypes() const{
   return this->outputTypes;
+}
+
+void VHDLComponent::setType(std::string newType) {
+  this->componentType = newType;
 }
 
 void VHDLComponent::setDataType(const std::string& newType) {

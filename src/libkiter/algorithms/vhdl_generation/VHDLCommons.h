@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 enum implType { TT, DD }; // TT: time triggered, DD: data driven
+enum direction { in, out };
 
 /* Each component has a specific lifespan and name that needs to be defined in
    the generated AXI interface --- we track them using a predefined map where

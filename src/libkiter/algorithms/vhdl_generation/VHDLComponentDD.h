@@ -1,11 +1,11 @@
 /*
- * VHDLComponent.h
+ * VHDLComponentDD.h
  *
- *  Created on: 15 June 2021
+ *  Created on: 15 November 2024
  *      Author: jkmingwen
  */
-#ifndef VHDL_COMPONENT_H_
-#define VHDL_COMPONENT_H_
+#ifndef VHDL_COMPONENT_DD_H_
+#define VHDL_COMPONENT_DD_H_
 
 #include <models/Dataflow.h>
 #include <string>
@@ -15,13 +15,11 @@ namespace models {
   class Dataflow;
 }
 
-class VHDLComponent {
-public:
-  VHDLComponent();
-  VHDLComponent(implType t);
-  VHDLComponent(models::Dataflow *const dataflow, Vertex a, implType t = TT,
-                int freq = 250);
-  virtual ~VHDLComponent() = default;
+class VHDLComponentDD {
+ public:
+  // VHDLComponentDD();
+   VHDLComponentDD(models::Dataflow *const dataflow, Vertex a,
+                   int freq = 250);
 
   Vertex getActor()const;
   std::string getUniqueName()const;
@@ -43,7 +41,6 @@ public:
   const std::vector<std::string> getHSOutputSignals() const;
   const std::vector<std::string> getInputSignals() const;
   const std::vector<std::string> getOutputSignals() const;
-  void setType(std::string newType);
   void setDataType(const std::string& newType);
   std::string getDataType() const ;
   bool isConst() const;
@@ -60,15 +57,10 @@ public:
                      std::vector<TIME_UNIT> popTime, TIME_UNIT slack = 0);
   std::vector<TIME_UNIT> getStartTimes() const;
   void addPortMapping(std::string port, std::string signal, std::string type,
-                      std::string direction, int dataWidth = 34);
-  void addHSPortMapping(std::string portPrefix, std::string signal,
-                        int id, std::string direction);
-  void addGenericMapping(std::string port, std::string signal, std::string type,
-                         int dataWidth = 34, std::string defaultVal = "");
+                      std::string direction, bool isGeneric = false,
+                      int dataWidth = 34);
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
-  virtual void portMappingInit();
-  virtual void implementationInit();
   std::string printStatus() const;
 
   // Code generation methods
@@ -80,7 +72,7 @@ public:
                           std::string delim = ";",
                           std::string term = "") const;
   std::string genDeclaration() const; // generate instantiation of component (when used in another component)
-  virtual std::string genEntityDecl() const; // generate entity declaration (for component itself)
+  std::string genEntityDecl() const; // generate entity declaration (for component itself)
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
   void genImplementation(std::string refDir, std::string dstDir) const;
@@ -89,16 +81,9 @@ public:
   std::string writePIPOCSV() const;
   std::map<std::string, int> getPIPONumbers();
 
-protected:
-  std::string portMapName; // for use when instantiating component in port mapping
-  std::string implRefName; // name used to reference implementation // TODO
-                           // simplify all the different "names"
-  std::map<std::string, std::string>
-  implReplacementMap; // key words that need to replaced to properly define
-  // the implementation of the given component
-  implType implementationType;
  private:
   Vertex actor;
+  implType implementationType;
   int opFreq;
   int opLifespan;
   std::string uniqueName;
@@ -130,9 +115,13 @@ protected:
   std::map<std::string, std::string> portMappings;    // port name -> signal
   std::map<std::string, std::string> genericPorts; // generic port -> signal type
   std::map<std::string, std::string> ports;        // port -> signal type
+  std::string portMapName; // for use when instantiating component in port mapping
+  std::string implRefName; // name used to reference implementation // TODO
+                           // simplify all the different "names"
+  std::map<std::string, std::string>
+      implReplacementMap; // key words that need to replaced to properly define
+                          // the implementation of the given component
   std::map<std::string, int> pipoNumbers;
-  int initialTokens; // specifically for buffer type operators // TODO make specific VHDLBufferComp
-  std::string graphName; // specifically for INPUT/OUTPUT components // TODO make specific VHDLTop component
 
 };
-#endif /* VHDL_COMPONENT_H_ */
+#endif /* VHDL_COMPONENT_DD_H_ */

@@ -194,6 +194,7 @@ std::string VHDLCircuit::getComponentFullName(const std::string &partialName) co
 void VHDLCircuit::setName(std::string newName) {
   this->graphName = newName;
   implRefName = newName;
+  portMapName = implRefName;
 }
 
 void VHDLCircuit::addConnection(VHDLConnection newConnect) {
@@ -403,20 +404,30 @@ void VHDLCircuit::portMappingInit() {
   } else if (implementationType == DD) {
     std::string portName = graphName;
     for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
-      std::string rdyPort = portName + "_in_ready_" + std::to_string(i);
-      std::string vldPort = portName + "_in_valid_" + std::to_string(i);
-      std::string dataPort = portName + "_in_data_" + std::to_string(i);
-      addPortMapping(rdyPort, rdyPort, "std_logic", "out");
-      addPortMapping(vldPort, vldPort, "std_logic", "in");
-      addPortMapping(dataPort, dataPort, "std_logic_vector", "in");
+      std::string inId = std::to_string(i);
+      std::string rdyPort = portName + "_in_ready_" + inId;
+      std::string vldPort = portName + "_in_valid_" + inId;
+      std::string dataPort = portName + "_in_data_" + inId;
+      std::string inConvName = "i2s_to_fpc_" + inId;
+      std::string rdySig = rdyPort + "_" + inConvName + "_op_out_ready_0";
+      std::string vldSig = inConvName + "_op_out_valid_0";
+      std::string dataSig = inConvName + "_op_out_data_0";
+      addPortMapping(rdyPort, rdySig, "std_logic", "out");
+      addPortMapping(vldPort, vldSig, "std_logic", "in");
+      addPortMapping(dataPort, dataSig, "std_logic_vector", "in");
     }
     for (auto o = 0; o < getOperatorCount("OUTPUT"); o++) {
-      std::string rdyPort = portName + "_out_ready_" + std::to_string(o);
-      std::string vldPort = portName + "_out_valid_" + std::to_string(o);
-      std::string dataPort = portName + "_out_data_" + std::to_string(o);
-      addPortMapping(rdyPort, rdyPort, "std_logic", "in");
-      addPortMapping(vldPort, vldPort, "std_logic", "out");
-      addPortMapping(dataPort, dataPort, "std_logic_vector", "out");
+      std::string outId = std::to_string(o);
+      std::string rdyPort = portName + "_out_ready_" + outId;
+      std::string vldPort = portName + "_out_valid_" + outId;
+      std::string dataPort = portName + "_out_data_" + outId;
+      std::string outConvName = "fpc_to_i2s_" + outId;
+      std::string rdySig = outConvName + "_op_in_ready_0";
+      std::string vldSig = vldPort + "_" + outConvName + "_op_in_valid_0";
+      std::string dataSig = dataPort + "_" + outConvName + "_op_in_data_0";
+      addPortMapping(rdyPort, rdySig, "std_logic", "in");
+      addPortMapping(vldPort, vldSig, "std_logic", "out");
+      addPortMapping(dataPort, dataSig, "std_logic_vector", "out");
     }
   } else {
     VERBOSE_ERROR("Implementation type " << implementationType << " not supported");
@@ -661,4 +672,8 @@ void VHDLCircuit::writeImplementation(std::ofstream &vhdlOutput) {
   vhdlOutput << "end behaviour;" << std::endl;
 
   vhdlOutput.close();
+}
+
+void VHDLCircuit::addComputeTime(int id, TIME_UNIT time) {
+  this->computeTimes[id] = time;
 }

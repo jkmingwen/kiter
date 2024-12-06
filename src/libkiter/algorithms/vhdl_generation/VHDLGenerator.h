@@ -25,35 +25,9 @@ namespace algorithms {
   void generateVHDL(models::Dataflow* const dataflow,
                                  parameters_list_t);
   void generateOperators(const VHDLCircuit &circuit);
-  void generateSplitterOperators(std::map<int, int> outputCounts);
-  void generateRoutingOperators(VHDLComponent comp);
-  void generateFloorOperator(VHDLComponent comp);
   void generateFPCOperator(std::string compImplementationName);
-  void generateUIOperator(VHDLComponent comp);
 
   void generateCircuit(VHDLCircuit &circuit);
-  void generateAudioInterfaceWrapper(const VHDLCircuit &circuit);
-  std::string generateAudioInterfaceWrapperPorts(int id);
-  std::string generateAudioInterfaceWrapperMapping(int id);
-  std::string generateI2SToFPCComponent(int inputBitWidth, int outputBitWidth);
-  std::string generateFPCToI2SComponent(int inputBitWidth, int outputBitWidth);
-  std::string generateInputInterfaceComponent(int bitWidth);
-  std::string generateOutputInterfaceComponent(int bitWidth);
-  std::string generateI2STransceiverMapping(int id, int bitWidth);
-  std::string generateInputInterfaceMapping(int id, int bitWidth);
-  std::string generateOutputInterfaceMapping(int id, int bitWidth);
-  std::string generateI2SToFPCMapping(int id, std::string entityName);
-  std::string generateFPCToI2SMapping(int id, std::string entityName);
-  std::string generateI2STransceiverSignalNames(int id, int bitWidth);
-  std::string generateInputInterfaceSignalNames(int id, int bitWidth);
-  std::string generateOutputInterfaceSignalNames(int id, int bitWidth);
-  std::string generateI2SToFPCSignalNames(int id);
-  std::string generateFPCToI2SSignalNames(int id);
-  std::string generateSBufferComponent();
-  std::string generateCycleCounterComponent();
-  std::string generateInputScalingComponents(int i2sBitWidth, int fpcBitWidth);
-  std::string generateOutputScalingComponents(int i2sBitWidth, int fpcBitWidth);
-  std::string generateUIComponents(VHDLComponent comp);
   void generateHSInterfaceComponents();
   void generateAudioInterfaceComponents();
   void printCircuitInfo(models::Dataflow* const dataflow,

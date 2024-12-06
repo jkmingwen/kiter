@@ -58,6 +58,11 @@ class VHDLCircuit : public VHDLComponent {
     const std::map<std::string, std::string> &getTopLevelPorts() const {
       return this->topLevelPorts;
     }
+
+  const std::map<int, TIME_UNIT> &getComputeTimes() const {
+      return this->computeTimes;
+    }
+
   int getOperatorCount(const std::string &op) const;
   const VHDLComponent&  getFirstComponentByType(const std::string &op) const;
 
@@ -82,7 +87,7 @@ class VHDLCircuit : public VHDLComponent {
   std::vector<std::string> generateValidReadySignalNames();
   std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;
   std::string generateSignalNames(std::string &name, bool isInputSig) const;
-
+  void addComputeTime(int id, TIME_UNIT time);
   void writeImplementation(std::ofstream &vhdlOutput);
 
  private:
@@ -94,6 +99,7 @@ class VHDLCircuit : public VHDLComponent {
   std::map<std::string, std::vector<std::string>> inputPorts;
   std::map<std::string, std::vector<std::string>> outputPorts;
   std::map<std::string, std::string> topLevelPorts;
+  std::map<int, TIME_UNIT> computeTimes;
 
 }; // End of VHDLCircuit
 #endif /* VHDL_CIRCUIT_H_ */
