@@ -31,6 +31,15 @@ VHDLWrapper::VHDLWrapper(VHDLCircuit circuit, implType t, int sysPeriod,
   initialiseWrapper(circuit);
 }
 
+VHDLWrapper::VHDLWrapper(VHDLCircuit circuit, VHDLScheduler &s, implType t, int sysPeriod,
+                         int sysSlack) {
+  implementationType = t;
+  period = sysPeriod;
+  slack = sysSlack;
+  scheduler = s;
+  initialiseWrapper(circuit);
+}
+
 void VHDLWrapper::portMappingInit() {
   // audio interface wrapper ports and signal mappings
   addPortMapping("sys_clk", "sys_clk_sig", "std_logic", "in");
@@ -65,6 +74,42 @@ void VHDLWrapper::internalSignalsInit() {
     for (auto i = 0; i < numOutputs; i++) {
       addInternalSignal(dspName + "_out_data_" +
                             std::to_string(i),
+                        "std_logic_vector");
+    }
+    for (int i = 0; i < numAudioCodecs; i++) {
+      // I2S transceiver signals
+      std::string codecPrefix = "i2s_transceiver_" + std::to_string(i);
+      addInternalSignal(codecPrefix + "_l_data_rx", "std_logic_vector", 24);
+      addInternalSignal(codecPrefix + "_r_data_rx", "std_logic_vector", 24);
+      addInternalSignal(codecPrefix + "_l_data_tx", "std_logic_vector", 24);
+      addInternalSignal(codecPrefix + "_r_data_tx", "std_logic_vector", 24);
+      addInternalSignal(codecPrefix + "_sclk", "std_logic");
+      addInternalSignal(codecPrefix + "_sd_tx", "std_logic");
+      addInternalSignal(codecPrefix + "_sd_rx", "std_logic");
+      addInternalSignal(codecPrefix + "_ws", "std_logic");
+      // input/output interface signals
+      if (numInputs) {
+        std::string prefix = "fix2fp_" + std::to_string(i);
+        addInternalSignal(prefix + "_l_data_in", "std_logic_vector", 24);
+        addInternalSignal(prefix + "_r_data_in", "std_logic_vector", 24);
+      }
+      if (numOutputs) {
+        std::string prefix = "fp2fix_" + std::to_string(i);
+        addInternalSignal(prefix + "_l_data_out", "std_logic_vector", 24);
+        addInternalSignal(prefix + "_r_data_out", "std_logic_vector", 24);
+      }
+    }
+  } else if (implementationType == GS) {
+    addInternalSignal("counter_sig", "integer");
+    addInternalSignal("scheduler_sig", "std_logic_vector", scheduler.getScheduleSigWidth());
+    for (auto i = 0; i < numInputs; i++) {
+      addInternalSignal(dspName + "_in_data_" +
+                        std::to_string(i),
+                        "std_logic_vector");
+    }
+    for (auto i = 0; i < numOutputs; i++) {
+      addInternalSignal(dspName + "_out_data_" +
+                        std::to_string(i),
                         "std_logic_vector");
     }
     for (int i = 0; i < numAudioCodecs; i++) {
@@ -161,8 +206,6 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
   numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
                             (numOutputs / 2 + (numOutputs % 2 != 0)));
   computeTimes = circuit.getComputeTimes();
-  portMappingInit();
-  internalSignalsInit();
 
   // add components
   if (implementationType == TT) {
@@ -188,8 +231,8 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
         pushStart = slack;
         popStart = slack + 1;
       }
-      BufferComponent *inBuffer = genIOBufferTT(inSigName, outSigName,
-                                                pushStart, popStart);
+      BufferComponent *inBuffer = genIOBuffer(implementationType, inSigName, outSigName,
+                                              pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(inBuffer));
     }
     for (int outId = 0; outId < numOutputs; outId++) {
@@ -209,14 +252,67 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
         pushStart = slack + computeTime;
         popStart = slack + computeTime + 1;
       }
-      BufferComponent *outBuffer = genIOBufferTT(inSigName, outSigName,
-                                                 pushStart, popStart);
+      BufferComponent *outBuffer = genIOBuffer(implementationType, inSigName, outSigName,
+                                               pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(outBuffer));
     }
     // Cycle counter
     components.push_back(
         std::unique_ptr<VHDLComponent>(new CycleCounter(period)));
 
+  } else if (implementationType == GS) {
+    // I2S transceiver
+    for (int i = 0; i < numAudioCodecs; i++) {
+      components.push_back(std::unique_ptr<VHDLComponent>(new VHDLI2STransceiver(i)));
+    }
+
+    // Input/Output converters
+    for (int inId = 0; inId < numInputs; inId++) {
+      components.push_back(std::unique_ptr<VHDLComponent>(
+          new IOConverterTT(inId, "in", dspName)));
+      // input buffer
+      std::string chId = std::to_string(inId);
+      std::string channel = (inId % 2) ? "r" : "l";
+      std::string inSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_rx";
+      std::string outSigName = "fix2fp_" + chId + "_" + channel + "_data_in";
+      int pushStart, popStart;
+      if (channel == "l") {
+        pushStart = (period / 2) + slack;
+        popStart = (period / 2) + slack + 1;
+      } else {
+        pushStart = slack;
+        popStart = slack + 1;
+      }
+      BufferComponent *inBuffer = genIOBuffer(implementationType, inSigName, outSigName,
+                                              pushStart, popStart);
+      components.push_back(std::unique_ptr<VHDLComponent>(inBuffer));
+    }
+    for (int outId = 0; outId < numOutputs; outId++) {
+      components.push_back(std::unique_ptr<VHDLComponent>(
+          new IOConverterTT(outId, "out", dspName)));
+      // output buffer
+      std::string chId = std::to_string(outId);
+      std::string channel = (outId % 2) ? "r" : "l";
+      std::string inSigName = "fp2fix_" + chId + "_" + channel + "_data_out";
+      std::string outSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_tx";
+      int pushStart, popStart;
+      TIME_UNIT computeTime = computeTimes.at(outId);
+      if (channel == "l") {
+        pushStart = (period / 2) + slack + computeTime;
+        popStart = (period / 2) + slack + computeTime + 1;
+      } else {
+        pushStart = slack + computeTime;
+        popStart = slack + computeTime + 1;
+      }
+      BufferComponent *outBuffer = genIOBuffer(implementationType, inSigName, outSigName,
+                                               pushStart, popStart);
+      components.push_back(std::unique_ptr<VHDLComponent>(outBuffer));
+    }
+    // Cycle counter
+    components.push_back(
+                         std::unique_ptr<VHDLComponent>(new CycleCounter(period)));
+    scheduler.portMappingInit();
+    dspCircuit.setScheduleWidth(scheduler.getScheduleSigWidth());
   } else if (implementationType == DD) {
     for (int i = 0; i < numAudioCodecs; i++) {
       components.push_back(
@@ -233,6 +329,9 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
           new IOConverterDD(outId, "out", dspName)));
     }
   }
+  dspCircuit.portMappingInit();
+  portMappingInit();
+  internalSignalsInit();
 }
 
 std::string VHDLWrapper::genInternalSigs() {
@@ -274,6 +373,10 @@ void VHDLWrapper::writeImplementation(std::ofstream &vhdlOutput) {
   }
   vhdlOutput << dspCircuit.genDeclaration() << std::endl;
 
+  if (implementationType == GS) {
+    vhdlOutput << scheduler.genDeclaration() << std::endl;
+  }
+
   vhdlOutput << genInternalSigs() << std::endl;
 
   vhdlOutput << "begin" << std::endl;
@@ -303,21 +406,53 @@ void VHDLWrapper::writeImplementation(std::ofstream &vhdlOutput) {
     vhdlOutput << portMap << std::endl;
   }
   vhdlOutput << dspCircuit.genPortMapping(0, replacementSigs);
+  if (implementationType == GS) {
+    vhdlOutput << scheduler.genPortMapping(0, replacementSigs) << std::endl;
+  }
   vhdlOutput << "end structure;" << std::endl;
 }
 
-BufferComponent *VHDLWrapper::genIOBufferTT(std::string inSigName,
-                                            std::string outSigName,
-                                            int pushStart, int popStart) {
-  BufferComponent *buffer = new BufferComponent("sbuffer");
-  buffer->setInputSignal(inSigName);
-  buffer->setOutputSignal(outSigName);
-  buffer->setBufferSize(1);
-  buffer->setInit(0);
-  buffer->setDataWidth(24);
-  buffer->setPushStart(pushStart);
-  buffer->setPopStart(popStart);
-  buffer->portMappingInit();
+BufferComponent *VHDLWrapper::genIOBuffer(implType t, std::string inSigName,
+                                          std::string outSigName,
+                                          int pushStart, int popStart) {
+  BufferComponent *buffer = new BufferComponent("sbuffer", t);
+  if (implementationType == TT) {
+    buffer->setInputSignal(inSigName);
+    buffer->setOutputSignal(outSigName);
+    buffer->setBufferSize(1);
+    buffer->setInit(0);
+    buffer->setDataWidth(24);
+    buffer->setPushStart(pushStart);
+    buffer->setPopStart(popStart);
+    buffer->portMappingInit();
+  } else if (implementationType == GS) {
+    buffer->setInputSignal(inSigName);
+    buffer->setOutputSignal(outSigName);
+    buffer->setBufferSize(1);
+    buffer->setInit(0);
+    int pushId = scheduler.addExecution(pushStart);
+    int popId = scheduler.addExecution(popStart);
+    buffer->setDataWidth(24);
+    buffer->setTriggerPushId(pushId);
+    buffer->setTriggerPopId(popId);
+    buffer->setScheduleSigName("scheduler_sig");
+    buffer->portMappingInit();
+  }
 
   return buffer;
+}
+
+void VHDLWrapper::writeSchedulerImplementation(std::string dir) {
+  std::ofstream scheduleImpl;
+  scheduleImpl.open(dir + "scheduler.vhdl");
+  scheduler.writeImplementation(scheduleImpl);
+  scheduleImpl.close();
+}
+
+void VHDLWrapper::writeCircuitImplementation(std::string dir) {
+  std::ofstream vhdlOutput;
+  std::string graphName = dspCircuit.getName() + "_circuit"; // TODO decide on naming convention
+
+  vhdlOutput.open(dir + graphName + ".vhdl"); // instantiate VHDL file
+  dspCircuit.writeImplementation(vhdlOutput);
 }

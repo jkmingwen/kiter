@@ -1,13 +1,13 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity sbuffer_t_bypass is
+entity sbuffer_bypass is
     generic (ram_width : integer);
         port (in_data  : in  std_logic_vector(ram_width-1 downto 0);
               out_data : out std_logic_vector(ram_width-1 downto 0));
-end sbuffer_t_bypass;
+end sbuffer_bypass;
 
-architecture Behavioral of sbuffer_t_bypass is
+architecture Behavioral of sbuffer_bypass is
 
 begin
 

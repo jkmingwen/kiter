@@ -115,7 +115,7 @@ void VHDLConnection::setInitialTokenCount(TOKEN_UNIT count) {
 std::map<std::string, std::vector<std::string>>
 VHDLConnection::genSignalNames(implType t) const {
   std::map<std::string, std::vector<std::string>> names;
-  if (t == TT) { // time triggered implementation only requires data signal
+  if (t == TT || t == GS) { // time triggered implementation only requires data signal
     std::string type = "std_logic_vector(" + std::to_string(dataTypeWidth - 1) + " downto 0)";
     names[type].push_back(connectionName);
   } else if (t == DD) {

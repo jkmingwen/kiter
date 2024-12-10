@@ -189,6 +189,10 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     implementationType = DD;
   }
 
+  if (param_list.find("GS") != param_list.end()) {
+    implementationType = GS;
+  }
+
   if (param_list.find("BROADCAST") != param_list.end()) {
     VERBOSE_INFO("Add buffers to the output edges of output selectors");
     osBroadcast = true;
@@ -252,7 +256,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   // transformations to generate circuit object for VHDL generation
   {ForEachVertex(dataflow, v) {
       std::string vertexType = dataflow->getVertexType(v);
-      if (implementationType == TT) {
+      if (implementationType == TT || implementationType == GS) {
         if (vertexType == "buffer") {
           dataflow->setVertexType(v, bufferImpl);
         }
@@ -279,6 +283,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   }
 
   std::vector<TIME_UNIT> outputStarts(2, 0);
+  VHDLScheduler schedule;
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
     if (osBroadcast) { name = name.substr(0, name.find("_")); }
@@ -304,7 +309,24 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
             }
           }}
       }
-      tmp.setCompStartTime(comp.getUniqueName(), startTimes, bufferPopTime, (TIME_UNIT) systemSlack);
+      if (implementationType == TT) {
+        tmp.setCompStartTime(comp.getUniqueName(), startTimes, bufferPopTime,
+                             (TIME_UNIT)systemSlack);
+      }
+      if (implementationType == GS) {
+        if (comp.getType() == "input_selector" ||
+            comp.getType() == "output_selector") {
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_exec",
+                           startTimes, systemSlack);
+        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_push",
+                           startTimes, systemSlack);
+          // Subtract 1 from pop time to account for 1 cycle delay between
+          // pop time and data output
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_pop",
+                           {bufferPopTime.front() - 1}, systemSlack);
+        }
+      }
     } else if ((comp.getType() == "sbuffer" || comp.getType() == "shiftreg") &&
                dataflow->getPhasesQuantity(v) > 1) {
       // buffers used for broadcasting OS signal have >1 exec phase (equal to
@@ -337,8 +359,23 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         }
       }
       srcOSStarts = {startTime};
-      tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts, {dstStartTime},
-                           (TIME_UNIT)systemSlack);
+      if (implementationType == TT) {
+        tmp.setCompStartTime(comp.getUniqueName(), srcOSStarts, {dstStartTime},
+                             (TIME_UNIT)systemSlack);
+      } else if (implementationType == GS) {
+        if (comp.getType() == "input_selector" ||
+            comp.getType() == "output_selector") {
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_exec",
+                           srcOSStarts, systemSlack);
+        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_push",
+                           srcOSStarts, systemSlack);
+          // Subtract 1 from pop time to account for 1 cycle delay between
+          // pop time and data output
+          tmp.addExecution(schedule, comp.getUniqueName(), "trigger_pop",
+                           {dstStartTime - 1}, systemSlack);
+        }
+      }
       if (param_list.find("BUFFER_MIN") != param_list.end()) {
         if (startTime + 1 == dstStartTime) { // use output selector execution time (1)
           tmp.bypassBufferComponent(comp.getUniqueName());
@@ -358,17 +395,28 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   tmp.addComputeTime(1, computeR);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
-    const auto copyOptions = std::filesystem::copy_options::update_existing
-      | std::filesystem::copy_options::recursive;
-    generateOperators(tmp);
-    generateCircuit(tmp);
-    VHDLWrapper audioInterfaceWrapper =
+    const auto copyOptions = std::filesystem::copy_options::update_existing |
+                             std::filesystem::copy_options::recursive;
+    if (implementationType == TT || implementationType == DD) { // TODO merge these cases
+      generateOperators(tmp);
+      generateCircuit(tmp);
+      VHDLWrapper audioInterfaceWrapper =
         VHDLWrapper(tmp, implementationType, systemPeriod, systemSlack);
-    // test.initialiseWrapper(tmp);
-    std::ofstream vhdlOutput;
-    vhdlOutput.open(topDir + tmp.getName() + "_top.vhdl");
-    audioInterfaceWrapper.writeImplementation(vhdlOutput);
-    vhdlOutput.close();
+      std::ofstream vhdlOutput;
+      vhdlOutput.open(topDir + tmp.getName() + "_top.vhdl");
+      audioInterfaceWrapper.writeImplementation(vhdlOutput);
+      vhdlOutput.close();
+    } else if (implementationType == GS) {
+      generateOperators(tmp);
+      VHDLWrapper audioInterfaceWrapper =
+        VHDLWrapper(tmp, schedule, implementationType, systemPeriod, systemSlack);
+      std::ofstream vhdlOutput;
+      vhdlOutput.open(topDir + tmp.getName() + "_top.vhdl");
+      audioInterfaceWrapper.writeImplementation(vhdlOutput);
+      vhdlOutput.close();
+      audioInterfaceWrapper.writeSchedulerImplementation(topDir);
+      audioInterfaceWrapper.writeCircuitImplementation(topDir);
+    }
     std::filesystem::copy(referenceDir + "/testbenches/", tbDir, copyOptions);
     printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
                             dataflow);
@@ -477,10 +525,16 @@ void algorithms::generateAudioInterfaceComponents() {
   // names of reference files required to copy into project; add/remove as required
   std::vector<std::string> componentNames;
   std::vector<std::string> operatorNames; // need separate path for FloPoCo operators as they're stored in different subdirectory
-  if (!dataDriven) {
+  if (implementationType == TT) {
     componentNames = {"fix2fp_and_scaledown", "fp2fix_and_scaleup",
                       "i2s_transceiver", "cycle_counter", "sbuffer",
                       "sbuffer_n", "sbuffer_bypass", "sbuffer_one"};
+    // separate path for FloPoCo operators as they're stored in different subdirectory
+    operatorNames = {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
+  } else if (implementationType == GS) {
+    componentNames = {"fix2fp_and_scaledown", "fp2fix_and_scaleup",
+                      "i2s_transceiver", "cycle_counter", "sbuffer_t",
+                      "sbuffer_t_n", "sbuffer_t_bypass", "sbuffer_t_one"};
     // separate path for FloPoCo operators as they're stored in different subdirectory
     operatorNames = {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
   } else {
@@ -520,8 +574,7 @@ void algorithms::printCircuitInfo(models::Dataflow* const dataflow,
 
   // populate circuit object with components and connections based on dataflow
   {ForEachVertex(dataflow, actor) {
-      implType t = (dataDriven) ? DD : TT;
-      VHDLComponent newComp(dataflow, actor, t);
+      VHDLComponent newComp(dataflow, actor, implementationType);
       circuit.addComponent(newComp);
     }}
   {ForEachEdge(dataflow, edge) {

@@ -9,7 +9,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity sbuffer_t_n is
+entity sbuffer_n is
     generic (ram_width   : integer;
              buffer_size : integer;
              init        : integer);
@@ -20,9 +20,9 @@ entity sbuffer_t_n is
         trigger_pop  : in std_logic;
         in_data      : in  std_logic_vector(ram_width-1 downto 0);
         out_data     : out std_logic_vector(ram_width-1 downto 0) := (others => '0'));
-end entity sbuffer_t_n;
+end entity sbuffer_n;
 
-architecture Behavioral of sbuffer_t_n is
+architecture Behavioral of sbuffer_n is
     type mem_type is array (0 to buffer_size-1) of std_logic_vector(ram_width-1 downto 0);
     signal memory : mem_type := (others => (others => '0'));
     signal write_index : integer range 0 to buffer_size-1 := init;

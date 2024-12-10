@@ -11,7 +11,7 @@
 
 class BufferComponent : public VHDLComponent {
 public:
-  BufferComponent(std::string bufferType);
+  BufferComponent(std::string bufferType, implType t);
 
   void portMappingInit();
   void setPushStart(int cycle);
@@ -21,15 +21,21 @@ public:
   void setDataWidth(int sizeInBits);
   void setInputSignal(std::string sigName);
   void setOutputSignal(std::string sigName);
+  void setTriggerPushId(int id);
+  void setTriggerPopId(int id);
+  void setScheduleSigName(std::string);
 
 private:
   std::string inputSignalName;
   std::string outputSignalName;
+  std::string schedSignalName;
   int dataWidth = 24;
   int numInitialTokens = 0;
   int bufferSize = 1;
   int pushStart = 0;
   int popStart = 0;
+  int pushId = 0;
+  int popId = 0;
 };
 
 

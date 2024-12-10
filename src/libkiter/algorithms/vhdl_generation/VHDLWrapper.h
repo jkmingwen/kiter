@@ -17,6 +17,7 @@ public:
   VHDLWrapper();
   VHDLWrapper(implType t, int sysPeriod, int sysSlack);
   VHDLWrapper(VHDLCircuit circuit, implType t, int sysPeriod, int sysSlack);
+  VHDLWrapper(VHDLCircuit circuit, VHDLScheduler &s, implType t, int sysPeriod, int sysSlack);
 
   void portMappingInit();
   void internalSignalsInit();
@@ -25,10 +26,14 @@ public:
   void writeImplementation(std::ofstream &vhdlOutput);
   void initialiseWrapper(const VHDLCircuit &circuit);
   VHDLComponent genComponent(std::string componentType);
-  BufferComponent *genIOBufferTT(std::string inSigName,
-                                 std::string outSigName,
-                                 int pushStart, int popStart);
-
+  BufferComponent *genIOBuffer(implType t, std::string inSigName,
+                               std::string outSigName,
+                               int pushStart, int popStart);
+  void addExecution(VHDLScheduler &s, std::string name,
+                    std::string trigSigPrefix, std::vector<TIME_UNIT> times,
+                    TIME_UNIT slack = 0);
+  void writeSchedulerImplementation(std::string dir);
+  void writeCircuitImplementation(std::string dir);
 private:
   int numInputs;
   int numOutputs;
@@ -39,6 +44,7 @@ private:
   int period;
   int slack;
   VHDLCircuit dspCircuit;
+  VHDLScheduler scheduler;
   std::string dspName;
   std::map<int, TIME_UNIT> computeTimes;
 };

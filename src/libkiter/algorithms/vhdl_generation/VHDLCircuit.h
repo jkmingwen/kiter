@@ -11,6 +11,7 @@
 #include "VHDLComponent.h"
 #include "VHDLConnection.h"
 #include "VHDLCommons.h"
+#include "VHDLScheduler.h"
 
 namespace models {
   class Dataflow;
@@ -27,7 +28,10 @@ class VHDLCircuit : public VHDLComponent {
   void addOutputPort(std::string portName, const std::vector<std::string> &signalNames);
   void setCompStartTime(std::string name, std::vector<TIME_UNIT> times,
                         std::vector<TIME_UNIT> popTime, TIME_UNIT slack = 0);
+  void addExecution(VHDLScheduler &s, std::string name, std::string trigSigPrefix,
+                    std::vector<TIME_UNIT> times, TIME_UNIT slack = 0);
   void bypassBufferComponent(std::string name);
+  void setScheduleWidth(int width);
 
   std::string printStatus();
 
@@ -100,6 +104,7 @@ class VHDLCircuit : public VHDLComponent {
   std::map<std::string, std::vector<std::string>> outputPorts;
   std::map<std::string, std::string> topLevelPorts;
   std::map<int, TIME_UNIT> computeTimes;
+  int scheduleWidth;
 
 }; // End of VHDLCircuit
 #endif /* VHDL_CIRCUIT_H_ */

@@ -58,6 +58,27 @@ void VHDLCircuit::setCompStartTime(std::string name,
   }
 }
 
+void VHDLCircuit::addExecution(VHDLScheduler &s, std::string name, std::string trigSigPrefix,
+                               std::vector<TIME_UNIT> times,
+                               TIME_UNIT slack) {
+  for (auto &[v, comp] : this->componentMap) {
+    if (name == comp.getUniqueName()) {
+      for (int n = 0; auto time : times) {
+        time += slack;
+        int trigId = s.addExecution(time);
+        std::string trigSig = trigSigPrefix;
+        if (trigSigPrefix != "trigger_push" && trigSigPrefix != "trigger_pop") {
+          trigSig += "_" + std::to_string(n);
+        }
+        comp.addPortMapping(trigSig, "schedule(" + std::to_string(trigId) + ")",
+                            "std_logic", "in");
+        n++;
+      }
+    }
+  }
+  scheduleWidth = s.getScheduleSigWidth();
+}
+
 void VHDLCircuit::bypassBufferComponent(std::string name) {
   for (auto &[v, comp] : this->componentMap) {
     if (name == comp.getUniqueName()) {
@@ -351,12 +372,12 @@ void VHDLCircuit::updateTopLevelPorts(implType t) {
         for (auto const &[e, conn] : this->getConnectionMap()) {
           if (conn.getName() == edgeName) {
             this->addInputPort(edgeName, signalNames);
-            if (t == TT) {
-              this->topLevelPorts[edgeName] = signalNames[2];
-            } else { // need to account for HS interface even for top-level ports
+            if (t == DD) { // account for HS interface
               this->topLevelPorts[edgeName + "_VALID"] = signalNames[0];
               this->topLevelPorts[edgeName + "_READY"] = signalNames[1];
               this->topLevelPorts[edgeName + "_DATA"] = signalNames[2];
+            } else {
+              this->topLevelPorts[edgeName] = signalNames[2];
             }
           }
         }
@@ -371,12 +392,12 @@ void VHDLCircuit::updateTopLevelPorts(implType t) {
         for (auto const &[e, conn] : this->getConnectionMap()) {
           if (conn.getName() == edgeName) {
             this->addOutputPort(edgeName, signalNames);
-            if (t == TT) {
-              this->topLevelPorts[edgeName] = signalNames[2];
-            } else { // need to account for HS interface even for top-level ports
+            if (t == DD) { // account for HS interface for top-level ports
               this->topLevelPorts[edgeName + "_VALID"] = signalNames[0];
               this->topLevelPorts[edgeName + "_READY"] = signalNames[1];
               this->topLevelPorts[edgeName + "_DATA"] = signalNames[2];
+            } else {
+              this->topLevelPorts[edgeName] = signalNames[2];
             }
           }
         }
@@ -393,6 +414,17 @@ void VHDLCircuit::portMappingInit() {
   addPortMapping("rst", "rst_sig", "std_logic", "in");
   if (implementationType == TT) {
     addPortMapping("cycle_count", "counter_sig", "integer", "in");
+    for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
+      std::string portName = graphName + "_in_data_" + std::to_string(i);
+      addPortMapping(portName, portName, "std_logic_vector", "in");
+    }
+    for (auto o = 0; o < getOperatorCount("OUTPUT"); o++) {
+      std::string portName = graphName + "_out_data_" + std::to_string(o);
+      addPortMapping(portName, portName, "std_logic_vector", "out");
+    }
+  } else if (implementationType == GS) {
+    addPortMapping("schedule", "scheduler_sig", "std_logic_vector", "in",
+                   scheduleWidth);
     for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
       std::string portName = graphName + "_in_data_" + std::to_string(i);
       addPortMapping(portName, portName, "std_logic_vector", "in");
@@ -676,4 +708,8 @@ void VHDLCircuit::writeImplementation(std::ofstream &vhdlOutput) {
 
 void VHDLCircuit::addComputeTime(int id, TIME_UNIT time) {
   this->computeTimes[id] = time;
+}
+
+void VHDLCircuit::setScheduleWidth(int width) {
+  scheduleWidth = width;
 }

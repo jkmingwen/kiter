@@ -8,7 +8,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 $ENTITY_DECLARATION
 
-architecture Behavioral of input_selector_sched_2 is
+architecture Behavioral of $COMPONENT_NAME is
 
 begin
 

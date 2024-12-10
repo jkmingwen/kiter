@@ -119,7 +119,6 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
         for (int execPhase = 0; execPhase < inExecRates.size(); execPhase++) {
           if (inExecRates.at(execPhase) == 1) {
             std::string name = dataflow->getEdgeName(e);
-            VERBOSE_INFO("Edge for exec " << execPhase << ": " << name);
             this->outputSignals.at(execPhase) = name;
           }
         }
@@ -590,6 +589,104 @@ void VHDLComponent::portMappingInit() {
     }
   }
 
+  // Globally scheduled port mappings
+  else if (implementationType == GS) {
+    if (componentType == "INPUT" || componentType == "OUTPUT") {
+      std::string portName = graphName;
+      std::string direction;
+      if (componentType == "INPUT") {
+        direction = "in";
+      } else {
+        direction = "out";
+      }
+      portName += "_" + direction + "_data_" + std::to_string(ioId);
+      addPortMapping(portName, portName, "std_logic_vector", direction);
+    } else {
+      if (componentType == "const_value") {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addGenericMapping("value", "\"" + binaryValue + "\"", "std_logic_vector");
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                         "std_logic_vector", "out");
+        }
+      } else if (componentType == "input_selector") {
+        addGenericMapping("ram_width", "ram_width", "integer");
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i],
+                         "std_logic_vector", "in");
+          addPortMapping("trigger_exec_" + std::to_string(i), "0", "std_logic", "in"); // NOTE just a placeholder port for entity declaration; valid trigger exec set in
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o], "std_logic_vector", "out");
+        }
+      } else if (componentType == "output_selector") {
+        addGenericMapping("ram_width", "ram_width", "integer");
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                         "std_logic_vector", "out");
+          addPortMapping("trigger_exec_" + std::to_string(o), "0", "std_logic", "in"); // NOTE just a placeholder port for entity declaration; valid trigger exec set in
+        }
+      } else if (componentType == "broadcast") {
+        addGenericMapping("ram_width", "ram_width", "integer");
+        addPortMapping("clk", "clk", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addPortMapping("in_data_" + std::to_string(i), inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addPortMapping("out_data_" + std::to_string(o), outputSignals[o],
+                         "std_logic_vector", "out");
+        }
+      } else if (componentType == "sbuffer") {
+        addGenericMapping("ram_width", "ram_width", "integer");
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
+                          "integer");
+        addGenericMapping("init", std::to_string(initialTokens), "integer");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i : inputSignals) {
+          addPortMapping("in_data", i, "std_logic_vector", "in");
+        }
+        for (auto o : outputSignals) {
+          addPortMapping("out_data", o, "std_logic_vector", "out");
+        }
+      } else if (componentType == "shiftreg") {
+        // get depth from output edge
+        int initTokens = initialTokens;
+        addGenericMapping("period", std::to_string(5209), "integer");
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("depth", std::to_string(initTokens), "integer", "",
+                       true);
+        pipoNumbers["depth"] = initTokens;
+        pipoNumbers["period"] = 5209;
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i : inputSignals) {
+          addPortMapping("in_data", i, "std_logic_vector", "in");
+        }
+        for (auto o : outputSignals) {
+          addPortMapping("out_data", o, "std_logic_vector", "out");
+        }
+      } else {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        }
+      }
+    }
+  }
+
   // Data-driven port mappings
   else if (implementationType == DD) {
     if (componentType == "INPUT" || componentType == "OUTPUT") {
@@ -707,6 +804,42 @@ void VHDLComponent::implementationInit() {
       for (auto o = 0; o < outputSignals.size(); o++) {
         procBehav << "when exec_time_" << o << " => out_data_" << o
                   << " <= in_data_0;" << std::endl;
+      }
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
+    } else if (componentType == "broadcast") {
+      std::stringstream procBehav;
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        procBehav << "out_data_" << o << " <= in_data_0;" << std::endl;
+      }
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
+    }
+  }
+
+  else if (implementationType == GS) {
+    if (componentType == "const_value") {
+      std::stringstream procBehav;
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        procBehav << "out_data_" << o << " <= value;\n" << std::endl;
+      }
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
+    } else if (componentType == "input_selector") {
+      std::stringstream procBehav;
+      for (auto i = 0; i < inputSignals.size(); i++) {
+        procBehav << "if (trigger_exec_" << i << " = '1') then\n"
+                  << "\tout_data_0 <= in_data_" << i << ";\n"
+                  << "end if;" << std::endl;
+      }
+      implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
+      implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
+    } else if (componentType == "output_selector") {
+      std::stringstream procBehav;
+      for (auto o = 0; o < outputSignals.size(); o++) {
+        procBehav << "if (trigger_exec_" << o << " = '1') then\n"
+                  << "\tout_data_" << o << " <= in_data_0" << ";\n"
+                  << "end if;" << std::endl;
       }
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
@@ -1023,7 +1156,7 @@ void VHDLComponent::genImplementation(std::string refDir,
   if (implementationType == TT) {
     if (componentType == "input_selector") {
       refFileName = "s_input_selector.vhdl";
-    } else if (componentType == "output_selector") { // output selector // TODO account for OS broadcast behaviour
+    } else if (componentType == "output_selector") { // output selector
       refFileName = "s_output_selector.vhdl";
     } else if (componentType == "broadcast") {
       refFileName = "broadcast.vhdl";
@@ -1032,12 +1165,51 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (componentType == "sbuffer") {
       // refFileName = "sbuffer.vhdl"; // already set by default
       // extra implementation files for sbuffer
+      std::filesystem::copy(refDir + refFileName,
+                            dstDir + refFileName, copyOptions);
       std::filesystem::copy(refDir + "sbuffer_n.vhdl",
                             dstDir + "sbuffer_n.vhdl", copyOptions);
       std::filesystem::copy(refDir + "sbuffer_bypass.vhdl",
                             dstDir + "sbuffer_bypass.vhdl", copyOptions);
       std::filesystem::copy(refDir + "sbuffer_one.vhdl",
                             dstDir + "sbuffer_one.vhdl", copyOptions);
+    } else if (componentType == "shiftreg") {
+      refFileName = "pipo_shift_reg.vhdl";
+      // extra implementation files for shift register
+      std::filesystem::copy(refDir + "pipo_shift_reg_n.vhdl",
+                            dstDir + "pipo_shift_reg_n.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "pipo_shift_reg_one.vhdl",
+                            dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
+                            dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
+    }
+    else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+      refDir += "/operators/";
+    }
+    else {
+      refDir += "/operators/";
+      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+    }
+  } else if (implementationType == GS) {
+    if (componentType == "input_selector") {
+      refFileName = "t_input_selector.vhdl";
+    } else if (componentType == "output_selector") { // output selector
+      refFileName = "t_output_selector.vhdl";
+    } else if (componentType == "broadcast") {
+      refFileName = "broadcast.vhdl";
+    } else if (componentType == "const_value") {
+      refFileName = "const_value_n_outputs.vhdl";
+    } else if (componentType == "sbuffer") {
+      // refFileName = "sbuffer.vhdl"; // already set by default
+      // extra implementation files for sbuffer
+      std::filesystem::copy(refDir + "sbuffer_t.vhdl",
+                            dstDir + "sbuffer_t.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "sbuffer_t_n.vhdl",
+                            dstDir + "sbuffer_t_n.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "sbuffer_t_bypass.vhdl",
+                            dstDir + "sbuffer_t_bypass.vhdl", copyOptions);
+      std::filesystem::copy(refDir + "sbuffer_t_one.vhdl",
+                            dstDir + "sbuffer_t_one.vhdl", copyOptions);
     } else if (componentType == "shiftreg") {
       refFileName = "pipo_shift_reg.vhdl";
       // extra implementation files for shift register

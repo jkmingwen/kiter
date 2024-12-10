@@ -12,7 +12,7 @@
 #include <map>
 #include <string>
 #include <vector>
-enum implType { TT, DD }; // TT: time triggered, DD: data driven
+enum implType { TT, DD, GS }; // TT: time triggered, DD: data driven, GS: globally scheduled
 enum direction { in, out };
 
 /* Each component has a specific lifespan and name that needs to be defined in
