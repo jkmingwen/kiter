@@ -88,7 +88,7 @@ void VHDLCircuit::bypassBufferComponent(std::string name) {
       } else {
         port = "buffer_size";
       }
-      comp.addPortMapping(port, std::to_string(0), "integer", "", true);
+      comp.addGenericMapping(port, std::to_string(0), "integer");
     }
   }
 }
