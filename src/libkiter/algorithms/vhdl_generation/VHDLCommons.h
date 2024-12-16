@@ -160,6 +160,7 @@ std::string generateTikzFill(std::string name, std::string type, ARRAY_INDEX id,
                              std::vector<TIME_UNIT> durations, int row,
                              bool truncNames);
 std::string generateTikzSchedule(models::Scheduling schedule);
+std::string tab(int level);
 
 
 #endif /* VHDL_COMMONS_H_ */

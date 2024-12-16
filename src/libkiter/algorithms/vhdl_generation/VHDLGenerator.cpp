@@ -284,6 +284,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
 
   std::vector<TIME_UNIT> outputStarts(2, 0);
   VHDLScheduler schedule;
+  schedule.setPeriod(systemPeriod);
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
     if (osBroadcast) { name = name.substr(0, name.find("_")); }

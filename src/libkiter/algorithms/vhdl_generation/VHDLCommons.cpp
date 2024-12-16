@@ -402,3 +402,9 @@ std::string generateTikzSchedule(models::Scheduling schedule) {
          << "\\end{document}" << std::endl;
   return output.str();
 }
+
+std::string tab(int level) { // helper function to generate tabbing
+  std::string pad(level*4, ' '); // 4 spaces per level
+
+  return pad;
+}

@@ -100,7 +100,6 @@ void VHDLWrapper::internalSignalsInit() {
       }
     }
   } else if (implementationType == GS) {
-    addInternalSignal("counter_sig", "integer");
     addInternalSignal("scheduler_sig", "std_logic_vector", scheduler.getScheduleSigWidth());
     for (auto i = 0; i < numInputs; i++) {
       addInternalSignal(dspName + "_in_data_" +
@@ -308,9 +307,6 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
                                                pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(outBuffer));
     }
-    // Cycle counter
-    components.push_back(
-                         std::unique_ptr<VHDLComponent>(new CycleCounter(period)));
     scheduler.portMappingInit();
     dspCircuit.setScheduleWidth(scheduler.getScheduleSigWidth());
   } else if (implementationType == DD) {
