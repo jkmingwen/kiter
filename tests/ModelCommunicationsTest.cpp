@@ -20,7 +20,7 @@ BOOST_FIXTURE_TEST_SUITE( model_communications_test , WITH_SAMPLE)
         mapped_sample->setNoC(noc);
 
         BOOST_ASSERT(mapped_sample->getNoC().getNodes().size() > 0);
-        int idx = 0;
+        size_t idx = 0;
         for (Vertex v : mapped_sample->vertices()) {
             for (; idx < mapped_sample->getNoC().getNodes().size(); idx++) {
                 if (mapped_sample->getNoC().getNodes().at(idx).type == NetworkNodeType::Core) {

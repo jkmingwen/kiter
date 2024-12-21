@@ -18,7 +18,7 @@ GraphWidget::GraphWidget(QWidget *parent)
 
     qInfo() << "GraphWidget initialized with scene setup and rendering hints.";
 
-    layoutTimer.setInterval(500);  // Update layout every 500 ms
+    layoutTimer.setInterval(250);  // Update layout every 250 ms
     connect(&layoutTimer, &QTimer::timeout, this, &GraphWidget::layoutStep);
     layoutTimer.start();
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 FIND_PACKAGE( Boost 1.33.0 COMPONENTS unit_test_framework  REQUIRED)
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5)
 
 FILE(GLOB_RECURSE commons_cpp *.cpp)
 FILE(GLOB_RECURSE commons_h   *.h )

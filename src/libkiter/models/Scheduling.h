@@ -96,8 +96,6 @@ public :
 	void verbose_print () const;
 	std::string asText () const;
 	std::string asASCII (size_t line_size) const;
-	//std::string asASCIINew (int line_size) const;
-	//std::string asASCIINewNew (int line_size) const;
 	bool is_valid_schedule () const;
 
 };
