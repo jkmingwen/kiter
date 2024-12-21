@@ -51,19 +51,14 @@ TIME_UNIT                compute_Kperiodic_throughput              (models::Data
     bool 									 updateVectorWithFineNi   (models::Dataflow * const   ,  periodicity_vector_t * , critical_circuit_t *  );
 
 }
-ADD_THROUGHPUT(KPeriodicThroughput,
-		throughput_action_t({ "KPeriodicThroughput" , "Optimal Throughput evaluation of CSDF by K-Periodic scheduling method 2.", algorithms::compute_Kperiodic_throughput}));
+ADD_THROUGHPUT(KPeriodicThroughput,"Optimal Throughput evaluation of CSDF by K-Periodic scheduling method 2.", algorithms::compute_Kperiodic_throughput);
 
-ADD_THROUGHPUT(UnPeriodicThroughput,
-		throughput_action_t({ "1PeriodicThroughput" , "Optimal 1-Periodic Throughput evaluation of CSDF by K-Periodic scheduling method.", algorithms::compute_1Kperiodic_throughput}));
-ADD_THROUGHPUT(DeuxPeriodicThroughput,
-				throughput_action_t({ "2PeriodicThroughput" , "Optimal 1-Periodic Throughput evaluation of CSDF by K-Periodic scheduling method.", algorithms::compute_2Kperiodic_throughput}));
-ADD_THROUGHPUT(NKPeriodicThroughput,
-		throughput_action_t({ "NKPeriodicThroughput" , "Optimal Throughput evaluation of CSDF by using N-periodic method.", algorithms::compute_NKperiodic_throughput}));
+ADD_THROUGHPUT(UnPeriodicThroughput,"Optimal 1-Periodic Throughput evaluation of CSDF by K-Periodic scheduling method.", algorithms::compute_1Kperiodic_throughput);
+ADD_THROUGHPUT(DeuxPeriodicThroughput,"Optimal 1-Periodic Throughput evaluation of CSDF by K-Periodic scheduling method.", algorithms::compute_2Kperiodic_throughput);
+ADD_THROUGHPUT(NKPeriodicThroughput,"Optimal Throughput evaluation of CSDF by using N-periodic method.", algorithms::compute_NKperiodic_throughput);
 
 
-ADD_PRINTER(PrintKPeriodicScheduling,
-		printer_action_t({ "PrintKPeriodicScheduling" , "Print KPeriodicScheduling", algorithms::print_kperiodic_scheduling})
-);
+ADD_PRINTER(PrintKPeriodicScheduling, "Print KPeriodicScheduling", algorithms::print_kperiodic_scheduling);
+
 
 #endif /* KPERIODIC_H_ */

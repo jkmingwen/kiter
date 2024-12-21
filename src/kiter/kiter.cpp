@@ -163,7 +163,7 @@ int main (int argc, char **argv)
         if (const auto *transformation = KiterRegistry<transformation_action_t>::get(name)) {
             VERBOSE_INFO ("Run transformation " << transformation->name);
             transformation->fun(csdf,params);
-        } else if (const auto *buffer_sizing = KiterRegistry<buffer_sizing_action_t>::get(name);) {
+        } else if (const auto *buffer_sizing = KiterRegistry<buffer_sizing_action_t>::get(name)) {
             VERBOSE_INFO ("Run buffer sizing " << buffer_sizing->name);
             models::BufferSizingResult res = buffer_sizing->fun(csdf,params);
             VERBOSE_INFO ("Total size is " << res.total_size());

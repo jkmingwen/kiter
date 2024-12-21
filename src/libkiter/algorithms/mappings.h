@@ -38,31 +38,15 @@ namespace algorithms {
 
 }
 // Helpers to map vertex to cores, need a way to also consider routers
-ADD_TRANSFORMATION(createNoC,
-	transformation_action_t({ "createNoC" , "Create NoC based on file inserted", algorithms::mapping::createNoC} )
-);
-ADD_TRANSFORMATION(randomMapping,
-		transformation_action_t({ "randomMapping" , "This command will associate a mapping to each task of the graph. Task unspecified as parameters will be randomly allocated to a core.", algorithms::mapping::randomMapping} )
-);
-ADD_TRANSFORMATION(generateTDMA,
-		transformation_action_t({ "generateTDMA" , "Change seed.", algorithms::mapping::generateTDMA} )
-);
-ADD_TRANSFORMATION(moduloMapping,
-		transformation_action_t({ "moduloMapping" , "This command will associate a mapping to each task of the graph. Task unspecified as parameters will be randomly allocated to a core.", algorithms::mapping::moduloMapping} )
-);
-ADD_TRANSFORMATION(BufferlessNoCMapAndRoute,
-		transformation_action_t({ "BufferlessNoCMapAndRoute" , "Mapping and Routing combined.", algorithms::mapping::BufferlessNoCMapAndRoute} )
-);
-ADD_TRANSFORMATION(xyRouting,
-		transformation_action_t({ "xyRouting" , "Create X-Y routing", algorithms::mapping::xyRouting} )
-);
+ADD_TRANSFORMATION(createNoC, "Create NoC based on file inserted", algorithms::mapping::createNoC);
+ADD_TRANSFORMATION(randomMapping, "This command will associate a mapping to each task of the graph. Task unspecified as parameters will be randomly allocated to a core.", algorithms::mapping::randomMapping);
+ADD_TRANSFORMATION(generateTDMA, "Change seed.", algorithms::mapping::generateTDMA);
+ADD_TRANSFORMATION(moduloMapping, "This command will associate a mapping to each task of the graph. Task unspecified as parameters will be randomly allocated to a core.", algorithms::mapping::moduloMapping);
+ADD_TRANSFORMATION(BufferlessNoCMapAndRoute, "Mapping and Routing combined.", algorithms::mapping::BufferlessNoCMapAndRoute);
+ADD_TRANSFORMATION(xyRouting, "Create X-Y routing", algorithms::mapping::xyRouting);
 
-ADD_TRANSFORMATION(randomRouting,
-		transformation_action_t({ "randomRouting" , "Create random X-Y routing", algorithms::mapping::randomRouting} )
-);
-ADD_TRANSFORMATION(ModelNoCConflictFreeCommunication,
-		transformation_action_t({ "ModelNoCConflictFreeCommunication" , "Given a graph with Mapping, can add fictive task to model network", algorithms::ModelNoCConflictFreeCommunication} )
-);
+ADD_TRANSFORMATION(randomRouting, "Create random X-Y routing", algorithms::mapping::randomRouting);
+ADD_TRANSFORMATION(ModelNoCConflictFreeCommunication , "Given a graph with Mapping, can add fictive task to model network", algorithms::ModelNoCConflictFreeCommunication);
 
 
 #endif

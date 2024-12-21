@@ -26,10 +26,8 @@ void                    clean_LCG   		                  (models::EventGraph*    
 
 }
 
-ADD_THROUGHPUT(deGrooteThroughput,
-		throughput_action_t({ "deGrooteThroughput" , "Throughput analysis from deGroote2012 paper except event graph reduction.", algorithms::compute_deGroote_throughput}));
+ADD_THROUGHPUT(deGrooteThroughput,"Throughput analysis from deGroote2012 paper except event graph reduction.", algorithms::compute_deGroote_throughput);
 
-ADD_THROUGHPUT(deGrooteCleanThroughput,
-		throughput_action_t({ "deGrooteCleanThroughput" , "Throughput analysis from deGroote2012 paper.", algorithms::compute_deGrooteClean_throughput}));
+ADD_THROUGHPUT(deGrooteCleanThroughput,"Throughput analysis from deGroote2012 paper.", algorithms::compute_deGrooteClean_throughput);
 
 #endif /* DEGROOTE_H_ */

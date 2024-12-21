@@ -20,7 +20,6 @@ namespace algorithms {
     }
 }
 
-ADD_TRANSFORMATION(RemoveReentrancy,
-        transformation_action_t({ "Normalize" , "Transform the graph such that it is normalized.", algorithms::transformation::apply_normalization}));
+ADD_TRANSFORMATION(RemoveReentrancy, "Transform the graph such that it is normalized.", algorithms::transformation::apply_normalization);
 
 #endif //KITER_NORMALIZE_H

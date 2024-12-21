@@ -29,7 +29,6 @@ void singleOutput    (models::Dataflow* const dataflow, parameters_list_t  param
 }
 
 
-ADD_TRANSFORMATION(SingleOutput,
-		transformation_action_t({ "SingleOutput" , "SingleOutput merging outputs from a HSDF task", algorithms::transformation::singleOutput}));
+ADD_TRANSFORMATION(SingleOutput, "SingleOutput merging outputs from a HSDF task", algorithms::transformation::singleOutput);
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_SINGLEOUTPUT_H_ */

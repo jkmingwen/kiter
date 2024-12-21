@@ -34,11 +34,8 @@ namespace algorithms {
 
 
 ADD_THROUGHPUT_BUFFERING_DSE(LivenessDSE,
-                   throughput_buffering_dse_action_t({
-                       "LivenessDSE" ,
                        "DSE that solve the liveness problem for a graph with \"feedback\" buffers",
-                       algorithms::dse::liveness_dse}
-                       ));
+                       algorithms::dse::liveness_dse);
 
 
 #endif //KITER_LIVENESS_MODULAR_DSE_H

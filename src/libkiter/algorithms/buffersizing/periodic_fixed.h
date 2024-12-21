@@ -40,12 +40,8 @@ namespace algorithms {
 } // end of namespace algorithms
 
 //Buffer sizing techniques
-ADD_BUFFER_SIZING(SPeriodicSizing,
-buffer_sizing_action_t({ "SPeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling with StrictlyPeriodic policy.", algorithms::compute_strictly_periodic_memory}));
-ADD_BUFFER_SIZING(FixedOffsetBufferSizing,
-                  buffer_sizing_action_t({ "FixedOffsetBufferSizing" , "Minimal Buffer size estimation by periodic scheduling with fixed offset buffer sizing techniques (BURST, AVERAGE, MINMAX, WIGGERS). Define chosen sizing technique as parameter.", algorithms::compute_fixed_offset_buffer_sizing}));
+ADD_BUFFER_SIZING(SPeriodicSizing, "Minimal Buffer size estimation by periodic scheduling with StrictlyPeriodic policy.", algorithms::compute_strictly_periodic_memory);
+ADD_BUFFER_SIZING(FixedOffsetBufferSizing, "Minimal Buffer size estimation by periodic scheduling with fixed offset buffer sizing techniques (BURST, AVERAGE, MINMAX, WIGGERS). Define chosen sizing technique as parameter.", algorithms::compute_fixed_offset_buffer_sizing);
 
-ADD_TRANSFORMATION(AddVBuffers,
-transformation_action_t({ "AddVBuffers" , "Add virtual buffers for each edge in dataflow graph", algorithms::add_vbuffers}));
-
+ADD_TRANSFORMATION(AddVBuffers, "Add virtual buffers for each edge in dataflow graph", algorithms::add_vbuffers);
 #endif /* PERIODIC_FIXED_H_ */

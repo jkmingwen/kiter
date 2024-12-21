@@ -10,6 +10,7 @@
 #include "helpers/sample.h"
 #include "helpers/random_generator.h"
 #include "algorithms/dse/dichotomous_search.h"
+#include <algorithms/dse/StorageDistributionSet.h>
 
 
 BOOST_FIXTURE_TEST_SUITE( dse_periodic_test , WITH_SAMPLE)

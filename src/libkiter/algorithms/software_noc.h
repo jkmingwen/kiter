@@ -26,9 +26,7 @@ namespace algorithms {
 	bool isConflictPresent(LARGE_INT HP, TIME_UNIT si, LARGE_INT ni, TIME_UNIT sj, LARGE_INT nj);
 }
 
-ADD_TRANSFORMATION(SoftwareControlledNoCBufferless,
-		transformation_action_t({"SoftwareControlledNoCBufferless" , "Perform Bufferless NoC scheduling after deciding task mapping and routing.", algorithms::software_noc_bufferless})
-);
+ADD_TRANSFORMATION(SoftwareControlledNoCBufferless, "Perform Bufferless NoC scheduling after deciding task mapping and routing.", algorithms::software_noc_bufferless);
 
 
 

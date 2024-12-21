@@ -10,6 +10,7 @@
 #include <algorithms/throughput/kperiodic.h>
 #include <algorithms/buffersizing/periodic.h>
 #include "commons/commons.h"
+#include <models/BufferSizingResult.h>
 
 
 // This tests suite might be failing because of inappropriate graphs

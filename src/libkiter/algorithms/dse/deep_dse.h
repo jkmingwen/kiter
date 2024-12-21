@@ -27,7 +27,6 @@ std::pair<TIME_UNIT, std::vector<StorageDistribution>> get_next_storage_distribu
                                                                                                          const std::map<Edge,Edge>& matching, const std::map<Edge, TOKEN_UNIT> & minStepSizes, bool approx) ;
 StorageDistribution update_storage_distribution_from_cc(const StorageDistribution &sd_g, const StorageDistribution& sd_cc);
 
-ADD_THROUGHPUT_BUFFERING_DSE(DeepKPeriodicThroughputwithDSE,
-                   throughput_buffering_dse_action_t({"DeepKPeriodicThroughputwithDSE", "Experiment", algorithms::deep_dse_user}));
+ADD_THROUGHPUT_BUFFERING_DSE(DeepKPeriodicThroughputwithDSE, "Experiment", algorithms::deep_dse_user);
 
 #endif //KITER_DEEP_DSE_H

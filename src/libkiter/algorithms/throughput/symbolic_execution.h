@@ -51,9 +51,7 @@ namespace algorithms {
 
 }
 
-ADD_THROUGHPUT(SymbExec,
-                   throughput_action_t({ "SymbExec" , "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput}));
-ADD_THROUGHPUT(SymbExecDebug,
-                   throughput_action_t({ "SymbExecDebug" , "Test SymbExec with preset storage distribution.", algorithms::compute_asap_throughput_and_cycles_debug}));
+ADD_THROUGHPUT(SymbExec, "Execute graph using ASAP scheduling.", algorithms::compute_asap_throughput);
+ADD_THROUGHPUT(SymbExecDebug, "Test SymbExec with preset storage distribution.", algorithms::compute_asap_throughput_and_cycles_debug);
 
 #endif /* SYMBOLIC_EXECUTION_H_ */

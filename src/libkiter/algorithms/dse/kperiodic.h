@@ -47,8 +47,7 @@ void updateGraphwMatching(models::Dataflow* dataflow, const std::map<Edge,Edge>&
 
 
 
-ADD_THROUGHPUT_BUFFERING_DSE(KPeriodicThroughputwithDSE,
-		throughput_buffering_dse_action_t({"KPeriodicThroughputwithDSE", "Combine buffer space exploration with throughput evaluation of CSDF by K-periodic scheduling method", algorithms::compute_Kperiodic_throughput_dse_sd}));
+ADD_THROUGHPUT_BUFFERING_DSE(KPeriodicThroughputwithDSE, "Combine buffer space exploration with throughput evaluation of CSDF by K-periodic scheduling method", algorithms::compute_Kperiodic_throughput_dse_sd);
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_DSE_KPERIODIC_H_ */

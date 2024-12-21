@@ -57,11 +57,8 @@ namespace algorithms {
 
 
 ADD_THROUGHPUT_BUFFERING_DSE(throughputbufferingDSE,
-                   throughput_buffering_dse_action_t({
-                                            "throughputbufferingDSE",
                                             "DSE that solve the throughputbuffering problem for a graph with \"feedback\" buffers",
-                                            algorithms::dse::throughput_buffering_dse}
-                   ));
+                                            algorithms::dse::throughput_buffering_dse);
 
 
 

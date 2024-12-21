@@ -22,7 +22,5 @@ namespace algorithms {
 }
 
 
-ADD_THROUGHPUT(SPeriodicThroughput,
-		throughput_action_t({ "SPeriodicThroughput" , "Strictly Periodic schedule (Exact)", algorithms::compute_SPeriodic_throughput}));
-ADD_THROUGHPUT(ASPeriodicThroughput,
-		throughput_action_t({ "ASPeriodicThroughput" , "Strictly Periodic schedule (Approx)", algorithms::compute_ASPeriodic_throughput}));
+ADD_THROUGHPUT(SPeriodicThroughput,"Strictly Periodic schedule (Exact)", algorithms::compute_SPeriodic_throughput);
+ADD_THROUGHPUT(ASPeriodicThroughput,"Strictly Periodic schedule (Approx)", algorithms::compute_ASPeriodic_throughput);

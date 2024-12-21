@@ -122,7 +122,6 @@ void TDMASchedule    (models::Dataflow* const , parameters_list_t  parameters  )
 }
 
 
-ADD_ANALYSIS(TDMASchedule,
-		analysis_action_t({ "TDMASchedule" , "Execute the TDMA schedule for given list of packets", algorithms::scheduling::TDMASchedule}));
+ADD_ANALYSIS(TDMASchedule, "Execute the TDMA schedule for given list of packets", algorithms::scheduling::TDMASchedule);
 
 #endif /* SRC_LIBKITER_ALGORITHMS_SCHEDULING_TDMASCHEDULER_H_ */

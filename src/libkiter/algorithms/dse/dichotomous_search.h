@@ -23,8 +23,6 @@ namespace algorithms {
 	StorageDistributionSet compute_csdf_dse_from_function   (models::Dataflow* const  dataflow, const BufferSizingFun& sizing_fun, std::ostream& dseLog) ;
 }
 
-ADD_THROUGHPUT_BUFFERING_DSE(PeriodicDSE,
-		throughput_buffering_dse_action_t({ "PeriodicDSE" , "Bodin2013 Periodic DSE", algorithms::compute_csdf_dse_periodic}));
-ADD_THROUGHPUT_BUFFERING_DSE(SPeriodicDSE,
-		throughput_buffering_dse_action_t({ "SPeriodicDSE" , "Experimental Strictly Periodic DSE", algorithms::compute_csdf_dse_speriodic}));
+ADD_THROUGHPUT_BUFFERING_DSE(PeriodicDSE, "Bodin2013 Periodic DSE", algorithms::compute_csdf_dse_periodic);
+ADD_THROUGHPUT_BUFFERING_DSE(SPeriodicDSE,"Experimental Strictly Periodic DSE", algorithms::compute_csdf_dse_speriodic);
 #endif /* SRC_LIBKITER_ALGORITHMS_DSE_DICHOTOMOUS_SEARCH_H_ */

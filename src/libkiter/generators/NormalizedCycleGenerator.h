@@ -24,10 +24,8 @@ namespace generators {
 } // generators
 
 
-ADD_GENERATOR(GenerateNormalizedCycle,
-        generator_action_t(
-        { "GenerateNormalizedCycle" , "generate a normalized SDF cycle.", generators::generate_normalized_cycle})
-);
+ADD_GENERATOR(GenerateNormalizedCycle, "generate a normalized SDF cycle.", generators::generate_normalized_cycle);
+
 
 
 #endif //KITER_NORMALIZEDCYCLEGENERATOR_H

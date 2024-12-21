@@ -20,8 +20,7 @@ namespace algorithms {
     }
 }
 
-ADD_ANALYSIS(LivenessSC,
- analysis_action_t({ "LivenessSC" , "Use the SC1 and SC2 liveness condition to check liveness over a dataflow (Benazouz, DAC13).", algorithms::liveness::LivenessSC}));
+ADD_ANALYSIS(LivenessSC, "Use the SC1 and SC2 liveness condition to check liveness over a dataflow (Benazouz, DAC13).", algorithms::liveness::LivenessSC);
 
 
 

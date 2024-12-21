@@ -75,39 +75,17 @@ models::Scheduling BufferlessNoCScheduling(models::Dataflow* const  dataflow, pa
 
 // Recent stuff
 
-ADD_SCHEDULING(REALLP1,
-scheduling_action_t({ "REALLP1" , "Fully periodic scheduling for CSDF inefficient way", algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP}));
-
-ADD_SCHEDULING(LP1,
-scheduling_action_t({ "LP1" , "Rewriting Bodin2016 Threshold CSDF 1-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_1PeriodicScheduling_LP}));
-ADD_SCHEDULING(LPN,
-scheduling_action_t({ "LPN" , "Rewriting Bodin2016 Threshold CSDF N-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_NPeriodicScheduling_LP}));
-
-ADD_THROUGHPUT(EG1,
-throughput_action_t({ "EG1" , "Rewriting Bodin2013 CSDF 1-Periodic Scheduling", algorithms::scheduling::CSDF_1PeriodicThroughput}));
-ADD_THROUGHPUT(EGN,
-throughput_action_t({ "EGN" , "Rewriting Bodin2013 CSDF N-Periodic Scheduling", algorithms::scheduling::CSDF_NPeriodicThroughput}));
-ADD_SCHEDULING(BufferlessKPeriodicScheduling,
-		scheduling_action_t({ "BufferlessKPeriodicScheduling" , "Run Bufferless Kperiodic", algorithms::scheduling::bufferlessKPeriodicScheduling} )
-	);
-
-
-
-ADD_SCHEDULING(SPeriodicScheduling,
-scheduling_action_t({ "SPeriodicScheduling" , "Experimental", algorithms::scheduling::SPeriodicScheduling}));
-
-ADD_SCHEDULING(OnePeriodicScheduling,
-scheduling_action_t({ "1PeriodicScheduling" , "CSDF 1-Periodic Scheduling [Bodin2013]", algorithms::scheduling::OnePeriodicScheduling}));
-
-ADD_SCHEDULING(ASAPScheduling,
-scheduling_action_t({ "ASAPScheduling" , "Symbolic Execution", algorithms::scheduling::ASAPScheduling}));
-
-ADD_SCHEDULING(So4Scheduling,
-scheduling_action_t({ "So4Scheduling" , "Symbolic Execution with TDMA", algorithms::scheduling::So4Scheduling}));
-
-// Throughput techniques
-ADD_SCHEDULING(BufferlessNoCScheduling,
-		scheduling_action_t({ "BufferlessNoCScheduling" , "BufferlessNoCScheduling, WIP", algorithms::BufferlessNoCScheduling}));
+ADD_SCHEDULING(REALLP1, "Fully periodic scheduling for CSDF inefficient way", algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP);
+ADD_SCHEDULING(LP1,"Rewriting Bodin2016 Threshold CSDF 1-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_1PeriodicScheduling_LP);
+ADD_SCHEDULING(LPN, "Rewriting Bodin2016 Threshold CSDF N-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_NPeriodicScheduling_LP);
+ADD_THROUGHPUT(EG1,"Rewriting Bodin2013 CSDF 1-Periodic Scheduling", algorithms::scheduling::CSDF_1PeriodicThroughput);
+ADD_THROUGHPUT(EGN,"Rewriting Bodin2013 CSDF N-Periodic Scheduling", algorithms::scheduling::CSDF_NPeriodicThroughput);
+ADD_SCHEDULING(BufferlessKPeriodicScheduling, "Run Bufferless Kperiodic", algorithms::scheduling::bufferlessKPeriodicScheduling);
+ADD_SCHEDULING(SPeriodicScheduling,"Experimental", algorithms::scheduling::SPeriodicScheduling);
+ADD_SCHEDULING(OnePeriodicScheduling,"CSDF 1-Periodic Scheduling [Bodin2013]", algorithms::scheduling::OnePeriodicScheduling);
+ADD_SCHEDULING(ASAPScheduling,"Symbolic Execution", algorithms::scheduling::ASAPScheduling);
+ADD_SCHEDULING(So4Scheduling,"Symbolic Execution with TDMA", algorithms::scheduling::So4Scheduling);
+ADD_SCHEDULING(BufferlessNoCScheduling, "BufferlessNoCScheduling, WIP", algorithms::BufferlessNoCScheduling);
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_SCHEDULINGS_H_ */

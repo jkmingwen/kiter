@@ -21,6 +21,7 @@ namespace algorithms {
 
 
 ADD_BUFFER_SIZING(PeriodicSizing,
-		buffer_sizing_action_t({ "PeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling method.", algorithms::compute_csdf_1periodic_memory}));
+    "Minimal Buffer size estimation by periodic scheduling method.",
+    algorithms::compute_csdf_1periodic_memory);
 
 #endif /* THROUGHPUT_H_ */
