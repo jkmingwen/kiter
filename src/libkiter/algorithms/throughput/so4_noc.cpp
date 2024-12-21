@@ -179,7 +179,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentSo4Schedule(model
   }
 }
 
-void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
+models::Scheduling algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
                                          parameters_list_t param_list) {
   VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
   VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -246,7 +246,7 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
     models::Scheduling test = models::Scheduling(temp_df, omega, scheduling_result);
     std::cout << "Schedule Check: " << test.is_valid_schedule() << std::endl;
 
-    return;
+    return test;
   }
   // if graph is strongly connected, just need to use computeComponentThroughput
   std::pair<ARRAY_INDEX, EXEC_COUNT> actorInfo; // look at note for computeComponentThroughput
@@ -265,5 +265,5 @@ void algorithms::scheduling::So4Scheduling(models::Dataflow* const dataflow,
   std::cout << "So4 throughput is  " << minThroughput << std::endl;
   std::cout << "So4 period is  " << omega << std::endl;
 
-  return;
+  return res;
 }

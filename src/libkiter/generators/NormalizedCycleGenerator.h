@@ -25,7 +25,7 @@ namespace generators {
 
 
 ADD_GENERATOR(GenerateNormalizedCycle,
-        generator_t(
+        generator_action_t(
         { "GenerateNormalizedCycle" , "generate a normalized SDF cycle.", generators::generate_normalized_cycle})
 );
 

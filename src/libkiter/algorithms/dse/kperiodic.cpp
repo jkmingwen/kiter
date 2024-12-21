@@ -688,12 +688,7 @@ StorageDistributionSet algorithms::compute_Kperiodic_throughput_dse_sd (models::
 }
 
 
-void algorithms::compute_Kperiodic_throughput_dse (models::Dataflow* const dataflow,
-                                                   parameters_list_t  parameters) {
 
-    StorageDistributionSet sd = compute_Kperiodic_throughput_dse_sd(dataflow, parameters);
-    
-  }
 
 
 

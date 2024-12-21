@@ -20,4 +20,4 @@ void generate_expansion       (models::Dataflow* const  dataflow, parameters_lis
 
 
 ADD_TRANSFORMATION(PartialExpansion,
-		transformation_t({ "PartialExpansion" , "Generate the Partial Expansion Graph from WIP.", algorithms::generate_expansion}));
+		transformation_action_t({ "PartialExpansion" , "Generate the Partial Expansion Graph from WIP.", algorithms::generate_expansion}));

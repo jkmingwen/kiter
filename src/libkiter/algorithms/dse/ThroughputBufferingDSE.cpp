@@ -487,7 +487,7 @@
         }
 
 
-        void throughput_buffering_dse(models::Dataflow *const dataflow, parameters_list_t params) {
+         StorageDistributionSet throughput_buffering_dse(models::Dataflow *const dataflow, parameters_list_t params) {
             size_t realtime_output = (params.count("realtime") > 0) && commons::fromString<bool>(
                     params.at("realtime"));
             size_t thread_count = (params.count("thread") > 0) ? commons::fromString<size_t>(params.at("thread"))

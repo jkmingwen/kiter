@@ -12,10 +12,9 @@
 #include <models/Dataflow.h>
 #include <algorithms/buffersizing/periodic.h>
 #include <algorithms/throughput/kperiodic.h>
+#include<models/BufferSizingResult.h>
 
-
-
-BufferSizingResult algorithms::compute_csdf_1periodic_memory   (models::Dataflow* const  dataflow, parameters_list_t params) {
+models::BufferSizingResult algorithms::compute_csdf_1periodic_memory   (models::Dataflow* const  dataflow, parameters_list_t params) {
     VERBOSE_INFO("Please note you can specify the ILP and GENONLY parameter flags.");
 
     TIME_UNIT period    = commons::get_parameter<TIME_UNIT>(params, "PERIOD", 0.0) ;
@@ -46,7 +45,7 @@ BufferSizingResult algorithms::compute_csdf_1periodic_memory   (models::Dataflow
 
 }
 
-BufferSizingResult algorithms::periodic_memory_sizing_csdf   (models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool ilp_solving, bool gen_only) {
+models::BufferSizingResult algorithms::periodic_memory_sizing_csdf   (models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool ilp_solving, bool gen_only) {
 
 	commons::ValueKind CONTINUE_OR_INTEGER = commons::KIND_CONTINUE;
 	if (ilp_solving) CONTINUE_OR_INTEGER = commons::KIND_INTEGER;
@@ -274,7 +273,7 @@ BufferSizingResult algorithms::periodic_memory_sizing_csdf   (models::Dataflow* 
 	// bool sol = g.solve(ilp_params);
 	if (gen_only)  {
 		g.writeMPSProblem();
-		return BufferSizingResult(false);
+		return models::BufferSizingResult(false);
 	}
 	bool sol = g.solveWith();
 

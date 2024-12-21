@@ -16,6 +16,7 @@
 
 #include "periodic_fixed.h"
 
+#include<models/BufferSizingResult.h>
 
 void algorithms::checkOffsets (models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & offsets) {
 
@@ -53,7 +54,7 @@ void algorithms::checkOffsets (models::Dataflow * const dataflow,TIME_UNIT OMEGA
 
 }
 
-BufferSizingResult algorithms::speriodic_memory_sizing_csdf (models::Dataflow* const  dataflow, TIME_UNIT period, bool solve_ilp, bool gen_only) {
+models::BufferSizingResult algorithms::speriodic_memory_sizing_csdf (models::Dataflow* const  dataflow, TIME_UNIT period, bool solve_ilp, bool gen_only) {
     std::map<Vertex,std::vector<TIME_UNIT> > offsets;
 
     VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -65,11 +66,11 @@ BufferSizingResult algorithms::speriodic_memory_sizing_csdf (models::Dataflow* c
         checkOffsets(dataflow,period,offsets);
         return compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only);
     } else {
-        return BufferSizingResult();
+        return models::BufferSizingResult();
     }
 }
 
-BufferSizingResult algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataflow, parameters_list_t params) {
+models::BufferSizingResult algorithms::compute_strictly_periodic_memory (models::Dataflow* const dataflow, parameters_list_t params) {
         std::map<Vertex,std::vector<TIME_UNIT> > offsets;
 
         VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -120,7 +121,7 @@ BufferSizingResult algorithms::compute_strictly_periodic_memory (models::Dataflo
         bool      gen_only  = commons::get_parameter<bool>(params, "GENONLY", false) ;
         generateStrictlyPeriodicOffsets(dataflow,period,offsets);
         checkOffsets(dataflow,period,offsets);
-        BufferSizingResult buf_res = compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only);
+        models::BufferSizingResult buf_res = compute_periodic_fixed_memory(dataflow, offsets,period, solve_ilp, gen_only);
         dataflow->reset_computation();
 
         std::vector<ARRAY_INDEX> id_list; // no known way of getting a static edge list
@@ -152,7 +153,7 @@ BufferSizingResult algorithms::compute_strictly_periodic_memory (models::Dataflo
     }
 
 
-BufferSizingResult algorithms::compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params){
+models::BufferSizingResult algorithms::compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params){
     std::map<Vertex,std::vector<TIME_UNIT> > offsets;
 
     VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -743,9 +744,9 @@ bool algorithms::generateMinMaxOffsets(models::Dataflow * dataflow, TIME_UNIT OM
 
 
 
-    BufferSizingResult algorithms::compute_periodic_fixed_memory (models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & offsets,  TIME_UNIT PERIOD, bool ilp_solving, bool gen_only){
+    models::BufferSizingResult algorithms::compute_periodic_fixed_memory (models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & offsets,  TIME_UNIT PERIOD, bool ilp_solving, bool gen_only){
 
-    BufferSizingResult res;
+        models::BufferSizingResult res;
         commons::ValueKind CONTINUE_OR_INTEGER = commons::KIND_CONTINUE;
         if (ilp_solving) CONTINUE_OR_INTEGER = commons::KIND_INTEGER;
 
@@ -1052,7 +1053,7 @@ bool algorithms::generateMinMaxOffsets(models::Dataflow * dataflow, TIME_UNIT OM
        } else {
            VERBOSE_ERROR("No feasible solution");
        }
-       return BufferSizingResult();
+       return models::BufferSizingResult();
 
 
    }

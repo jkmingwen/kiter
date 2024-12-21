@@ -26,7 +26,7 @@ namespace algorithms {
 }
 
 ADD_TRANSFORMATION(AddIOLoop,
-        transformation_t({ "AddIOLoop" , "Take any output tasks and connect it to any input task. Weights only works for HSDFG.", algorithms::transformation::add_input_output_loop}));
+        transformation_action_t({ "AddIOLoop" , "Take any output tasks and connect it to any input task. Weights only works for HSDFG.", algorithms::transformation::add_input_output_loop}));
 
 
 #endif //KITER_ADDINOUTLOOP_H

@@ -723,7 +723,7 @@ bool algorithms::updateVectorWithLocalNi(const models::Dataflow *  const dataflo
 }
 
 
-void algorithms::compute_NKperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
+TIME_UNIT algorithms::compute_NKperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
 
 	VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
@@ -739,11 +739,11 @@ void algorithms::compute_NKperiodic_throughput (models::Dataflow* const  dataflo
 	TIME_UNIT res = result.throughput;
 	std::cout << "NPeriodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  res   << std::endl;
 	std::cout << "NPeriodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << 1.0/res   << std::endl;
-
+	return res;
 }
 
 
-void algorithms::compute_2Kperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
+TIME_UNIT algorithms::compute_2Kperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
 
 	VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
 
@@ -757,11 +757,11 @@ void algorithms::compute_2Kperiodic_throughput (models::Dataflow* const  dataflo
 	TIME_UNIT res = result.throughput;
 	std::cout << "2Periodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  res   << std::endl;
 	std::cout << "2Periodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << 1.0/res   << std::endl;
-
+return res;
 }
 
 
-void algorithms::compute_1Kperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t param_list) {
+TIME_UNIT algorithms::compute_1Kperiodic_throughput (models::Dataflow* const  dataflow, parameters_list_t param_list) {
 
 	VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
 
@@ -780,6 +780,8 @@ void algorithms::compute_1Kperiodic_throughput (models::Dataflow* const  dataflo
 		TIME_UNIT res = result.throughput;
 		std::cout << "Period=" <<  std::floor(1.0/res)   << std::endl;
 	}
+
+	return result.throughput;
 }
 
 
@@ -850,7 +852,7 @@ std::cout << dataflow->getFilename()
  * This function is the main algorithm to compute the throughput of a CSDF
  * using iter as described in Bodin16.
  */
-void algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow, parameters_list_t params ) {
+TIME_UNIT algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow, parameters_list_t params ) {
 
 	auto very_start = std::chrono::steady_clock::now();
 	auto start = std::chrono::steady_clock::now();
@@ -1048,6 +1050,7 @@ void algorithms::compute_Kperiodic_throughput (models::Dataflow* const dataflow,
         std::cout << "Period="  << std::floor(1.0/res)    << std::endl;
 
 		}
+	return res;
 }
 
 

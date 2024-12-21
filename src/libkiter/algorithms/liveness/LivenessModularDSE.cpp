@@ -250,12 +250,13 @@ TokenConfigurationSet solve_liveness   (models::Dataflow* const  dataflow,
             }
 
             exploration_future.wait();
+
             return dse.getResults();
         }
 
 
 
-void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params) {
+StorageDistributionSet liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
     size_t use_last   = (params.count("use_last") > 0) ? commons::fromString<bool>(params.at("use_last")) : false;
     size_t use_dichotomy   = (params.count("use_dichotomy") > 0) ? commons::fromString<bool>(params.at("use_dichotomy")) : false;
@@ -272,6 +273,8 @@ void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params
     TokenConfigurationSet result = solve_liveness   (dataflow, realtime_output, thread_count, timeout, limit, filename, use_last,use_dichotomy, use_constraints,  tc);
 
     delete tc;
+            //TODO: FIXME: This is a failure ... we need to return the set!!
+            return {};
 }
     } // end of dse namespace
 } // end of algorithms namespace

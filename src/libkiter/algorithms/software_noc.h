@@ -27,7 +27,7 @@ namespace algorithms {
 }
 
 ADD_TRANSFORMATION(SoftwareControlledNoCBufferless,
-		transformation_t({"SoftwareControlledNoCBufferless" , "Perform Bufferless NoC scheduling after deciding task mapping and routing.", algorithms::software_noc_bufferless})
+		transformation_action_t({"SoftwareControlledNoCBufferless" , "Perform Bufferless NoC scheduling after deciding task mapping and routing.", algorithms::software_noc_bufferless})
 );
 
 

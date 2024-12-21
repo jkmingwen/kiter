@@ -18,10 +18,10 @@ namespace algorithms {
     void packet_list(models::Dataflow* const  dataflow, parameters_list_t ) ;
 }
 
-ADD_TRANSFORMATION(SymbolicExecutionWP,
-		transformation_t({ "SymbolicExecutionWP" , "Execute task in ASAP fashion and print out the scheduling.", algorithms::symbolic_execution_with_packets}));
-ADD_TRANSFORMATION(SymbolicExecution,
-		transformation_t({ "SymbolicExecution" , "Execute task in ASAP fashion.", algorithms::symbolic_execution}));
+ADD_ANALYSIS(SymbolicExecutionWP,
+		analysis_action_t({ "SymbolicExecutionWP" , "Execute task in ASAP fashion and print out the scheduling.", algorithms::symbolic_execution_with_packets}));
+ADD_ANALYSIS(SymbolicExecution,
+		analysis_action_t({ "SymbolicExecution" , "Execute task in ASAP fashion.", algorithms::symbolic_execution}));
 
 
 

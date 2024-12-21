@@ -16,10 +16,10 @@ namespace models {
 class Dataflow;
 }
 namespace algorithms {
-    BufferSizingResult compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t);
+    models::BufferSizingResult compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t);
 }
 ADD_BUFFER_SIZING(BackPressureSizing,
-		buffer_sizing_t({ "BackPressureSizing" , "Buffer sizing method from Wiggers et al DAC 2007 paper.", algorithms::compute_backpressure_memory_sizing}));
+		buffer_sizing_action_t({ "BackPressureSizing" , "Buffer sizing method from Wiggers et al DAC 2007 paper.", algorithms::compute_backpressure_memory_sizing}));
 
 
 #endif /* BACKPRESSURE_H_ */

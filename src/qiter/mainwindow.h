@@ -15,7 +15,10 @@ Q_OBJECT
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+private:
 
+    template<typename R, typename T>
+    void create_menu (std::string text, T* receiver, void (T::*slot)()  ) ;
 private slots:
     void loadGraph();
     void onGenerateActionTriggered();

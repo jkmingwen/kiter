@@ -13,34 +13,13 @@
 #include <map>
 #include <iostream>
 #include <functional>
+#include <algorithm>
+
 
 typedef std::map<std::string,std::string> parameters_list_t;
 
-namespace models {
-class Dataflow;
-}
 
-/**
- * This part is about buffer sizing
- */
-
-class BufferSizingResult {
-
-    bool       _valid;
-    TOKEN_UNIT _total_size;
-    std::map<ARRAY_INDEX, TOKEN_UNIT> _idv_size;
-public:
-    BufferSizingResult(TOKEN_UNIT t) : _valid (true), _total_size(t) {}
-    BufferSizingResult() : _valid (false), _total_size(0) {}
-    bool is_valid() const {return _valid;}
-    TOKEN_UNIT total_size() const {return _total_size;}
-    void set_validity(bool validity){_valid = validity;}
-    void set_total_size(TOKEN_UNIT token){_total_size = token;}
-    void add_edge_size(ARRAY_INDEX edge, TOKEN_UNIT size) {_idv_size.insert({edge, size});}
-    TOKEN_UNIT get_edge_size (ARRAY_INDEX edge) {return _idv_size[edge];}
-};
-
-typedef std::function< BufferSizingResult(models::Dataflow* const, TIME_UNIT) > BufferSizingFun;
+// typedef std::function< BufferSizingResult(models::Dataflow* const, TIME_UNIT) > BufferSizingFun;
 
 
 
@@ -48,38 +27,68 @@ typedef std::function< BufferSizingResult(models::Dataflow* const, TIME_UNIT) > 
  * This part defines KiterRegistry and the different type of actions it can support
  */
 
-struct generator_t {
+struct generator_action_t {
 	std::string name;
 	std::string desc;
 	models::Dataflow* (*fun)(parameters_list_t);
 };
 
-struct transformation_t {
-	std::string name;
-	std::string desc;
-	void (*fun)(models::Dataflow*, parameters_list_t);
-};
-
-struct buffer_sizing_t {
-    std::string name;
-    std::string desc;
-    BufferSizingResult (*fun)(models::Dataflow*, parameters_list_t);
-};
-
-struct printer_t {
+struct transformation_action_t {
     std::string name;
     std::string desc;
     void (*fun)(models::Dataflow*, parameters_list_t);
 };
 
+struct buffer_sizing_action_t {
+    std::string name;
+    std::string desc;
+
+    models::BufferSizingResult (*fun)(models::Dataflow*, parameters_list_t);
+};
+struct printer_action_t {
+    std::string name;
+    std::string desc;
+    void (*fun)(models::Dataflow*, parameters_list_t);
+};
+
+struct scheduling_action_t {
+    std::string name;
+    std::string desc;
+    models::Scheduling  (*fun)(models::Dataflow*, parameters_list_t);
+};
+
+struct analysis_action_t {
+    std::string name;
+    std::string desc;
+    void (*fun)(models::Dataflow*, parameters_list_t);
+};
+struct throughput_action_t {
+    std::string name;
+    std::string desc;
+    TIME_UNIT  (*fun)(models::Dataflow*, parameters_list_t);
+};
+
+
+struct throughput_buffering_dse_action_t {
+    std::string name;
+    std::string desc;
+
+    StorageDistributionSet (*fun)(models::Dataflow*, parameters_list_t);
+};
+
 
 #define ADD_KITER_TOOL(name,type,t)  static auto name##unique = KiterRegistry<type>::add(t)
-#define ADD_BUFFER_SIZING(name,t)    ADD_KITER_TOOL(name,buffer_sizing_t,t)
-#define ADD_TRANSFORMATION(name,t)   ADD_KITER_TOOL(name,transformation_t,t)
-#define ADD_GENERATOR(name,t)        ADD_KITER_TOOL(name,generator_t,t)
-#define ADD_PRINTER(name,t)          ADD_KITER_TOOL(name,printer_t,t)
 
-template <typename T = transformation_t>
+#define ADD_BUFFER_SIZING(name,t)    ADD_KITER_TOOL(name,buffer_sizing_action_t,t)
+#define ADD_TRANSFORMATION(name,t)   ADD_KITER_TOOL(name,transformation_action_t,t)
+#define ADD_THROUGHPUT_BUFFERING_DSE(name,t)   ADD_KITER_TOOL(name,throughput_buffering_dse_action_t,t)
+#define ADD_ANALYSIS(name,t)   ADD_KITER_TOOL(name,analysis_action_t,t)
+#define ADD_SCHEDULING(name,t)   ADD_KITER_TOOL(name,scheduling_action_t,t)
+#define ADD_THROUGHPUT(name,t)   ADD_KITER_TOOL(name,throughput_action_t,t)
+#define ADD_GENERATOR(name,t)        ADD_KITER_TOOL(name,generator_action_t,t)
+#define ADD_PRINTER(name,t)          ADD_KITER_TOOL(name,printer_action_t,t)
+
+template <typename T = transformation_action_t>
 class KiterRegistry {
 
   public:
@@ -116,19 +125,35 @@ class KiterRegistry {
     }
     static void print_all (std::ostream &out) {
         out << " List of supported generator (-g) is " << std::endl;
-        KiterRegistry<generator_t>::print(out);
+        KiterRegistry<generator_action_t>::print(out);
         out << "" << std::endl;
 
         out << " List of supported buffer sizing algorithms (-a) is " << std::endl;
-        KiterRegistry<buffer_sizing_t>::print(out);
+        KiterRegistry<buffer_sizing_action_t>::print(out);
         out << "" << std::endl;
 
-        out << " List of supported algorithms (-a) is " << std::endl;
-        KiterRegistry<transformation_t>::print(out);
+        out << " List of supported transformation algorithms (-a) is " << std::endl;
+        KiterRegistry<transformation_action_t>::print(out);
+        out << "" << std::endl;
+
+        out << " List of supported scheduling algorithms (-a) is " << std::endl;
+        KiterRegistry<scheduling_action_t>::print(out);
+        out << "" << std::endl;
+
+        out << " List of supported throughput algorithms (-a) is " << std::endl;
+        KiterRegistry<throughput_action_t>::print(out);
+        out << "" << std::endl;
+
+        out << " List of supported DSE algorithms (-a) is " << std::endl;
+        KiterRegistry<throughput_buffering_dse_action_t>::print(out);
+        out << "" << std::endl;
+
+        out << " List of supported analysis algorithms (-a) is " << std::endl;
+        KiterRegistry<analysis_action_t>::print(out);
         out << "" << std::endl;
 
         out << " List of supported printers (-a) is " << std::endl;
-        KiterRegistry<printer_t>::print(out);
+        KiterRegistry<printer_action_t>::print(out);
         out << "" << std::endl;
 
     }

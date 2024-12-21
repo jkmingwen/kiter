@@ -47,7 +47,7 @@ namespace generators {
 }
 
 ADD_GENERATOR(GenerateRandomSDF,
-		generator_t(
+		generator_action_t(
 				{ "GenerateRandomSDF" , "generate LTE SDF.", generators::generate_random_sdf})
 );
 

@@ -106,7 +106,7 @@ static LARGE_INT gcdExtended(LARGE_INT x, LARGE_INT y, LARGE_INT *a, LARGE_INT *
 }
 
 //print_graph(to, original_df);
-void algorithms::BufferlessNoCScheduling(models::Dataflow* const  _dataflow, parameters_list_t params) {
+models::Scheduling  algorithms::BufferlessNoCScheduling(models::Dataflow* const  _dataflow, parameters_list_t params) {
 
 	models::Dataflow* to = new models::Dataflow(*_dataflow);
 
@@ -173,6 +173,8 @@ void algorithms::BufferlessNoCScheduling(models::Dataflow* const  _dataflow, par
 	if (params.count("PRINT")) {
 		std::cout << printers::PeriodicScheduling2DOT(to, scheduling_res ,   60, true ,  1 , 1);
 	}
+
+	return scheduling_res;
 }
 
 

@@ -7,6 +7,32 @@
 #include "commons/KiterRegistry.h"
 #include "generators/generators.h"
 #include "ParameterInputDialog.h"
+#include <QProgressDialog>
+#include <QFuture>
+#include <QThread>
+#include <QtConcurrent>
+#include <models/BufferSizingResult.h>
+
+template<typename R, typename T>
+void MainWindow::create_menu (std::string text,T* receiver, void (T::*slot)() ) {
+
+    // Create menu dynamically
+    auto *newMenu = new QMenu(tr(text.c_str()), receiver);
+    ui->menubar->addMenu(newMenu);
+
+
+     // Get the list from KiterRegistry
+    std::vector<std::string> actionsNames = KiterRegistry<R>::get_names();
+
+    for (const std::string &actionsName : actionsNames) {
+        auto *action = new QAction(QString::fromStdString(actionsName), receiver);
+        action->setData(QString::fromStdString(actionsName));
+        newMenu->addAction(action);
+        connect(action, &QAction::triggered, receiver, slot);
+    }
+
+}
+
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent)
@@ -22,61 +48,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->actionLoad, &QAction::triggered, this, &MainWindow::loadGraph);
 
-    // Create Generate menu dynamically
-    QMenu *generateMenu = new QMenu(tr("&Generate"), this);
-    ui->menubar->addMenu(generateMenu);
+    create_menu<generator_action_t>("&Generate",  this, &MainWindow::onGenerateActionTriggered);
+    create_menu<transformation_action_t>("&Transformations", this, &MainWindow::onTransformationActionTriggered);
+    create_menu<buffer_sizing_action_t>("&Buffer Sizing", this, &MainWindow::onBufferSizingActionTriggered);
+    create_menu<printer_action_t>("&Printers", this, &MainWindow::onPrinterActionTriggered);
 
-    // Get the list of generators from KiterRegistry
-    std::vector<std::string> generatorNames = KiterRegistry<generator_t>::get_names();
-
-    for (const std::string &generatorName : generatorNames) {
-        QAction *action = new QAction(QString::fromStdString(generatorName), this);
-        action->setData(QString::fromStdString(generatorName));
-        generateMenu->addAction(action);
-        connect(action, &QAction::triggered, this, &MainWindow::onGenerateActionTriggered);
-    }
-
-    // Create Transformations menu dynamically
-    QMenu *transformationsMenu = new QMenu(tr("&Transformations"), this);
-    ui->menubar->addMenu(transformationsMenu);
-
-    // Get the list of transformations from KiterRegistry
-    std::vector<std::string> transformationNames = KiterRegistry<transformation_t>::get_names();
-
-    for (const std::string &transformationName : transformationNames) {
-        QAction *action = new QAction(QString::fromStdString(transformationName), this);
-        action->setData(QString::fromStdString(transformationName));
-        transformationsMenu->addAction(action);
-        connect(action, &QAction::triggered, this, &MainWindow::onTransformationActionTriggered);
-    }
-
-    // Create Buffer Sizing menu dynamically
-    QMenu *bufferSizingMenu = new QMenu(tr("&Buffer Sizing"), this);
-    ui->menubar->addMenu(bufferSizingMenu);
-
-    // Get the list of buffer sizings from KiterRegistry
-    std::vector<std::string> bufferSizingNames = KiterRegistry<buffer_sizing_t>::get_names();
-
-    for (const std::string &bufferSizingName : bufferSizingNames) {
-        QAction *action = new QAction(QString::fromStdString(bufferSizingName), this);
-        action->setData(QString::fromStdString(bufferSizingName));
-        bufferSizingMenu->addAction(action);
-        connect(action, &QAction::triggered, this, &MainWindow::onBufferSizingActionTriggered);
-    }
-
-    // Create Printers menu dynamically
-    QMenu *printersMenu = new QMenu(tr("&Printers"), this);
-    ui->menubar->addMenu(printersMenu);
-
-    // Get the list of printers from KiterRegistry
-    std::vector<std::string> printerNames = KiterRegistry<printer_t>::get_names();
-
-    for (const std::string &printerName : printerNames) {
-        QAction *action = new QAction(QString::fromStdString(printerName), this);
-        action->setData(QString::fromStdString(printerName));
-        printersMenu->addAction(action);
-        connect(action, &QAction::triggered, this, &MainWindow::onPrinterActionTriggered);
-    }
 }
 
 MainWindow::~MainWindow()
@@ -114,8 +90,8 @@ void MainWindow::loadGraph()
 }
 void MainWindow::onTransformationActionTriggered()
 {
-    handleAction<transformation_t, void>(
-            [this](const transformation_t *actionInstance, const parameters_list_t &parameters) {
+    handleAction<transformation_action_t, void>(
+            [this](const transformation_action_t *actionInstance, const parameters_list_t &parameters) {
                 // Ensure dataflow is loaded
                 models::Dataflow *dataflow = graphWidget->getDataflow();
                 if (!dataflow) {
@@ -134,8 +110,8 @@ void MainWindow::onTransformationActionTriggered()
 
 void MainWindow::onPrinterActionTriggered()
 {
-    handleAction<printer_t, void>(
-            [this](const printer_t *actionInstance, const parameters_list_t &parameters) {
+    handleAction<printer_action_t, void>(
+            [this](const printer_action_t *actionInstance, const parameters_list_t &parameters) {
                 models::Dataflow *dataflow = graphWidget->getDataflow();
                 if (!dataflow) {
                     QMessageBox::warning(this, tr("No Dataflow"), tr("Please load or generate a dataflow graph first."));
@@ -152,8 +128,8 @@ void MainWindow::onPrinterActionTriggered()
 
 void MainWindow::onBufferSizingActionTriggered()
 {
-    handleAction<buffer_sizing_t, BufferSizingResult>(
-            [this](const buffer_sizing_t *actionInstance, const parameters_list_t &parameters) -> BufferSizingResult {
+    handleAction<buffer_sizing_action_t, models::BufferSizingResult>(
+            [this](const buffer_sizing_action_t *actionInstance, const parameters_list_t &parameters) -> models::BufferSizingResult {
                 models::Dataflow *dataflow = graphWidget->getDataflow();
                 if (!dataflow) {
                     QMessageBox::warning(this, tr("No Dataflow"), tr("Please load or generate a dataflow graph first."));
@@ -161,7 +137,7 @@ void MainWindow::onBufferSizingActionTriggered()
                 }
                 return actionInstance->fun(dataflow, parameters);
             },
-            [this](const BufferSizingResult &res) {
+            [this](const models::BufferSizingResult &res) {
                 // Post-action processing
                 qInfo() << "Total buffer size:" << res.total_size();
                 QMessageBox::information(this, tr("Buffer Sizing Result"),
@@ -173,8 +149,8 @@ void MainWindow::onBufferSizingActionTriggered()
 
 void MainWindow::onGenerateActionTriggered()
 {
-    handleAction<generator_t, models::Dataflow *>(
-            [](const generator_t *actionInstance, const parameters_list_t &parameters) -> models::Dataflow * {
+    handleAction<generator_action_t, models::Dataflow *>(
+            [](const generator_action_t *actionInstance, const parameters_list_t &parameters) -> models::Dataflow * {
                 return actionInstance->fun(parameters);
             },
             [this](models::Dataflow *newDataflow) {
@@ -191,12 +167,12 @@ void MainWindow::onGenerateActionTriggered()
 template <typename ActionType, typename ResultType, typename ActionFunction, typename PostAction>
 void MainWindow::handleAction(ActionFunction actionFunction, PostAction postAction) {
     try {
-        QAction *actionSender = qobject_cast<QAction *>(sender());
+        auto *actionSender = qobject_cast<QAction *>(sender());
         if (!actionSender) {
             qWarning() << "Sender is not a QAction!";
             return;
         }
-        QString actionName = actionSender->data().toString();
+        const QString actionName = actionSender->data().toString();
         qInfo() << "Action selected:" << actionName;
 
         // Show a dialog to input parameters
@@ -215,21 +191,44 @@ void MainWindow::handleAction(ActionFunction actionFunction, PostAction postActi
             return;
         }
 
+        // Progress dialog setup
+        QProgressDialog progressDialog(tr("Processing..."), tr("Cancel"), 0, 0, this);
+        progressDialog.setWindowModality(Qt::WindowModal);
+        progressDialog.setCancelButton(nullptr); // Prevent cancellation for now
+        progressDialog.setMinimumDuration(0);
+        progressDialog.show();
+
         qInfo() << "Performing action...";
 
-        // Run the action on the main thread
-        if constexpr (std::is_same<ResultType, void>::value) {
-            // If ResultType is void, call the function without assigning to a variable
-            actionFunction(actionInstance, parameters);
-            qInfo() << "Action completed.";
-            // Process the result using the provided post-action function
-            postAction();
+        // Run the action asynchronously using QtConcurrent::run
+        QFuture<void> future = QtConcurrent::run([=]() {
+            if constexpr (std::is_same<ResultType, void>::value) {
+                // If ResultType is void
+                actionFunction(actionInstance, parameters);
+            } else {
+                // If ResultType is not void
+                ResultType result = actionFunction(actionInstance, parameters);
+                QMetaObject::invokeMethod(this, [=]() {
+                    postAction(result);
+                });
+            }
+        });
+
+        // Keep the UI responsive and monitor the progress
+        QFutureWatcher<void> watcher;
+        connect(&watcher, &QFutureWatcher<void>::finished, &progressDialog, &QProgressDialog::accept);
+        watcher.setFuture(future);
+
+        // Show the progress dialog until the task is completed
+        progressDialog.exec();
+
+        if (progressDialog.wasCanceled()) {
+            qInfo() << "Action canceled.";
         } else {
-            // If ResultType is not void, assign the result to a variable
-            ResultType result = actionFunction(actionInstance, parameters);
             qInfo() << "Action completed.";
-            // Process the result using the provided post-action function
-            postAction(result);
+            if constexpr (std::is_same<ResultType, void>::value) {
+                postAction();
+            }
         }
 
 

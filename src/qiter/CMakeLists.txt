@@ -4,7 +4,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt5 COMPONENTS Widgets Core Gui REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Core Gui Concurrent REQUIRED)
 
 set(SOURCE_FILES
         qiter.cpp
@@ -18,7 +18,7 @@ set(SOURCE_FILES
 )
 
 add_executable(qiter ${SOURCE_FILES})
-target_link_libraries(qiter PRIVATE Qt5::Widgets ${KITER_LIBRARIES} -lz)
+target_link_libraries(qiter PRIVATE Qt5::Widgets Qt5::Concurrent ${KITER_LIBRARIES} -lz)
 target_include_directories(qiter PRIVATE ${KITER_INCLUDE_DIR})
 
 install(TARGETS qiter DESTINATION bin)

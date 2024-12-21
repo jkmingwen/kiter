@@ -29,7 +29,7 @@ namespace algorithms {
 }
 
 ADD_TRANSFORMATION(RemoveReentrancy,
-		transformation_t({ "RemoveReentrancy" , "Set reentrancy to 0 for every task or selected tasks.", algorithms::transformation::remove_reentrancy}));
+		transformation_action_t({ "RemoveReentrancy" , "Set reentrancy to 0 for every task or selected tasks.", algorithms::transformation::remove_reentrancy}));
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_REMOVE_REENTRANCY_H_ */

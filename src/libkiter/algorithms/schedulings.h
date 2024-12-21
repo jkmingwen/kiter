@@ -19,7 +19,7 @@ typedef std::map<Vertex,EXEC_COUNT> periodicity_vector_t;
 
 struct kperiodic_result_t {
 	TIME_UNIT      throughput;
-	std::set<Edge> critical_edges;
+	critical_circuit_t critical_edges;
 };
 
 scheduling_t period2scheduling    (const models::Dataflow* const  dataflow, const periodicity_vector_t & kvector , TIME_UNIT throughput) ;
@@ -28,14 +28,14 @@ models::Scheduling  period2Scheduling    (const models::Dataflow* const  dataflo
 namespace algorithms {
 
 
-void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_t   param_list);
+models::Scheduling BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_t   param_list);
 
 	namespace scheduling {
 		void KPeriodic_taskNoCbufferless(models::Dataflow*, parameters_list_t param_list);
 		scheduling_t bufferless_scheduling(models::Dataflow* const  dataflow, periodicity_vector_t &  kvector);
 		void sdf_bufferless_scheduling (models::Dataflow* const  dataflow, periodicity_vector_t &  kvector, std::vector<std::vector <Vertex> > task_sequences);
 		scheduling_t bufferless_kperiodic_scheduling(models::Dataflow* const  dataflow, bool stop_at_first, bool get_previous);
-		void bufferlessKPeriodicScheduling (models::Dataflow* const  dataflow, parameters_list_t params) ;
+		models::Scheduling  bufferlessKPeriodicScheduling (models::Dataflow* const  dataflow, parameters_list_t params) ;
 
 
 
@@ -45,29 +45,29 @@ void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_
 		const periodicity_vector_t generateNPeriodicVector(const models::Dataflow* dataflow);
 
 		 models::Scheduling CSDF_KPeriodicScheduling_LP    (const models::Dataflow* const dataflow, const periodicity_vector_t& kvector);
-		 void CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
-		 void CSDF_NPeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
+		 models::Scheduling CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
+		 models::Scheduling CSDF_NPeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
 
-		 void CSDF_1PeriodicThroughput    (models::Dataflow*  dataflow, parameters_list_t );
-		 void CSDF_NPeriodicThroughput    (models::Dataflow*  dataflow, parameters_list_t );
+		 TIME_UNIT CSDF_1PeriodicThroughput    (models::Dataflow*  dataflow, parameters_list_t );
+		 TIME_UNIT CSDF_NPeriodicThroughput    (models::Dataflow*  dataflow, parameters_list_t );
 
 
 		 models::Scheduling CSDF_1PeriodicScheduling    (const models::Dataflow* const dataflow);
-		 void OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
+		 models::Scheduling OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 
 		 models::Scheduling CSDF_RealPeriodicScheduling_LP    (const models::Dataflow* const dataflow);
-		 void CSDF_Real1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
+		 models::Scheduling  CSDF_Real1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t );
 
 
 		 models::Scheduling CSDF_SPeriodicScheduling       (const models::Dataflow* const dataflow) ;
-		 void SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
+		 models::Scheduling  SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 		 models::Scheduling ASAPScheduling       (models::Dataflow* dataflow) ;
-		 void ASAPScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
+		 models::Scheduling  ASAPScheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 		 models::Scheduling So4Scheduling       (const models::Dataflow* const dataflow) ;
-		 void So4Scheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
+		 models::Scheduling  So4Scheduling (models::Dataflow*  dataflow, parameters_list_t ) ;
 
 	} // end of scheduling namespace
 } // end of algorithm namespace
@@ -75,39 +75,39 @@ void BufferlessNoCScheduling(models::Dataflow* const  dataflow, parameters_list_
 
 // Recent stuff
 
-ADD_TRANSFORMATION(REALLP1,
-transformation_t({ "REALLP1" , "Fully periodic scheduling for CSDF inefficient way", algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP}));
+ADD_SCHEDULING(REALLP1,
+scheduling_action_t({ "REALLP1" , "Fully periodic scheduling for CSDF inefficient way", algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP}));
 
-ADD_TRANSFORMATION(LP1,
-transformation_t({ "LP1" , "Rewriting Bodin2016 Threshold CSDF 1-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_1PeriodicScheduling_LP}));
-ADD_TRANSFORMATION(LPN,
-transformation_t({ "LPN" , "Rewriting Bodin2016 Threshold CSDF N-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_NPeriodicScheduling_LP}));
+ADD_SCHEDULING(LP1,
+scheduling_action_t({ "LP1" , "Rewriting Bodin2016 Threshold CSDF 1-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_1PeriodicScheduling_LP}));
+ADD_SCHEDULING(LPN,
+scheduling_action_t({ "LPN" , "Rewriting Bodin2016 Threshold CSDF N-Periodic Scheduling with Bufferless channel using Linear Programming", algorithms::scheduling::CSDF_NPeriodicScheduling_LP}));
 
-ADD_TRANSFORMATION(EG1,
-transformation_t({ "EG1" , "Rewriting Bodin2013 CSDF 1-Periodic Scheduling", algorithms::scheduling::CSDF_1PeriodicThroughput}));
-ADD_TRANSFORMATION(EGN,
-transformation_t({ "EGN" , "Rewriting Bodin2013 CSDF N-Periodic Scheduling", algorithms::scheduling::CSDF_NPeriodicThroughput}));
-ADD_TRANSFORMATION(BufferlessKPeriodicScheduling,
-		transformation_t({ "BufferlessKPeriodicScheduling" , "Run Bufferless Kperiodic", algorithms::scheduling::bufferlessKPeriodicScheduling} )
+ADD_THROUGHPUT(EG1,
+throughput_action_t({ "EG1" , "Rewriting Bodin2013 CSDF 1-Periodic Scheduling", algorithms::scheduling::CSDF_1PeriodicThroughput}));
+ADD_THROUGHPUT(EGN,
+throughput_action_t({ "EGN" , "Rewriting Bodin2013 CSDF N-Periodic Scheduling", algorithms::scheduling::CSDF_NPeriodicThroughput}));
+ADD_SCHEDULING(BufferlessKPeriodicScheduling,
+		scheduling_action_t({ "BufferlessKPeriodicScheduling" , "Run Bufferless Kperiodic", algorithms::scheduling::bufferlessKPeriodicScheduling} )
 	);
 
 
 
-ADD_TRANSFORMATION(SPeriodicScheduling,
-transformation_t({ "SPeriodicScheduling" , "Experimental", algorithms::scheduling::SPeriodicScheduling}));
+ADD_SCHEDULING(SPeriodicScheduling,
+scheduling_action_t({ "SPeriodicScheduling" , "Experimental", algorithms::scheduling::SPeriodicScheduling}));
 
-ADD_TRANSFORMATION(OnePeriodicScheduling,
-transformation_t({ "1PeriodicScheduling" , "CSDF 1-Periodic Scheduling [Bodin2013]", algorithms::scheduling::OnePeriodicScheduling}));
+ADD_SCHEDULING(OnePeriodicScheduling,
+scheduling_action_t({ "1PeriodicScheduling" , "CSDF 1-Periodic Scheduling [Bodin2013]", algorithms::scheduling::OnePeriodicScheduling}));
 
-ADD_TRANSFORMATION(ASAPScheduling,
-transformation_t({ "ASAPScheduling" , "Symbolic Execution", algorithms::scheduling::ASAPScheduling}));
+ADD_SCHEDULING(ASAPScheduling,
+scheduling_action_t({ "ASAPScheduling" , "Symbolic Execution", algorithms::scheduling::ASAPScheduling}));
 
-ADD_TRANSFORMATION(So4Scheduling,
-transformation_t({ "So4Scheduling" , "Symbolic Execution with TDMA", algorithms::scheduling::So4Scheduling}));
+ADD_SCHEDULING(So4Scheduling,
+scheduling_action_t({ "So4Scheduling" , "Symbolic Execution with TDMA", algorithms::scheduling::So4Scheduling}));
 
 // Throughput techniques
-ADD_TRANSFORMATION(BufferlessNoCScheduling,
-		transformation_t({ "BufferlessNoCScheduling" , "BufferlessNoCScheduling, WIP", algorithms::BufferlessNoCScheduling}));
+ADD_SCHEDULING(BufferlessNoCScheduling,
+		scheduling_action_t({ "BufferlessNoCScheduling" , "BufferlessNoCScheduling, WIP", algorithms::BufferlessNoCScheduling}));
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_SCHEDULINGS_H_ */

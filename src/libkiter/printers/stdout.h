@@ -35,19 +35,19 @@ void printXML                (models::Dataflow* const  dataflow, parameters_list
 }
 
 ADD_PRINTER(PrintXML,
-		printer_t({ "PrintXML" , "Print XML file", printers::printXML})
+		printer_action_t({ "PrintXML" , "Print XML file", printers::printXML})
 );
 
 ADD_PRINTER(PrintKiter,
-            printer_t({ "PrintKiter" , "Generate C++ code to internally generate the graph inside Kiter.", printers::printGraphAsKiterScript} )
+            printer_action_t({ "PrintKiter" , "Generate C++ code to internally generate the graph inside Kiter.", printers::printGraphAsKiterScript} )
 );
 ADD_PRINTER(PrintInfos,
-            printer_t({ "PrintInfos" , "Just print some graph informations.", printers::printInfos})
+            printer_action_t({ "PrintInfos" , "Just print some graph informations.", printers::printInfos})
 );
 ADD_PRINTER(PrintGraph,
-            printer_t({ "PrintGraph" , "Print DOT file", printers::printGraph})
+            printer_action_t({ "PrintGraph" , "Print DOT file", printers::printGraph})
 );
 ADD_PRINTER(PrintMapping,
-            printer_t({ "PrintMapping" , "Print DOT file", printers::printMapping})
+            printer_action_t({ "PrintMapping" , "Print DOT file", printers::printMapping})
 );
 #endif /* STDOUT_H_ */

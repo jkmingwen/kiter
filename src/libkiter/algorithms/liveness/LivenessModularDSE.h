@@ -28,13 +28,13 @@ namespace algorithms {
                                                 bool use_constraints = false,
                                                 algorithms::dse::TokenConfiguration* tc = nullptr) ;
 
-        void liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
+        StorageDistributionSet liveness_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
     }
 }
 
 
-ADD_TRANSFORMATION(LivenessDSE,
-                   transformation_t({
+ADD_THROUGHPUT_BUFFERING_DSE(LivenessDSE,
+                   throughput_buffering_dse_action_t({
                        "LivenessDSE" ,
                        "DSE that solve the liveness problem for a graph with \"feedback\" buffers",
                        algorithms::dse::liveness_dse}

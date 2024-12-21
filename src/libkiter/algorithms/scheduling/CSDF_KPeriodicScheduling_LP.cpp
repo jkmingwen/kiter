@@ -498,7 +498,7 @@ models::Scheduling  algorithms::scheduling::CSDF_RealPeriodicScheduling_LP (cons
 }
 
 
-void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
+models::Scheduling  algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
 	models::Scheduling res = CSDF_RealPeriodicScheduling_LP (dataflow);
@@ -506,10 +506,10 @@ void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow* 
    TIME_UNIT omega = res.getGraphPeriod();
    std::cout << "SPeriodic(LP) throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
    std::cout << "SPeriodic(LP) period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
-
+	return res;
 }
 
- void algorithms::scheduling::CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
+ models::Scheduling  algorithms::scheduling::CSDF_1PeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
 	models::Scheduling res = CSDF_KPeriodicScheduling_LP  (dataflow, generate1PeriodicVector(dataflow));
@@ -517,10 +517,10 @@ void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow* 
     TIME_UNIT omega = res.getGraphPeriod();
     std::cout << "1Periodic(LP) throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
     std::cout << "1Periodic(LP) period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
-
+	return res;
 }
 
- void algorithms::scheduling::CSDF_NPeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
+ models::Scheduling  algorithms::scheduling::CSDF_NPeriodicScheduling_LP (models::Dataflow*  dataflow, parameters_list_t )  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
 	models::Scheduling res = CSDF_KPeriodicScheduling_LP (dataflow, generateNPeriodicVector(dataflow));
@@ -528,6 +528,6 @@ void algorithms::scheduling::CSDF_Real1PeriodicScheduling_LP (models::Dataflow* 
     TIME_UNIT omega = res.getGraphPeriod();
     std::cout << "NPeriodic(LP) throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
     std::cout << "NPeriodic(LP) period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
-
+	return res;
 }
 

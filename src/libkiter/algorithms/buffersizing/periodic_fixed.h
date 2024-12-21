@@ -28,12 +28,12 @@ namespace algorithms {
     bool generateMinMaxOffsets(models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res);
     bool generateWiggersOffsets(models::Dataflow * const dataflow,TIME_UNIT OMEGA, std::map<Vertex,std::vector<TIME_UNIT> > & res);
 
-    BufferSizingResult speriodic_memory_sizing_csdf(models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool INTEGERSOLVING, bool ilp_solving) ;
-    BufferSizingResult compute_periodic_fixed_memory(models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & offsets,  TIME_UNIT PERIOD , bool ilp_solving , bool gen_only);
+    models::BufferSizingResult speriodic_memory_sizing_csdf(models::Dataflow* const  dataflow, TIME_UNIT PERIOD, bool INTEGERSOLVING, bool ilp_solving) ;
+    models::BufferSizingResult compute_periodic_fixed_memory(models::Dataflow* const  dataflow, std::map<Vertex,std::vector<TIME_UNIT> > & offsets,  TIME_UNIT PERIOD , bool ilp_solving , bool gen_only);
 
 
-    BufferSizingResult compute_strictly_periodic_memory(models::Dataflow* const  dataflow, parameters_list_t params);
-    BufferSizingResult compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params);
+    models::BufferSizingResult compute_strictly_periodic_memory(models::Dataflow* const  dataflow, parameters_list_t params);
+    models::BufferSizingResult compute_fixed_offset_buffer_sizing (models::Dataflow* const dataflow, parameters_list_t params);
 
     void add_vbuffers (models::Dataflow* const  dataflow, parameters_list_t params);
 
@@ -41,11 +41,11 @@ namespace algorithms {
 
 //Buffer sizing techniques
 ADD_BUFFER_SIZING(SPeriodicSizing,
-buffer_sizing_t({ "SPeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling with StrictlyPeriodic policy.", algorithms::compute_strictly_periodic_memory}));
+buffer_sizing_action_t({ "SPeriodicSizing" , "Minimal Buffer size estimation by periodic scheduling with StrictlyPeriodic policy.", algorithms::compute_strictly_periodic_memory}));
 ADD_BUFFER_SIZING(FixedOffsetBufferSizing,
-                  buffer_sizing_t({ "FixedOffsetBufferSizing" , "Minimal Buffer size estimation by periodic scheduling with fixed offset buffer sizing techniques (BURST, AVERAGE, MINMAX, WIGGERS). Define chosen sizing technique as parameter.", algorithms::compute_fixed_offset_buffer_sizing}));
+                  buffer_sizing_action_t({ "FixedOffsetBufferSizing" , "Minimal Buffer size estimation by periodic scheduling with fixed offset buffer sizing techniques (BURST, AVERAGE, MINMAX, WIGGERS). Define chosen sizing technique as parameter.", algorithms::compute_fixed_offset_buffer_sizing}));
 
 ADD_TRANSFORMATION(AddVBuffers,
-transformation_t({ "AddVBuffers" , "Add virtual buffers for each edge in dataflow graph", algorithms::add_vbuffers}));
+transformation_action_t({ "AddVBuffers" , "Add virtual buffers for each edge in dataflow graph", algorithms::add_vbuffers}));
 
 #endif /* PERIODIC_FIXED_H_ */
