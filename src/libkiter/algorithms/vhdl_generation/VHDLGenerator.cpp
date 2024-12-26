@@ -44,7 +44,7 @@ bool dataDriven = false; // if VHDL design is data driven using HS protocol
 implType implementationType = TT;
 bool osBroadcast = false;
 int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
-int systemSlack = 100;   // lag given to audio interfacing (in cycles) after
+int systemSlack = 1;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
 int computeL = 0; // total compute time for left channel
 int computeR = 0; // total compute time for right channel
@@ -282,7 +282,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     return;
   }
 
-  std::vector<TIME_UNIT> outputStarts(2, 0);
   VHDLScheduler schedule;
   schedule.setPeriod(systemPeriod);
   for (auto &[v, comp] : tmp.getComponentMap()) {
@@ -292,9 +291,16 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[name]);
       std::vector<TIME_UNIT> bufferPopTime;
+      if (comp.getType() == "INPUT") {
+        VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
+        tmp.addInExecTime(comp.getIOId(), startTimes.front());
+      }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
-        outputStarts.at(comp.getIOId()) = startTimes.front();
+        // Output buffers need to account for time taken to convert from fixed point to FP
+        int conversionTime = getOperatorLifespan("fp2fix", operatorFreq) +
+                             getOperatorLifespan("fp_prod", operatorFreq);
+        tmp.addComputeTime(comp.getIOId(), startTimes.front() + conversionTime);
       }
       if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
         {ForOutputEdges(dataflow, v, outEdge) {
@@ -387,13 +393,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                       << comp.getUniqueName() << " (" << comp.getType() << ")");
     }
   }
-  computeL = outputStarts[0] + getOperatorLifespan("fp2fix", operatorFreq) +
-             getOperatorLifespan("fp_prod", operatorFreq);
-  computeR = outputStarts[1] + getOperatorLifespan("fp2fix", operatorFreq) +
-             getOperatorLifespan("fp_prod", operatorFreq);
-  // TODO parameterise this
-  tmp.addComputeTime(0, computeL);
-  tmp.addComputeTime(1, computeR);
 
   if (outputDirSpecified) { // only produce actual VHDL files if output directory specified
     const auto copyOptions = std::filesystem::copy_options::update_existing |

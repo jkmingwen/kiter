@@ -710,6 +710,10 @@ void VHDLCircuit::addComputeTime(int id, TIME_UNIT time) {
   this->computeTimes[id] = time;
 }
 
+void VHDLCircuit::addInExecTime(int id, TIME_UNIT time) {
+  this->inExecTimes[id] = time;
+}
+
 void VHDLCircuit::setScheduleWidth(int width) {
   scheduleWidth = width;
 }

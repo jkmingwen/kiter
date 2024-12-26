@@ -65,7 +65,11 @@ class VHDLCircuit : public VHDLComponent {
 
   const std::map<int, TIME_UNIT> &getComputeTimes() const {
       return this->computeTimes;
-    }
+  }
+
+  const std::map<int, TIME_UNIT> &getInExecTimes() const {
+    return this->inExecTimes;
+  }
 
   int getOperatorCount(const std::string &op) const;
   const VHDLComponent&  getFirstComponentByType(const std::string &op) const;
@@ -92,6 +96,7 @@ class VHDLCircuit : public VHDLComponent {
   std::vector<std::string> generateHSSignalNames(std::string &name, bool isInputSig) const;
   std::string generateSignalNames(std::string &name, bool isInputSig) const;
   void addComputeTime(int id, TIME_UNIT time);
+  void addInExecTime(int id, TIME_UNIT time);
   void writeImplementation(std::ofstream &vhdlOutput);
 
  private:
@@ -104,6 +109,7 @@ class VHDLCircuit : public VHDLComponent {
   std::map<std::string, std::vector<std::string>> outputPorts;
   std::map<std::string, std::string> topLevelPorts;
   std::map<int, TIME_UNIT> computeTimes;
+  std::map<int, TIME_UNIT> inExecTimes;
   int scheduleWidth;
 
 }; // End of VHDLCircuit

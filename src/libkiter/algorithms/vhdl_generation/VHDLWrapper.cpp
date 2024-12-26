@@ -205,6 +205,7 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
   numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
                             (numOutputs / 2 + (numOutputs % 2 != 0)));
   computeTimes = circuit.getComputeTimes();
+  std::map<int, TIME_UNIT> inputStarts = circuit.getInExecTimes();
 
   // add components
   if (implementationType == TT) {
@@ -222,14 +223,8 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
       std::string channel = (inId % 2) ? "r" : "l";
       std::string inSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_rx";
       std::string outSigName = "fix2fp_" + chId + "_" + channel + "_data_in";
-      int pushStart, popStart;
-      if (channel == "l") {
-        pushStart = (period / 2) + slack;
-        popStart = (period / 2) + slack + 1;
-      } else {
-        pushStart = slack;
-        popStart = slack + 1;
-      }
+      int pushStart = inputStarts.at(inId) + slack;
+      int popStart = inputStarts.at(inId) + slack + 1;
       BufferComponent *inBuffer = genIOBuffer(implementationType, inSigName, outSigName,
                                               pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(inBuffer));
@@ -242,15 +237,10 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
       std::string channel = (outId % 2) ? "r" : "l";
       std::string inSigName = "fp2fix_" + chId + "_" + channel + "_data_out";
       std::string outSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_tx";
-      int pushStart, popStart;
-      TIME_UNIT computeTime = computeTimes.at(outId);
-      if (channel == "l") {
-        pushStart = (period / 2) + slack + computeTime;
-        popStart = (period / 2) + slack + computeTime + 1;
-      } else {
-        pushStart = slack + computeTime;
-        popStart = slack + computeTime + 1;
-      }
+      // NOTE no need to add period/2 for L channel as audio components account
+      // for data dependencies for half period
+      int pushStart = computeTimes.at(outId) + slack;
+      int popStart = computeTimes.at(outId) + slack + 1;
       BufferComponent *outBuffer = genIOBuffer(implementationType, inSigName, outSigName,
                                                pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(outBuffer));
@@ -296,13 +286,10 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
       std::string outSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_tx";
       int pushStart, popStart;
       TIME_UNIT computeTime = computeTimes.at(outId);
-      if (channel == "l") {
-        pushStart = (period / 2) + slack + computeTime;
-        popStart = (period / 2) + slack + computeTime + 1;
-      } else {
-        pushStart = slack + computeTime;
-        popStart = slack + computeTime + 1;
-      }
+      // NOTE no need to add period/2 for L channel as audio components account
+      // for data dependencies for half period
+      pushStart = slack + computeTime;
+      popStart = slack + computeTime + 1;
       BufferComponent *outBuffer = genIOBuffer(implementationType, inSigName, outSigName,
                                                pushStart, popStart);
       components.push_back(std::unique_ptr<VHDLComponent>(outBuffer));
