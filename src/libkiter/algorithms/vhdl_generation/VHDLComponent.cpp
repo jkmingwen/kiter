@@ -487,6 +487,8 @@ void VHDLComponent::addGenericMapping(std::string port, std::string signal,
 
 std::string VHDLComponent::getPortMapName() const { return this->portMapName; }
 
+std::string VHDLComponent::getImplRefName() const { return this->implRefName; }
+
 void VHDLComponent::portMappingInit() {
   // Time-triggered port mappings
   if (implementationType == TT) {

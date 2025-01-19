@@ -13,6 +13,7 @@ IOConverterTT::IOConverterTT(int instanceId,
                              std::string direction, std::string name) {
   circuitName = name;
   id = instanceId;
+  int codecId = floor(static_cast<double>(id) / 2);
   if (id % 2) { // right channel on odd IDs
     channel = "r";
   } else {
@@ -21,11 +22,11 @@ IOConverterTT::IOConverterTT(int instanceId,
   if (direction == "in") {
     isInput = true;
     implRefName = "fix2fp_and_scaledown";
-    portMapName = "fix2fp_" + std::to_string(id) + "_" + channel; // TODO this needs to not include the channel for port map name tracking to work properly
+    portMapName = "fix2fp_" + std::to_string(codecId) + "_" + channel; // TODO this needs to not include the channel for port map name tracking to work properly
   } else if (direction == "out") {
     isInput = false;
     implRefName = "fp2fix_and_scaleup";
-    portMapName = "fp2fix_" + std::to_string(id) + "_" + channel;
+    portMapName = "fp2fix_" + std::to_string(codecId) + "_" + channel;
   }
 
   portMappingInit();

@@ -13,6 +13,7 @@ IOConverterDD::IOConverterDD(int instanceId,
                              std::string direction, std::string name) {
   circuitName = name;
   id = instanceId;
+  int codecId = floor(static_cast<double>(id) / 2);
   if (id % 2) { // right channel on odd IDs
     channel = "r";
   } else {
@@ -21,11 +22,11 @@ IOConverterDD::IOConverterDD(int instanceId,
   if (direction == "in") {
     isInput = true;
     implRefName = "i2s_to_fpc";
-    portMapName = implRefName + "_" + std::to_string(id);
+    portMapName = implRefName + "_" + std::to_string(codecId);
   } else if (direction == "out") {
     isInput = false;
     implRefName = "fpc_to_i2s";
-    portMapName = implRefName + "_" + std::to_string(id);
+    portMapName = implRefName + "_" + std::to_string(codecId);
   }
 
   portMappingInit();

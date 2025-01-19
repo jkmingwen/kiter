@@ -13,6 +13,7 @@
 #include "CycleCounter.h"
 #include "BufferComponent.h"
 #include "IOInterface.h"
+#include <cmath>
 #include <memory>
 
 VHDLWrapper::VHDLWrapper() {}
@@ -211,18 +212,19 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
   if (implementationType == TT) {
     // I2S transceiver
     for (int i = 0; i < numAudioCodecs; i++) {
-      components.push_back(std::unique_ptr<VHDLComponent>(new VHDLI2STransceiver(i)));
+      components.push_back(
+          std::unique_ptr<VHDLComponent>(new VHDLI2STransceiver(i)));
     }
 
     // Input/Output converters
     for (int inId = 0; inId < numInputs; inId++) {
+      int codecId = floor(static_cast<double>(inId) / 2);
       components.push_back(std::unique_ptr<VHDLComponent>(
           new IOConverterTT(inId, "in", dspName)));
       // input buffer
-      std::string chId = std::to_string(inId);
       std::string channel = (inId % 2) ? "r" : "l";
-      std::string inSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_rx";
-      std::string outSigName = "fix2fp_" + chId + "_" + channel + "_data_in";
+      std::string inSigName = "i2s_transceiver_" + std::to_string(codecId) + "_" + channel + "_data_rx";
+      std::string outSigName = "fix2fp_" + std::to_string(codecId) + "_" + channel + "_data_in";
       int pushStart = inputStarts.at(inId) + slack;
       int popStart = inputStarts.at(inId) + slack + 1;
       BufferComponent *inBuffer = genIOBuffer(implementationType, inSigName, outSigName,
@@ -230,13 +232,13 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
       components.push_back(std::unique_ptr<VHDLComponent>(inBuffer));
     }
     for (int outId = 0; outId < numOutputs; outId++) {
+      int codecId = floor(static_cast<double>(outId) / 2);
       components.push_back(std::unique_ptr<VHDLComponent>(
           new IOConverterTT(outId, "out", dspName)));
       // output buffer
-      std::string chId = std::to_string(outId);
       std::string channel = (outId % 2) ? "r" : "l";
-      std::string inSigName = "fp2fix_" + chId + "_" + channel + "_data_out";
-      std::string outSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_tx";
+      std::string inSigName = "fp2fix_" + std::to_string(codecId) + "_" + channel + "_data_out";
+      std::string outSigName = "i2s_transceiver_" + std::to_string(codecId) + "_" + channel + "_data_tx";
       // NOTE no need to add period/2 for L channel as audio components account
       // for data dependencies for half period
       int pushStart = computeTimes.at(outId) + slack;
@@ -257,13 +259,14 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
 
     // Input/Output converters
     for (int inId = 0; inId < numInputs; inId++) {
+      int codecId = floor(static_cast<double>(inId) / 2);
       components.push_back(std::unique_ptr<VHDLComponent>(
           new IOConverterTT(inId, "in", dspName)));
       // input buffer
       std::string chId = std::to_string(inId);
       std::string channel = (inId % 2) ? "r" : "l";
-      std::string inSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_rx";
-      std::string outSigName = "fix2fp_" + chId + "_" + channel + "_data_in";
+      std::string inSigName = "i2s_transceiver_" + std::to_string(codecId) + "_" + channel + "_data_rx";
+      std::string outSigName = "fix2fp_" + std::to_string(codecId) + "_" + channel + "_data_in";
       int pushStart, popStart;
       if (channel == "l") {
         pushStart = (period / 2) + slack;
@@ -277,13 +280,14 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
       components.push_back(std::unique_ptr<VHDLComponent>(inBuffer));
     }
     for (int outId = 0; outId < numOutputs; outId++) {
+      int codecId = floor(static_cast<double>(outId) / 2);
       components.push_back(std::unique_ptr<VHDLComponent>(
           new IOConverterTT(outId, "out", dspName)));
       // output buffer
       std::string chId = std::to_string(outId);
       std::string channel = (outId % 2) ? "r" : "l";
-      std::string inSigName = "fp2fix_" + chId + "_" + channel + "_data_out";
-      std::string outSigName = "i2s_transceiver_" + chId + "_" + channel + "_data_tx";
+      std::string inSigName = "fp2fix_" + std::to_string(codecId) + "_" + channel + "_data_out";
+      std::string outSigName = "i2s_transceiver_" + std::to_string(codecId) + "_" + channel + "_data_tx";
       int pushStart, popStart;
       TIME_UNIT computeTime = computeTimes.at(outId);
       // NOTE no need to add period/2 for L channel as audio components account
@@ -348,7 +352,7 @@ void VHDLWrapper::writeImplementation(std::ofstream &vhdlOutput) {
   std::map<std::string, int>
       trackDeclarations; // track counts of operators for instantiation in port mapping
   for (const auto &comp : components) {
-    std::string name = comp->getPortMapName();
+    std::string name = comp->getImplRefName();
     if (!trackDeclarations.count(name)) {
       trackDeclarations[name] = 1;
       vhdlOutput << comp->genDeclaration() << std::endl;

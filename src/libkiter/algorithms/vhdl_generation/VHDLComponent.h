@@ -83,6 +83,7 @@ public:
   virtual std::string genEntityDecl() const; // generate entity declaration (for component itself)
   std::string genPortMapping(int id, std::map<std::string, std::string> replacements) const; // generate the port mapping code given a mapping of port names to signal names
   std::string getPortMapName() const;
+  std::string getImplRefName() const;
   void genImplementation(std::string refDir, std::string dstDir) const;
 
   // temporary function to log shift register numbers
