@@ -11,25 +11,26 @@
 VHDLI2STransceiver::VHDLI2STransceiver(int instanceId) {
   id = instanceId;
   implRefName = "i2s_transceiver";
-  portMapName = implRefName + "_" + std::to_string(instanceId);
+  portMapName = implRefName;
   portMappingInit();
   genSignals();
 }
 
 void VHDLI2STransceiver::portMappingInit() {
+  std::string instanceName = portMapName + "_" + std::to_string(id);
   addPortMapping("mclk", "mclk_sig", "std_logic", "in");
   addPortMapping("reset_n", "rst_sig", "std_logic", "in");
-  addPortMapping("sclk", portMapName + "_sclk", "std_logic", "out");
-  addPortMapping("ws", portMapName + "_ws", "std_logic", "out");
-  addPortMapping("sd_rx", "ac_recdat_0", "std_logic", "in");
-  addPortMapping("sd_tx", portMapName + "_sd_tx", "std_logic", "out");
-  addPortMapping("l_data_rx", portMapName + "_l_data_rx", "std_logic_vector",
+  addPortMapping("sclk", instanceName + "_sclk", "std_logic", "out");
+  addPortMapping("ws", instanceName + "_ws", "std_logic", "out");
+  addPortMapping("sd_rx", "ac_recdat_" + std::to_string(id), "std_logic", "in");
+  addPortMapping("sd_tx", instanceName + "_sd_tx", "std_logic", "out");
+  addPortMapping("l_data_rx", instanceName + "_l_data_rx", "std_logic_vector",
                  "out", 24);
-  addPortMapping("r_data_rx", portMapName + "_r_data_rx", "std_logic_vector",
+  addPortMapping("r_data_rx", instanceName + "_r_data_rx", "std_logic_vector",
                  "out", 24);
-  addPortMapping("l_data_tx", portMapName + "_l_data_tx", "std_logic_vector",
+  addPortMapping("l_data_tx", instanceName + "_l_data_tx", "std_logic_vector",
                  "in", 24);
-  addPortMapping("r_data_tx", portMapName + "_r_data_tx", "std_logic_vector",
+  addPortMapping("r_data_tx", instanceName + "_r_data_tx", "std_logic_vector",
                  "in", 24);
 }
 

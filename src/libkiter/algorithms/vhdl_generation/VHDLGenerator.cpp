@@ -272,16 +272,6 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       }
     }}
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
-  if (tmp.getOperatorCount("INPUT") > 2 ||
-      tmp.getOperatorCount("OUTPUT") > 2) {
-    VERBOSE_WARNING("Given design has "
-                    << tmp.getOperatorCount("INPUT") << " inputs, "
-                    << tmp.getOperatorCount("OUTPUT")
-                    << " outputs. Only stereo designs are currently supported "
-                       "for VHDL generation; unable to generate VHDL.");
-    return;
-  }
-
   VHDLScheduler schedule;
   schedule.setPeriod(systemPeriod);
   for (auto &[v, comp] : tmp.getComponentMap()) {
