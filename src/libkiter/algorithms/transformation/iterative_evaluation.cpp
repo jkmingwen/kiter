@@ -212,8 +212,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
 void algorithms::transformation::generate_audio_components(models::Dataflow* const  dataflow,
                                                            parameters_list_t params) {
   models::Dataflow *dataflow_prime = dataflow;
-  bool foundInputL = false;
-  bool foundInputR = false;
+  implType t = TT;
   int operatorFreq = 250;
   // check if operator frequencies have been specified
   if (params.find("FREQUENCY") != params.end()) {
@@ -222,99 +221,162 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   } else {
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
-  // audioPeriod = {numChannels, period}: number of sys_clock cycles per half WS clock period
+  if (params.find("GS") != params.end()) {
+    t = GS;
+  }
+  if (params.find("DATA_DRIVEN") != params.end()) {
+    VERBOSE_INFO("Using data-driven implementation for VHDL design");
+    t = DD;
+  }
+  VHDLCircuit circuit =
+      generateCircuitObject(dataflow_prime, t); // generate circuit to track counts of inputs/outputs
+  int numInputs = circuit.getOperatorCount("INPUT");
+  int numOutputs = circuit.getOperatorCount("OUTPUT");
+  int numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
+                                (numOutputs / 2 + (numOutputs % 2 != 0)));
   std::vector<TIME_UNIT> audioPeriod (2, 2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles
   // input/output operation consists of these 3 components:
   TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
                         getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);
   TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
                          getOperatorLifespan("fp_prod", operatorFreq);
-  // if (params.find("BROADCAST") != params.end()) {
-  //   inExecDur += getOperatorLifespan("sbuffer", operatorFreq);
-  //   outExecDur += getOperatorLifespan("sbuffer", operatorFreq);
-  // }
-  Vertex lIn, rIn;
-    VERBOSE_INFO("Binding input/output selector edges in graph:");
-      {ForEachVertex(dataflow_prime, v) {
-          std::string opType = dataflow_prime->getVertexType(v);
-          VERBOSE_INFO("Visiting " << opType
-                       << " (" << dataflow_prime->getVertexName(v) << ")...");
-          if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
-            VERBOSE_INFO(opType << "(" << dataflow_prime->getVertexName(v) << ") has no input/output edges, removing...");
-            dataflow_prime->removeVertex(v);
-          }
-          if (opType == "input_selector") {
-            VERBOSE_INFO("\tBinding edges of input selector");
-            bindVertexEdges(dataflow_prime, v, 0);
-          }
-          if (opType == "output_selector") {
-            VERBOSE_INFO("\tBinding edges of output selector");
-            bindVertexEdges(dataflow_prime, v, 1);
-          }
-          if (opType == "INPUT_0") {
-            foundInputL = true;
-            lIn = v;
-            dataflow_prime->setPhasesQuantity(lIn, 1);
-            dataflow_prime->setVertexDuration(lIn, {inExecDur});
-            dataflow_prime->setReentrancyFactor(lIn, 1);
-          }
-          if (opType == "INPUT_1") {
-            foundInputR = true;
-            rIn = v;
-            dataflow_prime->setPhasesQuantity(rIn, 1);
-            dataflow_prime->setVertexDuration(rIn, {inExecDur});
-            dataflow_prime->setReentrancyFactor(rIn, 1);
-          }
-          if (opType == "OUTPUT_0" || opType == "OUTPUT_1") {
-            dataflow_prime->setPhasesQuantity(v, 1);
-            dataflow_prime->setVertexDuration(v, {outExecDur});
-            dataflow_prime->setReentrancyFactor(v, 1);
-          }
-        }
+  Vertex lIn, rIn, lOut, rOut;
+
+  // bind input/output edges of IS/OS to buffer size of 1 as VHDL implementation
+  // has implied 1 token on each input/output edge
+  {ForEachVertex(dataflow_prime, v) {
+      std::string opType = dataflow_prime->getVertexType(v);
+      VERBOSE_INFO("Visiting " << opType
+                   << " (" << dataflow_prime->getVertexName(v) << ")...");
+      if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
+        VERBOSE_INFO(opType << "(" << dataflow_prime->getVertexName(v) << ") has no input/output edges, removing...");
+        dataflow_prime->removeVertex(v);
       }
-      // add dummy input actors if none are found so that scheduling can still be performed
-      if (!foundInputL) {
-        lIn = dataflow_prime->addVertex("INPUT_0");
-        dataflow_prime->setVertexType(lIn, "INPUT_0");
-        dataflow_prime->setPhasesQuantity(lIn, 1);
-        dataflow_prime->setVertexDuration(lIn, {inExecDur});
-        dataflow_prime->setReentrancyFactor(lIn, 1);
+      if (opType == "input_selector") {
+        VERBOSE_INFO("\tBinding edges of input selector");
+        bindVertexEdges(dataflow_prime, v, 0);
       }
-      if (!foundInputR) {
-        rIn = dataflow_prime->addVertex("INPUT_1");
-        dataflow_prime->setVertexType(rIn, "INPUT_1");
-        dataflow_prime->setPhasesQuantity(rIn, 1);
-        dataflow_prime->setVertexDuration(rIn, {inExecDur});
-        dataflow_prime->setReentrancyFactor(rIn, 1);
+      if (opType == "output_selector") {
+        VERBOSE_INFO("\tBinding edges of output selector");
+        bindVertexEdges(dataflow_prime, v, 1);
       }
-      // add dependencies and actor to simulate periodic audio input data
-      // dependencies between left and right input actors
-      Edge lDep = dataflow_prime->addEdge(lIn, rIn, "l_dependency");
-      dataflow_prime->setEdgeInPhases(lDep, {1});
-      dataflow_prime->setEdgeOutPhases(lDep, {1});
-      dataflow_prime->setPreload(lDep, 1);
-      dataflow_prime->setTokenSize(lDep, 1);
-      Edge rDep = dataflow_prime->addEdge(rIn, lIn, "r_dependency");
-      dataflow_prime->setEdgeInPhases(rDep, {1});
-      dataflow_prime->setEdgeOutPhases(rDep, {1});
-      dataflow_prime->setPreload(rDep, 0);
-      dataflow_prime->setTokenSize(rDep, 1);
-      // audio input actor simulates periodic data
-      Vertex audioIn = dataflow_prime->addVertex("AUDIO_IN");
-      dataflow_prime->setVertexType(audioIn, "AUDIO_IN");
-      dataflow_prime->setPhasesQuantity(audioIn, 2);
-      dataflow_prime->setVertexDuration(audioIn, audioPeriod);
-      dataflow_prime->setReentrancyFactor(audioIn, 1);
-      Edge lChannel = dataflow_prime->addEdge(audioIn, lIn, "l_audio_in");
-      dataflow_prime->setEdgeInPhases(lChannel, {1,0});
-      dataflow_prime->setEdgeOutPhases(lChannel, {1});
-      dataflow_prime->setPreload(lChannel, 0);
-      dataflow_prime->setTokenSize(lChannel, 1);
-      Edge rChannel = dataflow_prime->addEdge(audioIn, rIn, "r_audio_in");
-      dataflow_prime->setEdgeInPhases(rChannel, {0,1});
-      dataflow_prime->setEdgeOutPhases(rChannel, {1});
-      dataflow_prime->setPreload(rChannel, 1);
-      dataflow_prime->setTokenSize(rChannel, 1);
+    }
+  }
+
+  // initialise input/output component durations, track existence of
+  // input/output components
+  int expectedInOrOuts = numAudioCodecs * 2; // stereo audio codecs assumed
+  std::vector<char> existingIns(expectedInOrOuts, '0');
+  std::vector<char> existingOuts(expectedInOrOuts, '0');
+  std::map<int, std::string> inputNames;
+  std::map<int, std::string> outputNames;
+  for (auto const &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() == "INPUT") {
+      dataflow_prime->setPhasesQuantity(v, 1);
+      dataflow_prime->setVertexDuration(v, {inExecDur});
+      dataflow_prime->setReentrancyFactor(v, 1);
+      existingIns.at(comp.getIOId()) = '1';
+      inputNames[comp.getIOId()] = comp.getUniqueName();
+    }
+    if (comp.getType() == "OUTPUT") {
+      dataflow_prime->setPhasesQuantity(v, 1);
+      dataflow_prime->setVertexDuration(v, {outExecDur});
+      dataflow_prime->setReentrancyFactor(v, 1);
+      existingOuts.at(comp.getIOId()) = '1';
+      outputNames[comp.getIOId()] = comp.getUniqueName();
+    }
+  }
+  // add dummy input/output vertices
+  for (auto i = 0; i < existingIns.size(); i++) {
+    if (existingIns.at(i) == '0') {
+      std::string inName = "INPUT_" + std::to_string(i);
+      Vertex dummyIn = dataflow_prime->addVertex(inName);
+      dataflow_prime->setVertexType(dummyIn, inName);
+      dataflow_prime->setPhasesQuantity(dummyIn, 1);
+      dataflow_prime->setVertexDuration(dummyIn, {inExecDur});
+      dataflow_prime->setReentrancyFactor(dummyIn, 1);
+      inputNames[i] = inName;
+    }
+  }
+  for (auto i = 0; i < existingOuts.size(); i++) {
+    if (existingOuts.at(i) == '0') {
+      std::string outName = "OUTPUT_" + std::to_string(i);
+      Vertex dummyOut = dataflow_prime->addVertex(outName);
+      dataflow_prime->setVertexType(dummyOut, outName);
+      dataflow_prime->setPhasesQuantity(dummyOut, 1);
+      dataflow_prime->setVertexDuration(dummyOut, {outExecDur});
+      dataflow_prime->setReentrancyFactor(dummyOut, 1);
+      outputNames[i] = outName;
+    }
+  }
+
+  // add dependencies and actor to simulate periodic audio input data
+  for (auto codecId = 0; codecId < numAudioCodecs; codecId++) {
+    std::string inCodecName = "AUDIO_IN_" + std::to_string(codecId);
+    std::string outCodecName = "AUDIO_OUT_" + std::to_string(codecId);
+    int lCh = codecId * 2;
+    int rCh = codecId * 2 + 1;
+    std::string lChId = std::to_string(lCh);
+    std::string rChId = std::to_string(rCh);
+    Vertex lIn = dataflow_prime->getVertexByName(inputNames.at(lCh));
+    Vertex rIn = dataflow_prime->getVertexByName(inputNames.at(rCh));
+    Vertex lOut = dataflow_prime->getVertexByName(outputNames.at(lCh));
+    Vertex rOut = dataflow_prime->getVertexByName(outputNames.at(rCh));
+
+    // input audio codec and dependencies
+    Vertex audioIn = dataflow_prime->addVertex(inCodecName);
+    dataflow_prime->setVertexType(audioIn, inCodecName);
+    dataflow_prime->setPhasesQuantity(audioIn, 2);
+    dataflow_prime->setVertexDuration(audioIn, audioPeriod);
+    dataflow_prime->setReentrancyFactor(audioIn, 1);
+    Edge lDep = dataflow_prime->addEdge(lIn, rIn, "l_in_dep_" + lChId);
+    dataflow_prime->setEdgeInPhases(lDep, {1});
+    dataflow_prime->setEdgeOutPhases(lDep, {1});
+    dataflow_prime->setPreload(lDep, 1);
+    dataflow_prime->setTokenSize(lDep, 1);
+    Edge rDep = dataflow_prime->addEdge(rIn, lIn, "r_in_dep_" + rChId);
+    dataflow_prime->setEdgeInPhases(rDep, {1});
+    dataflow_prime->setEdgeOutPhases(rDep, {1});
+    dataflow_prime->setPreload(rDep, 0);
+    dataflow_prime->setTokenSize(rDep, 1);
+    Edge lInChannel = dataflow_prime->addEdge(audioIn, lIn, "l_in_" + lChId);
+    dataflow_prime->setEdgeInPhases(lInChannel, {1,0});
+    dataflow_prime->setEdgeOutPhases(lInChannel, {1});
+    dataflow_prime->setPreload(lInChannel, 0);
+    dataflow_prime->setTokenSize(lInChannel, 1);
+    Edge rInChannel = dataflow_prime->addEdge(audioIn, rIn, "r_in_" + rChId);
+    dataflow_prime->setEdgeInPhases(rInChannel, {0,1});
+    dataflow_prime->setEdgeOutPhases(rInChannel, {1});
+    dataflow_prime->setPreload(rInChannel, 1);
+    dataflow_prime->setTokenSize(rInChannel, 1);
+
+    // output audio codec and dependencies
+    Vertex audioOut = dataflow_prime->addVertex(outCodecName);
+    dataflow_prime->setVertexType(audioOut, outCodecName);
+    dataflow_prime->setPhasesQuantity(audioOut, 2);
+    dataflow_prime->setVertexDuration(audioOut, audioPeriod);
+    dataflow_prime->setReentrancyFactor(audioOut, 1);
+    Edge lOutDep = dataflow_prime->addEdge(lOut, rOut, "l_out_dep_" + lChId);
+    dataflow_prime->setEdgeInPhases(lOutDep, {1});
+    dataflow_prime->setEdgeOutPhases(lOutDep, {1});
+    dataflow_prime->setPreload(lOutDep, 1);
+    dataflow_prime->setTokenSize(lOutDep, 1);
+    Edge rOutDep = dataflow_prime->addEdge(rOut, lOut, "r_out_dep_" + rChId);
+    dataflow_prime->setEdgeInPhases(rOutDep, {1});
+    dataflow_prime->setEdgeOutPhases(rOutDep, {1});
+    dataflow_prime->setPreload(rOutDep, 0);
+    dataflow_prime->setTokenSize(rOutDep, 1);
+    Edge lOutChannel = dataflow_prime->addEdge(lOut, audioOut, "l_out_" + lChId);
+    dataflow_prime->setEdgeInPhases(lOutChannel, {1});
+    dataflow_prime->setEdgeOutPhases(lOutChannel, {1,0});
+    dataflow_prime->setPreload(lOutChannel, 1);
+    dataflow_prime->setTokenSize(lOutChannel, 1);
+    Edge rOutChannel = dataflow_prime->addEdge(rOut, audioOut, "r_out_" + rChId);
+    dataflow_prime->setEdgeInPhases(rOutChannel, {1});
+    dataflow_prime->setEdgeOutPhases(rOutChannel, {0,1});
+    dataflow_prime->setPreload(rOutChannel, 0);
+    dataflow_prime->setTokenSize(rOutChannel, 1);
+  }
   VERBOSE_INFO("Done modifying graph");
 }
 
@@ -932,7 +994,7 @@ int algorithms::getChannelNumber(std::string channelName) {
   return std::stoi(channelName);
 }
 
-// Binds the input/output/all edges of the given Vertex
+// Binds the input/output/all edges of the given Vertex to a buffer size of 1
 // 0: bind output edges
 // 1: bind input edges
 // 2: bind all edges
