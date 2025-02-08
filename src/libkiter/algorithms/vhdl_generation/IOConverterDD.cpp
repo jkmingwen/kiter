@@ -13,7 +13,7 @@ IOConverterDD::IOConverterDD(int instanceId,
                              std::string direction, std::string name) {
   circuitName = name;
   id = instanceId;
-  int codecId = floor(static_cast<double>(id) / 2);
+  codecId = floor(static_cast<double>(id) / 2);
   if (id % 2) { // right channel on odd IDs
     channel = "r";
   } else {
@@ -22,11 +22,11 @@ IOConverterDD::IOConverterDD(int instanceId,
   if (direction == "in") {
     isInput = true;
     implRefName = "i2s_to_fpc";
-    portMapName = implRefName + "_" + std::to_string(codecId);
+    portMapName = implRefName + "_" + std::to_string(id);
   } else if (direction == "out") {
     isInput = false;
     implRefName = "fpc_to_i2s";
-    portMapName = implRefName + "_" + std::to_string(codecId);
+    portMapName = implRefName + "_" + std::to_string(id);
   }
 
   portMappingInit();
@@ -37,7 +37,7 @@ void IOConverterDD::portMappingInit() {
   addPortMapping("clk", "sys_clk_sig", "std_logic", "in");
   addPortMapping("rst", "rst_sig", "std_logic", "in");
   if (isInput) {
-    std::string sigPrefix = "input_interface_0_" + channel;
+    std::string sigPrefix = "input_interface_" + std::to_string(codecId) + "_" + channel;
     addPortMapping("op_in_data_0", sigPrefix + "_data_out", "std_logic_vector",
                    "in", 24);
     addPortMapping("op_in_ready_0", portMapName + "_op_in_ready_0", "std_logic",
@@ -52,7 +52,7 @@ void IOConverterDD::portMappingInit() {
     addPortMapping("op_out_valid_0", portMapName + "_op_out_valid_0",
                    "std_logic", "out");
   } else {
-    std::string sigPrefix = "output_interface_0_" + channel;
+    std::string sigPrefix = "output_interface_" + std::to_string(codecId) + "_" + channel;
     addPortMapping("op_in_data_0",
                    circuitName + "_out_data_" + std::to_string(id) + "_" +
                        portMapName + "_op_in_data_0",

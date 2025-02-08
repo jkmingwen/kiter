@@ -136,22 +136,10 @@ void VHDLWrapper::internalSignalsInit() {
       }
     }
   } else if (implementationType == DD) {
-    for (auto i = 0; i < numOutputs; i++) {
-      std::string outId = std::to_string(i);
-      std::string inConvName = "i2s_to_fpc_" + outId;
-      std::string outConvName = "fpc_to_i2s_" + outId;
-      std::string readySig = dspName + "_in_ready_" + outId + "_" +
-                             inConvName + "_op_out_ready_0";
-      std::string validSig = dspName + "_out_valid_" + outId + "_" +
-                             outConvName + "_op_in_valid_0";
-      std::string dataSig = dspName + "_out_data_" + outId + "_" +
-                            outConvName + "_op_in_data_0";
-      addInternalSignal(readySig, "std_logic");
-      addInternalSignal(validSig, "std_logic");
-      addInternalSignal(dataSig, "std_logic_vector");
-    }
     for (int i = 0; i < numAudioCodecs; i++) {
       // I2S transceiver signals
+      int lConvId = i * 2;
+      int rConvId = (i * 2) + 1;
       std::string codecPrefix = "i2s_transceiver_" + std::to_string(i);
       addInternalSignal(codecPrefix + "_l_data_rx", "std_logic_vector", 24);
       addInternalSignal(codecPrefix + "_r_data_rx", "std_logic_vector", 24);
@@ -161,37 +149,58 @@ void VHDLWrapper::internalSignalsInit() {
       addInternalSignal(codecPrefix + "_sd_tx", "std_logic");
       addInternalSignal(codecPrefix + "_sd_rx", "std_logic");
       addInternalSignal(codecPrefix + "_ws", "std_logic");
-      // input/output interface signals
-      if (numInputs) {
-        std::string prefix = "input_interface_" + std::to_string(i);
-        std::string lPrefix = "i2s_to_fpc_" + std::to_string(i * 2);
-        std::string rPrefix = "i2s_to_fpc_" + std::to_string((i*2)+1);
-        addInternalSignal(prefix + "_l_data_out", "std_logic_vector", 24);
-        addInternalSignal(prefix + "_r_data_out", "std_logic_vector", 24);
-        addInternalSignal(prefix + "_l_valid", "std_logic");
-        addInternalSignal(prefix + "_r_valid", "std_logic");
-        addInternalSignal(lPrefix + "_op_out_valid_0", "std_logic");
-        addInternalSignal(lPrefix + "_op_in_ready_0", "std_logic");
-        addInternalSignal(lPrefix + "_op_out_data_0", "std_logic_vector");
-        addInternalSignal(rPrefix + "_op_out_valid_0", "std_logic");
-        addInternalSignal(rPrefix + "_op_in_ready_0", "std_logic");
-        addInternalSignal(rPrefix + "_op_out_data_0", "std_logic_vector");
-      }
-      if (numOutputs) {
-        std::string prefix = "output_interface_" + std::to_string(i);
-        std::string lPrefix = "fpc_to_i2s_" + std::to_string(i * 2);
-        std::string rPrefix = "fpc_to_i2s_" + std::to_string((i*2)+1);
-        addInternalSignal(prefix + "_l_data_out", "std_logic_vector", 24);
-        addInternalSignal(prefix + "_r_data_out", "std_logic_vector", 24);
-        addInternalSignal(prefix + "_l_ready", "std_logic");
-        addInternalSignal(prefix + "_r_ready", "std_logic");
-        addInternalSignal(lPrefix + "_op_out_valid_0", "std_logic");
-        addInternalSignal(lPrefix + "_op_in_ready_0", "std_logic");
-        addInternalSignal(lPrefix + "_op_out_data_0", "std_logic_vector", 24);
-        addInternalSignal(rPrefix + "_op_out_valid_0", "std_logic");
-        addInternalSignal(rPrefix + "_op_in_ready_0", "std_logic");
-        addInternalSignal(rPrefix + "_op_out_data_0", "std_logic_vector", 24);
-      }
+
+      // input interface and converter internal signals
+      std::string inIntPrefix = "input_interface_" + std::to_string(i);
+      std::string lInConv = "i2s_to_fpc_" + std::to_string(lConvId);
+      std::string rInConv = "i2s_to_fpc_" + std::to_string(rConvId);
+      addInternalSignal(inIntPrefix + "_l_data_out", "std_logic_vector", 24);
+      addInternalSignal(inIntPrefix + "_r_data_out", "std_logic_vector", 24);
+      addInternalSignal(inIntPrefix + "_l_valid", "std_logic");
+      addInternalSignal(inIntPrefix + "_r_valid", "std_logic");
+      addInternalSignal(lInConv + "_op_out_valid_0", "std_logic");
+      addInternalSignal(lInConv + "_op_in_ready_0", "std_logic");
+      addInternalSignal(lInConv + "_op_out_data_0", "std_logic_vector");
+      addInternalSignal(rInConv + "_op_out_valid_0", "std_logic");
+      addInternalSignal(rInConv + "_op_in_ready_0", "std_logic");
+      addInternalSignal(rInConv + "_op_out_data_0", "std_logic_vector");
+
+      // output interface and converter internal signals
+      std::string outIntPrefix = "output_interface_" + std::to_string(i);
+      std::string lOutConv = "fpc_to_i2s_" + std::to_string(lConvId);
+      std::string rOutConv = "fpc_to_i2s_" + std::to_string(rConvId);
+      addInternalSignal(outIntPrefix + "_l_data_out", "std_logic_vector", 24);
+      addInternalSignal(outIntPrefix + "_r_data_out", "std_logic_vector", 24);
+      addInternalSignal(outIntPrefix + "_l_ready", "std_logic");
+      addInternalSignal(outIntPrefix + "_r_ready", "std_logic");
+      addInternalSignal(lOutConv + "_op_out_valid_0", "std_logic");
+      addInternalSignal(lOutConv + "_op_in_ready_0", "std_logic");
+      addInternalSignal(lOutConv + "_op_out_data_0", "std_logic_vector", 24);
+      addInternalSignal(rOutConv + "_op_out_valid_0", "std_logic");
+      addInternalSignal(rOutConv + "_op_in_ready_0", "std_logic");
+      addInternalSignal(rOutConv + "_op_out_data_0", "std_logic_vector", 24);
+
+      // dsp output internal signals
+      std::string lValidSig = dspName + "_out_valid_" +
+                              std::to_string(lConvId) + "_" + lOutConv +
+                              "_op_in_valid_0";
+      std::string rValidSig = dspName + "_out_valid_" +
+                              std::to_string(rConvId) + "_" + rOutConv +
+                              "_op_in_valid_0";
+      std::string lDataSig = dspName + "_out_data_" + std::to_string(lConvId) +
+                             "_" + lOutConv + "_op_in_data_0";
+      std::string rDataSig = dspName + "_out_data_" + std::to_string(rConvId) +
+                             "_" + rOutConv + "_op_in_data_0";
+      std::string lConvRdy = dspName + "_in_ready_" + std::to_string(lConvId) +
+                             "_" + lInConv + "_op_out_ready_0";
+      std::string rConvRdy = dspName + "_in_ready_" + std::to_string(rConvId) +
+                             "_" + rInConv + "_op_out_ready_0";
+      addInternalSignal(lValidSig, "std_logic");
+      addInternalSignal(rValidSig, "std_logic");
+      addInternalSignal(lDataSig, "std_logic_vector");
+      addInternalSignal(rDataSig, "std_logic_vector");
+      addInternalSignal(lConvRdy, "std_logic");
+      addInternalSignal(rConvRdy, "std_logic");
     }
   }
 }

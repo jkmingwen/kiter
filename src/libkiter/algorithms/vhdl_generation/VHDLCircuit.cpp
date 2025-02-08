@@ -435,8 +435,11 @@ void VHDLCircuit::portMappingInit() {
     }
   } else if (implementationType == DD) {
     std::string portName = graphName;
-    for (auto i = 0; i < getOperatorCount("INPUT"); i++) {
+    int numInputs = getOperatorCount("INPUT");
+    int numOutputs = getOperatorCount("OUTPUT");
+    for (auto i = 0; i < numInputs; i++) {
       std::string inId = std::to_string(i);
+      std::string codecId = std::to_string((int) floor(static_cast<double>(i) / 2));
       std::string rdyPort = portName + "_in_ready_" + inId;
       std::string vldPort = portName + "_in_valid_" + inId;
       std::string dataPort = portName + "_in_data_" + inId;
@@ -448,8 +451,9 @@ void VHDLCircuit::portMappingInit() {
       addPortMapping(vldPort, vldSig, "std_logic", "in");
       addPortMapping(dataPort, dataSig, "std_logic_vector", "in");
     }
-    for (auto o = 0; o < getOperatorCount("OUTPUT"); o++) {
+    for (auto o = 0; o < numOutputs; o++) {
       std::string outId = std::to_string(o);
+      std::string codecId = std::to_string((int) floor(static_cast<double>(o) / 2));
       std::string rdyPort = portName + "_out_ready_" + outId;
       std::string vldPort = portName + "_out_valid_" + outId;
       std::string dataPort = portName + "_out_data_" + outId;

@@ -19,6 +19,7 @@ class IOInterface : public VHDLComponent {
  private:
   int id;
   bool isInput;
+  int codecId;
 };
 
 

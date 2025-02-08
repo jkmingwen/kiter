@@ -18,6 +18,7 @@ class IOConverterDD : public VHDLComponent {
 
  private:
   int id;
+  int codecId;
   bool isInput;
   std::string channel;
   std::string circuitName;
