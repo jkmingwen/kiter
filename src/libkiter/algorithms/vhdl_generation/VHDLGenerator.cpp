@@ -538,8 +538,12 @@ void algorithms::generateAudioInterfaceComponents() {
     operatorNames =
         {"fix2fp_flopoco", "fp2fix_flopoco", "fp_prod_flopoco"};
   }
-  std::map<std::string, std::string> replacementWords = {{"$OP_FREQ",
-                                                            std::to_string(operatorFreq)}}; // name component according to operator frequency
+  std::map<std::string, std::string> replacementWords = {
+    {"$OP_FREQ", std::to_string(operatorFreq)},
+    {"$I2S_TO_FPC_LIFESPAN",
+     std::to_string(getOperatorLifespan("fix2fp", operatorFreq) +
+                    getOperatorLifespan("fp_prod", operatorFreq))},
+    {"$FPC_TO_I2S_LIFESPAN", std::to_string(getOperatorLifespan("fp2fix", operatorFreq) + getOperatorLifespan("fp_prod", operatorFreq))}}; // name component according to operator frequency
   for (const auto &component : componentNames) {
     copyFileAndReplaceWords(referenceDir + component + ".vhdl",
                             componentDir + component + ".vhdl",

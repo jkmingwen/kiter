@@ -15,7 +15,7 @@ entity fpc_to_i2s is
 end fpc_to_i2s;
 
 architecture Behavioral of fpc_to_i2s is
-  constant operator_lifespan : integer := 1;
+  constant operator_lifespan : integer := $FPC_TO_I2S_LIFESPAN;
   constant fp_bit_width : integer := 34;
   constant i2s_bit_width : integer := 24;
     -- lower-level component declaration;
