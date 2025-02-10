@@ -24,31 +24,31 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
   {
     {50,
      {{"fp_add", 1}, {"fp_prod", 1}, {"fp_div", 3}, {"fp_sqrt", 1},
-      {"fp_diff", 1}, {"fp_pow", 3}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
-      {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1}, {"fp_floor", 1},
-      {"int_max", 2}, {"int_min", 2}, {"fp_max", 1}, {"fp_min", 1},
-      {"fp_abs", 1}, {"int_abs", 1},
+      {"fp_diff", 1}, {"fp_pow", 3}, {"fp_exp", 1}, {"int_add", 1},
+      {"int_prod", 1}, {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      {"sbuffer", 2}, {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1},
+      {"fp_floor", 1}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1},
       {"attach", 1}, {"vbargraph", 1}}},
     {125,
      {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
-      {"fp_diff", 3}, {"fp_pow", 8}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 1}, {"int2float", 1}, {"sbuffer", 2},
-      {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1}, {"fp_floor", 2},
-      {"int_max", 2}, {"int_min", 2}, {"fp_max", 1}, {"fp_min", 1},
-      {"fp_abs", 1}, {"int_abs", 1},
+      {"fp_diff", 3}, {"fp_pow", 8}, {"fp_exp", 3}, {"int_add", 1},
+      {"int_prod", 1}, {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
+      {"sbuffer", 2}, {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1},
+      {"fp_floor", 2}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1},
       {"attach", 1}, {"vbargraph", 1}}},
     {250,
      {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
-      {"fp_diff", 6}, {"fp_pow", 18}, {"int_add", 1}, {"int_prod", 1},
-      {"int_diff", 1}, {"float2int", 2}, {"int2float", 3}, {"sbuffer", 2},
-      {"fix2fp", 1}, {"fp2fix", 2}, {"shiftreg", 1}, {"fp_floor", 5},
-      {"int_max", 2}, {"int_min", 2}, {"fp_max", 1}, {"fp_min", 1},
-      {"fp_abs", 1}, {"int_abs", 1},
+      {"fp_diff", 6}, {"fp_pow", 18}, {"fp_exp", 6}, {"int_add", 1},
+      {"int_prod", 1}, {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
+      {"sbuffer", 2}, {"fix2fp", 1}, {"fp2fix", 2}, {"shiftreg", 1},
+      {"fp_floor", 5}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1},
       {"attach", 1}, {"vbargraph", 1}}}
@@ -59,8 +59,8 @@ inline std::map<std::string, std::vector<std::string>> opInputPorts = {
   {"fp_add", {"X", "Y"}}, {"fp_prod", {"X", "Y"}},
   {"fp_div", {"X", "Y"}}, {"fp_sqrt", {"X"}},
   {"fp_diff", {"X", "Y"}}, {"fp_pow", {"X", "Y"}},
-  {"int_add", {"X", "Y"}}, {"int_prod", {"X", "Y"}},
-  {"int_diff", {"X", "Y"}},
+  {"fp_exp", {"X"}}, {"int_add", {"X", "Y"}},
+  {"int_prod", {"X", "Y"}}, {"int_diff", {"X", "Y"}},
   // numeric types
   {"float2int", {"X"}}, {"int2float", {"X"}},
   {"int_max", {"X", "Y"}}, {"int_min", {"X", "Y"}},
@@ -84,7 +84,8 @@ inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
   // arithmetic types
   {"fp_add", {"R"}},    {"fp_prod", {"R"}},   {"fp_div", {"R"}},
   {"fp_sqrt", {"R"}},   {"fp_diff", {"R"}},   {"fp_pow", {"R"}},
-  {"int_add", {"R"}},   {"int_prod", {"R"}},  {"int_diff", {"R"}},
+  {"fp_exp", {"R"}},  {"int_add", {"R"}}, {"int_prod", {"R"}},
+  {"int_diff", {"R"}},
   // numeric types
   {"float2int", {"R"}}, {"int2float", {"R"}},
   {"int_max", {"R"}},  {"int_min", {"R"}},   {"fp_max", {"R"}},
@@ -106,6 +107,7 @@ inline std::map<std::string, std::string> implementationNames = {
     {"fp_add", "fp_add_flopoco"}, {"fp_prod", "fp_prod_flopoco"},
     {"fp_div", "fp_div_flopoco"}, {"fp_sqrt", "fp_sqrt_flopoco"},
     {"fp_diff", "fp_diff_flopoco"}, {"fp_pow", "fp_pow_flopoco"},
+    {"fp_exp", "fp_exp_flopoco"},
     {"int_add", "int_add_flopoco"}, {"int_diff", "int_diff_flopoco"},
     {"int_prod", "int_prod_flopoco"},
     // numeric types
@@ -133,7 +135,7 @@ inline std::vector<std::string> uiTypes = {"button",   "checkbox", "hslider",
                                            "hbargraph"};
 
 inline std::vector<std::string> arithmeticTypes = {"add",  "prod", "diff", "div",
-                                                   "prod", "sqrt", "pow"};
+                                                   "prod", "sqrt", "pow", "exp"};
 
 inline std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"};
 
