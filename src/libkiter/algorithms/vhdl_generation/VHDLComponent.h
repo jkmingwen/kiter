@@ -65,6 +65,8 @@ public:
                         int id, std::string direction);
   void addGenericMapping(std::string port, std::string signal, std::string type,
                          int dataWidth = 34, std::string defaultVal = "");
+  void addExternalPort(std::string port, std::string signal, std::string type,
+                       std::string direction, int dataWidth = 34);
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
   virtual void portMappingInit();
@@ -89,6 +91,11 @@ public:
   // temporary function to log shift register numbers
   std::string writePIPOCSV() const;
   std::map<std::string, int> getPIPONumbers();
+  std::map<std::string, std::string> getTopSignalTypes() const;
+  std::map<std::string, int> getTopSignalWidths() const;
+  std::vector<std::string> getTopInputPorts() const;
+  std::vector<std::string> getTopOutputPorts() const;
+  int getActorId() const;
 
 protected:
   std::string portMapName; // for use when instantiating component in port mapping
@@ -102,6 +109,7 @@ protected:
   Vertex actor;
   int opFreq;
   int opLifespan;
+  int actorId;
   std::string uniqueName;
   std::vector<std::string> inputPorts;
   std::vector<std::string> outputPorts;
@@ -135,5 +143,10 @@ protected:
   int initialTokens; // specifically for buffer type operators // TODO make specific VHDLBufferComp
   std::string graphName; // specifically for INPUT/OUTPUT components // TODO make specific VHDLTop component
 
+  // for external ports (mainly for UI components)
+  std::map<std::string, std::string> topSignalTypes; // port name -> signal type
+  std::map<std::string, int> topSignalWidths;
+  std::vector<std::string> topInputPorts;
+  std::vector<std::string> topOutputPorts;
 };
 #endif /* VHDL_COMPONENT_H_ */

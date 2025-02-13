@@ -77,7 +77,7 @@ inline std::map<std::string, std::vector<std::string>> opInputPorts = {
   {"hbargraph", {"X"}},
   // others
   {"sbuffer", {"in_data"}}, {"shiftreg", {"in_data"}},
-  {"buffer", {"in_data"}}
+  {"buffer", {"in_data"}}, {"delay", {"in_data_0", "in_data_1"}}
   };
 
 inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
@@ -99,7 +99,7 @@ inline std::map<std::string, std::vector<std::string>> opOutputPorts = {
   {"vbargraph", {"R"}}, {"hbargraph", {"R"}},
   // others
   {"sbuffer", {"out_data"}}, {"shiftreg", {"out_data"}},
-  {"buffer", {"out_data"}}
+  {"buffer", {"out_data"}}, {"delay", {"out_data"}}
 };
 
 inline std::map<std::string, std::string> implementationNames = {
@@ -134,6 +134,11 @@ inline std::vector<std::string> uiTypes = {"button",   "checkbox", "hslider",
                                            "vslider",  "nentry",   "vbargraph",
                                            "hbargraph"};
 
+inline std::vector<std::string> rangeUITypes = {"hslider", "vslider",  "nentry",
+                                                "vbargraph", "hbargraph"};
+
+inline std::vector<std::string> switchUITypes = {"button", "checkbox"};
+
 inline std::vector<std::string> arithmeticTypes = {"add",  "prod", "diff", "div",
                                                    "prod", "sqrt", "pow", "exp"};
 
@@ -141,7 +146,7 @@ inline std::vector<std::string> numOperatorTypes = {"floor", "min", "max", "abs"
 
 inline std::vector<std::string> routingTypes = {"select2", "select3", "attach"};
 
-inline std::unordered_set<std::string> unsupportedOperators = {"delay", "cos", "sin"};
+inline std::unordered_set<std::string> unsupportedOperators = {"cos", "sin"};
 
 int getOperatorLifespan(const std::string &opType, int opFreq);
 std::vector<std::string> getArgOrderFromName(std::string name);

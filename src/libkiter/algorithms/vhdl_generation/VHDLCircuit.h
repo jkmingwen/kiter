@@ -98,6 +98,11 @@ class VHDLCircuit : public VHDLComponent {
   void addComputeTime(int id, TIME_UNIT time);
   void addInExecTime(int id, TIME_UNIT time);
   void writeImplementation(std::ofstream &vhdlOutput);
+  void externalPortsInit();
+  std::vector<std::string> getExternalInputPorts();
+  std::vector<std::string> getExternalOutputPorts();
+  std::map<std::string, std::string> getExternalPortTypes();
+  std::map<std::string, int> getExternalPortWidths();
 
  private:
   std::map<Vertex, VHDLComponent> componentMap;
@@ -111,6 +116,10 @@ class VHDLCircuit : public VHDLComponent {
   std::map<int, TIME_UNIT> computeTimes;
   std::map<int, TIME_UNIT> inExecTimes;
   int scheduleWidth;
+  std::vector<std::string> externalInputPorts;
+  std::vector<std::string> externalOutputPorts;
+  std::map<std::string, std::string> externalPortTypes;
+  std::map<std::string, int> externalPortWidths;
 
 }; // End of VHDLCircuit
 #endif /* VHDL_CIRCUIT_H_ */

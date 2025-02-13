@@ -61,6 +61,25 @@ void VHDLWrapper::portMappingInit() {
   }
 }
 
+void VHDLWrapper::externalPortsInit() {
+  std::vector<std::string> externalInputPorts = dspCircuit.getExternalInputPorts();
+  std::vector<std::string> externalOutputPorts = dspCircuit.getExternalOutputPorts();
+  std::map<std::string, std::string> types = dspCircuit.getExternalPortTypes();
+  std::map<std::string, int> widths = dspCircuit.getExternalPortWidths();
+  if (externalInputPorts.size()) {
+    for (auto port : externalInputPorts) {
+      std::string extPortName = port + "_ext";
+      addPortMapping(extPortName, port, types[port], "in", widths[port]);
+    }
+  }
+  if (externalOutputPorts.size()) {
+    for (auto port : externalOutputPorts) {
+      std::string extPortName = port + "_ext";
+      addPortMapping(extPortName, port, types[port], "out", widths[port]);
+    }
+  }
+}
+
 void VHDLWrapper::internalSignalsInit() {
   addInternalSignal("sys_clk_sig", "std_logic");
   addInternalSignal("rst_sig", "std_logic");
@@ -325,8 +344,10 @@ void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
           new IOConverterDD(outId, "out", dspName)));
     }
   }
+
   dspCircuit.portMappingInit();
   portMappingInit();
+  externalPortsInit();
   internalSignalsInit();
 }
 

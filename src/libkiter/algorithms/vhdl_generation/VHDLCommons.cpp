@@ -198,6 +198,7 @@ std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow) 
       } else if (opType == "INPUT" && numOutputs > 1) {
         actorNames.push_back(name);
       } else {
+        VERBOSE_INFO("Component type not found in opOutputPorts: " << name << " (" << opType << ")");
         VERBOSE_INFO("Ignoring multioutput check for " << name << " (" << opType << ")");
       }
     }}

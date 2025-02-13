@@ -35,6 +35,7 @@ component {TT (default), DD}
  */
 VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implType t, int freq) {
   actor = a;
+  actorId = dataflow->getVertexId(a);
   implementationType = t;
   opFreq = freq;
   uniqueName = dataflow->getVertexName(a); // unique ID per VHDLComponent
@@ -62,7 +63,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   }
 
   if (componentType == "sbuffer" || componentType == "hs_fifo" ||
-      componentType == "shiftreg") {
+      componentType == "shiftreg" || componentType == "delay") {
     {ForOutputEdges(dataflow, actor, outEdge) {
         initialTokens = dataflow->getPreload(outEdge);
       }}
@@ -207,6 +208,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   } else if (componentType == "sbuffer") {
     portMapName = componentType;
     implRefName = componentType;
+  } else if (componentType == "delay") {
+    portMapName = componentType;
+    implRefName = componentType;
   } else if (componentType == "Proj") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
     implRefName = implementationNames[componentType] + "_" +
@@ -215,6 +219,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   } else if (componentType == "shiftreg") {
     portMapName = "pipo";
     implRefName = "pipo_shift_reg";
+  } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+    portMapName = componentType + "_" + std::to_string(outputPorts.size());
+    implRefName = portMapName;
+    implReplacementMap["$COMPONENT_NAME"] = portMapName;
   } else {
     portMapName = componentType;
     implRefName = implementationNames[componentType] + "_f" + std::to_string(opFreq);
@@ -483,6 +491,18 @@ void VHDLComponent::addGenericMapping(std::string port, std::string signal,
   }
   genericMappings[port] = signal;
   genericPorts[port] = type;
+}
+
+void VHDLComponent::addExternalPort(std::string port, std::string signal,
+                                    std::string type, std::string direction,
+                                    int dataWidth) {
+  if (direction == "in") {
+    topInputPorts.push_back(port);
+  } else {
+    topOutputPorts.push_back(port);
+  }
+  topSignalTypes[port] = type;
+  topSignalWidths[port] = dataWidth;
 }
 
 std::string VHDLComponent::getPortMapName() const { return this->portMapName; }
@@ -761,6 +781,64 @@ void VHDLComponent::portMappingInit() {
         for (auto o = 0; o < outputSignals.size(); o++) {
           addHSPortMapping("buffer", outputSignals[o], o, "out");
         }
+      } else if (componentType == "delay") {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addGenericMapping("ram_width", "ram_width", "natural");
+        addGenericMapping("ram_depth", std::to_string(initialTokens + 1),
+                          "natural");
+        addGenericMapping("ram_init", std::to_string(initialTokens), "natural");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addHSPortMapping("op", inputSignals[i], i, "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addHSPortMapping("op", outputSignals[o], o, "out");
+        }
+      } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        std::string sigType;
+        if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
+                       componentType)) {
+          sigType = "std_logic_vector";
+        } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
+                              componentType)) {
+          sigType = "std_logic";
+        } else {
+          VERBOSE_ERROR("UI component(" << componentType << ") not supported.");
+        }
+        // UI operators have input ports (for GPIO pins) not reflected in SDF;
+        // checking opInputPorts/opOutputPorts for the number of ports accounts for that
+        if (inputSignals.size() != opInputPorts.at(componentType).size()) {
+          for (auto i = 0; i < opInputPorts.at(componentType).size(); i++) {
+            std::string portName = "op_in_data_" + std::to_string(i);
+            // NOTE name needs to match the extPortName in VHDLCircuit
+            // TODO allow circuit to update component's port mapping
+            std::string uiInputSigName =
+              portMapName + "_" + std::to_string(actorId) + "_" + portName;
+            addExternalPort(portName, uiInputSigName, sigType, "in");
+            addPortMapping(portName, uiInputSigName, sigType, "in");
+          }
+        } else {
+          for (auto i = 0; i < inputSignals.size(); i++) {
+            addHSPortMapping("op", inputSignals[i], i, "in");
+          }
+        }
+        if (outputSignals.size() != opOutputPorts.at(componentType).size()) {
+          for (auto o = 0; o < opInputPorts.at(componentType).size(); o++) {
+            std::string portName = "op_out_data_" + std::to_string(o);
+            // NOTE name needs to match the extPortName in VHDLCircuit
+            // TODO allow circuit to update component's port mapping
+            std::string uiInputSigName =
+              portMapName + "_" + std::to_string(actorId) + "_" + portName;
+            addExternalPort(portName, uiInputSigName, sigType, "out");
+            addPortMapping(portName, uiInputSigName, sigType, "out");
+          }
+        } else {
+          for (auto o = 0; o < outputSignals.size(); o++) {
+            addHSPortMapping("op", outputSignals[o], o, "out");
+          }
+        }
       } else {
         addPortMapping("clk", "clk", "std_logic", "in");
         addPortMapping("rst", "rst", "std_logic", "in");
@@ -780,6 +858,10 @@ void VHDLComponent::portMappingInit() {
                     << uniqueName << " (" << componentType
                     << "). VHDL implementation might be invalid.");
   }
+}
+
+int VHDLComponent::getActorId() const {
+  return this->actorId;
 }
 
 void VHDLComponent::implementationInit() {
@@ -865,6 +947,16 @@ void VHDLComponent::implementationInit() {
       }
       implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
       implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
+    } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+        std::stringstream procBehav;
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          procBehav << "op_out_valid_" << o << " <= '1';\n"
+            // NOTE hard-coded input 0 mapping to all output data as
+            // we only expect 1 input per UI component
+                    << "op_out_data_" << o << " <= op_in_data_0;\n" << std::endl;
+        }
+        implReplacementMap["$PROCESS_BEHAVIOUR"] = procBehav.str();
+        implReplacementMap["$ENTITY_DECLARATION"] = this->genEntityDecl(); // TODO move somewhere so it's not order dependent
     } else if (componentType == "input_selector") {
       std::stringstream procBehav;
       std::stringstream validSignalRouting;
@@ -1039,6 +1131,22 @@ std::string VHDLComponent::printStatus() const  {
 // i.e. so that we can get top-level input/output ports
 std::map<std::string, std::string> VHDLComponent::getPortMapping() const {
   return this->ports;
+}
+
+std::map<std::string, std::string> VHDLComponent::getTopSignalTypes() const {
+  return this->topSignalTypes;
+}
+
+std::map<std::string, int> VHDLComponent::getTopSignalWidths() const {
+  return this->topSignalWidths;
+}
+
+std::vector<std::string> VHDLComponent::getTopInputPorts() const {
+  return this->topInputPorts;
+}
+
+std::vector<std::string> VHDLComponent::getTopOutputPorts() const {
+  return this->topOutputPorts;
 }
 
 /**
@@ -1221,11 +1329,7 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
       std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
                             dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
-    }
-    else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
-      refDir += "/operators/";
-    }
-    else {
+    } else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
     }
@@ -1239,6 +1343,8 @@ void VHDLComponent::genImplementation(std::string refDir,
       refFileName = "output_selector.vhdl";
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
+    } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
+      refFileName = "ui_template.vhdl";
     } else if (componentType == "hs_fifo") {
       refFileName = "hs_fifo.vhdl";
       std::filesystem::copy(refDir + "hs_fifo.vhdl",
@@ -1249,6 +1355,8 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "hs_fifo_zero.vhdl", copyOptions);
       std::filesystem::copy(refDir + "hs_fifo_one.vhdl",
                             dstDir + "hs_fifo_one.vhdl", copyOptions);
+    } else if (componentType == "delay") {
+      refFileName = "delay.vhdl";
     } else { // FPC operator and HS wrapper
       refFileName =
           "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";

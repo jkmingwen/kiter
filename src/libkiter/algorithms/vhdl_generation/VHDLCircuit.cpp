@@ -470,6 +470,56 @@ void VHDLCircuit::portMappingInit() {
   }
 }
 
+void VHDLCircuit::externalPortsInit() {
+  for (auto const &[v, comp] : this->getComponentMap()) {
+    if (comp.getTopInputPorts().size()) {
+      std::vector<std::string> ports = comp.getTopInputPorts();
+      std::map<std::string, std::string> types = comp.getTopSignalTypes();
+      std::map<std::string, int> widths = comp.getTopSignalWidths();
+      for (auto const &portName : ports) {
+        std::string circuitExtPort =
+          comp.getPortMapName() + "_" + std::to_string(comp.getActorId()) + "_" + portName;
+        std::string wrapperExtPort = circuitExtPort + "_ext";
+        addPortMapping(circuitExtPort, wrapperExtPort, types[portName], "in",
+                       widths[portName]);
+        externalInputPorts.push_back(circuitExtPort);
+        externalPortTypes[circuitExtPort] = types[portName];
+        externalPortWidths[circuitExtPort] = widths[portName];
+      }
+    }
+    if (comp.getTopOutputPorts().size()) {
+      std::vector<std::string> ports = comp.getTopOutputPorts();
+      std::map<std::string, std::string> types = comp.getTopSignalTypes();
+      std::map<std::string, int> widths = comp.getTopSignalWidths();
+      for (auto const &portName : ports) {
+        std::string circuitExtPort =
+          comp.getPortMapName() + "_" + std::to_string(comp.getActorId()) + "_" + portName;
+        std::string wrapperExtPort = circuitExtPort + "_ext";
+        addPortMapping(circuitExtPort, wrapperExtPort, types[portName], "out",
+                       widths[portName]);
+        externalOutputPorts.push_back(circuitExtPort);
+        externalPortTypes[circuitExtPort] = types[portName];
+        externalPortWidths[circuitExtPort] = widths[portName];
+      }
+    }
+  }
+}
+
+std::vector<std::string> VHDLCircuit::getExternalInputPorts() {
+  return this->externalInputPorts;
+}
+
+std::vector<std::string> VHDLCircuit::getExternalOutputPorts() {
+  return this->externalOutputPorts;
+}
+
+std::map<std::string, std::string> VHDLCircuit::getExternalPortTypes() {
+  return this->externalPortTypes;
+}
+
+std::map<std::string, int> VHDLCircuit::getExternalPortWidths() {
+  return this->externalPortWidths;
+}
 
 std::vector<std::string> VHDLCircuit::generateDataSignalNames() {
   std::vector<std::string> signalNames;
@@ -602,6 +652,7 @@ void VHDLCircuit::writeImplementation(std::ofstream &vhdlOutput) {
              << std::endl;
 
   // Initialise top level ports (necessary before running genEntityDecl)
+  externalPortsInit();
   portMappingInit();
   vhdlOutput << genEntityDecl() << std::endl;
 

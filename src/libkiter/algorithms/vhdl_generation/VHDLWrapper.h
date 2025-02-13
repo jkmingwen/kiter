@@ -21,6 +21,7 @@ public:
 
   void portMappingInit();
   void internalSignalsInit();
+  void externalPortsInit();
   void addInternalSignal(std::string sigName, std::string type, int dataWidth = 34);
   std::string genInternalSigs();
   void writeImplementation(std::ofstream &vhdlOutput);
