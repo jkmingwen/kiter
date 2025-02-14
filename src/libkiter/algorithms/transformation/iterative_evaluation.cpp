@@ -39,43 +39,36 @@ std::map<std::string, std::string> specialConstants = { // constants and their n
 void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dataflow,
                                                     parameters_list_t params) {
   bool changeDetected = true;
-  implType t = TT;
-  bool dataDrivenImpl = false;  // we either prepare the SDF for a data driven or time triggered implementation
-  if (params.find("DATA_DRIVEN") != params.end()) {
-    dataDrivenImpl = true;
-    t = DD;
-  }
 
   VERBOSE_INFO("Beginning iterative evaluation...");
 
   models::Dataflow* dataflow_prime = dataflow; // NOTE is this necessary? can just use the underlying dataflow graph
-  if (!dataDrivenImpl) { // time triggered implementation uses SBuffers instead of FIFO buffers
-    bool delayDetected = true;
-    VERBOSE_INFO("Iteratively evaluating graph for time-triggered implementation. Adding scheduled buffers...");
-    while (delayDetected) {
-      VERBOSE_INFO("Iteratively searching for static delay:");
-      delayDetected = false;
-      {ForEachVertex(dataflow_prime, v) {
-          std::string opName = dataflow_prime->getVertexType(v);
-          VERBOSE_INFO("Visiting " << opName << " ("
-                       << dataflow_prime->getVertexName(v) << ")...");
-          if (opName == "delay") {
-            // identify input signal edge and static delay amount
-            int delayAmt;
-            Edge inputSig, delayArg;
-            if (checkForStaticDelay(dataflow_prime, v, inputSig, delayArg, delayAmt)) {
-              VERBOSE_INFO("\tDetected static delay");
-              VERBOSE_INFO("\t\tDelay amount: " << delayAmt
-                           << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
-              delayToBuffer(dataflow_prime, v, delayArg, delayAmt);
-              delayDetected = true;
-              break;
-            }
+  bool delayDetected = true;
+  VERBOSE_INFO("Iteratively evaluating graph for time-triggered implementation. Adding scheduled buffers...");
+  while (delayDetected) {
+    VERBOSE_INFO("Iteratively searching for static delay:");
+    delayDetected = false;
+    {ForEachVertex(dataflow_prime, v) {
+        std::string opName = dataflow_prime->getVertexType(v);
+        VERBOSE_INFO("Visiting " << opName << " ("
+                     << dataflow_prime->getVertexName(v) << ")...");
+        if (opName == "delay") {
+          // identify input signal edge and static delay amount
+          int delayAmt;
+          Edge inputSig, delayArg;
+          if (checkForStaticDelay(dataflow_prime, v, inputSig, delayArg, delayAmt)) {
+            VERBOSE_INFO("\tDetected static delay");
+            VERBOSE_INFO("\t\tDelay amount: " << delayAmt
+                         << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
+            delayToBuffer(dataflow_prime, v, delayArg, delayAmt);
+            delayDetected = true;
+            break;
           }
-        }}
-    }
-    VERBOSE_INFO("No further possible delays to replace (with buffers) detected");
+        }
+      }}
   }
+  VERBOSE_INFO("No further possible delays to replace (with buffers) detected");
+
   while (changeDetected) {
     VERBOSE_INFO("");
     VERBOSE_INFO("Starting new iteration of iterative evaluation:");
@@ -90,27 +83,12 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
             changeDetected = true;
             break;
           }
-          // don't use Proj operators in time-triggered implementations as
-          // data arrival determined by schedule, no need component to
-          // distribute and guarantee they're received
-          if (opName == "Proj" && !dataDrivenImpl) {
+          // broadcast components are inserted when generating VHDL
+          if (opName == "Proj") {
             VERBOSE_INFO("\tBypassing Proj");
             bypassProj(dataflow_prime, v);
             changeDetected = true;
             break;
-          }
-          if (opName == "delay" && dataDrivenImpl) { // data-driven implementations model delays as initial tokens
-            // identify input signal edge and static delay amount
-            int delayAmt;
-            Edge inputSig, delayArg;
-            if (checkForStaticDelay(dataflow_prime, v, inputSig, delayArg, delayAmt)) {
-              VERBOSE_INFO("\tBypassing static delay");
-              VERBOSE_INFO("\t\tDelay amount: " << delayAmt
-                           << " (" << dataflow_prime->getVertexName(dataflow_prime->getEdgeSource(delayArg)) << ")");
-              bypassDelay(dataflow_prime, v, inputSig, delayArg, delayAmt);
-              changeDetected = true;
-              break;
-            }
           }
           // substitute certain constant variables with predefined numerical values
           if (specialConstants.find(opName) != specialConstants.end()) {
@@ -146,7 +124,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
                 VERBOSE_INFO("\t\t  " << i);
               }
               changeDetected = false; // no change as actors aren't removed
-              break;
+              // break;
             } else if (opName.find("OUTPUT") != std::string::npos) {
               VERBOSE_INFO("\tAll inputs to output are constants");
               break;
@@ -162,48 +140,6 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
             }
           }
         }}
-  }
-  // need to normalise outputs for data-driven implementations to minimize
-  // permutations of HS protocol implementations
-  if (dataDrivenImpl) {
-    VERBOSE_INFO("Checking for delays with more than one output:");
-    /* Check for delays with multiple outputs only after iterative evaluation
-       complete to prevent unnecessarily generating Proj operators when the
-       delay could've just been bypassed */
-    changeDetected = true;
-    while (changeDetected) {
-      changeDetected = false;
-      {ForEachVertex(dataflow_prime, v) {
-          std::string opName = dataflow_prime->getVertexType(v);
-          VERBOSE_INFO("Visiting " << opName
-                       << " (" << dataflow_prime->getVertexName(v) << ")...");
-          if (opName == "delay" && dataflow_prime->getVertexOutDegree(v) > 1) {
-            routeMultiOutDelay(dataflow_prime, v);
-            changeDetected = true;
-            break;
-          }
-        }}
-    }
-
-    // enforce single outputs for each operator
-    VHDLCircuit tmp = generateCircuitObject(dataflow_prime, t);
-    while (tmp.getMultiOutActors().size() > 0) { // to simplify VHDL implementation, the operators are only supposed to have a single output
-      VERBOSE_INFO("Operators with multiple outputs detected: " << tmp.getMultiOutActors().size());
-
-      /*  This block removes multiIO actors and replaces them with a router that splits their output */
-      for (std::string actorName: tmp.getMultiOutActors()) {
-        parameters_list_t parameters;
-        parameters["name"] = actorName;
-        VERBOSE_INFO("singleOutput actor " << actorName);
-        try { // try-catch necessary as some actor in the multi-out list are removed as we iterate through the list
-          algorithms::transformation::singleOutput(dataflow_prime, parameters);
-        } catch (...) {
-          VERBOSE_WARNING("actor missing!");
-        }
-      }
-      tmp = generateCircuitObject(dataflow_prime, t);
-      // the dataflow now should only have actors with single outputs (with exceptions defined in singleOutput)
-    }
   }
   VERBOSE_INFO("No further possible reductions detected, producing simplified graph");
 }
