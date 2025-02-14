@@ -619,6 +619,7 @@ void VHDLComponent::portMappingInit() {
       } else if (componentType == "delay") {
         addPortMapping("clk", "clk", "std_logic", "in");
         addPortMapping("rst", "rst", "std_logic", "in");
+        addPortMapping("cycle_count", "cycle_count", "integer", "in");
         addGenericMapping("ram_width", "ram_width", "natural");
         addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
                           "natural");
