@@ -432,6 +432,19 @@ void VHDLComponent::setStartTimes(std::vector<TIME_UNIT> times,
         addGenericMapping("exec_time_" + std::to_string(n),
                           std::to_string((int)(time + slack)), "integer");
       }
+    } else if (componentType == "delay") {
+      if (popTime.size() > 1) {
+        VERBOSE_WARNING("More than 1 pop time defined for buffer; using first "
+                        "time in vector");
+      }
+      if (popTime.front() == 0 && slack == 0) {
+        VERBOSE_ERROR("Buffer with pop time = 0 (" << this->getUniqueName() << "), requires slack of >= 1 using -pSLACK=slack");
+      }
+      addGenericMapping("push_start", std::to_string((int)(time + slack)),
+                        "integer");
+      // Subtract 1 from pop time to account for 1 cycle delay between
+      // pop time and data output
+      addGenericMapping("pop_start", std::to_string((int)(popTime.front() - 1 + slack)), "integer");
     } else if (componentType == "sbuffer") {
       if (popTime.size() > 1) {
         VERBOSE_WARNING("More than 1 pop time defined for buffer; using first "
@@ -603,6 +616,21 @@ void VHDLComponent::portMappingInit() {
         for (auto o : outputSignals) {
           addPortMapping("out_data", o, "std_logic_vector", "out");
         }
+      } else if (componentType == "delay") {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addGenericMapping("ram_width", "ram_width", "natural");
+        addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
+                          "natural");
+        addGenericMapping("init", std::to_string(initialTokens), "natural");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        }
       } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
         addPortMapping("clk", "clk", "std_logic", "in");
         std::string extSigType;
@@ -748,6 +776,21 @@ void VHDLComponent::portMappingInit() {
         }
         for (auto o : outputSignals) {
           addPortMapping("out_data", o, "std_logic_vector", "out");
+        }
+      } else if (componentType == "delay") {
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        addGenericMapping("ram_width", "ram_width", "natural");
+        addGenericMapping("buffer_size", std::to_string(initialTokens + 1),
+                          "natural");
+        addGenericMapping("init", std::to_string(initialTokens), "natural");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
         }
       } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
         addPortMapping("clk", "clk", "std_logic", "in");

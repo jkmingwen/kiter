@@ -292,7 +292,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                              getOperatorLifespan("fp_prod", operatorFreq);
         tmp.addComputeTime(comp.getIOId(), startTimes.front() + conversionTime);
       }
-      if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+      if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
         {ForOutputEdges(dataflow, v, outEdge) {
             // actor names after "_" redundant (only indicate order of args)
             Vertex dstActor = dataflow->getEdgeTarget(outEdge);
@@ -364,7 +364,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
             comp.getType() == "output_selector") {
           tmp.addExecution(schedule, comp.getUniqueName(), "trigger_exec",
                            srcOSStarts, systemSlack);
-        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
           tmp.addExecution(schedule, comp.getUniqueName(), "trigger_push",
                            srcOSStarts, systemSlack);
           // Subtract 1 from pop time to account for 1 cycle delay between
