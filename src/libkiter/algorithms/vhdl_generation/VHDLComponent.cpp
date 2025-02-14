@@ -210,10 +210,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     implRefName = componentType;
   } else if (componentType == "delay") {
     portMapName = componentType;
-    implRefName = portMapName + "_f" + std::to_string(opFreq);
-    if (implementationType == DD) {
-      implRefName = portMapName;
-    }
+    implRefName = portMapName;
   } else if (componentType == "Proj") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
     implRefName = implementationNames[componentType] + "_" +
@@ -1441,10 +1438,9 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refDir += "/operators/";
     } else if (componentType == "delay") {
-      refDir += "/operators/";
-      dstFileName = portMapName + "_f" + std::to_string(opFreq) + ".vhdl";
-    }
-    else {
+      std::filesystem::copy(refDir + "delay_tt.vhdl",
+                            dstDir + "delay.vhdl", copyOptions);
+    } else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
     }
@@ -1478,8 +1474,8 @@ void VHDLComponent::genImplementation(std::string refDir,
       std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
                             dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
     } else if (componentType == "delay") {
-      refDir += "/operators/";
-      dstFileName = portMapName + "_f" + std::to_string(opFreq) + ".vhdl";
+      std::filesystem::copy(refDir + "delay_gs.vhdl",
+                            dstDir + "delay.vhdl", copyOptions);
     } else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";

@@ -315,7 +315,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
             comp.getType() == "output_selector") {
           tmp.addExecution(schedule, comp.getUniqueName(), "trigger_exec",
                            startTimes, systemSlack);
-        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg") {
+        } else if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
           tmp.addExecution(schedule, comp.getUniqueName(), "trigger_push",
                            startTimes, systemSlack);
           // Subtract 1 from pop time to account for 1 cycle delay between
