@@ -210,7 +210,10 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     implRefName = componentType;
   } else if (componentType == "delay") {
     portMapName = componentType;
-    implRefName = portMapName;
+    implRefName = portMapName + "_f" + std::to_string(opFreq);
+    if (implementationType == DD) {
+      implRefName = portMapName;
+    }
   } else if (componentType == "Proj") {
     portMapName = componentType + "_" + std::to_string(outputPorts.size());
     implRefName = implementationNames[componentType] + "_" +
