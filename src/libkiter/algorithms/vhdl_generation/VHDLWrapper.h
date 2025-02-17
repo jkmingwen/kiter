@@ -14,10 +14,8 @@
 
 class VHDLWrapper : public VHDLComponent {
 public:
-  VHDLWrapper();
-  VHDLWrapper(implType t, int sysPeriod, int sysSlack);
-  VHDLWrapper(VHDLCircuit circuit, implType t, int sysPeriod, int sysSlack);
-  VHDLWrapper(VHDLCircuit circuit, VHDLScheduler &s, implType t, int sysPeriod, int sysSlack);
+  VHDLWrapper(VHDLCircuit &circuit, implType t, int sysPeriod, int sysSlack);
+  VHDLWrapper(VHDLCircuit &circuit, VHDLScheduler &s, implType t, int sysPeriod, int sysSlack);
 
   void portMappingInit();
   void internalSignalsInit();
@@ -25,7 +23,7 @@ public:
   void addInternalSignal(std::string sigName, std::string type, int dataWidth = 34);
   std::string genInternalSigs();
   void writeImplementation(std::ofstream &vhdlOutput);
-  void initialiseWrapper(const VHDLCircuit &circuit);
+  void initialiseWrapper(VHDLCircuit &circuit);
   VHDLComponent genComponent(std::string componentType);
   BufferComponent *genIOBuffer(implType t, std::string inSigName,
                                std::string outSigName,
@@ -44,7 +42,7 @@ private:
   std::vector<std::unique_ptr<VHDLComponent>> components;
   int period;
   int slack;
-  VHDLCircuit dspCircuit;
+  VHDLCircuit &dspCircuit;
   VHDLScheduler scheduler;
   std::string dspName;
   std::map<int, TIME_UNIT> computeTimes;

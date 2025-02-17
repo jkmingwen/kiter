@@ -16,29 +16,18 @@
 #include <cmath>
 #include <memory>
 
-VHDLWrapper::VHDLWrapper() {}
-
-VHDLWrapper::VHDLWrapper(implType t, int sysPeriod, int sysSlack) {
+VHDLWrapper::VHDLWrapper(VHDLCircuit &circuit, implType t, int sysPeriod,
+                         int sysSlack)
+    : period(sysPeriod), slack(sysSlack), dspCircuit(circuit) {
   implementationType = t;
-  period = sysPeriod;
-  slack = sysSlack;
-}
-
-VHDLWrapper::VHDLWrapper(VHDLCircuit circuit, implType t, int sysPeriod,
-                         int sysSlack) {
-  implementationType = t;
-  period = sysPeriod;
-  slack = sysSlack;
   initialiseWrapper(circuit);
 }
 
-VHDLWrapper::VHDLWrapper(VHDLCircuit circuit, VHDLScheduler &s, implType t, int sysPeriod,
-                         int sysSlack) {
+VHDLWrapper::VHDLWrapper(VHDLCircuit &circuit, VHDLScheduler &s, implType t,
+                         int sysPeriod, int sysSlack)
+    : period(sysPeriod), slack(sysSlack), dspCircuit(circuit), scheduler(s) {
   implementationType = t;
-  period = sysPeriod;
-  slack = sysSlack;
-  scheduler = s;
-  initialiseWrapper(circuit);
+  initialiseWrapper(dspCircuit);
 }
 
 void VHDLWrapper::portMappingInit() {
@@ -225,9 +214,9 @@ void VHDLWrapper::internalSignalsInit() {
 }
 
 // Configure audio wrapper implementation according to circuit it's wrapping
-void VHDLWrapper::initialiseWrapper(const VHDLCircuit &circuit) {
+void VHDLWrapper::initialiseWrapper(VHDLCircuit &circuit) {
   implRefName = "audio_interface_wrapper";
-  dspCircuit = circuit;
+  // dspCircuit = circuit;
   numInputs = dspCircuit.getOperatorCount("INPUT");
   numOutputs = dspCircuit.getOperatorCount("OUTPUT");
   dspName = dspCircuit.getName();

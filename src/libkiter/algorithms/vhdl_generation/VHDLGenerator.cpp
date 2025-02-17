@@ -398,14 +398,16 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       vhdlOutput.close();
     } else if (implementationType == GS) {
       generateOperators(tmp);
-      VHDLWrapper audioInterfaceWrapper =
-        VHDLWrapper(tmp, schedule, implementationType, systemPeriod, systemSlack);
+      tmp.externalPortsInit();
+      VHDLWrapper audioInterfaceWrapper = VHDLWrapper(
+          tmp, schedule, implementationType, systemPeriod, systemSlack);
+      // only instantiate circuit after instantiating wrapper as schedule width is updated
+      generateCircuit(tmp);
       std::ofstream vhdlOutput;
       vhdlOutput.open(topDir + tmp.getName() + "_top.vhdl");
       audioInterfaceWrapper.writeImplementation(vhdlOutput);
       vhdlOutput.close();
       audioInterfaceWrapper.writeSchedulerImplementation(topDir);
-      audioInterfaceWrapper.writeCircuitImplementation(topDir);
     }
     std::filesystem::copy(referenceDir + "/testbenches/", tbDir, copyOptions);
     printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
