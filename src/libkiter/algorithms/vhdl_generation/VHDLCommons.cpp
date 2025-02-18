@@ -44,6 +44,41 @@ std::vector<std::string> getArgOrderFromName(std::string name) {
 }
 
 /**
+   Get parameter values for operators (usually UI).
+   Parameter values for operators are denoted by their name (e.g.
+   compName_paramZero100_paramOne222_paramThree3).
+
+   @param name Actor's name.
+
+   @return argOrder Vector of names of arguments (actors) in order.
+*/
+std::map<std::string, float> getParamsFromName(std::string name) {
+  std::map<std::string, float> params;
+  std::vector<std::string> rawParams = getArgOrderFromName(name);
+
+  for (const std::string& param : rawParams) {
+    std::string paramName;
+    std::string paramValueStr;
+
+    // Separate the alphabetic prefix from the numeric suffix
+    for (char ch : param) {
+      if (std::isalpha(ch)) {
+        paramName += ch;
+      } else if (std::isdigit(ch) || ch == '.' || ch == '-') {
+        // Support for floating-point and negative values
+        paramValueStr += ch;
+      }
+    }
+
+    if (!paramName.empty() && !paramValueStr.empty()) {
+      params[paramName] = std::stof(paramValueStr); // Convert to float
+    }
+  }
+
+  return params;
+}
+
+/**
    Get input data types for given Vertex.
 
    @param dataflow Graph where Vertex is instantiated.
@@ -408,4 +443,24 @@ std::string tab(int level) { // helper function to generate tabbing
   std::string pad(level*4, ' '); // 4 spaces per level
 
   return pad;
+}
+
+std::string fpcFloatToBinaryString(float fpValue) {
+  std::string binaryRepresentation;
+  std::string prefix = (fpValue ? "01" : "00");
+  std::stringstream binaryRep;
+  size_t size = sizeof(fpValue);
+  unsigned char *p = (unsigned char *)&fpValue;
+  p += size - 1;
+  while (size--) {
+    for (int n = 0; n < 8; n++) {
+      char bit = ('0' + (*p & 128 ? 1 : 0));
+      binaryRep << bit;
+      *p <<=1;
+    }
+    p--;
+  }
+  binaryRepresentation = prefix + binaryRep.str();
+
+  return binaryRepresentation;
 }

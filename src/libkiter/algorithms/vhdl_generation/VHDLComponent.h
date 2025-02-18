@@ -66,7 +66,7 @@ public:
   void addGenericMapping(std::string port, std::string signal, std::string type,
                          int dataWidth = 34, std::string defaultVal = "");
   void addExternalPort(std::string port, std::string signal, std::string type,
-                       std::string direction, int dataWidth = 34);
+                       std::string direction, int dataWidth = 34, std::string defaultVal = "");
   implType getImplType() const;
   std::map<std::string, std::string> getPortMapping() const;
   virtual void portMappingInit();
@@ -143,6 +143,7 @@ protected:
   int initialTokens; // specifically for buffer type operators // TODO make specific VHDLBufferComp
   std::string graphName; // specifically for INPUT/OUTPUT components // TODO make specific VHDLTop component
 
+  std::map<std::string, float> parameters;
   // for external ports (mainly for UI components)
   std::map<std::string, std::string> topSignalTypes; // port name -> signal type
   std::map<std::string, int> topSignalWidths;

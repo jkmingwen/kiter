@@ -150,6 +150,7 @@ inline std::unordered_set<std::string> unsupportedOperators = {"cos", "sin"};
 
 int getOperatorLifespan(const std::string &opType, int opFreq);
 std::vector<std::string> getArgOrderFromName(std::string name);
+std::map<std::string, float> getParamsFromName(std::string name);
 std::map<std::string, int> getInputDataTypes(models::Dataflow *const dataflow,
                                              Vertex src);
 std::map<std::string, int> getOutputDataTypes(models::Dataflow *const dataflow,
@@ -168,6 +169,7 @@ std::string generateTikzFill(std::string name, std::string type, ARRAY_INDEX id,
                              bool truncNames);
 std::string generateTikzSchedule(models::Scheduling schedule);
 std::string tab(int level);
+std::string fpcFloatToBinaryString(float f);
 
 
 #endif /* VHDL_COMMONS_H_ */
