@@ -171,7 +171,9 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<std::string> inPortNames;
     std::vector<std::string> outEdgeNames;
     std::vector<std::string> outPortNames;
-    std::string actorBaseName = commons::split<std::string>(dataflow->getVertexName(v), '_').front();
+    std::string actorBaseName =
+        commons::split<std::string>(dataflow->getVertexName(v), '_').front();
+    actorBaseName = splitByString(actorBaseName, "PARAM").front();
     actorNames.push_back(actorBaseName);
     argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
     outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
@@ -180,6 +182,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
       {ForInputEdges(dataflow, v, inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
           std::string inputActorName = commons::split<std::string> (dataflow->getVertexName(inputActor), '_').front();
+          inputActorName = splitByString(inputActorName, "PARAM").front();
           if (inputActorName == argActorName) { // the edge connects the input actor to this actor
             std::string edgeName = dataflow->getEdgeName(inEdge);
             std::string inPortName = dataflow->getEdgeOutputPortName(inEdge);
@@ -391,6 +394,9 @@ std::string algorithms::replaceActorName(std::string targetString,
                                          std::vector<TOKEN_UNIT> replacementMask) {
   std::vector<std::string> actorNames =
       commons::split<std::string>(targetString, '_');
+  for (auto i = 0; i < actorNames.size(); i++) {
+    actorNames.at(i) = splitByString(actorNames.at(i), "PARAM").front();
+  }
   VERBOSE_ASSERT(actorNames.size() > 0, "Non-empty string must be used.");
   if (actorNames.size() == 1) {
     return targetString; // nothing to replace if no args listed after base name

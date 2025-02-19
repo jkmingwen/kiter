@@ -8,6 +8,7 @@
 #include <models/Dataflow.h>
 #include "merge_output.h"
 #include "algorithms/transformation/merge_operators.h"
+#include "algorithms/vhdl_generation/VHDLCommons.h"
 #include "commons/commons.h"
 
 void algorithms::transformation::merge_output    (models::Dataflow* const dataflow, parameters_list_t  parameters  ) {
@@ -19,6 +20,7 @@ void algorithms::transformation::merge_output    (models::Dataflow* const datafl
         }
         Vertex src = dataflow->getVertexByName(parameters["name"]);
         std::string srcBaseName = commons::split<std::string>(dataflow->getVertexName(src), '_').front();
+        srcBaseName = splitByString(srcBaseName, "PARAM").front();
         Vertex bcSrc = dataflow->addVertex("broadcast" + srcBaseName);
         dataflow->setVertexType(bcSrc, "broadcast");
         std::map<std::string, int> outputTypes;
@@ -45,6 +47,8 @@ void algorithms::transformation::merge_output    (models::Dataflow* const datafl
             // rename target to reflect broadcast as source
             std::vector<std::string> oldNames = commons::split<std::string>(dataflow->getVertexName(src), '_');
             std::vector<std::string> names = commons::split<std::string>(dataflow->getVertexName(bcSrc), '_');
+            for (auto i = 0; i < oldNames.size(); i++) { oldNames.at(i) = splitByString(oldNames.at(i), "PARAM").front(); }
+            for (auto i = 0; i < names.size(); i++) { names.at(i) = splitByString(names.at(i), "PARAM").front(); }
             std::string newName =
                 replaceActorName(dataflow->getVertexName(edgeTarget),
                                  oldNames.front(), names.front());
