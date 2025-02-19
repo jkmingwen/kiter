@@ -170,6 +170,7 @@ std::string generateTikzFill(std::string name, std::string type, ARRAY_INDEX id,
 std::string generateTikzSchedule(models::Scheduling schedule);
 std::string tab(int level);
 std::string fpcFloatToBinaryString(float f);
+std::vector<std::string> splitByString(const std::string& str, const std::string& delimiter);
 
 
 #endif /* VHDL_COMMONS_H_ */

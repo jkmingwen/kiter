@@ -54,7 +54,8 @@ std::vector<std::string> getArgOrderFromName(std::string name) {
 */
 std::map<std::string, float> getParamsFromName(std::string name) {
   std::map<std::string, float> params;
-  std::vector<std::string> rawParams = getArgOrderFromName(name);
+  std::vector<std::string> rawParams = splitByString(name, "PARAM");
+  rawParams.erase(rawParams.begin()); // first element is the actor's name
 
   for (const std::string& param : rawParams) {
     std::string paramName;
@@ -246,8 +247,9 @@ std::string getNameFromPartialName(models::Dataflow* const dataflow,
   std::vector<std::string> matchingNames;
   {ForEachVertex(dataflow, v) {
       std::string fullName = dataflow->getVertexName(v);
-      std::string baseName =
-          commons::split<std::string>(fullName, '_').front();
+      // remove args (delimited by '_') and params (delimited by "PARAM")
+      std::string baseName = commons::split<std::string>(fullName, '_').front();
+      baseName = splitByString(baseName, "PARAM").front();
       if (baseName == partialName) {
         matchingNames.push_back(fullName);
       }
@@ -463,4 +465,19 @@ std::string fpcFloatToBinaryString(float fpValue) {
   binaryRepresentation = prefix + binaryRep.str();
 
   return binaryRepresentation;
+}
+
+std::vector<std::string> splitByString(const std::string& str, const std::string& delimiter) {
+  std::vector<std::string> tokens;
+  size_t start = 0, end;
+
+  while ((end = str.find(delimiter, start)) != std::string::npos) {
+    tokens.push_back(str.substr(start, end - start));
+    start = end + delimiter.length();
+  }
+
+  // Add the last remaining part (if any)
+  tokens.push_back(str.substr(start));
+
+  return tokens;
 }
