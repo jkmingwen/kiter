@@ -1432,6 +1432,15 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
       std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
                             dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
+    } else if (componentType == "fp_floor") {
+      refDir += "/operators/";
+      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string int2floatFile = "int2float_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string float2intFile = "float2int_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::filesystem::copy(refDir + int2floatFile, dstDir + int2floatFile,
+                            copyOptions);
+      std::filesystem::copy(refDir + float2intFile, dstDir + float2intFile,
+                            copyOptions);
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refDir += "/operators/";
     } else if (componentType == "delay") {
@@ -1470,6 +1479,15 @@ void VHDLComponent::genImplementation(std::string refDir,
                             dstDir + "pipo_shift_reg_one.vhdl", copyOptions);
       std::filesystem::copy(refDir + "pipo_shift_reg_zero.vhdl",
                             dstDir + "pipo_shift_reg_zero.vhdl", copyOptions);
+    } else if (componentType == "fp_floor") {
+      refDir += "/operators/";
+      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string int2floatFile = "int2float_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string float2intFile = "float2int_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::filesystem::copy(refDir + int2floatFile, dstDir + int2floatFile,
+                            copyOptions);
+      std::filesystem::copy(refDir + float2intFile, dstDir + float2intFile,
+                            copyOptions);
     } else if (componentType == "delay") {
       std::filesystem::copy(refDir + "delay_gs.vhdl",
                             dstDir + "delay.vhdl", copyOptions);
@@ -1487,6 +1505,22 @@ void VHDLComponent::genImplementation(std::string refDir,
       refFileName = "output_selector.vhdl";
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
+    } else if (componentType == "fp_floor") {
+      refDir += "/operators/";
+      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string int2floatFile = "int2float_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string float2intFile = "float2int_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::filesystem::copy(refDir + int2floatFile, dstDir + int2floatFile,
+                            copyOptions);
+      std::filesystem::copy(refDir + float2intFile, dstDir + float2intFile,
+                            copyOptions);
+      refFileName =
+        "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";
+      // copy over FPC operator implementation
+      std::filesystem::copy(
+          refDir + implementationName + "_f" + std::to_string(opFreq) + ".vhdl",
+          dstDir + implementationName + "_f" + std::to_string(opFreq) + ".vhdl",
+          copyOptions);
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refFileName = "ui_template.vhdl";
     } else if (componentType == "hs_fifo") {
