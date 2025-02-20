@@ -59,7 +59,7 @@ VHDLComponentDD::VHDLComponentDD(models::Dataflow* const dataflow, Vertex a, int
   if (argOrder.size() && componentType != "OUTPUT") {
     for (auto const &inputVertexName : this->argOrder) {
       Vertex inputVertex = dataflow->getVertexByName(
-          getNameFromPartialName(dataflow, inputVertexName));
+          getFullNameFromBaseName(dataflow, inputVertexName));
       {ForInputEdges(dataflow, this->actor, e) {
           if (dataflow->getEdgeSource(e) == inputVertex) {
             this->addInputSignal(dataflow, e);

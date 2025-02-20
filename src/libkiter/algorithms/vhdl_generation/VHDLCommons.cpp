@@ -247,14 +247,11 @@ std::string getFullNameFromBaseName(models::Dataflow* const dataflow,
   std::vector<std::string> matchingNames;
   {ForEachVertex(dataflow, v) {
       std::string fullName = dataflow->getVertexName(v);
-      // remove args (delimited by '_') and params (delimited by "PARAM")
-      std::string baseName = commons::split<std::string>(fullName, '_').front();
-      baseName = splitByString(baseName, "PARAM").front();
+      std::string baseName = getBaseName(fullName);
       if (baseName == partialName) {
         matchingNames.push_back(fullName);
       }
     }}
-
   VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns '" << matchingNames[0] << "'");
   VERBOSE_ASSERT(matchingNames.size() == 1, "Non-unique matches for '" << partialName << "': " << commons::toString(matchingNames));
   return matchingNames.front();

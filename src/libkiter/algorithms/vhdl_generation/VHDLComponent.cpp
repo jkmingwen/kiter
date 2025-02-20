@@ -82,7 +82,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
   if (argOrder.size() && componentType != "OUTPUT") {
     for (auto const &inputVertexName : this->argOrder) {
       Vertex inputVertex = dataflow->getVertexByName(
-          getFullNameFromBaseName(dataflow, inputVertexName));
+          getFullNameFromBaseName(dataflow, getBaseName(inputVertexName)));
       {ForInputEdges(dataflow, this->actor, e) {
           if (dataflow->getEdgeSource(e) == inputVertex) {
             this->addInputSignal(dataflow, e);
@@ -627,7 +627,7 @@ void VHDLComponent::portMappingInit() {
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           extSigType = "std_logic_vector";
-          initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\"";
+          if (parameters.count("init")) { initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\""; }
         } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
                               componentType)) {
           extSigType = "std_logic";
@@ -655,7 +655,7 @@ void VHDLComponent::portMappingInit() {
         }
         if (outputSignals.size() != opOutputPorts.at(componentType).size()) {
           std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
-          for (auto o = 0; o < opInputPorts.at(componentType).size(); o++) {
+          for (auto o = 0; o < opOutputPorts.at(componentType).size(); o++) {
             std::string portName = outPortNames.at(o);
             // NOTE name needs to match the extPortName in VHDLCircuit
             // TODO allow circuit to update component's port mapping
@@ -790,7 +790,7 @@ void VHDLComponent::portMappingInit() {
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           extSigType = "std_logic_vector";
-          initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\"";
+          if (parameters.count("init")) { initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\""; }
         } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
                               componentType)) {
           extSigType = "std_logic";
@@ -940,7 +940,7 @@ void VHDLComponent::portMappingInit() {
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           sigType = "std_logic_vector";
-          initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\"";
+          if (parameters.count("init")) { initVal = "\"" + fpcFloatToBinaryString(parameters.at("init")) + "\""; }
         } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
                               componentType)) {
           sigType = "std_logic";

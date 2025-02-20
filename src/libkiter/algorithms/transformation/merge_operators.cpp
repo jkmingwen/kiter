@@ -391,9 +391,6 @@ std::string algorithms::replaceActorName(std::string targetString,
                                          std::vector<TOKEN_UNIT> replacementMask) {
   std::vector<std::string> actorNames =
       commons::split<std::string>(targetString, '_');
-  for (auto i = 0; i < actorNames.size(); i++) {
-    actorNames.at(i) = splitByString(actorNames.at(i), "PARAM").front();
-  }
   VERBOSE_ASSERT(actorNames.size() > 0, "Non-empty string must be used.");
   if (actorNames.size() == 1) {
     return targetString; // nothing to replace if no args listed after base name
@@ -402,7 +399,8 @@ std::string algorithms::replaceActorName(std::string targetString,
   if (replacementMask.size() == 1) { // replace all occurances of toReplace with replacement
     // actorNames.erase(actorNames.begin());
     for (auto i = 1; i < actorNames.size(); i++) { // only elements after the first are its args
-      if (actorNames[i] == toReplace) {
+      std::string baseName = getBaseName(actorNames.at(i));
+      if (baseName == toReplace) {
         actorNames[i] = replacement;
       }
     }
@@ -680,8 +678,9 @@ void algorithms::sequentialiseVertices(models::Dataflow *const dataflow,
 
   std::string srcName = dataflow->getVertexName(broadcast);
   // TODO test with replacing with just base name of actors
-  std::string v1TargetNewName = replaceActorName(
-      dataflow->getVertexName(v1Target), dataflow->getVertexName(v1), srcName);
+  std::string v1TargetNewName =
+      replaceActorName(dataflow->getVertexName(v1Target),
+                       getBaseName(dataflow->getVertexName(v1)), srcName);
   dataflow->setVertexName(v1Target, v1TargetNewName);
 }
 
