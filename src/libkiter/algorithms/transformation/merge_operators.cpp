@@ -171,9 +171,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     std::vector<std::string> inPortNames;
     std::vector<std::string> outEdgeNames;
     std::vector<std::string> outPortNames;
-    std::string actorBaseName =
-        commons::split<std::string>(dataflow->getVertexName(v), '_').front();
-    actorBaseName = splitByString(actorBaseName, "PARAM").front();
+    std::string actorBaseName = getBaseName(dataflow->getVertexName(v));
     actorNames.push_back(actorBaseName);
     argOrder[actorCount] = getArgOrderFromName(dataflow->getVertexName(v));
     outDataTypes[actorCount] = getOutputDataTypes(dataflow, v);
@@ -181,8 +179,7 @@ void algorithms::generateMergedGraph(models::Dataflow* dataflow,
     for (auto argActorName : argOrder[actorCount]) { // store the operands (in the form of edges and ports) in the order indicated by argOrder
       {ForInputEdges(dataflow, v, inEdge) {
           Vertex inputActor = dataflow->getEdgeSource(inEdge);
-          std::string inputActorName = commons::split<std::string> (dataflow->getVertexName(inputActor), '_').front();
-          inputActorName = splitByString(inputActorName, "PARAM").front();
+          std::string inputActorName = getBaseName(dataflow->getVertexName(inputActor));
           if (inputActorName == argActorName) { // the edge connects the input actor to this actor
             std::string edgeName = dataflow->getEdgeName(inEdge);
             std::string inPortName = dataflow->getEdgeOutputPortName(inEdge);
@@ -757,7 +754,8 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
         for (const auto &[vertex, names] : newArgNames) {
           std::vector<std::string> newArgOrder;
           std::string vertexName = dataflow->getVertexName(vertex);
-          newArgOrder.push_back(commons::split<std::string>(vertexName, '_').front());
+          // newArgOrder.push_back(commons::split<std::string>(vertexName, '_').front());
+          newArgOrder.push_back(getBaseName(vertexName));
           std::vector<std::string> argOrder = getArgOrderFromName(vertexName);
           int i = 0;
           for (auto const &oldArg : argOrder) {

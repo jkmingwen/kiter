@@ -158,8 +158,9 @@ std::map<std::string, int> getOutputDataTypes(models::Dataflow *const dataflow,
 std::string getOpDataType(std::map<std::string, int> portTypes);
 std::string deriveOpCat(models::Dataflow *const dataflow, Vertex v);
 std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow);
-std::string getNameFromPartialName(models::Dataflow *const dataflow,
+std::string getFullNameFromBaseName(models::Dataflow *const dataflow,
                                    const std::string &partialName);
+std::string getBaseName(std::string fullName);
 void copyFileAndReplaceWords(
     std::string refFile, std::string dstFile,
     const std::map<std::string, std::string> &replacementMap);

@@ -19,8 +19,7 @@ void algorithms::transformation::merge_output    (models::Dataflow* const datafl
 		return;
         }
         Vertex src = dataflow->getVertexByName(parameters["name"]);
-        std::string srcBaseName = commons::split<std::string>(dataflow->getVertexName(src), '_').front();
-        srcBaseName = splitByString(srcBaseName, "PARAM").front();
+        std::string srcBaseName = getBaseName(dataflow->getVertexName(src));
         Vertex bcSrc = dataflow->addVertex("broadcast" + srcBaseName);
         dataflow->setVertexType(bcSrc, "broadcast");
         std::map<std::string, int> outputTypes;

@@ -242,7 +242,7 @@ std::vector<std::string> getMultiOutputActors(models::Dataflow *const dataflow) 
 }
 
 // TODO rename
-std::string getNameFromPartialName(models::Dataflow* const dataflow,
+std::string getFullNameFromBaseName(models::Dataflow* const dataflow,
                                    const std::string &partialName) {
   std::vector<std::string> matchingNames;
   {ForEachVertex(dataflow, v) {
@@ -258,6 +258,25 @@ std::string getNameFromPartialName(models::Dataflow* const dataflow,
   VERBOSE_DEBUG("getComponentFullName '" << partialName << "' returns '" << matchingNames[0] << "'");
   VERBOSE_ASSERT(matchingNames.size() == 1, "Non-unique matches for '" << partialName << "': " << commons::toString(matchingNames));
   return matchingNames.front();
+}
+
+/**
+   Returns the base name of a VHDLComponent from its fullname. VHDLComponents
+   have information about their argument order and default parameters stored in
+   their fullnames. e.g. baseNamePARAMinitN_argActorBaseName1_argActorBaseName2.
+   This function returns the base name from the given fullname.
+
+   @param name Full name of component
+
+   @return Base version of name
+*/
+std::string getBaseName(std::string fullName) {
+  // remove argument order information (delimited by underscores)
+  std::string baseName = commons::split<std::string>(fullName, '_').front();
+  // remove parameter information (delimited by "PARAM")
+  baseName = splitByString(baseName, "PARAM").front();
+
+  return baseName;
 }
 
 /**
