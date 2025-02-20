@@ -757,15 +757,17 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
           newArgOrder.push_back(getBaseName(vertexName));
           std::vector<std::string> argOrder = getArgOrderFromName(vertexName);
           int i = 0;
-          for (auto const &oldArg : argOrder) {
-            if (oldArg == osName) { // replace occurances of output selector name with new arg
-              newArgOrder.push_back(names[i]);
-              i++;
-            } else {
-              newArgOrder.push_back(oldArg);
+          if (argOrder.size()) {
+            for (auto const &oldArg : argOrder) {
+              if (oldArg == osName) { // replace occurances of output selector name with new arg
+                newArgOrder.push_back(names[i]);
+                i++;
+              } else {
+                newArgOrder.push_back(oldArg);
+              }
             }
+            dataflow->setVertexName(vertex, commons::join(newArgOrder, "_"));
           }
-          dataflow->setVertexName(vertex, commons::join(newArgOrder, "_"));
         }
       }
     }}

@@ -31,7 +31,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
-      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}}},
+      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}},
     {125,
      {{"fp_add", 3}, {"fp_prod", 1}, {"fp_div", 8}, {"fp_sqrt", 5},
       {"fp_diff", 3}, {"fp_pow", 8}, {"fp_exp", 3}, {"int_add", 1},
@@ -41,7 +41,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
-      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}}},
+      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}},
     {250,
      {{"fp_add", 6}, {"fp_prod", 1}, {"fp_div", 18}, {"fp_sqrt", 10},
       {"fp_diff", 6}, {"fp_pow", 18}, {"fp_exp", 6}, {"int_add", 1},
@@ -51,7 +51,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
       // NOTE unimplemented operators from here:
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
-      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}}}
+      {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}}
   };
 
 inline std::map<std::string, std::vector<std::string>> opInputPorts = {
