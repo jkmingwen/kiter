@@ -54,6 +54,8 @@ std::vector<std::string> getArgOrderFromName(std::string name) {
 */
 std::map<std::string, float> getParamsFromName(std::string name) {
   std::map<std::string, float> params;
+  // remove any information from argument actors
+  name = commons::split<std::string>(name, '_').front();
   std::vector<std::string> rawParams = splitByString(name, "PARAM");
   rawParams.erase(rawParams.begin()); // first element is the actor's name
 

@@ -76,6 +76,7 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
     argOrder = getArgOrderFromName(uniqueName);
   }
 
+  // track parameters if they exist
   parameters = getParamsFromName(uniqueName);
 
   // Rearrange input ports and edges according to argument order
