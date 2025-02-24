@@ -1438,8 +1438,7 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refDir += "/operators/";
     } else if (componentType == "delay") {
-      std::filesystem::copy(refDir + "delay_tt.vhdl",
-                            dstDir + "delay.vhdl", copyOptions);
+      refFileName = "delay_tt.vhdl";
     } else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
@@ -1483,8 +1482,7 @@ void VHDLComponent::genImplementation(std::string refDir,
       std::filesystem::copy(refDir + float2intFile, dstDir + float2intFile,
                             copyOptions);
     } else if (componentType == "delay") {
-      std::filesystem::copy(refDir + "delay_gs.vhdl",
-                            dstDir + "delay.vhdl", copyOptions);
+      refFileName = "delay_gs.vhdl";
     } else {
       refDir += "/operators/";
       dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
@@ -1526,7 +1524,7 @@ void VHDLComponent::genImplementation(std::string refDir,
       std::filesystem::copy(refDir + "hs_fifo_one.vhdl",
                             dstDir + "hs_fifo_one.vhdl", copyOptions);
     } else if (componentType == "delay") {
-      refFileName = "delay.vhdl";
+      refFileName = "delay_dd.vhdl";
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
       refFileName =
         "flopoco_hs_interface_" + std::to_string(opInputPorts.at(componentType).size()) + ".vhdl";
