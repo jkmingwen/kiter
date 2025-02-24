@@ -24,13 +24,12 @@ entity int_add_flopoco_f250 is
     port (clk : in std_logic;
           X : in  std_logic_vector(33 downto 0);
           Y : in  std_logic_vector(33 downto 0);
-          Cin : in  std_logic;
           R : out  std_logic_vector(33 downto 0)   );
 end entity;
 
 architecture arch of int_add_flopoco_f250 is
 signal Rtmp :  std_logic_vector(33 downto 0);
 begin
-   Rtmp <= X + Y + Cin;
+   Rtmp <= X + Y;
    R <= Rtmp;
 end architecture;
