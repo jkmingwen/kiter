@@ -11,6 +11,8 @@
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
 #include "../vhdl_generation/VHDLGenerator.h"
+#include "algorithms/transformation/merge_output.h"
+#include "algorithms/vhdl_generation/VHDLCommons.h"
 #include "singleOutput.h"
 #include "merge_operators.h"
 
@@ -63,6 +65,19 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
             delayToBuffer(dataflow_prime, v, delayArg, delayAmt);
             delayDetected = true;
             break;
+          } else {
+            VERBOSE_INFO("\tDetected non-static delay");
+            // NOTE we don't have a way to get the initial value yet so
+            // workaround is to use minimal delay value
+            std::map<std::string, float> delayParams =
+                getParamsFromName(dataflow_prime->getVertexName(v));
+            delayAmt = delayParams.at("min");
+            if (delayAmt <= 0) { // need at least 1 initial token to avoid deadlock
+              delayAmt = 1;
+            }
+            {ForOutputEdges(dataflow_prime, v, e) {
+                dataflow->setPreload(e, delayAmt);
+              }}
           }
         }
       }}
@@ -147,6 +162,20 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
 
 void algorithms::transformation::generate_audio_components(models::Dataflow* const  dataflow,
                                                            parameters_list_t params) {
+  while (getMultiOutputActors(dataflow).size() > 0) {
+    VERBOSE_INFO("getMultiOutputActors is not empty");
+    for (std::string actorName : getMultiOutputActors(dataflow)) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("merge output for actor " << actorName);
+      try {
+        merge_output(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    VERBOSE_INFO("Regenerate Circuit");
+  }
   models::Dataflow *dataflow_prime = dataflow;
   implType t = TT;
   int operatorFreq = 250;
@@ -182,6 +211,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   // has implied 1 token on each input/output edge
   {ForEachVertex(dataflow_prime, v) {
       std::string opType = dataflow_prime->getVertexType(v);
+      std::string baseName = getBaseName(dataflow->getVertexName(v));
       VERBOSE_INFO("Visiting " << opType
                    << " (" << dataflow_prime->getVertexName(v) << ")...");
       if (dataflow_prime->getVertexDegree(v) == 0) { // remove vertices with no edges
@@ -202,7 +232,7 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   // initialise input/output component durations, track existence of
   // input/output components
   int expectedInOrOuts = numAudioCodecs * 2; // stereo audio codecs assumed
-  std::vector<char> existingIns(expectedInOrOuts, '0');
+  std::vector<char> existingIns(expectedInOrOuts, '0'); // existingIns/Outs tracks whether the given input/output actor exists
   std::vector<char> existingOuts(expectedInOrOuts, '0');
   std::map<int, std::string> inputNames;
   std::map<int, std::string> outputNames;
@@ -295,17 +325,17 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
     Edge lOutDep = dataflow_prime->addEdge(lOut, rOut, "l_out_dep_" + lChId);
     dataflow_prime->setEdgeInPhases(lOutDep, {1});
     dataflow_prime->setEdgeOutPhases(lOutDep, {1});
-    dataflow_prime->setPreload(lOutDep, 1);
+    dataflow_prime->setPreload(lOutDep, 0);
     dataflow_prime->setTokenSize(lOutDep, 1);
     Edge rOutDep = dataflow_prime->addEdge(rOut, lOut, "r_out_dep_" + rChId);
     dataflow_prime->setEdgeInPhases(rOutDep, {1});
     dataflow_prime->setEdgeOutPhases(rOutDep, {1});
-    dataflow_prime->setPreload(rOutDep, 0);
+    dataflow_prime->setPreload(rOutDep, 1);
     dataflow_prime->setTokenSize(rOutDep, 1);
     Edge lOutChannel = dataflow_prime->addEdge(lOut, audioOut, "l_out_" + lChId);
     dataflow_prime->setEdgeInPhases(lOutChannel, {1});
     dataflow_prime->setEdgeOutPhases(lOutChannel, {1,0});
-    dataflow_prime->setPreload(lOutChannel, 1);
+    dataflow_prime->setPreload(lOutChannel, 0);
     dataflow_prime->setTokenSize(lOutChannel, 1);
     Edge rOutChannel = dataflow_prime->addEdge(rOut, audioOut, "r_out_" + rChId);
     dataflow_prime->setEdgeInPhases(rOutChannel, {1});
@@ -940,9 +970,8 @@ void algorithms::bindVertexEdges(models::Dataflow *const dataflow, Vertex v,
   case 0:
     {ForOutputEdges(dataflow, v, e) {
       if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
-        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
         Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
-                                        dataflow->getEdgeSource(e), fbEdgeName);
+                                        dataflow->getEdgeSource(e));
         dataflow->setEdgeInputPortName(
             fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
         dataflow->setEdgeOutputPortName(
@@ -957,9 +986,8 @@ void algorithms::bindVertexEdges(models::Dataflow *const dataflow, Vertex v,
   case 1:
     {ForInputEdges(dataflow, v, e) {
       if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
-        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
         Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
-                                        dataflow->getEdgeSource(e), fbEdgeName);
+                                        dataflow->getEdgeSource(e));
         dataflow->setEdgeInputPortName(
             fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
         dataflow->setEdgeOutputPortName(
@@ -973,10 +1001,9 @@ void algorithms::bindVertexEdges(models::Dataflow *const dataflow, Vertex v,
     break;
   case 2:
     {ForInputEdges(dataflow, v, e) {
-      if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+      if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
         Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
-                                        dataflow->getEdgeSource(e), fbEdgeName);
+                                        dataflow->getEdgeSource(e));
         dataflow->setEdgeInputPortName(
             fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
         dataflow->setEdgeOutputPortName(
@@ -988,10 +1015,9 @@ void algorithms::bindVertexEdges(models::Dataflow *const dataflow, Vertex v,
       }
     }}
     {ForOutputEdges(dataflow, v, e) {
-      if (dataflow->getEdgeType(e) == EDGE_TYPE::FEEDBACK_EDGE) {
-        std::string fbEdgeName = dataflow->getEdgeName(e) + "_fb";
+      if (dataflow->getEdgeType(e) != EDGE_TYPE::FEEDBACK_EDGE) {
         Edge fbEdge = dataflow->addEdge(dataflow->getEdgeTarget(e),
-                                        dataflow->getEdgeSource(e), fbEdgeName);
+                                        dataflow->getEdgeSource(e));
         dataflow->setEdgeInputPortName(
                                        fbEdge, dataflow->getEdgeOutputPortName(e) + "_fb");
         dataflow->setEdgeOutputPortName(

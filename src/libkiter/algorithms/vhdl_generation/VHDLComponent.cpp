@@ -1453,10 +1453,9 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
     } else if (componentType == "sbuffer") {
-      // refFileName = "sbuffer.vhdl"; // already set by default
       // extra implementation files for sbuffer
-      std::filesystem::copy(refDir + "sbuffer_t.vhdl",
-                            dstDir + "sbuffer_t.vhdl", copyOptions);
+      refFileName = "sbuffer_t.vhdl";
+      dstFileName = "sbuffer_t.vhdl";
       std::filesystem::copy(refDir + "sbuffer_t_n.vhdl",
                             dstDir + "sbuffer_t_n.vhdl", copyOptions);
       std::filesystem::copy(refDir + "sbuffer_t_bypass.vhdl",

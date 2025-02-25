@@ -99,6 +99,7 @@ void algorithms::transformation::merge_output    (models::Dataflow* const datafl
         dataflow->setEdgeOutputPortName(bcEdge, "out_" + bcEdgeName);
         dataflow->setPhasesQuantity(bcSrc,1);
         dataflow->setVertexDuration(bcSrc, {1});
+        dataflow->setReentrancyFactor(bcSrc, 1);
 }
 
 
