@@ -1511,21 +1511,20 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (componentType == "const_value") {
       refFileName = "const_value_n_outputs.vhdl";
     } else if (componentType == "fp_floor") {
-      refDir += "/operators/";
-      dstFileName = portMapName + "_flopoco_f" + std::to_string(opFreq) + ".vhdl";
+      std::string opDir = refDir + "/operators/";
       std::string int2floatFile = "int2float_flopoco_f" + std::to_string(opFreq) + ".vhdl";
       std::string float2intFile = "float2int_flopoco_f" + std::to_string(opFreq) + ".vhdl";
-      std::filesystem::copy(refDir + int2floatFile, dstDir + int2floatFile,
+      std::filesystem::copy(opDir + int2floatFile, dstDir + int2floatFile,
                             copyOptions);
-      std::filesystem::copy(refDir + float2intFile, dstDir + float2intFile,
+      std::filesystem::copy(opDir + float2intFile, dstDir + float2intFile,
                             copyOptions);
       refFileName =
         "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";
       // copy over FPC operator implementation
-      std::filesystem::copy(
-          refDir + implementationName + "_f" + std::to_string(opFreq) + ".vhdl",
-          dstDir + implementationName + "_f" + std::to_string(opFreq) + ".vhdl",
-          copyOptions);
+      std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
+                            std::to_string(opFreq) + ".vhdl",
+                            dstDir + implementationName + "_f" +
+                            std::to_string(opFreq) + ".vhdl", copyOptions);
     } else if (componentType == "hs_fifo") {
       refFileName = "hs_fifo.vhdl";
       std::filesystem::copy(refDir + "hs_fifo.vhdl",
