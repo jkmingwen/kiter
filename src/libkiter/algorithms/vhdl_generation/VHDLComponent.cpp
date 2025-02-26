@@ -955,12 +955,16 @@ void VHDLComponent::portMappingInit() {
         if (inputSignals.size() != opInputPorts.at(componentType).size()) {
           for (auto i = 0; i < opInputPorts.at(componentType).size(); i++) {
             std::string portName = "op_in_data_" + std::to_string(i);
+            std::string readyPort = "op_in_ready_" + std::to_string(i);
+            std::string validPort = "op_in_valid_" + std::to_string(i);
             // NOTE name needs to match the extPortName in VHDLCircuit
             // TODO allow circuit to update component's port mapping
             std::string uiInputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
             addExternalPort(portName, uiInputSigName, sigType, "in", portWidth, initVal);
             addPortMapping(portName, uiInputSigName, sigType, "in", portWidth);
+            addPortMapping(validPort, "\'1\'", "std_logic", "in");
+            addPortMapping(readyPort, "open", "std_logic", "out");
           }
         } else {
           for (auto i = 0; i < inputSignals.size(); i++) {
@@ -970,12 +974,16 @@ void VHDLComponent::portMappingInit() {
         if (outputSignals.size() != opOutputPorts.at(componentType).size()) {
           for (auto o = 0; o < opInputPorts.at(componentType).size(); o++) {
             std::string portName = "op_out_data_" + std::to_string(o);
+            std::string readyPort = "op_out_ready_" + std::to_string(o);
+            std::string validPort = "op_out_valid_" + std::to_string(o);
             // NOTE name needs to match the extPortName in VHDLCircuit
             // TODO allow circuit to update component's port mapping
             std::string uiOutputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
             addExternalPort(portName, uiOutputSigName, sigType, "out", 34, initVal);
             addPortMapping(portName, uiOutputSigName, sigType, "out");
+            addPortMapping(validPort, "open", "std_logic", "in");
+            addPortMapping(readyPort, "\'1\'", "std_logic", "out");
           }
         } else {
           for (auto o = 0; o < outputSignals.size(); o++) {
@@ -1531,13 +1539,22 @@ void VHDLComponent::genImplementation(std::string refDir,
     } else if (componentType == "delay") {
       refFileName = "delay_dd.vhdl";
     } else if (std::count(uiTypes.begin(), uiTypes.end(), componentType)) {
-      refFileName =
-        "flopoco_hs_interface_" + std::to_string(opInputPorts.at(componentType).size()) + ".vhdl";
-      // copy over FPC operator implementation
-      std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
-                            std::to_string(opFreq) + ".vhdl",
-                            dstDir + implementationName + "_f" +
-                            std::to_string(opFreq) + ".vhdl", copyOptions);
+      if (std::count(switchUITypes.begin(), switchUITypes.end(), componentType)) {
+        refFileName = "flopoco_hs_interface_switch_ui.vhdl";
+        std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
+                              std::to_string(opFreq) + ".vhdl",
+                              dstDir + implementationName + "_f" +
+                              std::to_string(opFreq) + ".vhdl",
+                              copyOptions);
+      } else {
+        refFileName =
+          "flopoco_hs_interface_" + std::to_string(opInputPorts.at(componentType).size()) + ".vhdl";
+        // copy over FPC operator implementation
+        std::filesystem::copy(refDir + "/operators/" + implementationName + "_f" +
+                              std::to_string(opFreq) + ".vhdl",
+                              dstDir + implementationName + "_f" +
+                              std::to_string(opFreq) + ".vhdl", copyOptions);
+      }
     } else { // FPC operator and HS wrapper
       refFileName =
           "flopoco_hs_interface_" + std::to_string(inputPorts.size()) + ".vhdl";

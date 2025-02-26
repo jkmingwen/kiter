@@ -502,7 +502,7 @@ void algorithms::generateHSInterfaceComponents() {
   // TODO only produce the HS component files if necessary; right now, we're just writing every file
   std::vector<std::string> componentNames = {"hs_merger", "countdown",
                                              "store_send", "hs_merger_negate",
-                                             "hs_merger_one", "hs_merger_three"};
+                                             "hs_merger_one", "hs_merger_three", "hs_merger_switch_ui"};
 
   for (const auto &component : componentNames) {
     const auto copyOptions = std::filesystem::copy_options::update_existing |
