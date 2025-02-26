@@ -139,6 +139,8 @@ inline std::vector<std::string> rangeUITypes = {"hslider", "vslider",  "nentry",
 
 inline std::vector<std::string> switchUITypes = {"button", "checkbox"};
 
+inline std::vector<std::string> graphingUITypes = {"vbargraph", "hbargraph"};
+
 inline std::vector<std::string> arithmeticTypes = {"add",  "prod", "diff", "div",
                                                    "prod", "sqrt", "pow", "exp"};
 

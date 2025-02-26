@@ -68,7 +68,7 @@ void VHDLWrapper::externalPortsInit() {
           intermediateSignal += "(" + std::to_string(arrayOffset) + ")";
         } else {
           std::string lower = std::to_string(portWidth * arrayOffset);
-          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth);
+          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth - 1);
           intermediateSignal += "(" + upper + " downto " + lower + ")";
         }
         dspCircuit.addPortMapping(port, intermediateSignal, types[port], "in", portWidth);
@@ -84,7 +84,7 @@ void VHDLWrapper::externalPortsInit() {
           intermediateSignal += "(" + std::to_string(arrayOffset) + ")";
         } else {
           std::string lower = std::to_string(portWidth * arrayOffset);
-          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth);
+          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth - 1);
           intermediateSignal += "(" + upper + " downto " + lower + ")";
         }
         dspCircuit.addPortMapping(port, intermediateSignal, types[port], "out", portWidth);

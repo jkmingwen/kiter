@@ -818,7 +818,7 @@ void VHDLComponent::portMappingInit() {
         }
         if (outputSignals.size() != opOutputPorts.at(componentType).size()) {
           std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
-          for (auto o = 0; o < opInputPorts.at(componentType).size(); o++) {
+          for (auto o = 0; o < opOutputPorts.at(componentType).size(); o++) {
             std::string portName = outPortNames.at(o);
             // NOTE name needs to match the extPortName in VHDLCircuit
             // TODO allow circuit to update component's port mapping
@@ -972,7 +972,7 @@ void VHDLComponent::portMappingInit() {
           }
         }
         if (outputSignals.size() != opOutputPorts.at(componentType).size()) {
-          for (auto o = 0; o < opInputPorts.at(componentType).size(); o++) {
+          for (auto o = 0; o < opOutputPorts.at(componentType).size(); o++) {
             std::string portName = "op_out_data_" + std::to_string(o);
             std::string readyPort = "op_out_ready_" + std::to_string(o);
             std::string validPort = "op_out_valid_" + std::to_string(o);
