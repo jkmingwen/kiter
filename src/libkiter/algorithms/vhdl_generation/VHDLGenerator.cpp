@@ -391,7 +391,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       generateOperators(tmp);
       generateCircuit(tmp);
       VHDLWrapper audioInterfaceWrapper =
-        VHDLWrapper(tmp, implementationType, systemPeriod, systemSlack);
+        VHDLWrapper(tmp, implementationType, systemPeriod, systemSlack, topDir);
       std::ofstream vhdlOutput;
       vhdlOutput.open(topDir + tmp.getName() + "_top.vhdl");
       audioInterfaceWrapper.writeImplementation(vhdlOutput);
@@ -400,7 +400,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       generateOperators(tmp);
       tmp.externalPortsInit();
       VHDLWrapper audioInterfaceWrapper = VHDLWrapper(
-          tmp, schedule, implementationType, systemPeriod, systemSlack);
+          tmp, schedule, implementationType, systemPeriod, systemSlack, topDir);
       // only instantiate circuit after instantiating wrapper as schedule width is updated
       generateCircuit(tmp);
       std::ofstream vhdlOutput;

@@ -14,8 +14,8 @@
 
 class VHDLWrapper : public VHDLComponent {
 public:
-  VHDLWrapper(VHDLCircuit &circuit, implType t, int sysPeriod, int sysSlack);
-  VHDLWrapper(VHDLCircuit &circuit, VHDLScheduler &s, implType t, int sysPeriod, int sysSlack);
+  VHDLWrapper(VHDLCircuit &circuit, implType t, int sysPeriod, int sysSlack, std::string implDir);
+  VHDLWrapper(VHDLCircuit &circuit, VHDLScheduler &s, implType t, int sysPeriod, int sysSlack, std::string implDir);
 
   void portMappingInit();
   void internalSignalsInit();
@@ -33,6 +33,7 @@ public:
                     TIME_UNIT slack = 0);
   void writeSchedulerImplementation(std::string dir);
   void writeCircuitImplementation(std::string dir);
+  void setImplementationDir(std::string dir);
 private:
   int numInputs;
   int numOutputs;
@@ -46,5 +47,6 @@ private:
   VHDLScheduler scheduler;
   std::string dspName;
   std::map<int, TIME_UNIT> computeTimes;
+  std::string implDirectory = "./"; // where implementations will be written to
 };
 #endif /* VHDL_WRAPPER_H_ */

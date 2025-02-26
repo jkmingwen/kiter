@@ -618,6 +618,7 @@ void VHDLComponent::portMappingInit() {
         addPortMapping("clk", "clk", "std_logic", "in");
         std::string extSigType;
         std::string initVal = "";
+        int portWidth = 34;
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           extSigType = "std_logic_vector";
@@ -625,6 +626,7 @@ void VHDLComponent::portMappingInit() {
         } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
                               componentType)) {
           extSigType = "std_logic";
+          portWidth = 1;
           initVal = "\'0\'";
         } else {
           VERBOSE_ERROR("UI component(" << componentType << ") not supported.");
@@ -639,8 +641,8 @@ void VHDLComponent::portMappingInit() {
             // TODO allow circuit to update component's port mapping
             std::string uiInputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
-            addExternalPort(portName, uiInputSigName, extSigType, "in", 34, initVal);
-            addPortMapping(portName, uiInputSigName, extSigType, "in");
+            addExternalPort(portName, uiInputSigName, extSigType, "in", portWidth, initVal);
+            addPortMapping(portName, uiInputSigName, extSigType, "in", portWidth);
           }
         } else {
           std::vector<std::string> inPortNames = opInputPorts.at(componentType);
@@ -656,8 +658,8 @@ void VHDLComponent::portMappingInit() {
             // TODO allow circuit to update component's port mapping
             std::string uiOutputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
-            addExternalPort(portName, uiOutputSigName, extSigType, "out", 34, initVal);
-            addPortMapping(portName, uiOutputSigName, extSigType, "out");
+            addExternalPort(portName, uiOutputSigName, extSigType, "out", portWidth, initVal);
+            addPortMapping(portName, uiOutputSigName, extSigType, "out", portWidth);
           }
         } else {
           std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
@@ -782,6 +784,7 @@ void VHDLComponent::portMappingInit() {
         addPortMapping("clk", "clk", "std_logic", "in");
         std::string extSigType;
         std::string initVal = "";
+        int portWidth = 34;
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           extSigType = "std_logic_vector";
@@ -789,6 +792,7 @@ void VHDLComponent::portMappingInit() {
         } else if (std::count(switchUITypes.begin(), switchUITypes.end(),
                               componentType)) {
           extSigType = "std_logic";
+          portWidth = 1;
           initVal = "\'0\'";
         } else {
           VERBOSE_ERROR("UI component(" << componentType << ") not supported.");
@@ -803,8 +807,8 @@ void VHDLComponent::portMappingInit() {
             // TODO allow circuit to update component's port mapping
             std::string uiInputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
-            addExternalPort(portName, uiInputSigName, extSigType, "in", 34, initVal);
-            addPortMapping(portName, uiInputSigName, extSigType, "in");
+            addExternalPort(portName, uiInputSigName, extSigType, "in", portWidth, initVal);
+            addPortMapping(portName, uiInputSigName, extSigType, "in", portWidth);
           }
         } else {
           std::vector<std::string> inPortNames = opInputPorts.at(componentType);
@@ -820,8 +824,8 @@ void VHDLComponent::portMappingInit() {
             // TODO allow circuit to update component's port mapping
             std::string uiOutputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
-            addExternalPort(portName, uiOutputSigName, extSigType, "out", 34, initVal);
-            addPortMapping(portName, uiOutputSigName, extSigType, "out");
+            addExternalPort(portName, uiOutputSigName, extSigType, "out", portWidth, initVal);
+            addPortMapping(portName, uiOutputSigName, extSigType, "out", portWidth);
           }
         } else {
           std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
@@ -933,6 +937,7 @@ void VHDLComponent::portMappingInit() {
         addPortMapping("rst", "rst", "std_logic", "in");
         std::string sigType;
         std::string initVal = "";
+        int portWidth = 34;
         if (std::count(rangeUITypes.begin(), rangeUITypes.end(),
                        componentType)) {
           sigType = "std_logic_vector";
@@ -941,6 +946,7 @@ void VHDLComponent::portMappingInit() {
                               componentType)) {
           sigType = "std_logic";
           initVal = "\'0\'";
+          portWidth = 1;
         } else {
           VERBOSE_ERROR("UI component(" << componentType << ") not supported.");
         }
@@ -953,8 +959,8 @@ void VHDLComponent::portMappingInit() {
             // TODO allow circuit to update component's port mapping
             std::string uiInputSigName =
               portMapName + "_" + std::to_string(actorId) + "_" + portName;
-            addExternalPort(portName, uiInputSigName, sigType, "in", 34, initVal);
-            addPortMapping(portName, uiInputSigName, sigType, "in");
+            addExternalPort(portName, uiInputSigName, sigType, "in", portWidth, initVal);
+            addPortMapping(portName, uiInputSigName, sigType, "in", portWidth);
           }
         } else {
           for (auto i = 0; i < inputSignals.size(); i++) {

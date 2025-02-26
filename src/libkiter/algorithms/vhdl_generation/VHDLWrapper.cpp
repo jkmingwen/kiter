@@ -13,19 +13,20 @@
 #include "CycleCounter.h"
 #include "BufferComponent.h"
 #include "IOInterface.h"
+#include "UIController.h"
 #include <cmath>
 #include <memory>
 
 VHDLWrapper::VHDLWrapper(VHDLCircuit &circuit, implType t, int sysPeriod,
-                         int sysSlack)
-    : period(sysPeriod), slack(sysSlack), dspCircuit(circuit) {
+                         int sysSlack, std::string implDir)
+  : period(sysPeriod), slack(sysSlack), dspCircuit(circuit), implDirectory(implDir) {
   implementationType = t;
   initialiseWrapper(circuit);
 }
 
 VHDLWrapper::VHDLWrapper(VHDLCircuit &circuit, VHDLScheduler &s, implType t,
-                         int sysPeriod, int sysSlack)
-    : period(sysPeriod), slack(sysSlack), dspCircuit(circuit), scheduler(s) {
+                         int sysPeriod, int sysSlack, std::string implDir)
+  : period(sysPeriod), slack(sysSlack), dspCircuit(circuit), scheduler(s), implDirectory(implDir) {
   implementationType = t;
   initialiseWrapper(dspCircuit);
 }
@@ -55,17 +56,68 @@ void VHDLWrapper::externalPortsInit() {
   std::vector<std::string> externalOutputPorts = dspCircuit.getExternalOutputPorts();
   std::map<std::string, std::string> types = dspCircuit.getExternalPortTypes();
   std::map<std::string, int> widths = dspCircuit.getExternalPortWidths();
-  if (externalInputPorts.size()) {
-    for (auto port : externalInputPorts) {
-      std::string extPortName = port + "_ext";
-      addPortMapping(extPortName, port, types[port], "in", widths[port]);
+  if (externalInputPorts.size() || externalOutputPorts.size()) {
+    UIController *uiController = new UIController();
+    if (externalInputPorts.size()) {
+      for (auto port : externalInputPorts) {
+        std::string extPortName = port + "_ext";
+        int portWidth = widths[port];
+        int arrayOffset = uiController->addInputUIPort(portWidth);
+        std::string intermediateSignal = uiController->getInterInSigName(portWidth);
+        if (portWidth == 1) {
+          intermediateSignal += "(" + std::to_string(arrayOffset) + ")";
+        } else {
+          std::string lower = std::to_string(portWidth * arrayOffset);
+          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth);
+          intermediateSignal += "(" + upper + " downto " + lower + ")";
+        }
+        dspCircuit.addPortMapping(port, intermediateSignal, types[port], "in", portWidth);
+      }
     }
-  }
-  if (externalOutputPorts.size()) {
-    for (auto port : externalOutputPorts) {
-      std::string extPortName = port + "_ext";
-      addPortMapping(extPortName, port, types[port], "out", widths[port]);
+    if (externalOutputPorts.size()) {
+      for (auto port : externalOutputPorts) {
+        std::string extPortName = port + "_ext";
+        int portWidth = widths[port];
+        int arrayOffset = uiController->addOutputUIPort(portWidth);
+        std::string intermediateSignal = uiController->getInterOutSigName(portWidth);
+        if (portWidth == 1) {
+          intermediateSignal += "(" + std::to_string(arrayOffset) + ")";
+        } else {
+          std::string lower = std::to_string(portWidth * arrayOffset);
+          std::string upper = std::to_string((portWidth * arrayOffset) + portWidth);
+          intermediateSignal += "(" + upper + " downto " + lower + ")";
+        }
+        dspCircuit.addPortMapping(port, intermediateSignal, types[port], "out", portWidth);
+      }
     }
+    // add internal signals for UI controller
+    std::map<std::string, int> intermediateSigs =
+        uiController->getIntermediateSignals();
+    for (auto const &[name, width] : intermediateSigs) {
+      addInternalSignal(name, "std_logic_vector", width);
+    }
+    uiController->portMappingInit();
+    std::vector<std::string> inputPorts = uiController->getTopInputPorts();
+    std::vector<std::string> outputPorts = uiController->getTopOutputPorts();
+    std::map<std::string, std::string> portTypes = uiController->getTopSignalTypes();
+    std::map<std::string, int> portWidths = uiController->getTopSignalWidths();
+    if (inputPorts.size()) {
+      for (auto port : inputPorts) {
+        addPortMapping(port, port, portTypes[port], "in", portWidths[port]);
+      }
+    }
+    if (outputPorts.size()) {
+      for (auto port : outputPorts) {
+        addPortMapping(port, port, portTypes[port], "out", portWidths[port]);
+      }
+    }
+
+    // generate implementation
+    components.push_back(std::unique_ptr<VHDLComponent>(uiController));
+    std::ofstream vhdlOut;
+    vhdlOut.open(implDirectory + uiController->getImplRefName() + ".vhdl");
+    uiController->writeImplementation(vhdlOut);
+    vhdlOut.close();
   }
 }
 
@@ -461,4 +513,9 @@ void VHDLWrapper::writeCircuitImplementation(std::string dir) {
 
   vhdlOutput.open(dir + graphName + ".vhdl"); // instantiate VHDL file
   dspCircuit.writeImplementation(vhdlOutput);
+}
+
+// Set file directory where implementations will be written to
+void VHDLWrapper::setImplementationDir(std::string dir) {
+  this->implDirectory = dir;
 }
