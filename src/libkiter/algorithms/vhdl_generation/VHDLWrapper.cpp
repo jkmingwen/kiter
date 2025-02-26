@@ -386,7 +386,14 @@ void VHDLWrapper::initialiseWrapper(VHDLCircuit &circuit) {
     }
   }
 
+  // add circuit implementation
   dspCircuit.portMappingInit();
+  std::ofstream vhdlOut;
+  vhdlOut.open(implDirectory + dspCircuit.getName() + "_circuit.vhdl");
+  dspCircuit.writeImplementation(vhdlOut);
+  vhdlOut.close();
+
+  // audio wrapper port and internal signal instantiation
   portMappingInit();
   externalPortsInit();
   internalSignalsInit();
