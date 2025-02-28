@@ -20,6 +20,7 @@
 #include "algorithms/transformation/merge_output.h"
 #include "algorithms/vhdl_generation/VHDLWrapper.h"
 #include "commons/KiterRegistry.h"
+#include "commons/commons.h"
 #include "commons/verbose.h"
 #include <algorithms/transformation/singleOutput.h>
 #include <algorithms/transformation/iterative_evaluation.h>
@@ -274,6 +275,8 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   VHDLScheduler schedule;
   schedule.setPeriod(systemPeriod);
+  std::vector<TIME_UNIT> inputStarts;
+  std::vector<TIME_UNIT> outputEnds;
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
     if (osBroadcast) { name = name.substr(0, name.find("_")); }
@@ -284,6 +287,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
         tmp.addInExecTime(comp.getIOId(), startTimes.front());
+        inputStarts.push_back(startTimes.front());
       }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
@@ -291,6 +295,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         int conversionTime = getOperatorLifespan("fp2fix", operatorFreq) +
                              getOperatorLifespan("fp_prod", operatorFreq);
         tmp.addComputeTime(comp.getIOId(), startTimes.front() + conversionTime);
+        outputEnds.push_back(startTimes.front() + conversionTime);
       }
       if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
         {ForOutputEdges(dataflow, v, outEdge) {
@@ -408,9 +413,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       audioInterfaceWrapper.writeSchedulerImplementation(topDir);
     }
     std::filesystem::copy(referenceDir + "/testbenches/", tbDir, copyOptions);
-    printers::writeSDF3File(topDir + dataflow->getGraphName() + "_exectimes.xml",
-                            dataflow);
+    printers::writeSDF3File(topDir + "exectimes.xml", dataflow);
     VERBOSE_INFO("VHDL files generated in: " << topDir);
+    std::ofstream latencyOut;
+    latencyOut.open(topDir + "latency.txt");
+    latencyOut << computeLatency(inputStarts, outputEnds) << std::endl;
+    latencyOut.close();
     // print schedule and corresponding signal graph
     // TODO fix schedule generation given separation of transformation and VHDL implementation
     // std::ofstream tikzFile;
@@ -604,4 +612,23 @@ void algorithms::printOperatorCounts(models::Dataflow *const dataflow,
   std::cout << csvOut.str() << std::flush;
 
   return;
+}
+
+TIME_UNIT computeLatency(std::vector<TIME_UNIT> inStarts,
+                         std::vector<TIME_UNIT> outEnds) {
+  TIME_UNIT latency = 0;
+
+  std::sort(inStarts.begin(), inStarts.end());
+  std::sort(outEnds.begin(), outEnds.end());
+  if (!inStarts.size()) {
+    latency = outEnds.back();
+  } else {
+    if (inStarts.front() > outEnds.back()) {
+      latency = outEnds.back();
+    } else {
+      latency = outEnds.back() - inStarts.front();
+    }
+  }
+
+  return latency;
 }

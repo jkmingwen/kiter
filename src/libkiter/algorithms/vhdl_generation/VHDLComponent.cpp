@@ -176,6 +176,9 @@ VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implTyp
 
   // Set lifespan depending on operator type
   opLifespan = getOperatorLifespan(componentType, opFreq);
+  std::vector<TIME_UNIT> opLifespans(dataflow->getVertexPhaseDuration(a).size(),
+                                     opLifespan);
+  // dataflow->setVertexDuration(a, opLifespans);
 
   // Set implementation name from operator type
   if (implementationNames.count(componentType)) {

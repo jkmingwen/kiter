@@ -13,9 +13,11 @@
 #include "VHDLCircuit.h"
 #include "VHDLConnection.h"
 #include "VHDLComponent.h"
+#include "commons/basic_types.h"
 
 VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
+TIME_UNIT computeLatency(std::vector<TIME_UNIT> inStarts, std::vector<TIME_UNIT> outEnds);
 
 namespace models {
   class Dataflow;
