@@ -17,7 +17,7 @@
 
 VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
-TIME_UNIT computeLatency(std::vector<TIME_UNIT> inStarts, std::vector<TIME_UNIT> outEnds);
+TIME_UNIT computeLatency(std::map<int, TIME_UNIT> inStarts, std::map<int, TIME_UNIT> outEnds);
 
 namespace models {
   class Dataflow;

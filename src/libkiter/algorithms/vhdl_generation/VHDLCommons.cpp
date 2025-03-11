@@ -38,7 +38,11 @@ int getOperatorLifespan(const std::string &opType, int opFreq) {
 */
 std::vector<std::string> getArgOrderFromName(std::string name) {
   std::vector<std::string> argOrder = commons::split<std::string>(name, '_');
-  argOrder.erase(argOrder.begin()); // first element is the actor name
+  if (argOrder.front() == "OUTPUT") { // output actors have only 1 input
+    argOrder.clear();
+  } else {
+    argOrder.erase(argOrder.begin()); // first element is the actor name
+  }
 
   return argOrder;
 }
@@ -270,10 +274,14 @@ std::string getFullNameFromBaseName(models::Dataflow* const dataflow,
    @return Base version of name
 */
 std::string getBaseName(std::string fullName) {
-  // remove argument order information (delimited by underscores)
+  // 1. remove argument order information (delimited by underscores)
   std::string baseName = commons::split<std::string>(fullName, '_').front();
-  // remove parameter information (delimited by "PARAM")
-  baseName = splitByString(baseName, "PARAM").front();
+  // 2. remove parameter information (delimited by "PARAM")
+  if (baseName == "OUTPUT" || baseName == "AUDIO") {
+    baseName = splitByString(fullName, "PARAM").front();
+  } else {
+    baseName = splitByString(baseName, "PARAM").front();
+  }
 
   return baseName;
 }

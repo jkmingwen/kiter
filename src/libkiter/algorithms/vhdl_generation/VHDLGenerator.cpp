@@ -237,7 +237,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     for (const auto &item : res.getTaskSchedule()) {
       std::string actorBaseName =
         scheduledDataflow->getVertexName(scheduledDataflow->getVertexById(item.first));
-      actorBaseName = actorBaseName.substr(0, actorBaseName.find("_"));
+      actorBaseName = getBaseName(actorBaseName);
       execTimes[actorBaseName] = item.second.periodic_starts.second;
     }
     algorithms::transformation::broadcast_os(dataflow, param_list);
@@ -275,11 +275,11 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
   VHDLScheduler schedule;
   schedule.setPeriod(systemPeriod);
-  std::vector<TIME_UNIT> inputStarts;
-  std::vector<TIME_UNIT> outputEnds;
+  std::map<int, TIME_UNIT> inputStarts;
+  std::map<int, TIME_UNIT> outputEnds;
   for (auto &[v, comp] : tmp.getComponentMap()) {
     std::string name = dataflow->getVertexName(v);
-    if (osBroadcast) { name = name.substr(0, name.find("_")); }
+    if (osBroadcast) { name = getBaseName(name); }
     if (execTimes.count(name)) {
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[name]);
@@ -287,7 +287,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
         tmp.addInExecTime(comp.getIOId(), startTimes.front());
-        inputStarts.push_back(startTimes.front());
+        inputStarts[comp.getIOId()] = startTimes.front();
       }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
@@ -295,15 +295,15 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         int conversionTime = getOperatorLifespan("fp2fix", operatorFreq) +
                              getOperatorLifespan("fp_prod", operatorFreq);
         tmp.addComputeTime(comp.getIOId(), startTimes.front() + conversionTime);
-        outputEnds.push_back(startTimes.front() + conversionTime);
+        outputEnds[comp.getIOId()] = startTimes.front() + conversionTime;
       }
       if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
         {ForOutputEdges(dataflow, v, outEdge) {
             // actor names after "_" redundant (only indicate order of args)
             Vertex dstActor = dataflow->getEdgeTarget(outEdge);
             std::string dstName = dataflow->getVertexName(dstActor);
-            if (osBroadcast) {dstName = dstName.substr(0, dstName.find("_"));}
-            std::vector<TIME_UNIT> dstActorStarts = execTimes[dstName];
+            if (osBroadcast) { dstName = getBaseName(dstName); }
+            std::vector<TIME_UNIT> dstActorStarts = execTimes.at(dstName);
             for (auto i = 0; i < dataflow->getEdgeOutPhasesCount(outEdge); i++) {
               if (dataflow->getEdgeOutVector(outEdge)[i] == 1) {
                 bufferPopTime = {dstActorStarts[i]};
@@ -338,8 +338,8 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
                      "buffers should only have 1 input");
       std::string srcName = dataflow->getVertexName(dataflow->getEdgeSource(
           dataflow->getEdgeByName(comp.getInputEdges().front())));
-      srcName = srcName.substr(0, srcName.find("_"));
-      std::vector<TIME_UNIT> srcOSStarts = execTimes[srcName];
+      srcName = getBaseName(srcName);
+      std::vector<TIME_UNIT> srcOSStarts = execTimes.at(srcName);
       TIME_UNIT startTime = 0;
       TIME_UNIT dstStartTime = 0;
       {ForOutputEdges(dataflow, v, outEdge) {
@@ -351,8 +351,8 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
           Vertex dstActor = dataflow->getEdgeTarget(outEdge);
           std::string dstName =
               dataflow->getVertexName(dstActor);
-          dstName = dstName.substr(0, dstName.find("_")); // names after "_" indicate order of args
-          std::vector<TIME_UNIT> dstActorStarts = execTimes[dstName];
+          dstName = getBaseName(dstName);
+          std::vector<TIME_UNIT> dstActorStarts = execTimes.at(dstName);
           for (auto i = 0; i < dataflow->getEdgeOutPhasesCount(outEdge); i++) {
             if (dataflow->getEdgeOutVector(outEdge)[i] == 1) {
               dstStartTime = dstActorStarts[i];
@@ -614,21 +614,20 @@ void algorithms::printOperatorCounts(models::Dataflow *const dataflow,
   return;
 }
 
-TIME_UNIT computeLatency(std::vector<TIME_UNIT> inStarts,
-                         std::vector<TIME_UNIT> outEnds) {
-  TIME_UNIT latency = 0;
+TIME_UNIT computeLatency(std::map<int, TIME_UNIT> inStarts, std::map<int, TIME_UNIT> outEnds) {
+  std::set<TIME_UNIT> latencies{0};
 
-  std::sort(inStarts.begin(), inStarts.end());
-  std::sort(outEnds.begin(), outEnds.end());
-  if (!inStarts.size()) {
-    latency = outEnds.back();
-  } else {
-    if (inStarts.front() > outEnds.back()) {
-      latency = outEnds.back();
-    } else {
-      latency = outEnds.back() - inStarts.front();
+  for (auto const [chId, outTime] : outEnds) {
+    TIME_UNIT chLatency = 0;
+    if (inStarts.count(chId)) {
+      if (inStarts.at(chId) > outTime) {
+        chLatency = outTime;
+      } else {
+        chLatency = outTime - inStarts.at(chId);
+      }
     }
+    latencies.insert(chLatency);
   }
 
-  return latency;
+  return *latencies.rbegin(); // return highest latency
 }
