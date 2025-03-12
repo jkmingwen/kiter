@@ -183,6 +183,9 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   if (params.find("FREQUENCY") != params.end()) {
     VERBOSE_INFO("Operator frequency set to " << params["FREQUENCY"]);
     operatorFreq = std::stoi(params["FREQUENCY"]);
+    if (!opFreqAndPeriod.count(operatorFreq)) {
+      VERBOSE_ERROR("Unsupported operator frequency requested: " << operatorFreq);
+    }
   } else {
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
@@ -194,12 +197,13 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
     t = DD;
   }
   VHDLCircuit circuit =
-      generateCircuitObject(dataflow_prime, t); // generate circuit to track counts of inputs/outputs
+    generateCircuitObject(dataflow_prime, operatorFreq, t); // generate circuit to track counts of inputs/outputs
   int numInputs = circuit.getOperatorCount("INPUT");
   int numOutputs = circuit.getOperatorCount("OUTPUT");
   int numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
                                 (numOutputs / 2 + (numOutputs % 2 != 0)));
-  std::vector<TIME_UNIT> audioPeriod (2, 2604);  // with a 250MHz sys_clock: 5208.3/2=~2604 cycles // TODO parameterise period to clock cycle computation
+  int period = opFreqAndPeriod.at(operatorFreq);
+  std::vector<TIME_UNIT> audioPeriod (2, period/2); // ws clock to toggle every half period
   // input/output operation consists of these 3 components:
   TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
                         getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);

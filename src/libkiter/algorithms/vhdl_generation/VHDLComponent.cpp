@@ -33,7 +33,7 @@ VHDLComponent::VHDLComponent(implType t) {
 component {TT (default), DD}
  * \param freq Operating frequency (in MHz) of given component {250 (default), 125, 50}
  */
-VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, implType t, int freq) {
+VHDLComponent::VHDLComponent(models::Dataflow* const dataflow, Vertex a, int freq, implType t) {
   actor = a;
   actorId = dataflow->getVertexId(a);
   implementationType = t;

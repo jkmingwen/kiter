@@ -19,8 +19,8 @@ class VHDLComponent {
 public:
   VHDLComponent();
   VHDLComponent(implType t);
-  VHDLComponent(models::Dataflow *const dataflow, Vertex a, implType t = TT,
-                int freq = 250);
+  VHDLComponent(models::Dataflow *const dataflow, Vertex a, int freq,
+                implType t = TT);
   virtual ~VHDLComponent() = default;
 
   Vertex getActor()const;

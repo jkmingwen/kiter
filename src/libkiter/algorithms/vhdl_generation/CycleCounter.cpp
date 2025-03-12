@@ -17,7 +17,7 @@ CycleCounter::CycleCounter(int sysPeriod) {
 }
 
 void CycleCounter::portMappingInit() {
-  addGenericMapping("period", "5209", "integer");
+  addGenericMapping("period", std::to_string(period), "integer");
   addPortMapping("clk", "sys_clk_sig", "std_logic", "in");
   addPortMapping("rst", "rst_sig", "std_logic", "in");
   addPortMapping("count", "counter_sig", "integer", "out");

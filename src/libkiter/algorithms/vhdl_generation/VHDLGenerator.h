@@ -15,7 +15,7 @@
 #include "VHDLComponent.h"
 #include "commons/basic_types.h"
 
-VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, implType = TT);
+VHDLCircuit generateCircuitObject(models::Dataflow *const dataflow, int opFreq, implType = TT);
 std::string binaryValue(VHDLComponent const comp);
 TIME_UNIT computeLatency(std::map<int, TIME_UNIT> inStarts, std::map<int, TIME_UNIT> outEnds);
 

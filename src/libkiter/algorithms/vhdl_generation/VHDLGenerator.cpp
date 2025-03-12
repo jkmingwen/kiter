@@ -44,7 +44,7 @@ int bitWidth = 34;
 bool dataDriven = false; // if VHDL design is data driven using HS protocol
 implType implementationType = TT;
 bool osBroadcast = false;
-int systemPeriod = std::ceil((operatorFreq/12.288) * 256); // system period clock cycles, 12.288 refers to the operating frequency of the I2S transceiver (mclk), while 256 refers to the number of mclk cycles per period
+int systemPeriod = opFreqAndPeriod.at(operatorFreq);
 int systemSlack = 1;   // lag given to audio interfacing (in cycles) after
                          // expected arrival of audio sample
 int computeL = 0; // total compute time for left channel
@@ -52,7 +52,7 @@ int computeR = 0; // total compute time for right channel
 std::string bufferImpl = "sbuffer"; // defines type of buffer to be implemented
                                     // in time triggered implementation
 
-VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) {
+VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, int opFreq, implType t) {
 
   VHDLCircuit circuit(t);
   std::string circuitName = dataflow->getGraphName();
@@ -64,17 +64,17 @@ VHDLCircuit generateCircuitObject(models::Dataflow* const dataflow, implType t) 
 
   // populate circuit object with components and connections based on dataflow graph
   {ForEachVertex(dataflow, actor) {
-      VHDLComponent newComp(dataflow, actor, t);
+      VHDLComponent newComp(dataflow, actor, opFreq, t);
       circuit.addComponent(newComp);
       // update execution time in dataflow according to component operator type
       VERBOSE_INFO("operator lifespan ("
                    << newComp.getType() << "): "
-                   << getOperatorLifespan(newComp.getType(), operatorFreq));
+                   << getOperatorLifespan(newComp.getType(), opFreq));
       if (newComp.getType() != "input_selector" &&
           newComp.getType() != "output_selector") { // input/output selector lifespans are already set in merge_operators
         std::vector<TIME_UNIT> opLifespans(
             dataflow->getVertexPhaseDuration(actor).size(),
-            (TIME_UNIT)getOperatorLifespan(newComp.getType(), operatorFreq));
+            (TIME_UNIT)getOperatorLifespan(newComp.getType(), opFreq));
         dataflow->setVertexDuration(actor, opLifespans);
       }
     }}
@@ -157,7 +157,10 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
   if (param_list.find("FREQUENCY") != param_list.end()) {
     VERBOSE_INFO("Operator frequency set to " << param_list["FREQUENCY"]);
     operatorFreq = std::stoi(param_list["FREQUENCY"]);
-    systemPeriod = std::ceil((operatorFreq/12.288) * 256);
+    if (!opFreqAndPeriod.count(operatorFreq)) {
+      VERBOSE_ERROR("Unsupported operator frequency requested: " << operatorFreq);
+    }
+    systemPeriod = opFreqAndPeriod.at(operatorFreq);
   } else {
     VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
   }
@@ -272,7 +275,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         return;
       }
     }}
-  VHDLCircuit tmp = generateCircuitObject(dataflow, implementationType); // VHDLCircuit object specifies operators and how they're connected
+  VHDLCircuit tmp = generateCircuitObject(dataflow, operatorFreq, implementationType); // VHDLCircuit object specifies operators and how they're connected
   VHDLScheduler schedule;
   schedule.setPeriod(systemPeriod);
   std::map<int, TIME_UNIT> inputStarts;
@@ -576,7 +579,7 @@ void algorithms::printCircuitInfo(models::Dataflow* const dataflow,
 
   // populate circuit object with components and connections based on dataflow
   {ForEachVertex(dataflow, actor) {
-      VHDLComponent newComp(dataflow, actor, implementationType);
+      VHDLComponent newComp(dataflow, actor, operatorFreq, implementationType);
       circuit.addComponent(newComp);
     }}
   {ForEachEdge(dataflow, edge) {

@@ -15,6 +15,15 @@
 enum implType { TT, DD, GS }; // TT: time triggered, DD: data driven, GS: globally scheduled
 enum direction { in, out };
 
+/* Predefined system periods for given operating frequencies (rounded off to an
+   even integer). Operating frequency (key) -> Period (value).
+   To compute: operatorFreq/codecMClk * 256.
+   By default, codecMClk = 12.288 (MHz).
+   The number 256 is chosen from a predefined integer listed in the SSM2603 spec
+   sheet. We assume a sampling frequency of 48kHz.
+*/
+inline std::map<int, int> opFreqAndPeriod = {{250, 5208}, {125, 2604}, {50, 1042}};
+
 /* Each component has a specific lifespan and name that needs to be defined in
    the generated AXI interface --- we track them using a predefined map where
    the keys are the operating frequencies. The "types" of the operators,
