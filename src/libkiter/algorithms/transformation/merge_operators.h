@@ -43,6 +43,8 @@ namespace algorithms {
                                                     int operatorFreq);
   std::vector<std::vector<ARRAY_INDEX>> smartMerge(models::Dataflow* const dataflow,
                                                    int operatorFreq);
+  std::vector<std::vector<ARRAY_INDEX>> smarterMerge(models::Dataflow* const dataflow,
+                                                     int operatorFreq);
   void findCausalDependency(models::Dataflow *const dataflow, Vertex v,
                             abstractDepGraph &g,
                             std::map<ARRAY_INDEX, bool> &visited);

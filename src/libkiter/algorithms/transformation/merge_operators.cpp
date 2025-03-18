@@ -16,6 +16,7 @@
 #include <commons/verbose.h>
 #include <models/Dataflow.h>
 #include <printers/SDF3Wrapper.h> // to write XML files
+#include "algorithms/transformation/iterative_evaluation.h"
 #include "algorithms/transformation/merge_output.h"
 #include "algorithms/vhdl_generation/VHDLCommons.h"
 #include "commons/commons.h"
@@ -27,7 +28,7 @@ std::vector<std::string> mergeableOperators = { "fp_add", "fp_prod", "fp_div",
                                                 "float2int", "int2float", "fp_floor",
                                                 "int_max", "int_min", "fp_max",
                                                 "fp_min", "fp_abs" };
-std::vector<std::string> mergeStrategies = {"greedy", "smart"};
+std::vector<std::string> mergeStrategies = {"greedy", "smart", "smarter"};
 bool osAsBroadcast = false; // used for when the output selector should act as a simple broadcast
 int broadcastBufferCnt = 0;
 
@@ -96,6 +97,19 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
   }
 
   // Begin merge operation
+  // update dataflow with lifespans
+  {ForEachVertex(dataflow, v) {
+      std::string opType = deriveOpCat(dataflow, v);
+      // update execution time in dataflow according to component operator type
+      std::vector<TIME_UNIT> opLifespans(
+                                         dataflow->getVertexPhaseDuration(v).size(),
+                                         getOperatorLifespan(opType, operatorFreq));
+      dataflow->setVertexDuration(v, opLifespans);
+    }}
+  models::Dataflow *scheduledDataflow = new models::Dataflow(*dataflow);
+  generate_audio_components(scheduledDataflow, params);
+  VERBOSE_ASSERT(computeRepetitionVector(scheduledDataflow),
+                 "inconsistent graph");
   int isOffset = 0;
   int osOffset = 0;
   std::vector<std::vector<ARRAY_INDEX>> mergeVectorIds;
@@ -103,6 +117,8 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
     mergeVectorIds = greedyMerge(dataflow, operatorFreq);
   } else if (mergeStrategy == "smart") {
     mergeVectorIds = smartMerge(dataflow, operatorFreq);
+  } else if (mergeStrategy == "smarter") {
+    mergeVectorIds = smarterMerge(scheduledDataflow, operatorFreq);
   }
   VERBOSE_DEBUG("Merge actors generated using merge strategy: " << mergeStrategy);
   // just for debugging purposes
@@ -124,15 +140,18 @@ void algorithms::transformation::merge_operators(models::Dataflow* const dataflo
                    << ", " << dataflow->getVertexType(dataflow->getVertexById(id)) << ")");
     }
     generateMergedGraph(dataflow, mergeVector, isOffset, osOffset); // NOTE mergeList of actors needs to be in their expected order of execution
+    VERBOSE_DEBUG("\tMerging for group done");
   }
 
   // revert buffer type to generic placeholder after transform
   {ForEachVertex(dataflow, v) {
+      VERBOSE_DEBUG("Checking for buffer implementation: " << dataflow->getVertexType(v));
       if (dataflow->getVertexType(v) == bufferImpl) {
         dataflow->setVertexType(v, "buffer");
+        VERBOSE_DEBUG("\tupdated buffer type");
       }
     }}
-
+  VERBOSE_DEBUG("Merging complete!");
 }
 
 /* Given a graph and a vector of vertices, return a new graph where
@@ -575,6 +594,7 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
         absDepGraph.computeExecTime(dataflow, dataflow->getVertexId(v), execTimes);
       }
     }}
+
   // group actor IDs by execution times so we know which ones execute at the same time
   for (auto &time : execTimes) {
     executionTime[time.second].push_back(time.first); // exec time -> actor ID
@@ -607,6 +627,96 @@ std::vector<std::vector<ARRAY_INDEX>> algorithms::smartMerge(models::Dataflow* c
   for (auto &ids : mergeableIds) {
     if (ids.second.size() > 1) { // only add to merge list if there's more than one operator
       matchingOperators.push_back(ids.second);
+    }
+  }
+
+  return matchingOperators;
+}
+
+std::vector<std::vector<ARRAY_INDEX>> algorithms::smarterMerge(models::Dataflow* const dataflow,
+                                                               int operatorFreq) {
+  std::vector<std::vector<ARRAY_INDEX>> matchingOperators;
+  std::vector<std::string> typesToMerge;
+  std::map<std::string, std::vector<ARRAY_INDEX>> mergeableIds;
+  std::map<ARRAY_INDEX, int> execTimes; // vertex ID -> exec time
+  std::map<int, std::vector<ARRAY_INDEX>> executionTime; // execution time, vector of vertex IDs
+  std::map<std::string, int> opCounts;
+  std::map<ARRAY_INDEX, std::string> vertexTypes; // vertex ID -> operator type
+
+  models::Scheduling res = scheduling::CSDF_1PeriodicScheduling(dataflow, 0);
+
+  for (const auto &item : res.getTaskSchedule()) {
+    execTimes[item.first] = item.second.periodic_starts.second.front();
+  }
+
+  // track operator types
+  {ForEachVertex(dataflow, v) {
+      std::string opType = deriveOpCat(dataflow, v);
+      // check for occurances of mergeable operator types
+      if (std::find(mergeableOperators.begin(),
+                    mergeableOperators.end(),
+                    opType) != mergeableOperators.end()) {
+        opCounts[opType]++;
+        vertexTypes[dataflow->getVertexId(v)] = opType;
+      }
+    }}
+  // track the operator types that we might want to merge (i.e. multiple occurances of the same type)
+  for (auto &types : opCounts) {
+    if (types.second > 1) {
+      typesToMerge.push_back(types.first);
+    }
+  }
+
+  // Group execution times by operator type:
+  // Store ID and exec time as a pair so they can be sorted by execution times
+  std::map<std::string, std::vector<std::pair<ARRAY_INDEX, int>>> groupedExecTimes;
+  {ForEachVertex(dataflow, v) {
+      std::string opType = deriveOpCat(dataflow, v);
+      if (std::find(mergeableOperators.begin(), mergeableOperators.end(),
+                    opType) != mergeableOperators.end()) {
+        ARRAY_INDEX vId = dataflow->getVertexId(v);
+        int startTime = execTimes.at(vId);
+        groupedExecTimes[opType].emplace_back(vId, startTime);
+      }
+    }}
+
+  // Sort grouped vertex IDs by execution time
+  for (auto &[opType, vertices] : groupedExecTimes) {
+    std::sort(vertices.begin(), vertices.end(),
+              [](const auto &a, const auto &b) { return a.second < b.second; });
+  }
+
+  // Generate merge groups by operator types
+  for (const auto &[opType, vertices] : groupedExecTimes) {
+    int lifespan = getOperatorLifespan(opType, operatorFreq);
+    std::unordered_set<ARRAY_INDEX> parsedIds; /* track which vertices have already been assigned a merge
+                                                  group to avoid adding the same vertices to different merge
+                                                  groups */
+    while (parsedIds.size() != vertices.size()) {
+      std::vector<std::pair<ARRAY_INDEX, int>> mergeGroup;
+      for (const auto &[vId, time] : vertices) {
+        if (parsedIds.find(vId) == parsedIds.end()) {
+          if (mergeGroup.size()) {
+            // only merge vertices with no overlapping executions
+            // i.e. latest end time in merge group LEQ new vertex start time
+            if ((mergeGroup.back().second + lifespan) <= time) {
+              mergeGroup.emplace_back(vId, time);
+              parsedIds.emplace(vId);
+            }
+          } else {
+            mergeGroup.emplace_back(vId, time);
+            parsedIds.emplace(vId);
+          }
+        }
+      }
+      // Extract IDs from mergeGroup and add as group to merge
+      if (mergeGroup.size() > 1) { // can only merge with >1 vertex
+        std::vector<ARRAY_INDEX> mergeIds;
+        for (const auto &[id, time] : mergeGroup) {
+          mergeIds.push_back(id);
+        }
+        matchingOperators.push_back(mergeIds);
+      }
     }
   }
 
