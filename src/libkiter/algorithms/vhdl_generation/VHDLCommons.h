@@ -37,8 +37,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"int_prod", 1}, {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
       {"sbuffer", 1}, {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1},
       {"fp_floor", 1}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
-      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
-      // NOTE unimplemented operators from here:
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1}, {"broadcast", 0},
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
       {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}},
     {125,
@@ -47,8 +46,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"int_prod", 1}, {"int_diff", 1}, {"float2int", 1}, {"int2float", 1},
       {"sbuffer", 1}, {"fix2fp", 1}, {"fp2fix", 1}, {"shiftreg", 1},
       {"fp_floor", 2}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
-      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
-      // NOTE unimplemented operators from here:
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1}, {"broadcast", 0},
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
       {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}},
     {250,
@@ -57,8 +55,7 @@ inline std::map<int, std::map<std::string, int>> operatorLifespans =
       {"int_prod", 1}, {"int_diff", 1}, {"float2int", 2}, {"int2float", 3},
       {"sbuffer", 1}, {"fix2fp", 1}, {"fp2fix", 2}, {"shiftreg", 1},
       {"fp_floor", 5}, {"int_max", 2}, {"int_min", 2}, {"fp_max", 1},
-      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1},
-      // NOTE unimplemented operators from here:
+      {"fp_min", 1}, {"fp_abs", 1}, {"int_abs", 1}, {"broadcast", 0},
       {"select2", 1}, {"select3", 1}, {"checkbox", 1}, {"button", 1},
       {"attach", 1}, {"vbargraph", 1}, {"hbargraph", 1}, {"delay", 2}}}
   };

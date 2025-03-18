@@ -814,7 +814,7 @@ void algorithms::transformation::broadcast_os(models::Dataflow *const dataflow,
         std::vector<TOKEN_UNIT> osInPhases;
         dataflow->setVertexType(v, "broadcast");
         dataflow->setPhasesQuantity(v, 1);
-        dataflow->setVertexDuration(v, {1});
+        dataflow->setVertexDuration(v, {0});
         std::string osName = dataflow->getVertexName(v); // store for replacement later in affected target actors
         {ForInputEdges(dataflow, v, inputEdge) {
             osInPhases = dataflow->getEdgeOutVector(inputEdge); // passed on to buffer
