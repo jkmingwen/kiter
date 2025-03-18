@@ -75,15 +75,18 @@ std::string models::Scheduling::asASCII (size_t ls) const{
         size_t exec_idx = 0;
 		for (TIME_UNIT i: starts) {
 			std::string add_space(static_cast<unsigned long>(i - prev), ' ');
-			start_str += add_space;
-			std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+                        start_str += add_space;
+                        std::string exec;
+                        if (phases[exec_idx % phase_count] > 0) {
+                          exec = std::string(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+                        }
 			start_str += '@';
 			start_str += exec;
 			prev = i + exec.size() + 1;
 			++exec_idx;
 		}
 		std::string leading_space(static_cast<unsigned long>(period_starts[0] - prev), ' ');
-		start_str += leading_space; 
+		start_str += leading_space;
 		if (start_str.length() <= line_size) {
 			line += start_str;
             line_size -= start_str.length();
@@ -99,7 +102,10 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 			for (TIME_UNIT i: period_starts) {
 				std::string add_space(static_cast<unsigned long>(i - prev), ' ');
 				period_str += add_space;
-				std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+                                std::string exec;
+                                if (phases[exec_idx % phase_count] > 0) {
+                                  exec = std::string(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+                                }
 				period_str += '@';
 				period_str += exec;
 				prev = i + exec.size() + 1;
@@ -112,8 +118,11 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 				prev = period_starts[0];
 				size_t phase_idx = 0;
 				while (exec_idx % phase_count != 0){
-					TIME_UNIT i = period_starts[phase_idx % period_starts.size()];
-					std::string exec(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+					TIME_UNIT i = period_starts[phase_idx % period_starts.size()];1), '#');
+                                        std::string exec;
+                                        if (phases[exec_idx % phase_count] > 0) {
+                                          exec = std::string(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
+                                        }
 					period_str += '@';
 					period_str += exec;
 					if (i == period_starts.back()){ // trailing spaces
@@ -123,7 +132,7 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 						period_str +=  std::string (
                                         static_cast<unsigned long>(period_starts[phase_idx % period_starts.size()] - i), ' ');
 					}
-					
+
 					prev = i + exec.size() + 1;
 					++phase_idx;
 					++exec_idx;
