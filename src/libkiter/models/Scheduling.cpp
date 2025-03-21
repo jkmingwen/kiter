@@ -74,7 +74,8 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 		// add to string 1) initial starts 2) trailing spaces (before periodic starts)
         size_t exec_idx = 0;
 		for (TIME_UNIT i: starts) {
-			std::string add_space(static_cast<unsigned long>(i - prev), ' ');
+                        auto spaces = i - prev;
+			std::string add_space(std::max<TIME_UNIT>(spaces, 0), ' ');
                         start_str += add_space;
                         std::string exec;
                         if (phases[exec_idx % phase_count] > 0) {
@@ -85,7 +86,8 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 			prev = i + exec.size() + 1;
 			++exec_idx;
 		}
-		std::string leading_space(static_cast<unsigned long>(period_starts[0] - prev), ' ');
+                auto spaces = period_starts[0] - prev;
+		std::string leading_space(std::max<long double>(spaces, 0), ' ');
 		start_str += leading_space;
 		if (start_str.length() <= line_size) {
 			line += start_str;
@@ -99,8 +101,9 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 		// create period string without leading spaces so to use for both first and subsequent periods
 		if (!period_starts.empty()){
 			prev = period_starts[0];
-			for (TIME_UNIT i: period_starts) {
-				std::string add_space(static_cast<unsigned long>(i - prev), ' ');
+                        for (TIME_UNIT i : period_starts) {
+                                auto spaces = i - prev;
+				std::string add_space(std::max<TIME_UNIT>(spaces, 0), ' ');
 				period_str += add_space;
                                 std::string exec;
                                 if (phases[exec_idx % phase_count] > 0) {
@@ -112,7 +115,8 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 				++exec_idx ;
 			}
 			// add trailing spaces after period starts (before next period)
-			period_str += std::string(static_cast<unsigned long>((period + period_starts[0]) - prev), ' ');
+                        auto spaces = (period + period_starts[0]) - prev;
+			period_str += std::string(std::max<long double>(spaces, 0), ' ');
 			// need to complete the period for all phases (by looking ahead)
 			if(phase_count > period_starts.size()){
 				prev = period_starts[0];
@@ -126,11 +130,11 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 					period_str += '@';
 					period_str += exec;
 					if (i == period_starts.back()){ // trailing spaces
-						period_str += std::string (
-                                static_cast<unsigned long>((period + period_starts[0]) - (i + exec.size()) - 1), ' ');
+                                                auto spaces = (period + period_starts[0]) - (i + exec.size()) - 1;
+						period_str += std::string (std::max<long double>(spaces, 0), ' ');
 					} else { // add spaces
-						period_str +=  std::string (
-                                        static_cast<unsigned long>(period_starts[phase_idx % period_starts.size()] - i), ' ');
+                                                auto spaces = period_starts[phase_idx % period_starts.size()] - i;
+						period_str +=  std::string (std::max<long double>(spaces, 0), ' ');
 					}
 
 					prev = i + exec.size() + 1;
