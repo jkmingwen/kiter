@@ -127,6 +127,9 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       execTimes; // actor names -> execution times // TODO try with actor ID
                  // instead of names
   models::Scheduling res;
+  // purely for latency computation
+  std::map<std::string, std::vector<TIME_UNIT>> execTimesLatency;
+  models::Scheduling resLatency;
 
   // check for specified VHDL output directory
   if (param_list.find("OUTPUT_DIR") != param_list.end()) {
@@ -243,6 +246,21 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
       actorBaseName = getBaseName(actorBaseName);
       execTimes[actorBaseName] = item.second.periodic_starts.second;
     }
+    // Workaround for latency computation
+    models::Dataflow *latencyDataflow = new models::Dataflow(*dataflow);
+    param_list["CODEC_PERIOD"] = "0";
+    algorithms::transformation::generate_audio_components(latencyDataflow,
+                                                          param_list);
+    param_list.erase(param_list.find("CODEC_PERIOD"));
+    VERBOSE_ASSERT(computeRepetitionVector(latencyDataflow),
+                   "inconsistent graph");
+    resLatency = scheduling::CSDF_1PeriodicScheduling(latencyDataflow, 0);
+    for (const auto &item : resLatency.getTaskSchedule()) {
+      std::string actorBaseName =
+        latencyDataflow->getVertexName(latencyDataflow->getVertexById(item.first));
+      actorBaseName = getBaseName(actorBaseName);
+      execTimesLatency[actorBaseName] = item.second.periodic_starts.second;
+    }
     algorithms::transformation::broadcast_os(dataflow, param_list);
   } else {
     models::Dataflow *scheduledDataflow = new models::Dataflow(*dataflow);
@@ -253,6 +271,18 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     res = scheduling::CSDF_1PeriodicScheduling(scheduledDataflow, 0);
     for (const auto &item : res.getTaskSchedule()) {
       execTimes[scheduledDataflow->getVertexName(scheduledDataflow->getVertexById(item.first))] = item.second.periodic_starts.second;
+    }
+    // Workaround for latency computation
+    models::Dataflow *latencyDataflow = new models::Dataflow(*dataflow);
+    param_list["CODEC_PERIOD"] = "0";
+    algorithms::transformation::generate_audio_components(latencyDataflow,
+                                                          param_list);
+    param_list.erase(param_list.find("CODEC_PERIOD"));
+    VERBOSE_ASSERT(computeRepetitionVector(latencyDataflow),
+                   "inconsistent graph");
+    resLatency = scheduling::CSDF_1PeriodicScheduling(latencyDataflow, 0);
+    for (const auto &item : resLatency.getTaskSchedule()) {
+      execTimesLatency[latencyDataflow->getVertexName(latencyDataflow->getVertexById(item.first))] = item.second.periodic_starts.second;
     }
   }
 
@@ -286,11 +316,12 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     if (execTimes.count(name)) {
       // add execTimes element as actor exec time
       std::vector<TIME_UNIT> startTimes(execTimes[name]);
+      std::vector<TIME_UNIT> latencyStartTimes(execTimesLatency[name]);
       std::vector<TIME_UNIT> bufferPopTime;
       if (comp.getType() == "INPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Input actor should only have 1 start time");
         tmp.addInExecTime(comp.getIOId(), startTimes.front());
-        inputStarts[comp.getIOId()] = startTimes.front();
+        inputStarts[comp.getIOId()] = latencyStartTimes.front();
       }
       if (comp.getType() == "OUTPUT") {
         VERBOSE_ASSERT(startTimes.size() == 1, "Output actor should only have 1 start time");
@@ -298,7 +329,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
         int conversionTime = getOperatorLifespan("fp2fix", operatorFreq) +
                              getOperatorLifespan("fp_prod", operatorFreq);
         tmp.addComputeTime(comp.getIOId(), startTimes.front() + conversionTime);
-        outputEnds[comp.getIOId()] = startTimes.front() + conversionTime;
+        outputEnds[comp.getIOId()] = latencyStartTimes.front() + conversionTime;
       }
       if (comp.getType() == "sbuffer" || comp.getType() == "shiftreg" || comp.getType() == "delay") {
         {ForOutputEdges(dataflow, v, outEdge) {
