@@ -203,6 +203,10 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   int numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
                                 (numOutputs / 2 + (numOutputs % 2 != 0)));
   int period = opFreqAndPeriod.at(operatorFreq);
+  if (params.find("CODEC_PERIOD") != params.end()) {
+    VERBOSE_INFO("Audio codec period set to " << params["CODEC_PERIOD"]);
+    period = std::stoi(params["CODEC_PERIOD"]);
+  }
   std::vector<TIME_UNIT> audioPeriod (2, period/2); // ws clock to toggle every half period
   // input/output operation consists of these 3 components:
   TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
