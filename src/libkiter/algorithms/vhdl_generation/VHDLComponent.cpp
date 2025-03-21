@@ -670,6 +670,17 @@ void VHDLComponent::portMappingInit() {
             addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
           }
         }
+      } else if (componentType == "int2float" || componentType == "fp_floor") { // int2float (which is also in floor) requires a reset signal
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        }
       } else {
         addPortMapping("clk", "clk", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
@@ -836,6 +847,17 @@ void VHDLComponent::portMappingInit() {
             addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
           }
         }
+      } else if (componentType == "int2float" || componentType == "fp_floor") { // int2float (which is also in floor) requires a reset signal
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          std::vector<std::string> inPortNames = opInputPorts.at(componentType);
+          addPortMapping(inPortNames[i], inputSignals[i], "std_logic_vector", "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          std::vector<std::string> outPortNames = opOutputPorts.at(componentType);
+          addPortMapping(outPortNames[o], outputSignals[o], "std_logic_vector", "out");
+        }
       } else {
         addPortMapping("clk", "clk", "std_logic", "in");
         for (auto i = 0; i < inputSignals.size(); i++) {
@@ -992,6 +1014,15 @@ void VHDLComponent::portMappingInit() {
           for (auto o = 0; o < outputSignals.size(); o++) {
             addHSPortMapping("op", outputSignals[o], o, "out");
           }
+        }
+      } else if (componentType == "int2float" || componentType == "fp_floor") { // int2float (which is also in floor) requires a reset signal
+        addPortMapping("clk", "clk", "std_logic", "in");
+        addPortMapping("rst", "rst", "std_logic", "in");
+        for (auto i = 0; i < inputSignals.size(); i++) {
+          addHSPortMapping("op", inputSignals[i], i, "in");
+        }
+        for (auto o = 0; o < outputSignals.size(); o++) {
+          addHSPortMapping("op", outputSignals[o], o, "out");
         }
       } else {
         addPortMapping("clk", "clk", "std_logic", "in");
