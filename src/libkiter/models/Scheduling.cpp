@@ -117,8 +117,8 @@ std::string models::Scheduling::asASCII (size_t ls) const{
 			if(phase_count > period_starts.size()){
 				prev = period_starts[0];
 				size_t phase_idx = 0;
-				while (exec_idx % phase_count != 0){
-					TIME_UNIT i = period_starts[phase_idx % period_starts.size()];1), '#');
+                                while (exec_idx % phase_count != 0) {
+                                        TIME_UNIT i = period_starts[phase_idx % period_starts.size()];
                                         std::string exec;
                                         if (phases[exec_idx % phase_count] > 0) {
                                           exec = std::string(static_cast<unsigned long>(phases[exec_idx % phase_count] - 1), '#');
