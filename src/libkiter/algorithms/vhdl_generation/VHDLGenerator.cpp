@@ -622,13 +622,21 @@ TIME_UNIT computeLatency(std::map<int, TIME_UNIT> inStarts, std::map<int, TIME_U
 
   for (auto const [chId, outTime] : outEnds) {
     TIME_UNIT chLatency = 0;
+    VERBOSE_DEBUG("Computing latency for channel " << chId);
     if (inStarts.count(chId)) {
+      VERBOSE_DEBUG("\tInput start: " << inStarts.at(chId));
+      VERBOSE_DEBUG("\tOutput end: " << outTime);
       if (inStarts.at(chId) > outTime) {
         chLatency = outTime;
       } else {
         chLatency = outTime - inStarts.at(chId);
       }
+    } else {
+      VERBOSE_DEBUG("\tNo input channel");
+      VERBOSE_DEBUG("\tOutput end: " << outTime);
+      chLatency = outTime;
     }
+    VERBOSE_DEBUG("\tChannel latency: " << chLatency);
     latencies.insert(chLatency);
   }
 
