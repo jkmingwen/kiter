@@ -3,8 +3,13 @@ FROM ubuntu:noble
 
 
 ################################### INSTALL DEPS  ##########################
-RUN apt-get update && apt-get install --no-install-recommends -y git make cmake gcc g++ libboost-all-dev libxml2-dev libglpk-dev glpk-utils && apt-get clean && rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update && apt-get install --no-install-recommends -y git make cmake gcc wget g++ libboost-all-dev libxml2-dev libglpk-dev glpk-utils && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    qtbase5-dev \
+    qt5-qmake \
+    qtbase5-dev-tools  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ################################### PREPARE  ##########################
 RUN mkdir /kiter/
@@ -19,7 +24,7 @@ COPY ./Makefile /kiter/Makefile
 
 ################################### CLEAN  ##########################
 RUN make clean -C /kiter/
-RUN make sdf3_benchmarks -C /kiter/
+# RUN make sdf3_benchmarks -C /kiter/
 
 ################################### COMPILE  ##########################
 RUN make release -j12 -C /kiter/

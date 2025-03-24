@@ -165,6 +165,7 @@ TIME_UNIT algorithms::compute_deGrooteClean_throughput (models::Dataflow* const 
 		std::cout << "Maximum throughput is " << 1 / result.first   << std::endl;
 	}
 
+	return  1.0 / result.first;
 }
 
 
@@ -181,4 +182,7 @@ TIME_UNIT algorithms::compute_deGroote_throughput (models::Dataflow* const dataf
     	} else {
     		std::cout << "Maximum throughput is " << 1 / result.first   << std::endl;
     	}
+
+	return  1.0 / result.first;
+
     }

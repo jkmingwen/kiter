@@ -41,7 +41,7 @@ BOOST_FIXTURE_TEST_SUITE( degroote_test , WITH_SAMPLE)
         }
 
         VERBOSE_INFO("Running DeGroote on random");
-        for(auto graph : graphs) {
+        for(const auto graph : graphs) {
             algorithms::compute_deGrooteClean_throughput(graph, params);
         }
     }
