@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sdf3 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.0" type="csdf">
+    <applicationGraph name="fir_4">
+        <csdf name="fir_4" type="fir_4">
+            <actor name="0x7b05680061e0" type="0.750000">
+                <port name="in_channel_4_real_vect" type="out" rate="1"/>
+                <port name="in_R0x7b05680061e0" type="out" rate="1"/>
+                <port name="out_R0x7b05680061e0" type="in" rate="1"/>
+            </actor>
+            <actor name="0x7b0568008a90" type="0.250000">
+                <port name="in_channel_9_real_vect" type="out" rate="1"/>
+                <port name="in_R0x7b0568008a90" type="out" rate="1"/>
+                <port name="out_R0x7b0568008a90" type="in" rate="1"/>
+            </actor>
+            <actor name="0x7b056800a7c0" type="INPUT_0">
+                <port name="in_channel_14_real_vect" type="out" rate="1"/>
+                <port name="in_R0x7b056800a7c0" type="out" rate="1"/>
+                <port name="out_R0x7b056800a7c0" type="in" rate="1"/>
+            </actor>
+            <actor name="OUTPUT_0" type="OUTPUT_0">
+                <port name="out_channel_16_real_vect" type="in" rate="1"/>
+                <port name="in_ROUTPUT_0" type="out" rate="1"/>
+                <port name="out_ROUTPUT_0" type="in" rate="1"/>
+            </actor>
+            <actor name="merged_inputselector0_inputselector1" type="add">
+                <port name="out_Rmerged_inputselector0_inputselector1" type="in" rate="1"/>
+                <port name="out_channel_32_real_vect" type="in" rate="1"/>
+                <port name="out_channel_38_real_vect" type="in" rate="1"/>
+                <port name="in_Rmerged_inputselector0_inputselector1" type="out" rate="1"/>
+                <port name="in_channel_42_real" type="out" rate="1"/>
+            </actor>
+            <actor name="inputselector0_0x597522f19b40_0x597522f19800" type="input_selector">
+                <port name="out_channel_9_real_vect" type="in" rate="1,0"/>
+                <port name="out_channel_4_real_vect" type="in" rate="0,1"/>
+                <port name="out_Rinputselector0" type="in" rate="1,1"/>
+                <port name="in_channel_32_real_vect" type="out" rate="1,1"/>
+                <port name="in_Rinputselector0" type="out" rate="1,1"/>
+            </actor>
+            <actor name="inputselector1_0x597522f19ef0_outputselector0" type="input_selector">
+                <port name="out_channel_14_real_vect" type="in" rate="1,0"/>
+                <port name="out_Rinputselector1" type="in" rate="1,1"/>
+                <port name="out_channel_15_real_vect" type="in" rate="0,1"/>
+                <port name="in_channel_38_real_vect" type="out" rate="1,1"/>
+                <port name="in_Rinputselector1" type="out" rate="1,1"/>
+            </actor>
+            <actor name="outputselector0" type="output_selector">
+                <port name="out_channel_42_real" type="in" rate="1,1"/>
+                <port name="out_Routputselector0" type="in" rate="1,1"/>
+                <port name="in_channel_15_real_vect" type="out" rate="1,0"/>
+                <port name="in_channel_16_real_vect" type="out" rate="0,1"/>
+                <port name="in_Routputselector0" type="out" rate="1,1"/>
+            </actor>
+            <channel name="Rmerged_inputselector0_inputselector1" srcActor="merged_inputselector0_inputselector1" srcPort="in_Rmerged_inputselector0_inputselector1" dstActor="merged_inputselector0_inputselector1" dstPort="out_Rmerged_inputselector0_inputselector1" size="1" initialTokens="1"/>
+            <channel name="channel_9_real_vect" srcActor="0x7b0568008a90" srcPort="in_channel_9_real_vect" dstActor="inputselector0_0x597522f19b40_0x597522f19800" dstPort="out_channel_9_real_vect" size="1"/>
+            <channel name="channel_4_real_vect" srcActor="0x7b05680061e0" srcPort="in_channel_4_real_vect" dstActor="inputselector0_0x597522f19b40_0x597522f19800" dstPort="out_channel_4_real_vect" size="1"/>
+            <channel name="channel_32_real_vect" srcActor="inputselector0_0x597522f19b40_0x597522f19800" srcPort="in_channel_32_real_vect" dstActor="merged_inputselector0_inputselector1" dstPort="out_channel_32_real_vect" size="1"/>
+            <channel name="Rinputselector0" srcActor="inputselector0_0x597522f19b40_0x597522f19800" srcPort="in_Rinputselector0" dstActor="inputselector0_0x597522f19b40_0x597522f19800" dstPort="out_Rinputselector0" size="1" initialTokens="1"/>
+            <channel name="channel_14_real_vect" srcActor="0x7b056800a7c0" srcPort="in_channel_14_real_vect" dstActor="inputselector1_0x597522f19ef0_outputselector0" dstPort="out_channel_14_real_vect" size="1"/>
+            <channel name="channel_38_real_vect" srcActor="inputselector1_0x597522f19ef0_outputselector0" srcPort="in_channel_38_real_vect" dstActor="merged_inputselector0_inputselector1" dstPort="out_channel_38_real_vect" size="1"/>
+            <channel name="Rinputselector1" srcActor="inputselector1_0x597522f19ef0_outputselector0" srcPort="in_Rinputselector1" dstActor="inputselector1_0x597522f19ef0_outputselector0" dstPort="out_Rinputselector1" size="1" initialTokens="1"/>
+            <channel name="channel_42_real" srcActor="merged_inputselector0_inputselector1" srcPort="in_channel_42_real" dstActor="outputselector0" dstPort="out_channel_42_real" size="1"/>
+            <channel name="channel_15_real_vect" srcActor="outputselector0" srcPort="in_channel_15_real_vect" dstActor="inputselector1_0x597522f19ef0_outputselector0" dstPort="out_channel_15_real_vect" size="1"/>
+            <channel name="channel_16_real_vect" srcActor="outputselector0" srcPort="in_channel_16_real_vect" dstActor="OUTPUT_0" dstPort="out_channel_16_real_vect" size="1"/>
+            <channel name="Routputselector0" srcActor="outputselector0" srcPort="in_Routputselector0" dstActor="outputselector0" dstPort="out_Routputselector0" size="1" initialTokens="1"/>
+            <channel name="R0x7b05680061e0" srcActor="0x7b05680061e0" srcPort="in_R0x7b05680061e0" dstActor="0x7b05680061e0" dstPort="out_R0x7b05680061e0" size="1" initialTokens="1"/>
+            <channel name="R0x7b0568008a90" srcActor="0x7b0568008a90" srcPort="in_R0x7b0568008a90" dstActor="0x7b0568008a90" dstPort="out_R0x7b0568008a90" size="1" initialTokens="1"/>
+            <channel name="R0x7b056800a7c0" srcActor="0x7b056800a7c0" srcPort="in_R0x7b056800a7c0" dstActor="0x7b056800a7c0" dstPort="out_R0x7b056800a7c0" size="1" initialTokens="1"/>
+            <channel name="ROUTPUT_0" srcActor="OUTPUT_0" srcPort="in_ROUTPUT_0" dstActor="OUTPUT_0" dstPort="out_ROUTPUT_0" size="1" initialTokens="1"/>
+        </csdf>
+        <csdfProperties>
+            <actorProperties actor="0x7b05680061e0">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="0x7b0568008a90">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="0x7b056800a7c0">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="OUTPUT_0">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="merged_inputselector0_inputselector1">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="6"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="inputselector0_0x597522f19b40_0x597522f19800">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1,1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="inputselector1_0x597522f19ef0_outputselector0">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1,1"/>
+                </processor>
+            </actorProperties>
+            <actorProperties actor="outputselector0">
+                <processor type="cluster_0" default="true">
+                    <executionTime time="1,1"/>
+                </processor>
+            </actorProperties>
+            <channelProperties channel="Rmerged_inputselector0_inputselector1"/>
+            <channelProperties channel="channel_9_real_vect"/>
+            <channelProperties channel="channel_4_real_vect"/>
+            <channelProperties channel="channel_32_real_vect"/>
+            <channelProperties channel="Rinputselector0"/>
+            <channelProperties channel="channel_14_real_vect"/>
+            <channelProperties channel="channel_38_real_vect"/>
+            <channelProperties channel="Rinputselector1"/>
+            <channelProperties channel="channel_42_real"/>
+            <channelProperties channel="channel_15_real_vect"/>
+            <channelProperties channel="channel_16_real_vect"/>
+            <channelProperties channel="Routputselector0"/>
+        </csdfProperties>
+    </applicationGraph>
+</sdf3>
+

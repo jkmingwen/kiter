@@ -3,6 +3,7 @@
 //
 
 #include "so4nocWriter.h"
+#include "libxml/parser.h"
 
 #include <models/Dataflow.h>
 #include <tuple>

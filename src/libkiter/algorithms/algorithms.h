@@ -22,7 +22,7 @@
 #include <algorithms/throughput/csdf_strictly_periodic.h>
 #include <algorithms/experiments.h>
 #include <algorithms/analysis/cycle_detection.h>
-
+#include <algorithms/vhdl_generation/VHDLGenerator.h>
 
 
 #endif /* SRC_LIBKITER_ALGORITHMS_ALGORITHMS_H_ */

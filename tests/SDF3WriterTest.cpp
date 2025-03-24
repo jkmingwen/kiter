@@ -64,12 +64,11 @@ BOOST_FIXTURE_TEST_SUITE( sdf3_writer_test , WITH_VERBOSE)
 BOOST_AUTO_TEST_CASE( test_echo )
 {
 	models::Dataflow* echo =  generateEchoBuffered () ;
+    BOOST_REQUIRE_EQUAL(true, computeRepetitionVector(echo));
 	std::string echoStr = printers::generateSDF3XML(echo);
 	models::Dataflow* echobis = printers::parseSDF3XML(echoStr);
+    BOOST_REQUIRE_EQUAL(true, computeRepetitionVector(echobis));
 	std::string echoStrBis = printers::generateSDF3XML(echobis);
-
-
-
 	BOOST_REQUIRE_EQUAL( echoStr, echoStrBis );
 	delete echo;
 	delete echobis;

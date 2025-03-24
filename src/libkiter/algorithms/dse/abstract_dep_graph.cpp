@@ -209,6 +209,64 @@ void abstractDepGraph::computeCycles(models::Dataflow* const dataflow,
   visited[startActor] = false;
 }
 
+// Computes the execution times of each execution in the abstract dependency graph
+/* Performs a breadth-first search, incrementing the time by adding the given actor's
+   execution time to its parent's. Note that this function has been designed to be
+   called on the root nodes in the abstract dependency graph. */
+void abstractDepGraph::computeExecTime(models::Dataflow* const dataflow,
+                                       ARRAY_INDEX vId,
+                                       std::map<ARRAY_INDEX, int> &execTimes) {
+  std::map<ARRAY_INDEX, bool> visited;
+  std::list<ARRAY_INDEX> visitQueue;
+
+  // Initialize visited map and set the starting vertex
+  ForEachVertex(dataflow, v) {
+    visited[dataflow->getVertexId(v)] = false;
+  }
+  visited[vId] = true;
+  visitQueue.push_back(vId);
+  execTimes[vId] = 0;
+
+  // BFS traversal to compute execution times
+  while (!visitQueue.empty()) {
+    ARRAY_INDEX currentId = visitQueue.front();
+    visitQueue.pop_front();
+
+    int currentExecTime = execTimes[currentId];
+
+    for (const auto& [adjId, isDependent] : this->abstractDependencyGraph[currentId]) {
+      if (isDependent && !visited[adjId]) {
+        visited[adjId] = true;
+        visitQueue.push_back(adjId);
+
+        // Fetch phase duration once for each adjacent vertex
+        const auto& adjVertex = dataflow->getVertexById(adjId);
+        auto phaseDurations = dataflow->getVertexPhaseDuration(adjVertex);
+        VERBOSE_ASSERT(phaseDurations.size() == 1,
+                       "Only single-phase actors supported. Actor "
+                           << dataflow->getVertexName(adjVertex) << "("
+                           << dataflow->getVertexType(adjVertex)
+                           << ") has multiple phases.");
+
+        int opLifespan = phaseDurations.front();
+
+        // Update execution time if greater than the current recorded time
+        execTimes[adjId] = std::max(execTimes[adjId], currentExecTime + opLifespan);
+      }
+    }
+  }
+}
+
+bool abstractDepGraph::hasDependency(ARRAY_INDEX vId) {
+  for (const auto& [srcId, depMap] : this->abstractDependencyGraph) {
+      auto it = depMap.find(vId);
+      if (it != depMap.end() && it->second) {
+          return true; // dependency found
+      }
+  }
+  return false;
+}
+
 std::string abstractDepGraph::printStatus() {
   std::stringstream outputStream;
 
