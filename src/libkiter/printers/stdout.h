@@ -47,5 +47,5 @@ ADD_PRINTER(PrintGraph,"Print DOT file", printers::printGraph);
 
 ADD_PRINTER(PrintMapping , "Print DOT file", printers::printMapping);
 
-ADD_PRINTER(PrintSigGraph, "Print DOT file", printers::printSigGraph});
+ADD_PRINTER(PrintSigGraph, "Print DOT file", printers::printSigGraph);
 #endif /* STDOUT_H_ */

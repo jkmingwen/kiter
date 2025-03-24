@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( bugfix1_test_case)
 	VERBOSE_INFO("schedule the graph");
 
     VERBOSE_ASSERT(computeRepetitionVector(new_graph),"inconsistent graph");
-    models::Scheduling sched = algorithms::scheduling::CSDF_SPeriodicScheduling(new_graph);
+    models::Scheduling sched = algorithms::scheduling::CSDF_SPeriodicScheduling(new_graph, 0.0);
 
 	VERBOSE_INFO("Print the schedule");
     sched.verbose_print();

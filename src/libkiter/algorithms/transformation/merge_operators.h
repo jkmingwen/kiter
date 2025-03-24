@@ -55,23 +55,19 @@ namespace algorithms {
 }
 ADD_TRANSFORMATION(
     MergeOperators,
-    transformation_t({"MergeOperators",
                       "Identify operators (via a given merging strategy) and "
                       "merge into a single occurance.",
-                      algorithms::transformation::merge_operators}));
+                      algorithms::transformation::merge_operators);
 ADD_TRANSFORMATION(
     BroadcastOS,
-    transformation_t({"BroadcastOS",
                       "Replace output selectors with broadcasts with buffers "
                       "on its output edges (used in conjuction with SDFs that "
                       "have been merged via MergeOperators algorithm).",
-                      algorithms::transformation::broadcast_os}));
+                      algorithms::transformation::broadcast_os);
 
 ADD_TRANSFORMATION(PipelineBuffers,
-                   transformation_t({
-                       "PipelineBuffers",
                        "Sequentialise buffers that store data from the same "
                        "actor to maximise data re-use.",
-                       algorithms::transformation::pipeline_buffers}));
+                       algorithms::transformation::pipeline_buffers);
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_MERGE_OPERATORS_H_ */
