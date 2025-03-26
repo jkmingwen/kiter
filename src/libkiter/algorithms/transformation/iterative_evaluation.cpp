@@ -101,7 +101,7 @@ void algorithms::transformation::iterative_evaluate(models::Dataflow* const  dat
           // broadcast components are inserted when generating VHDL
           if (opName == "Proj") {
             VERBOSE_INFO("\tBypassing Proj");
-            bypassProj(dataflow_prime, v);
+            bypassActor(dataflow_prime, v);
             changeDetected = true;
             break;
           }
@@ -349,6 +349,173 @@ void algorithms::transformation::generate_audio_components(models::Dataflow* con
   }
   VERBOSE_INFO("Done modifying graph");
 }
+
+/* Generate components to model latency of graph as implemented in VHDL */
+void algorithms::transformation::model_latency(models::Dataflow *const dataflow,
+                                               parameters_list_t params) {
+  while (getMultiOutputActors(dataflow).size() > 0) {
+    VERBOSE_INFO("getMultiOutputActors is not empty");
+    for (std::string actorName : getMultiOutputActors(dataflow)) {
+      parameters_list_t parameters;
+      parameters["name"] = actorName;
+      VERBOSE_INFO("merge output for actor " << actorName);
+      try {
+        merge_output(dataflow, parameters);
+      } catch (...) {
+        VERBOSE_WARNING("actor missing!");
+      }
+    }
+    VERBOSE_INFO("Regenerate Circuit");
+  }
+
+  implType t = TT;
+  int operatorFreq = 250;
+  // check if operator frequencies have been specified
+  if (params.find("FREQUENCY") != params.end()) {
+    VERBOSE_INFO("Operator frequency set to " << params["FREQUENCY"]);
+    operatorFreq = std::stoi(params["FREQUENCY"]);
+    if (!opFreqAndPeriod.count(operatorFreq)) {
+      VERBOSE_ERROR("Unsupported operator frequency requested: " << operatorFreq);
+    }
+  } else {
+    VERBOSE_INFO("Default operator frequency used (" << operatorFreq << "), you can use -p FREQUENCY=frequency_in_MHz to set the operator frequency");
+  }
+  if (params.find("GS") != params.end()) {
+    t = GS;
+  }
+  if (params.find("DATA_DRIVEN") != params.end()) {
+    VERBOSE_INFO("Using data-driven implementation for VHDL design");
+    t = DD;
+  }
+  VHDLCircuit circuit =
+    generateCircuitObject(dataflow, operatorFreq, t); // generate circuit to track counts of inputs/outputs
+  int numInputs = circuit.getOperatorCount("INPUT");
+  int numOutputs = circuit.getOperatorCount("OUTPUT");
+  int numAudioCodecs = std::max((numInputs / 2 + (numInputs % 2 != 0)),
+                                (numOutputs / 2 + (numOutputs % 2 != 0)));
+  int period = opFreqAndPeriod.at(operatorFreq);
+  std::vector<TIME_UNIT> audioPeriod (2, period/2); // ws clock to toggle every half period
+  std::vector<TIME_UNIT> inputAudioPeriod (1, period/2); // ws clock to toggle every half period
+  // input/output operation consists of these 3 components:
+  TIME_UNIT inExecDur = getOperatorLifespan("fix2fp", operatorFreq) +
+                        getOperatorLifespan("fp_prod", operatorFreq) + getOperatorLifespan("sbuffer", operatorFreq);
+  TIME_UNIT outExecDur = getOperatorLifespan("fp2fix", operatorFreq) +
+                         getOperatorLifespan("fp_prod", operatorFreq);
+  Vertex lIn, rIn, lOut, rOut;
+
+  // bind input/output edges of IS/OS to buffer size of 1 as VHDL implementation
+  // has implied 1 token on each input/output edge
+  {ForEachVertex(dataflow, v) {
+      std::string opType = dataflow->getVertexType(v);
+      std::string baseName = getBaseName(dataflow->getVertexName(v));
+      VERBOSE_INFO("Visiting " << opType
+                   << " (" << dataflow->getVertexName(v) << ")...");
+      if (dataflow->getVertexDegree(v) == 0) { // remove vertices with no edges
+        VERBOSE_INFO(opType << "(" << dataflow->getVertexName(v) << ") has no input/output edges, removing...");
+        dataflow->removeVertex(v);
+      }
+      if (opType == "input_selector") {
+        bindVertexEdges(dataflow, v, 0);
+      }
+      if (opType == "output_selector") {
+        bindVertexEdges(dataflow, v, 1);
+      }
+    }
+  }
+
+  // initialise input/output component durations, track existence of
+  // input/output components
+  int expectedInOrOuts = numAudioCodecs * 2; // stereo audio codecs assumed
+  std::vector<char> existingIns(expectedInOrOuts, '0'); // tracks whether the given input/output actor exists
+  std::vector<char> existingOuts(expectedInOrOuts, '0');
+  std::map<int, std::string> inputNames;
+  std::map<int, std::string> outputNames;
+  for (auto const &[v, comp] : circuit.getComponentMap()) {
+    if (comp.getType() == "INPUT") {
+      dataflow->setPhasesQuantity(v, 1);
+      dataflow->setVertexDuration(v, {inExecDur});
+      dataflow->setReentrancyFactor(v, 1);
+      existingIns.at(comp.getIOId()) = '1';
+      inputNames[comp.getIOId()] = comp.getUniqueName();
+    }
+    if (comp.getType() == "OUTPUT") {
+      dataflow->setPhasesQuantity(v, 1);
+      dataflow->setVertexDuration(v, {outExecDur});
+      dataflow->setReentrancyFactor(v, 1);
+      existingOuts.at(comp.getIOId()) = '1';
+      outputNames[comp.getIOId()] = comp.getUniqueName();
+    }
+  }
+  // add dummy input/output vertices (for non-existent but expected ins/outs)
+  for (auto i = 0; i < existingIns.size(); i++) {
+    if (existingIns.at(i) == '0') {
+      std::string inName = "INPUT_" + std::to_string(i);
+      Vertex dummyIn = dataflow->addVertex(inName);
+      dataflow->setVertexType(dummyIn, inName);
+      dataflow->setPhasesQuantity(dummyIn, 1);
+      dataflow->setVertexDuration(dummyIn, {inExecDur});
+      dataflow->setReentrancyFactor(dummyIn, 1);
+      inputNames[i] = inName;
+    }
+  }
+  for (auto i = 0; i < existingOuts.size(); i++) {
+    if (existingOuts.at(i) == '0') {
+      std::string outName = "OUTPUT_" + std::to_string(i);
+      Vertex dummyOut = dataflow->addVertex(outName);
+      dataflow->setVertexType(dummyOut, outName);
+      dataflow->setPhasesQuantity(dummyOut, 1);
+      dataflow->setVertexDuration(dummyOut, {outExecDur});
+      dataflow->setReentrancyFactor(dummyOut, 1);
+      outputNames[i] = outName;
+    }
+  }
+
+  // // add dependencies and actor to simulate periodic audio input data
+  for (auto codecId = 0; codecId < numAudioCodecs; codecId++) {
+    std::string outCodecName = "AUDIO_OUT_" + std::to_string(codecId);
+    int lCh = codecId * 2;
+    int rCh = codecId * 2 + 1;
+    std::string lChId = std::to_string(lCh);
+    std::string rChId = std::to_string(rCh);
+    Vertex lIn = dataflow->getVertexByName(inputNames.at(lCh));
+    Vertex rIn = dataflow->getVertexByName(inputNames.at(rCh));
+    Vertex lOut = dataflow->getVertexByName(outputNames.at(lCh));
+    Vertex rOut = dataflow->getVertexByName(outputNames.at(rCh));
+    // output audio codec and dependencies
+    Vertex audioOut = dataflow->addVertex(outCodecName);
+    dataflow->setVertexType(audioOut, outCodecName);
+    dataflow->setPhasesQuantity(audioOut, 2);
+    dataflow->setVertexDuration(audioOut, audioPeriod);
+    dataflow->setReentrancyFactor(audioOut, 1);
+    Edge lOutChannel = dataflow->addEdge(lOut, audioOut, "l_out_" + lChId);
+    dataflow->setEdgeInPhases(lOutChannel, {1});
+    dataflow->setEdgeOutPhases(lOutChannel, {1,0});
+    dataflow->setPreload(lOutChannel, 1);
+    dataflow->setTokenSize(lOutChannel, 1);
+    Edge rOutChannel = dataflow->addEdge(rOut, audioOut, "r_out_" + rChId);
+    dataflow->setEdgeInPhases(rOutChannel, {1});
+    dataflow->setEdgeOutPhases(rOutChannel, {0,1});
+    dataflow->setPreload(rOutChannel, 0);
+    dataflow->setTokenSize(rOutChannel, 1);
+
+    // model path from input to output if none exists
+    if (!dataflow->getVertexInDegree(lOut)) {
+      Edge audioPath = dataflow->addEdge(lIn, lOut, "audio_path_" + lChId);
+      dataflow->setEdgeInPhases(audioPath, {1});
+      dataflow->setEdgeOutPhases(audioPath, {1});
+      dataflow->setPreload(audioPath, 0);
+      dataflow->setTokenSize(audioPath, 1);
+    }
+    if (!dataflow->getVertexInDegree(rOut)) {
+      Edge audioPath = dataflow->addEdge(rIn, rOut, "audio_path_" + rChId);
+      dataflow->setEdgeInPhases(audioPath, {1});
+      dataflow->setEdgeOutPhases(audioPath, {1});
+      dataflow->setPreload(audioPath, 0);
+      dataflow->setTokenSize(audioPath, 1);
+    }
+  }
+}
+
 
 bool isFloatingPoint(const std::string& input) {
     std::istringstream iss(input);
@@ -639,7 +806,7 @@ void algorithms::delayToBuffer(models::Dataflow *const dataflow, Vertex v,
 
 
 
-void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
+void algorithms::bypassActor(models::Dataflow* const dataflow, Vertex v) {
   std::string projName = dataflow->getVertexName(v);
 
   if (dataflow->getVertexInDegree(v) > 1) { // multiple inputs to Proj operator: map to outputs in order of inputs
@@ -699,6 +866,7 @@ void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
         }
       }}
   } else {
+    VERBOSE_INFO("Bypassing " << dataflow->getVertexType(v));
     Vertex newSource, newTarget;
     Edge oldEdge;
     std::string edgeName, edgeInPort, edgeOutPort;
@@ -718,9 +886,14 @@ void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
     dataflow->removeEdge(oldEdge);
     {ForOutputEdges(dataflow, v, e) {
         newTarget = dataflow->getEdgeTarget(e);
+        VERBOSE_INFO("\tEdge target: " << dataflow->getVertexType(newTarget));
+        VERBOSE_INFO("\tEdge source: " << dataflow->getVertexType(newSource));
         std::string newEdgeName = edgeName;
         std::string newInPortName = edgeInPort;
         std::string newOutPortName = edgeOutPort;
+        VERBOSE_INFO("new edge name" << newEdgeName);
+        VERBOSE_INFO("new port in name" << newInPortName);
+        VERBOSE_INFO("new port out name" << newOutPortName);
         if (dataflow->getVertexOutDegree(v) > 1) {
           std::string edgeNumber = std::string("_" + std::to_string(edgeCount) + "_");
           newEdgeName.replace(newEdgeName.find_last_of("_"),
@@ -761,6 +934,7 @@ void algorithms::bypassProj(models::Dataflow* const dataflow, Vertex v) {
       }}
   }
 
+  VERBOSE_INFO("Actor " << dataflow->getVertexType(dataflow->getVertexByName(projName)) << " bypassed");
   dataflow->removeVertex(dataflow->getVertexByName(projName));
 }
 

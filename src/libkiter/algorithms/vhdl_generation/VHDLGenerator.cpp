@@ -248,10 +248,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     }
     // Workaround for latency computation
     models::Dataflow *latencyDataflow = new models::Dataflow(*dataflow);
-    param_list["CODEC_PERIOD"] = "0";
-    algorithms::transformation::generate_audio_components(latencyDataflow,
-                                                          param_list);
-    param_list.erase(param_list.find("CODEC_PERIOD"));
+    algorithms::transformation::model_latency(latencyDataflow, param_list);
     VERBOSE_ASSERT(computeRepetitionVector(latencyDataflow),
                    "inconsistent graph");
     resLatency = scheduling::CSDF_1PeriodicScheduling(latencyDataflow, 0);
@@ -274,10 +271,7 @@ void algorithms::generateVHDL(models::Dataflow* const dataflow, parameters_list_
     }
     // Workaround for latency computation
     models::Dataflow *latencyDataflow = new models::Dataflow(*dataflow);
-    param_list["CODEC_PERIOD"] = "0";
-    algorithms::transformation::generate_audio_components(latencyDataflow,
-                                                          param_list);
-    param_list.erase(param_list.find("CODEC_PERIOD"));
+    algorithms::transformation::model_latency(latencyDataflow, param_list);
     VERBOSE_ASSERT(computeRepetitionVector(latencyDataflow),
                    "inconsistent graph");
     resLatency = scheduling::CSDF_1PeriodicScheduling(latencyDataflow, 0);
