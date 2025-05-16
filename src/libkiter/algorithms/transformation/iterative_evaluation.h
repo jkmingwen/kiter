@@ -49,19 +49,18 @@ namespace algorithms {
   void bindVertexEdges(models::Dataflow* const dataflow, Vertex v, int option);
 }
 
-ADD_TRANSFORMATION(
-    IterativeEvaluation,"Faust to SDF: simplify graph by iteratively evaluating "
-                      "expressions with constant inputs.",
-                      algorithms::transformation::iterative_evaluate);
+ADD_TRANSFORMATION(IterativeEvaluation,
+                   "Faust to SDF: simplify graph by iteratively evaluating "
+                   "expressions with constant inputs.",
+                   algorithms::transformation::iterative_evaluate);
 
-ADD_TRANSFORMATION(
-    GenerateAudioComponents,"Faust to SDF: Modify graph to model audio input.",
-                      algorithms::transformation::generate_audio_components);
+ADD_TRANSFORMATION(GenerateAudioComponents,
+                   "Faust to SDF: Modify graph to model audio input.",
+                   algorithms::transformation::generate_audio_components);
 
-ADD_TRANSFORMATION(
-    ModelLatency,
-    transformation_t({"ModelLatency",
-                      "Faust to SDF: Modify graph to model latency.",
-                      algorithms::transformation::model_latency}));
+ADD_TRANSFORMATION(ModelLatency,
+                   "Faust to SDF: Modify graph to model latency.",
+                   algorithms::transformation::model_latency);
+
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_ITERATIVE_EVALUATION_H_ */
