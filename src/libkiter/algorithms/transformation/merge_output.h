@@ -29,7 +29,6 @@ void merge_output    (models::Dataflow* const dataflow, parameters_list_t  param
 }
 
 
-ADD_TRANSFORMATION(MergeOutput,
-		transformation_t({ "MergeOutput" , "Merge outputs from a task to a intermediate task acting as a broadcaster.", algorithms::transformation::merge_output}));
+ADD_TRANSFORMATION(MergeOutput, "Merge outputs from a task to a intermediate task acting as a broadcaster.", algorithms::transformation::merge_output);
 
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_MERGE_OUTPUTS_H_ */

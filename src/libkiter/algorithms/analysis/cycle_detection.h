@@ -47,10 +47,8 @@ void cycle_detection       (models::Dataflow* const  dataflow, parameters_list_t
 }
 
 
-ADD_TRANSFORMATION(CycleDetection,
-                   transformation_t({ "CycleDetection" , "Returns 1 if there is a cycle in the graph and 0 if not..", algorithms::cycle_detection}));
-ADD_TRANSFORMATION(CycleCount,
-                   transformation_t({ "CycleCount" , "Count number of simple cycles in graph.", algorithms::find_simple_cycles}));
+ADD_ANALYSIS(CycleDetection, "Returns 1 if there is a cycle in the graph and 0 if not..", algorithms::cycle_detection);
+ADD_ANALYSIS(CycleCount,"Count number of simple cycles in graph.", algorithms::find_simple_cycles);
 
 
 

@@ -30,6 +30,7 @@ namespace algorithms {
             bool bottom_up = false;
             bool realtime_output = false;
             bool return_pareto_only = false;
+            bool use_cache = false;
         };
 
         class ModularDSE {
@@ -75,7 +76,9 @@ namespace algorithms {
             const TokenConfigurationSet & getResults () const {return results;} ;
             size_t results_size () const {return results.size();};
             size_t job_pool_size () const {return job_pool.size();};
+            size_t in_progress_size () const {return in_progress.size();};
             std::string print_space(bool no_timing = false);
+            std::string print_unfinished();
 
             void explore(const ExplorationParameters& exploration_parameters) ;
 

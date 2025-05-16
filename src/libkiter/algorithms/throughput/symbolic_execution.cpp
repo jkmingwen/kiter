@@ -20,14 +20,7 @@
 #include "state.h"
 #include "../scc.h"
 
-void algorithms::compute_asap_throughput_wrapper(models::Dataflow* const dataflow,
-                                                 parameters_list_t param_list) {
-  TIME_UNIT thr = compute_asap_throughput(dataflow, param_list);
-  std::cout << "Symbolic Execution Throughput is " << std::setprecision( 9 )
-            << thr << std::endl;
 
-  return;
-}
 
 TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
                                               parameters_list_t ) {
@@ -100,7 +93,7 @@ TIME_UNIT algorithms::compute_asap_throughput(models::Dataflow* const dataflow,
   return minThroughput;
 }
 
-void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* const dataflow,
+TIME_UNIT algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* const dataflow,
                                                           parameters_list_t param_list) {
   std::string testDistribution;
   std::map<ARRAY_INDEX, TOKEN_UNIT> specifiedCaps; // specified channel capacities
@@ -118,7 +111,7 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
       catch (const std::invalid_argument &ia) {
         VERBOSE_ERROR("Invalid argument for channel quantity (expecting long int): "
                       << ia.what() << std::endl);
-        return;
+        return 0;
       }
 
     }
@@ -126,11 +119,11 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
       VERBOSE_ERROR("Mismatch in number of channel quantities specified --- expecting "
                     << dataflow->getEdgesCount() << ", " << "got "
                     << specifiedCaps.size() << std::endl);
-      return;
+      return 0;
     }
   } else {
     VERBOSE_WARNING("No test storage distribution specified --- specify storage distribution using '-p SD=c1,c2,c3,...' where 'cN' refers to the maximum token capacity of the channel");
-    return;
+    return 0;
   }
   std::map<Edge, BufferInfos> channelQuants;
   TOKEN_UNIT distSz = 0;
@@ -167,7 +160,7 @@ void algorithms::compute_asap_throughput_and_cycles_debug(models::Dataflow* cons
   }
   std::cout << "Symbolic Execution Throughput is " << std::setprecision( 9 )
             << thr << std::endl;
-  return;
+  return thr;
 }
 
 kperiodic_result_t algorithms::compute_asap_throughput_and_cycles(models::Dataflow* const dataflow,
@@ -726,7 +719,7 @@ std::pair<TIME_UNIT, scheduling_t> algorithms::computeComponentThroughputSchedul
   }
 }
 
-void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
+models::Scheduling algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
                                             parameters_list_t param_list) {
 
     int linesize = param_list.count("LINE")? commons::fromString<int>(param_list["LINE"]) : 80;
@@ -737,6 +730,7 @@ void algorithms::scheduling::ASAPScheduling(models::Dataflow* const dataflow,
     std::cout << "Throughput=" << res.getGraphThroughput() << std::endl;
 
     std::cout << "Period=" << res.getGraphPeriod() << std::endl;
+    return res;
 }
 
 models::Scheduling algorithms::scheduling::ASAPScheduling(models::Dataflow* dataflow) {

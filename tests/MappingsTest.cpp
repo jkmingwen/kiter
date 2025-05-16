@@ -50,10 +50,9 @@ BOOST_FIXTURE_TEST_SUITE( mapping_test , WITH_SAMPLE)
 
         parameters_list_t params = parameters_list_t();
 
-        //TODO: infinite loop
-        BOOST_TEST(false);
-//        algorithms::mapping::BufferlessNoCMapAndRoute(pipeline_sample, params);
-//        algorithms::mapping::BufferlessNoCMapAndRoute(cycle_sample, params);
+        commons::set_verbose_mode(commons::INFO_LEVEL);
+        algorithms::mapping::BufferlessNoCMapAndRoute(pipeline_sample, params);
+        algorithms::mapping::BufferlessNoCMapAndRoute(cycle_sample, params); // TODO: This test trigger a bug!
     }
 
     BOOST_AUTO_TEST_CASE( sample_xy_routing_test )
@@ -74,6 +73,38 @@ BOOST_FIXTURE_TEST_SUITE( mapping_test , WITH_SAMPLE)
 
         parameters_list_t params = parameters_list_t();
 
+        // First map
+        BOOST_TEST_MESSAGE("Map the tasks");
+        algorithms::mapping::moduloMapping(pipeline_sample, params);
+        algorithms::mapping::moduloMapping(cycle_sample, params);
+
+        {ForEachVertex(pipeline_sample, v){
+                // Check mapping
+                auto mid = pipeline_sample->getMapping(v);
+                BOOST_TEST_MESSAGE("Task mapped on " << mid);
+                try {
+                    pipeline_sample->getNoC().getSrcNeighbour(mid);
+                } catch (NoCException& e) {
+                    BOOST_TEST_MESSAGE("getSrcNeighbour failed");
+
+                }
+            }}
+
+
+        {ForEachVertex(cycle_sample, v){
+                // Check mapping
+                auto mid = cycle_sample->getMapping(v);
+                BOOST_TEST_MESSAGE("Task mapped on " << mid);
+                try {
+                    cycle_sample->getNoC().getSrcNeighbour(mid);
+                } catch (NoCException& e) {
+                    BOOST_TEST_MESSAGE("getSrcNeighbour failed");
+
+                }
+            }}
+
+        // Second route
+        BOOST_TEST_MESSAGE("Route the com");
         algorithms::mapping::randomRouting(pipeline_sample, params);
         algorithms::mapping::randomRouting(cycle_sample, params);
     }

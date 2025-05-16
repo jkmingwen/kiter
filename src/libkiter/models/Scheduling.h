@@ -9,10 +9,12 @@
 #define SRC_LIBKITER_ALGORITHMS_SCHEDULING_SCHEDULING_H_
 
 #include <models/Dataflow.h>
+#include <commons/basic_types.h>
 #include <set>
 #include <map>
 #include <utility>
 #include <vector>
+#include <string>
 
 typedef std::vector<TIME_UNIT> static_task_schedule_t;
 typedef std::pair<TIME_UNIT, static_task_schedule_t> periodic_task_schedule_t;
@@ -96,8 +98,6 @@ public :
 	void verbose_print () const;
 	std::string asText () const;
 	std::string asASCII (size_t line_size) const;
-	//std::string asASCIINew (int line_size) const;
-	//std::string asASCIINewNew (int line_size) const;
 	bool is_valid_schedule () const;
 
 };

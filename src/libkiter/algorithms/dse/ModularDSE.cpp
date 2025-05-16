@@ -92,7 +92,7 @@ namespace algorithms {
                     if (stop_decision) {
 
                         VERBOSE_DSE_THREADS("END OF EXPLORATION: Thread " << std::this_thread::get_id() << " break itself.");
-
+                        job_pool.clear();
                         break;
                     }
 
@@ -180,6 +180,13 @@ namespace algorithms {
             for (auto& future : futures) {
                 future.wait();
             }
+
+            VERBOSE_INFO("End of explore, in process size is " << this->in_progress.size() << " and job pool size is " << this->job_pool.size());
+            if (exploration_parameters.realtime_output)  std::cout << print_unfinished();
+
+            // Clean the spot exploration variable.
+            this->stop_exploration = false;
+
         }
 
 
@@ -215,6 +222,19 @@ namespace algorithms {
             return res;
         }
 
+        std::string ModularDSE::print_unfinished() {
+            std::string res = "";
+
+            for (auto c : this->job_pool) {
+                res += c.to_csv_line(true) + "\n";
+            }
+
+            VERBOSE_ASSERT(this->in_progress.empty(), "This should not happen, the DSE should be in a stable state.");
+//            for (auto c : this->in_progress) {
+//                res += c.to_csv_line(true) + "\n";
+//            }
+            return res;
+        }
 
         void ModularDSE::import_results(TokenConfigurationSet& database) {
             for (TokenConfiguration res : database) {

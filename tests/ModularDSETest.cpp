@@ -15,7 +15,28 @@
 
 using namespace algorithms::dse;
 
+std::string remove_job_pool_from_export (std::string export_log) {
+    // Stringstream to help with line-by-line reading
+    std::istringstream stream(export_log);
 
+    // Result string without lines containing dashes
+    std::string result;
+    std::string line;
+
+    // Process each line in the string
+    while (std::getline(stream, line)) {
+        // Check if the line contains a dash
+        if (line.find('-') == std::string::npos) {  // npos means not found
+            // If there is no dash in the line, add it to the result
+            // Ensure to maintain line breaks except for the last line
+            if (!result.empty()) {
+                result += "\n";
+            }
+            result += line;
+        }
+    }
+    return result;
+}
 
 TokenConfiguration::PerformanceResult dummy_pc(models::Dataflow*, const TokenConfiguration& config) {
     return TokenConfiguration::PerformanceResult(config.getCost(), {});
@@ -189,6 +210,7 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
                 df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
             }}
 
+        computeRepetitionVector(df);
 
         algorithms::dse::ModularDSE dse(df,
                                         dummy_pc,
@@ -196,7 +218,6 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
                                         dummy_sc,
                                         1);
 
-        algorithms::dse::TokenConfiguration tc = dummy_if(df).front();
 
         std::istringstream input(csv_file_content_with_timings);
         dse.import_results(input);
@@ -214,6 +235,176 @@ BOOST_FIXTURE_TEST_SUITE( modular_dse_test, WITH_SAMPLE)
         BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 20);
 
         std::cout << dse.print_space();
+    }
+
+
+    BOOST_AUTO_TEST_CASE(modular_dse_export_import_test) {
+
+        // 1. Prepare the graph
+        size_t node_count = 4;
+        std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
+        std::vector<TIME_UNIT> node_durations {1,1,1,1};
+        std::vector<TOKEN_UNIT> edge_preloads  {0,0,0,0};
+        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_durations, edge_preloads);
+
+        {ForEachEdge(df,c) {
+                df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
+        }}
+
+        computeRepetitionVector(df);
+
+        // 2. Start an exploration
+
+        algorithms::dse::ModularDSE dse(df,
+                                        dummy_pc,
+                                        dummy_nf,
+                                        dummy_sc,
+                                        1);
+
+        auto tcs = dummy_if(df);
+
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 0);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 0);
+
+        dse.add_initial_jobs(tcs);
+
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 0);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), tcs.size());
+
+        ExplorationParameters params = {
+                .limit = 10,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+
+        dse.explore(params);
+
+
+        auto export_log = dse.print_space();
+        std::cout << export_log;
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 19);
+
+
+        algorithms::dse::ModularDSE dse_bis(df,
+                                        dummy_pc,
+                                        dummy_nf,
+                                        dummy_sc,
+                                        1);
+
+        ExplorationParameters params_bis = {
+                .limit = 1,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+        std::istringstream iss(export_log);
+        dse_bis.import_results(iss);
+
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 19);
+        dse_bis.explore(params_bis);
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 11);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 20);
+
+    }
+
+    BOOST_AUTO_TEST_CASE(modular_dse_export_import_without_job_pool_test) {
+
+        // 1. Prepare the graph
+        size_t node_count = 4;
+        std::vector<TOKEN_UNIT> node_weights  {2,2,2,2};
+        std::vector<TIME_UNIT> node_durations {1,1,1,1};
+        std::vector<TOKEN_UNIT> edge_preloads  {0,0,0,0};
+        models::Dataflow* df = generators::new_normalized_cycle(node_count, node_weights, node_durations, edge_preloads);
+
+        {ForEachEdge(df,c) {
+                df->setEdgeType(c, EDGE_TYPE::FEEDBACK_EDGE);
+            }}
+
+        computeRepetitionVector(df);
+
+        // 2. Start an exploration
+
+        algorithms::dse::ModularDSE dse(df,
+                                        dummy_pc,
+                                        dummy_nf,
+                                        dummy_sc,
+                                        1);
+
+        auto tcs = dummy_if(df);
+
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 0);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 0);
+
+        dse.add_initial_jobs(tcs);
+
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 0);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), tcs.size());
+
+        ExplorationParameters params = {
+                .limit = 10,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+
+        dse.explore(params);
+
+
+        auto export_log = dse.print_space();
+        std::cout << export_log;
+        auto filtered_log = remove_job_pool_from_export(export_log);
+        std::cout << filtered_log;
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse.job_pool_size(), 19);
+
+
+        algorithms::dse::ModularDSE dse_bis(df,
+                                            dummy_pc,
+                                            dummy_nf,
+                                            dummy_sc,
+                                            1);
+
+        ExplorationParameters params_bis = {
+                .limit = 1,
+                .bottom_up = false,
+                .realtime_output = false,
+                .return_pareto_only = false
+        };
+        std::istringstream iss(filtered_log);
+        dse_bis.import_results(iss);
+
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 0);
+        dse_bis.explore(params_bis);
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 0);
+        dse_bis.add_initial_job( dummy_if(df).front());
+
+        // Test the results
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 1);
+        BOOST_REQUIRE_EQUAL(dse_bis.in_progress_size(), 0);
+        dse_bis.explore(params_bis);
+        std::cout << dse_bis.print_unfinished();
+
+        BOOST_REQUIRE_EQUAL(dse_bis.results_size(), 10);
+        BOOST_REQUIRE_EQUAL(dse_bis.job_pool_size(), 0);
+        BOOST_REQUIRE_EQUAL(dse_bis.in_progress_size(), 0);
+
+
+
+
     }
 
 

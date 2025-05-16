@@ -16,10 +16,8 @@ namespace algorithms {
 }
 
 ADD_TRANSFORMATION(AddFeedbackBuffers,
-                   transformation_t({
-                                            "AddFeedbackBuffers",
                                             "Add feedback buffer for any non-feedback buffers.",
-                                            algorithms::transformation::add_feedback_buffers}));
+                                            algorithms::transformation::add_feedback_buffers);
 
 
 #endif //KITER_ADDFEEDBACKBUFFERS_H

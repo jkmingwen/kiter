@@ -111,6 +111,10 @@ namespace algorithms {
             return removed;
         }
 
+        void TokenConfigurationSet::clear() {
+            this->configurations_by_cost .clear();
+        }
+
 
     } // algorithms
 } // dse

@@ -166,12 +166,12 @@ models::Scheduling algorithms::scheduling::CSDF_KPeriodicScheduling    (const mo
         }
     }
 
-    TIME_UNIT frequency = howard_res.first;
+    TIME_UNIT frequency_step_1 = howard_res.first;
 
-    VERBOSE_INFO("KSchedule function get " << frequency << " from MCRP." );
-    VERBOSE_INFO("  ->  then omega =  " <<  1 / frequency );
+    VERBOSE_INFO("KSchedule function get " << frequency_step_1 << " from MCRP." );
+    VERBOSE_INFO("  ->  then omega =  " <<  1 / frequency_step_1 );
 
-    result.throughput = frequency;
+    result.throughput = frequency_step_1;
 
     ////////////// SCHEDULE CALL // END
 
@@ -276,7 +276,7 @@ models::Scheduling algorithms::scheduling::CSDF_KPeriodicScheduling    (const mo
 
 }
 
-void algorithms::scheduling::CSDF_1PeriodicThroughput (models::Dataflow*  dataflow, parameters_list_t )  {
+TIME_UNIT algorithms::scheduling::CSDF_1PeriodicThroughput (models::Dataflow*  dataflow, parameters_list_t )  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
    //STEP 1 - Generate Event Graph
@@ -293,9 +293,10 @@ void algorithms::scheduling::CSDF_1PeriodicThroughput (models::Dataflow*  datafl
    std::cout << "Maximum throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
    std::cout << "Maximum period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
 
+ 	return 1.0 /omega ;
 }
 
-void algorithms::scheduling::OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t params)  {
+models::Scheduling algorithms::scheduling::OnePeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t params)  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
     TIME_UNIT fixed_period = 0;
@@ -315,11 +316,12 @@ void algorithms::scheduling::OnePeriodicScheduling (models::Dataflow*  dataflow,
    std::cout << "1Periodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
    std::cout << "1Periodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
 
+ 	return res;
 }
 
 
 
-void algorithms::scheduling::CSDF_NPeriodicThroughput (models::Dataflow*  dataflow, parameters_list_t )  {
+TIME_UNIT algorithms::scheduling::CSDF_NPeriodicThroughput (models::Dataflow*  dataflow, parameters_list_t )  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
    //STEP 1 - Generate Event Graph
@@ -335,5 +337,5 @@ void algorithms::scheduling::CSDF_NPeriodicThroughput (models::Dataflow*  datafl
 
    std::cout << "Maximum throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
    std::cout << "Maximum period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
-
+	return howard_res.first;
 }

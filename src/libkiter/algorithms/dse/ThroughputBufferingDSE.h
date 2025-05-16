@@ -31,10 +31,11 @@ namespace algorithms {
 
         class ThroughputBufferingNext {
         public:
-            ThroughputBufferingNext(ThroughputBufferingMode mode) :  mode(mode)  {}
+            ThroughputBufferingNext(ThroughputBufferingMode mode, bool use_cache) :  mode(mode) , use_cache(use_cache) {}
             algorithms::dse::ModularDSE::NextFuncRes operator()(const algorithms::dse::TokenConfiguration& current) const;
         private:
             ThroughputBufferingMode mode;
+            bool use_cache;
         };
 
 
@@ -50,17 +51,14 @@ namespace algorithms {
                                                            const ExplorationParameters& params,
                                                            algorithms::dse::TokenConfiguration* tc = nullptr) ;
 
-        void throughputbuffering_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
+        StorageDistributionSet throughput_buffering_dse   (models::Dataflow* const  dataflow, parameters_list_t params);
     }
 }
 
 
-ADD_TRANSFORMATION(throughputbufferingDSE,
-                   transformation_t({
-                                            "throughputbufferingDSE" ,
+ADD_THROUGHPUT_BUFFERING_DSE(throughputbufferingDSE,
                                             "DSE that solve the throughputbuffering problem for a graph with \"feedback\" buffers",
-                                            algorithms::dse::throughputbuffering_dse}
-                   ));
+                                            algorithms::dse::throughput_buffering_dse);
 
 
 

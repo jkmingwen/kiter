@@ -46,10 +46,8 @@ namespace generators {
 	models::Dataflow*  generate_random_sdf(parameters_list_t   param_list);
 }
 
-ADD_GENERATOR(GenerateRandomSDF,
-		generator_t(
-				{ "GenerateRandomSDF" , "generate LTE SDF.", generators::generate_random_sdf})
-);
+ADD_GENERATOR(GenerateRandomSDF, "generate LTE SDF.", generators::generate_random_sdf);
+
 
 
 

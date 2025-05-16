@@ -113,6 +113,8 @@ void algorithms::symbolic_execution_with_packets (models::Dataflow* const graph,
 
 	while (total > 0) {
 
+        bool no_execution = true;
+
 		for (Vertex t : graph->vertices()) {
 
 			ARRAY_INDEX vId = graph->getVertexId(t);
@@ -186,6 +188,11 @@ void algorithms::symbolic_execution_with_packets (models::Dataflow* const graph,
 			}
 
 		}
+
+        if (no_execution) {
+            VERBOSE_ERROR("Should never happen");
+            break;
+        }
 
 	}
 

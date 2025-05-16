@@ -11,16 +11,19 @@
 #include <models/Dataflow.h>
 #include <algorithms/normalization.h>
 #include <algorithms/buffersizing/backpressure.h>
+#include<models/BufferSizingResult.h>
 
-BufferSizingResult algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t params) {
+models::BufferSizingResult algorithms::compute_backpressure_memory_sizing (models::Dataflow* const  dataflow, parameters_list_t params) {
 
-    BufferSizingResult res;
+    models::BufferSizingResult res;
 
 	VERBOSE_ASSERT(dataflow,TXT_NEVER_HAPPEND);
 
     // STEP 1 - Compute normalized period
     TIME_UNIT PERIOD = 0 ;
-	if (params.find("PERIOD")!= params.end() ) PERIOD =  commons::fromString<TIME_UNIT>(params["PERIOD"]);
+	if (params.find("PERIOD")!= params.end() ) {
+        PERIOD =  commons::fromString<TIME_UNIT>(params["PERIOD"]);
+    }
     VERBOSE_ASSERT_GreaterThan(PERIOD, 0);
 
 

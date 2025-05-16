@@ -136,7 +136,7 @@ models::EventGraph* algorithms::generate_csdf_strictly_periodic_event_graph (con
 	return eg;
 }
 
-void algorithms::compute_SPeriodic_throughput    (models::Dataflow*  dataflow, parameters_list_t params) {
+TIME_UNIT algorithms::compute_SPeriodic_throughput    (models::Dataflow*  dataflow, parameters_list_t params) {
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow), "Repetition vector failed.");
 	models::EventGraph* eg = algorithms::generate_csdf_strictly_periodic_event_graph(dataflow, false);
 	std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res = eg->MinCycleRatio();
@@ -156,10 +156,11 @@ void algorithms::compute_SPeriodic_throughput    (models::Dataflow*  dataflow, p
 	std::cout << "SPeriodic throughput is "  << std::setw( 20 ) << std::setprecision( 9 ) <<     res    << std::endl;
 	std::cout << "SPeriodic period     is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << 1.0/res    << std::endl;
 
+	return res;
 }
 
 
-void algorithms::compute_ASPeriodic_throughput    (models::Dataflow*  dataflow, parameters_list_t params) {
+TIME_UNIT algorithms::compute_ASPeriodic_throughput    (models::Dataflow*  dataflow, parameters_list_t params) {
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow), "Repetition vector failed.");
 	models::EventGraph* eg = algorithms::generate_csdf_strictly_periodic_event_graph(dataflow, true);
 	std::pair<TIME_UNIT,std::vector<models::EventGraphEdge> > howard_res = eg->MinCycleRatio();
@@ -178,5 +179,7 @@ void algorithms::compute_ASPeriodic_throughput    (models::Dataflow*  dataflow, 
 
 	std::cout << "SPeriodic throughput is "  << std::setw( 20 ) << std::setprecision( 9 ) <<     res    << std::endl;
 	std::cout << "SPeriodic period     is " << std::fixed      << std::setw( 20 ) << std::setprecision( 6 ) << 1.0/res    << std::endl;
+
+	return res;
 }
 

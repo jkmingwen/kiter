@@ -30,6 +30,5 @@ namespace algorithms {
 	}
 }
 
-ADD_TRANSFORMATION(Merge,
-		transformation_t({ "Merge" , "Merging tasks using Kperiodic scheduling and Initialization phases", algorithms::transformation::merge_tasks}));
+ADD_TRANSFORMATION(Merge,"Merging tasks using Kperiodic scheduling and Initialization phases", algorithms::transformation::merge_tasks);
 #endif /* SRC_LIBKITER_ALGORITHMS_TRANSFORMATION_MERGING_H_ */

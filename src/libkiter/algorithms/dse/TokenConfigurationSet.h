@@ -178,6 +178,7 @@ namespace algorithms {
                 return iterator(configurations_by_cost.end(), configurations_by_cost.end());
             }
 
+            void clear();
         };
 
 

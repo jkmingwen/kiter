@@ -72,7 +72,7 @@ models::Scheduling algorithms::scheduling::CSDF_SPeriodicScheduling (const model
 
 }
 
-void algorithms::scheduling::SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t params)  {
+models::Scheduling algorithms::scheduling::SPeriodicScheduling (models::Dataflow*  dataflow, parameters_list_t params)  {
 
 	VERBOSE_ASSERT(computeRepetitionVector(dataflow),"inconsistent graph");
     TIME_UNIT fixed_period = 0;
@@ -91,5 +91,6 @@ void algorithms::scheduling::SPeriodicScheduling (models::Dataflow*  dataflow, p
    std::cout << "SPeriodic throughput is "  << std::setw( 11 ) << std::setprecision( 9 ) <<  1.0 / omega << std::endl;
    std::cout << "SPeriodic period     is " << std::fixed << std::setw( 11 ) << std::setprecision( 6 ) << omega   << std::endl;
 
+	return res;
 }
 

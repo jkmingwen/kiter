@@ -12,7 +12,7 @@
 #include <algorithms/mappings.h>
 
 void algorithms::mapping::moduloMapping (models::Dataflow* const  dataflow, parameters_list_t params) {
-
+    dataflow->reset_computation();
 	VERBOSE_INFO("moduloMapping");
 	for (auto t : dataflow->vertices()) {
 		if (params.find(dataflow->getVertexName(t)) != params.end()) {

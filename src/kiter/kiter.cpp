@@ -10,6 +10,9 @@
 #include <printers/printers.h>
 #include <commons/commons.h>
 
+// Please keep this here, necessary for Ubuntu linking
+#include <algorithms/algorithms.h>
+
 
 
 inline double tock() {
@@ -118,7 +121,7 @@ int main (int argc, char **argv)
 	if (!csdf) {
 		for ( std::vector<std::pair<std::string,parameters_list_t>>::iterator it = generators.begin() ; it != generators.end() ; it++ ) {
 			std::string name = (*it).first;
-			const generator_t* generator = KiterRegistry<generator_t>::get(name);
+			const generator_action_t* generator = KiterRegistry<generator_action_t>::get(name);
 			if (generator)  {
 				VERBOSE_INFO ("Run " << generator->name);
 				tock();
@@ -127,7 +130,7 @@ int main (int argc, char **argv)
 				VERBOSE_INFO (generator->name << " duration=" << duration);
 			} else {
 				std::cerr << " Unsupported generator (-g NAME) or no filename (-f FILENAME), list of supported generator is " << std::endl;
-                KiterRegistry<generator_t>::print(std::cerr);
+                KiterRegistry<generator_action_t>::print(std::cerr);
 				exit(1);
 			}
 
@@ -151,38 +154,42 @@ int main (int argc, char **argv)
 
 
 	// Step 4 = Apply selected algorithm
-	for ( std::vector<std::pair<std::string,parameters_list_t>>::iterator it = algos.begin() ; it != algos.end() ; it++ ) {
-		std::string name = (*it).first;
-        const transformation_t* transformation = KiterRegistry<transformation_t>::get(name);
-        const buffer_sizing_t* buffer_sizing = KiterRegistry<buffer_sizing_t>::get(name);
-        const printer_t* printer = KiterRegistry<printer_t>::get(name);
+	for (auto& [name, params] : algos) {
 
         tock();
 
-        if (transformation) {
+	    params.insert(parameters.begin(), parameters.end());
+
+        if (const auto *transformation = KiterRegistry<transformation_action_t>::get(name)) {
             VERBOSE_INFO ("Run transformation " << transformation->name);
-            (*it).second.insert(parameters.begin(),parameters.end());
-            transformation->fun(csdf,(*it).second);
-        } else if (buffer_sizing) {
-            VERBOSE_INFO ("Run buffer sizing " << transformation->name);
-            (*it).second.insert(parameters.begin(),parameters.end());
-            BufferSizingResult res = buffer_sizing->fun(csdf,(*it).second);
+            transformation->fun(csdf,params);
+        } else if (const auto *buffer_sizing = KiterRegistry<buffer_sizing_action_t>::get(name)) {
+            VERBOSE_INFO ("Run buffer sizing " << buffer_sizing->name);
+            models::BufferSizingResult res = buffer_sizing->fun(csdf,params);
             VERBOSE_INFO ("Total size is " << res.total_size());
-
-        } else if (printer) {
-            VERBOSE_INFO ("Run printer " << transformation->name);
-            (*it).second.insert(parameters.begin(),parameters.end());
-            printer->fun(csdf,(*it).second);
-
+        } else if (const auto *printer = KiterRegistry<printer_action_t>::get(name)) {
+        	VERBOSE_INFO ("Run printer " << printer->name);
+        	printer->fun(csdf,params);
+        } else if (const auto *actions = KiterRegistry<scheduling_action_t>::get(name)) {
+        	VERBOSE_INFO ("Run Scheduling " << actions->name);
+        	actions->fun(csdf,params);
+        }else if (const auto *actions = KiterRegistry<throughput_action_t>::get(name)) {
+        	VERBOSE_INFO ("Run Throughput " << actions->name);
+        	actions->fun(csdf,params);
+        }else if (const auto *actions = KiterRegistry<analysis_action_t>::get(name)) {
+        	VERBOSE_INFO ("Run Analysis " << actions->name);
+        	actions->fun(csdf,params);
+        } else if (const auto *actions = KiterRegistry<throughput_buffering_dse_action_t>::get(name)) {
+        	VERBOSE_INFO ("Run DSE " << actions->name);
+        	actions->fun(csdf,params);
         } else {
             std::cerr << " Unsupported algorithm (-a " << name << "), list of supported algorithms is " << std::endl;
             std::cerr  << "" << std::endl;
             KiterRegistry<>::print_all(std::cerr);
             exit(1);
         }
-
         double duration = tock();
-        VERBOSE_INFO (transformation->name << " duration=" << duration);
+        VERBOSE_INFO (name << " duration=" << duration);
 	}
 
 

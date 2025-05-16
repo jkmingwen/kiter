@@ -14,12 +14,14 @@
 #include <algorithms/buffersizing/periodic_fixed.h> // include speriodic
 #include <algorithms/throughput/kperiodic.h>
 
+#include "StorageDistributionSet.h"
 
-void algorithms::compute_csdf_dse_speriodic   (models::Dataflow* const  dataflow, parameters_list_t params) {
+
+StorageDistributionSet algorithms::compute_csdf_dse_speriodic   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
     bool      INTEGERSOLVING = commons::get_parameter<bool>(params, "ILP", false) ;
 
-    const BufferSizingFun& sizing_fun = [INTEGERSOLVING](models::Dataflow* const d, TIME_UNIT p) -> BufferSizingResult {
+    const BufferSizingFun& sizing_fun = [INTEGERSOLVING](models::Dataflow* const d, TIME_UNIT p) -> models::BufferSizingResult {
 		return algorithms::speriodic_memory_sizing_csdf( d,  p,  INTEGERSOLVING , false);
 	};
 
@@ -41,21 +43,23 @@ void algorithms::compute_csdf_dse_speriodic   (models::Dataflow* const  dataflow
    		  dseout = &dseLog;
    	  }
 
-      algorithms::compute_csdf_dse_from_function (dataflow,sizing_fun, *dseout);
+      StorageDistributionSet res = algorithms::compute_csdf_dse_from_function (dataflow,sizing_fun, *dseout);
 
 
 	  if (writeLogFiles) {
 		  dseLog.close();
 	  }
+
+	   return res;
 }
 
 
 
-void algorithms::compute_csdf_dse_periodic   (models::Dataflow* const  dataflow, parameters_list_t params) {
+StorageDistributionSet algorithms::compute_csdf_dse_periodic   (models::Dataflow* const  dataflow, parameters_list_t params) {
 
     bool      INTEGERSOLVING = commons::get_parameter<bool>(params, "ILP", false) ;
 
-    const BufferSizingFun& sizing_fun = [INTEGERSOLVING](models::Dataflow* const d, TIME_UNIT p) -> BufferSizingResult {
+    const BufferSizingFun& sizing_fun = [INTEGERSOLVING](models::Dataflow* const d, TIME_UNIT p) -> models::BufferSizingResult {
 		return algorithms::periodic_memory_sizing_csdf( d,  p,  INTEGERSOLVING , false);
 	};
 
@@ -78,13 +82,15 @@ void algorithms::compute_csdf_dse_periodic   (models::Dataflow* const  dataflow,
 		  dseout = &dseLog;
 	  }
 
-	  algorithms::compute_csdf_dse_from_function (dataflow,sizing_fun, *dseout);
+	  StorageDistributionSet res = algorithms::compute_csdf_dse_from_function (dataflow,sizing_fun, *dseout);
 
 	  if (writeLogFiles) {
 		  dseLog.close();
 	  }
+
+	return res;
 }
-void algorithms::compute_csdf_dse_from_function   (models::Dataflow* const  dataflow, const BufferSizingFun& sizing_fun, std::ostream& dseLog) {
+StorageDistributionSet algorithms::compute_csdf_dse_from_function   (models::Dataflow* const  dataflow, const BufferSizingFun& sizing_fun, std::ostream& dseLog) {
 
 	VERBOSE_DEBUG("compute_csdf_dse_from_function");
 

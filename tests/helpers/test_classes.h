@@ -41,9 +41,19 @@ class WITH_SAMPLE {
 	models::Dataflow * cycle_sample ;
 	models::Dataflow * mult_scc_sample ;
 	WITH_SAMPLE () {
+        commons::set_verbose_mode(commons::ERROR_LEVEL);
 		pipeline_sample = generateSamplePipeline () ;
 		cycle_sample = generateSampleCycle () ;
-                mult_scc_sample = generateSampleMultSCC();
+        mult_scc_sample = generateSampleMultSCC();
+
+        NoC noc (4, 4);
+        pipeline_sample->setNoC(noc);
+        cycle_sample->setNoC(noc);
+        mult_scc_sample->setNoC(noc);
+//  // TODO: This should have been a good idea, but the reset_computation, computeRepetitionVector  ...
+//        computeRepetitionVector(pipeline_sample);
+//        computeRepetitionVector(cycle_sample);
+//        computeRepetitionVector(mult_scc_sample);
     	BOOST_TEST_MESSAGE( "WITH_SAMPLE Setup Done" );
 	}
 	~WITH_SAMPLE () {

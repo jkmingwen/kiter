@@ -71,7 +71,12 @@ benchmark :  sdf.log  csdf.log csdf_sized.log
 
 ubuntu_test:
 	@echo "###########"" ENTER IN $@ : $^  #####################"
-	docker build -f tools/docker/DockerFile.u18 -t bbodin/kiter-u18 ./
+	docker build -f tools/docker/DockerFile.ubuntu -t bbodin/kiter-ubuntu ./
+	docker run -it bbodin/kiter-ubuntu /kiter/Release/bin/kiter -h
+
+ubuntu_run:
+	@echo "###########"" ENTER IN $@ : $^  #####################"
+	docker run -v ~/dockerlogs:/kiter/logs  -it bbodin/kiter-ubuntu /kiter/tools/kdse2023.sh -l /kiter/logs/ -c 128 -t 3600
 
 test: ./Release/bin/kiter 
 	@echo "###########"" ENTER IN $@ : $^  #####################"

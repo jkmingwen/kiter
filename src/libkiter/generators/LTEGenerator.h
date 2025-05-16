@@ -35,10 +35,8 @@ namespace generators {
 	models::Dataflow*  generate_lte_sdf(parameters_list_t   param_list);
 }
 
-ADD_GENERATOR(genLTESDF,
-		generator_t(
-				{ "genLTESDF" , "generate LTE SDF, parameters are miwf, cwac, ifft, dd.", generators::generate_lte_sdf})
-);
+ADD_GENERATOR(genLTESDF, "generate LTE SDF, parameters are miwf, cwac, ifft, dd.", generators::generate_lte_sdf);
+
 
 
 

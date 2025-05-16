@@ -36,23 +36,16 @@ void printXML                (models::Dataflow* const  dataflow, parameters_list
 void printSigGraph           (models::Dataflow* const  dataflow, parameters_list_t = std::map<std::string,std::string>());
 }
 
-ADD_PRINTER(PrintXML,
-		printer_t({ "PrintXML" , "Print XML file", printers::printXML})
-);
+ADD_PRINTER(PrintXML,"Print XML file", printers::printXML);
 
-ADD_PRINTER(PrintKiter,
-            printer_t({ "PrintKiter" , "Generate C++ code to internally generate the graph inside Kiter.", printers::printGraphAsKiterScript} )
-);
-ADD_PRINTER(PrintInfos,
-            printer_t({ "PrintInfos" , "Just print some graph informations.", printers::printInfos})
-);
-ADD_PRINTER(PrintGraph,
-            printer_t({ "PrintGraph" , "Print DOT file", printers::printGraph})
-);
-ADD_PRINTER(PrintMapping,
-            printer_t({ "PrintMapping" , "Print DOT file", printers::printMapping})
-);
-ADD_TRANSFORMATION(PrintSigGraph,
-		transformation_t({ "PrintSigGraph" , "Print DOT file", printers::printSigGraph})
-);
+
+ADD_PRINTER(PrintKiter,"Generate C++ code to internally generate the graph inside Kiter.", printers::printGraphAsKiterScript);
+
+ADD_PRINTER(PrintInfos,"Just print some graph informations.", printers::printInfos);
+
+ADD_PRINTER(PrintGraph,"Print DOT file", printers::printGraph);
+
+ADD_PRINTER(PrintMapping , "Print DOT file", printers::printMapping);
+
+ADD_PRINTER(PrintSigGraph, "Print DOT file", printers::printSigGraph);
 #endif /* STDOUT_H_ */

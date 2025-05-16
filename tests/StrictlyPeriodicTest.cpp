@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE( test_scheduling_simple_buffer_dataflow )
     g->setReentrancyFactor(v1,1);
 
 	VERBOSE_ASSERT(computeRepetitionVector(g),"Cannot generate repetition vector.");
-	models::Scheduling res2 = algorithms::scheduling::CSDF_SPeriodicScheduling (g);
+	models::Scheduling res2 = algorithms::scheduling::CSDF_SPeriodicScheduling (g, 1.0);
     BOOST_REQUIRE_EQUAL( res2.getGraphPeriod(), 1 );
 
     delete g;
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE( test_scheduling_varied_duration_time_buffer_dataflow )
     g->setReentrancyFactor(v1,1);
 
 	VERBOSE_ASSERT(computeRepetitionVector(g),"Cannot generate repetition vector.");
-	models::Scheduling res = algorithms::scheduling::CSDF_SPeriodicScheduling (g);
+	models::Scheduling res = algorithms::scheduling::CSDF_SPeriodicScheduling (g, 4.0);
 
     BOOST_REQUIRE_EQUAL( res.getGraphPeriod(), 4);
 

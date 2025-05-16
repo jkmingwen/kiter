@@ -16,6 +16,12 @@ typedef 	          long int  ARRAY_INDEX;
 typedef            long double  TIME_UNIT;
 typedef            long double  DATA_BY_TIME_UNIT;
 
-
+namespace models {
+    class Dataflow;
+    class BufferSizingResult;
+    class Scheduling;
+    class EventGraph;
+}
+class StorageDistributionSet;
 
 #endif /* SRC_LIBKITER_COMMONS_BASIC_TYPES_H_ */

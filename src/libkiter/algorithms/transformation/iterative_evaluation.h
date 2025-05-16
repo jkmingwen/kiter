@@ -50,17 +50,13 @@ namespace algorithms {
 }
 
 ADD_TRANSFORMATION(
-    IterativeEvaluation,
-    transformation_t({"IterativeEvaluation",
-                      "Faust to SDF: simplify graph by iteratively evaluating "
+    IterativeEvaluation,"Faust to SDF: simplify graph by iteratively evaluating "
                       "expressions with constant inputs.",
-                      algorithms::transformation::iterative_evaluate}));
+                      algorithms::transformation::iterative_evaluate);
 
 ADD_TRANSFORMATION(
-    GenerateAudioComponents,
-    transformation_t({"GenerateAudioComponents",
-                      "Faust to SDF: Modify graph to model audio input.",
-                      algorithms::transformation::generate_audio_components}));
+    GenerateAudioComponents,"Faust to SDF: Modify graph to model audio input.",
+                      algorithms::transformation::generate_audio_components);
 
 ADD_TRANSFORMATION(
     ModelLatency,

@@ -150,7 +150,7 @@ void algorithms::clean_LCG (models::EventGraph* lcg) {
 	lcg->FullConnectionned();
 }
 
-void algorithms::compute_deGrooteClean_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
+TIME_UNIT algorithms::compute_deGrooteClean_throughput (models::Dataflow* const  dataflow, parameters_list_t) {
 
 	models::EventGraph* eg = generate_LCG(dataflow);
 	VERBOSE_INFO("LCG size is " << eg->getEventCount() << " vertices and " << eg->getConstraintsCount() << " edges");
@@ -164,10 +164,12 @@ void algorithms::compute_deGrooteClean_throughput (models::Dataflow* const  data
 	} else {
 		std::cout << "Maximum throughput is " << 1 / result.first   << std::endl;
 	}
+
+	return  1.0 / result.first;
 }
 
 
-void algorithms::compute_deGroote_throughput (models::Dataflow* const dataflow, parameters_list_t) {
+TIME_UNIT algorithms::compute_deGroote_throughput (models::Dataflow* const dataflow, parameters_list_t) {
 
     	models::EventGraph* eg = generate_LCG(dataflow);
     	VERBOSE_INFO("LCG size is " << eg->getEventCount() << " vertices and " << eg->getConstraintsCount() << " edges");
@@ -180,4 +182,7 @@ void algorithms::compute_deGroote_throughput (models::Dataflow* const dataflow, 
     	} else {
     		std::cout << "Maximum throughput is " << 1 / result.first   << std::endl;
     	}
+
+	return  1.0 / result.first;
+
     }
